@@ -276,7 +276,6 @@ int main(int argc, char** argv){
 			tdcNhitwire = tdcNhit[ch];
 			for ( int ihit = 0; ihit<tdcNhitwire; ihit++){
 				if (driftTime[ch][ihit]>0) driftTime[ch][ihit]-=power2_15;
-				htdc[ch]->Fill(driftTime[ch][ihit]);
 				int height=0;
 				for(int clk = clockNumberDriftTime[ch][ihit]; clk<(ihit+1>=tdcNhitwire?NSAM:clockNumberDriftTime[ch][ihit+1]); clk++){
 					if (adc[ch][clk]<height){
@@ -367,6 +366,31 @@ int main(int argc, char** argv){
 		*/
 	}
 
+	// Loop in events
+	if (nEventMax&&nEventMax<N) N = nEventMax;
+	std::cout<<"Processing "<<N<<" events..."<<std::endl;
+	//N=1;
+	for (Long64_t i = 0;i<N; i++){
+		if (i%1000==0) std::cout<<(double)i/N*100<<"%..."<<std::endl;
+		c->GetEntry(i);
+		if (triggerNumberMax<triggerNumber) triggerNumberMax = triggerNumber;
+		for(int ch = 0; ch<NCHT; ch++){
+			tdcNhitwire = tdcNhit[ch];
+			for ( int ihit = 0; ihit<tdcNhitwire; ihit++){
+				if (driftTime[ch][ihit]>0) driftTime[ch][ihit]-=power2_15;
+				int height=0;
+				for(int clk = clockNumberDriftTime[ch][ihit]; clk<(ihit+1>=tdcNhitwire?NSAM:clockNumberDriftTime[ch][ihit+1]); clk++){
+					if (adc[ch][clk]<height){
+						break;
+					}
+					height=adc[ch][clk];
+				}
+				if (height>Hmin[ch])
+					htdc[ch]->Fill(driftTime[ch][ihit]);
+			}
+		}
+	}
+
 	double t0[NBD];
 	double t0_nmax[NBD];
 	double t0_temp[NCHT];
@@ -376,6 +400,13 @@ int main(int argc, char** argv){
 		std::vector<int> indice2;
 		for (int j = 0; j <NCHT; j++){
 			if (connected(j)) indice.push_back(j);
+		}
+		double maxofmax = 0;
+		for ( int j = 0; j<indice.size(); j++){
+			int ch = indice[j];
+			int maxbin = htdc[ch]->GetMaximumBin();
+			double max = htdc[ch]->GetBinContent(maxbin);
+			if (maxofmax < max) maxofmax = max;
 		}
 		for ( int j = 0; j<indice.size(); j++){
 			int ch = indice[j];
@@ -394,9 +425,10 @@ int main(int argc, char** argv){
 				if (height>th) break;
 			}
 			t0_temp[indice[j]] = htdc[ch]->GetBinCenter(ibin);
-			if (max>30){
+			if (max>maxofmax/2){
 				t0[i] += t0_temp[indice[j]];
 				indice2.push_back(ch);
+				std::cout<<indice[j]<<": "<<t0_temp[indice[j]]<<", "<<max<<std::endl;
 			}
 		}
 		int N = indice2.size();

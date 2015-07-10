@@ -10,6 +10,7 @@
 #include <iostream>
 
 int main(int argc, char** argv){
+	double dtmax = 550;
 	// For wire position
 	TFile * TFile_wirepos = new TFile("../info/wire-position.v3.root");
 	TTree * TTree_wirepos = (TTree*) TFile_wirepos->Get("t");
@@ -85,9 +86,9 @@ int main(int argc, char** argv){
 //		if (iHit[83]<0) continue;
 		int nHits = 0;
 		for (int ch = 0; ch<96; ch++){
-			if (iHit[ch]>=0) nHits++;
+			if (iHit[ch]>=0&&driftTime[ch]<dtmax) nHits++;
 		}
-		//if (nHits>8) continue;
+		if (nHits>8) continue;
 		for (int ch = 0; ch<96; ch++){
 			if (ewiret[ch]){
 				delete ewiret[ch];
@@ -97,7 +98,7 @@ int main(int argc, char** argv){
 				delete text[ch];
 				text[ch] = 0;
 			}
-			if (iHit[ch]<0) continue;
+			if (iHit[ch]<0||driftTime[ch]>dtmax) continue;
 			chs = ch%48;
 			bd = ch/48;
 			lid = map_lid[bd][chs];
@@ -106,7 +107,7 @@ int main(int argc, char** argv){
 			if (wid>=11) continue;
 			wx = map_xc[lid][wid];
 			wy = map_yc[lid][wid];
-			dd = driftTime[ch]*0.8/200;
+			dd = driftTime[ch]*0.8/dtmax;
 			ewiret[ch] = new TEllipse(wx,wy,dd,dd);
 			ewiret[ch]->SetFillStyle(0);
 			ewiret[ch]->SetLineColor(kRed);
