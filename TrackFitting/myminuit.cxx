@@ -30,8 +30,8 @@
 //#define EVENTDISPLAY
 //#define GETADC
 
-#define DEBUG
-#define MC
+//#define DEBUG
+//#define MC
 
 #define NSAM 32
 #define NCHS 48
@@ -41,7 +41,7 @@
 #define MIN_ADC 180
 #define MAX_ADC 700
 #define NBINS  256
-#define NLAY    7
+#define NLAY    8
 #define NCEL    11
 
 double PI = TMath::Pi();
@@ -60,8 +60,11 @@ double zro = 59.917/2;
 
 // ________About Track___________
 std::vector<double> * i_driftD = 0;
+std::vector<double> * i_driftT = 0;
 std::vector<int> * i_wireID = 0;
 std::vector<int> * i_layerID = 0;
+std::vector<int> * i_peak = 0;
+std::vector<double> * i_sum = 0;
 double yup = 62.6;
 double ydown = 53;
 double deltay = yup-ydown;
@@ -75,14 +78,14 @@ Double_t arglist[10];
 Int_t ierflg = 0;
 Double_t amin,edm,errdef;
 Int_t nvpar,nparx,icstat;
-double slerZ = 5;
-double slerX = 0.5;
-double inerZ = 30;
-double inerX = 2;
+double slerZ = 10;
+double slerX = 1;
+double inerZ = 50;
+double inerX = 4;
 
 //______________________________________________________________________________
 Double_t get_dist(int lid, int wid, Double_t slx, Double_t inx, Double_t slz, Double_t inz);
-void getchi2(Double_t &f, Double_t slx, Double_t inx, Double_t slz, Double_t inz);
+void getchi2(Double_t &f, Double_t slx, Double_t inx, Double_t slz, Double_t inz,bool all = false);
 void fcn(Int_t &npar, Double_t *gin, Double_t &f, Double_t *par, Int_t iflag);
 void do_fit(Double_t slix, Double_t inix,Double_t sliz, Double_t iniz);
 void print_usage(char* prog_name);
@@ -149,7 +152,7 @@ int main(int argc, char** argv){
 	//===================Set Geometry============================
 	// The z values
 	// get the inital values
-	TFile * if_geom = new TFile("../info/wire-position.root");
+	TFile * if_geom = new TFile("../info/wire-position.v3.root");
 	TTree * t_geom = (TTree*) if_geom->Get("t");
 	double x1_geom, y1_geom, z1_geom, x2_geom, y2_geom, z2_geom;
 	int wid_geom,lid_geom;
@@ -159,7 +162,7 @@ int main(int argc, char** argv){
 	t_geom->SetBranchAddress("yhv",&y1_geom);
 	t_geom->SetBranchAddress("xro",&x2_geom);
 	t_geom->SetBranchAddress("yro",&y2_geom);
-	Float_t error = 0.2;
+	Float_t error = 0.02;
 	for ( int i = 0; i<NLAY; i++){
 		std::vector<double> xhv;
 		std::vector<double> yhv;
@@ -181,12 +184,12 @@ int main(int argc, char** argv){
 	}
 	for(int i = 0; i<t_geom->GetEntries(); i++){
 		t_geom->GetEntry(i);
-		if (lid_geom==0||lid_geom>=8) continue;
-		Xhv[lid_geom-1][wid_geom] = x1_geom/10.;
-		Yhv[lid_geom-1][wid_geom] = y1_geom/10.;
-		Xro[lid_geom-1][wid_geom] = x2_geom/10.;
-		Yro[lid_geom-1][wid_geom] = y2_geom/10.;
-		errord[lid_geom-1][wid_geom]=error;
+		if (lid_geom<1||lid_geom>7) continue;
+		Xhv[lid_geom][wid_geom] = x1_geom/10.;
+		Yhv[lid_geom][wid_geom] = y1_geom/10.;
+		Xro[lid_geom][wid_geom] = x2_geom/10.;
+		Yro[lid_geom][wid_geom] = y2_geom/10.;
+		errord[lid_geom][wid_geom]=error;
 	}
 	if_geom->Close();
 
@@ -220,41 +223,41 @@ int main(int argc, char** argv){
 
 	//===================Get ROOT File============================
 	//TChain * c = new TChain("t","t");
-	TChain * c = new TChain("tree","tree");
+	TChain * c = new TChain("t","t");
 	std::stringstream buf;
 	buf.str(""); buf.clear();
-	buf<<"../root/t_"<<runNo<<".root";
-	//FIXME
-	//c->Add(buf.str().c_str());
-	c->Add("../SimAna/run.002.try003.root");
+	buf<<"../root/h_"<<runNo<<".root";
+	c->Add(buf.str().c_str());
 	std::cout<<"Adding \""<<buf.str()<<"\""<<std::endl;
-	Long64_t evt_num;
+	int triggerNumber;
 	double xup, xdown;
 	double zup, zdown;
-	c->SetBranchAddress("CdcCell_wireID",&i_wireID);
-	c->SetBranchAddress("CdcCell_layerID",&i_layerID);
-	c->SetBranchAddress("CdcCell_driftD",&i_driftD);
-	c->SetBranchAddress("CdcCell_tx1",&xup);
-	c->SetBranchAddress("CdcCell_tz1",&zup);
-	c->SetBranchAddress("CdcCell_tx2",&xdown);
-	c->SetBranchAddress("CdcCell_tz2",&zdown);
-	c->SetBranchAddress("evt_num",&evt_num);
+	c->SetBranchAddress("wireID",&i_wireID);
+	c->SetBranchAddress("layerID",&i_layerID);
+	c->SetBranchAddress("driftD",&i_driftD);
+	c->SetBranchAddress("driftT",&i_driftT);
+	c->SetBranchAddress("peak",&i_peak);
+	c->SetBranchAddress("sum",&i_sum);
+	c->SetBranchAddress("tx1",&xup);
+	c->SetBranchAddress("tz1",&zup);
+	c->SetBranchAddress("tx2",&xdown);
+	c->SetBranchAddress("tz2",&zdown);
+	c->SetBranchAddress("triggerNumber",&triggerNumber);
 #ifdef MC
 	double slirX, inirX, inirY;
 	double slirZ, inirZ;
-	c->SetBranchAddress("CdcCell_slirX",&slirX);
-	c->SetBranchAddress("CdcCell_slirZ",&slirZ);
-	c->SetBranchAddress("CdcCell_txr1",&inirX);
-	c->SetBranchAddress("CdcCell_tyr1",&inirY);
-	c->SetBranchAddress("CdcCell_tzr1",&inirZ);
+	c->SetBranchAddress("slirX",&slirX);
+	c->SetBranchAddress("slirZ",&slirZ);
+	c->SetBranchAddress("txr1",&inirX);
+	c->SetBranchAddress("tyr1",&inirY);
+	c->SetBranchAddress("tzr1",&inirZ);
 #endif
 
 	//===================Output file============================
 	buf.str(""); buf.clear();
-	buf<<"../root/fit."<<runNo<<"."<<suffix<<iterationNo<<".root";
-	// FIXME
-	//TFile * f = new TFile(buf.str().c_str(),"RECREATE"); 
-	TFile * f = new TFile("test.root","RECREATE"); 
+	//buf<<"../root/t_"<<runNo<<"."<<suffix<<iterationNo<<".root";
+	buf<<"../root/t_"<<runNo<<".root";
+	TFile * f = new TFile(buf.str().c_str(),"RECREATE"); 
 	TTree * t = new TTree("t","t");
 	Double_t chi2;
 	Double_t chi2i;
@@ -264,11 +267,14 @@ int main(int argc, char** argv){
 	Double_t sliX, iniX;
 	std::vector<double> * o_fitD = 0;
 
-	t->Branch("evt_num",&evt_num);
+	t->Branch("triggerNumber",&triggerNumber);
 
 	t->Branch("driftD",&i_driftD);
+	t->Branch("driftT",&i_driftT);
 	t->Branch("wireID",&i_wireID);
 	t->Branch("layerID",&i_layerID);
+	t->Branch("peak",&i_peak);
+	t->Branch("sum",&i_sum);
 
 	t->Branch("fitD",&o_fitD);
 	t->Branch("chi2",&chi2);
@@ -295,6 +301,7 @@ int main(int argc, char** argv){
 		sliZ = (zup-zdown)/deltay;
 		iniX = xup;
 		iniZ = zup;
+		//getchi2(chi2i,sliX,iniX,sliZ,iniZ,true);
 		getchi2(chi2i,sliX,iniX,sliZ,iniZ);
 
 		//===================Do The Fitting============================
@@ -304,6 +311,7 @@ int main(int argc, char** argv){
 		gMinuit->GetParameter(1, inX, temp);
 		gMinuit->GetParameter(2, slZ, temp);
 		gMinuit->GetParameter(3, inZ, temp);
+		//getchi2(chi2,slX,inX,slZ,inZ,true);
 		getchi2(chi2,slX,inX,slZ,inZ);
 
 		//===================Get Info for output============================
@@ -316,10 +324,11 @@ int main(int argc, char** argv){
 #ifdef DEBUG
 #ifdef MC
 		Double_t chi2r;
+		//getchi2(chi2r,slirX,inirX,slirZ,inirZ,true);
 		getchi2(chi2r,slirX,inirX,slirZ,inirZ);
 #endif
 		std::cout<<"*********************************************************"<<iEvent<<std::endl;
-		std::cout<<"                  iEvent = "<<iEvent<<std::endl;
+		std::cout<<"                  iEvent = "<<iEvent<<", triggerNumber = "<<triggerNumber<<std::endl;
 		std::cout<<"Initial:"<<std::endl;
 		std::cout<<"  Track: ("<<xup<<","<<yup<<","<<zup<<") --> ("<<xdown<<","<<ydown<<","<<zdown<<")"<<std::endl;
 		std::cout<<"  para: ("<<sliX<<","<<iniX<<","<<sliZ<<","<<iniZ<<")"<<std::endl;
@@ -515,8 +524,8 @@ int main(int argc, char** argv){
 //______________________________________________________________________________
 Double_t get_dist(int lid, int wid, Double_t slx, Double_t inx, Double_t slz, Double_t inz)
 {
-	double xdown = inx+slx*deltay;
-	double zdown = inz+slz*deltay;
+	double xdown = inx-slx*deltay;
+	double zdown = inz-slz*deltay;
 	vTrackU.SetXYZ(inx,yup,inz);
 	vTrackD.SetXYZ(xdown,ydown,zdown);
 	vWireHV.SetXYZ(Xhv[lid][wid],Yhv[lid][wid],zhv);
@@ -541,7 +550,7 @@ Double_t get_dist(int lid, int wid, Double_t slx, Double_t inx, Double_t slz, Do
 }
 
 //______________________________________________________________________________
-void getchi2(Double_t &f, Double_t slx, Double_t inx, Double_t slz, Double_t inz)
+void getchi2(Double_t &f, Double_t slx, Double_t inx, Double_t slz, Double_t inz,bool all)
 {
 	//calculate chisquare
 	Double_t chisq = 0;
@@ -550,6 +559,7 @@ void getchi2(Double_t &f, Double_t slx, Double_t inx, Double_t slz, Double_t inz
 	int N = i_driftD->size();
 
 	for (Int_t i=0;i<N; i++) {
+		if ((*i_layerID)[i]==4&&!all) continue;
 		dfit = get_dist((*i_layerID)[i],(*i_wireID)[i],slx,inx,slz,inz);
 		delta  = ((*i_driftD)[i]-dfit)/errord[(*i_layerID)[i]][(*i_wireID)[i]];
 		chisq += delta*delta;
@@ -576,10 +586,10 @@ void do_fit(Double_t sliX, Double_t iniX,Double_t sliZ, Double_t iniZ){
 	gMinuit->mnexcm("SET ERR", arglist ,1,ierflg);
 
 	// Set starting values and step sizes for parameters
-	gMinuit->mnparm(0, "slopeX", sliX, slerX/1.e2, sliX-slerX,sliX+slerX,ierflg);
-	gMinuit->mnparm(1, "interceptX", iniX, inerX/1.e2, iniX-inerX,iniX+fabs(inerX),ierflg);
-	gMinuit->mnparm(2, "slopeZ", sliZ, slerZ/1.e2, sliZ-slerZ,sliZ+slerZ,ierflg);
-	gMinuit->mnparm(3, "interceptZ", iniZ, inerZ/1.e2, iniZ-inerZ,iniZ+inerZ,ierflg);
+	gMinuit->mnparm(0, "slopeX", sliX, slerX/1.e3, sliX-slerX,sliX+slerX,ierflg);
+	gMinuit->mnparm(1, "interceptX", iniX, inerX/1.e3, iniX-inerX,iniX+fabs(inerX),ierflg);
+	gMinuit->mnparm(2, "slopeZ", sliZ, slerZ/1.e3, sliZ-slerZ,sliZ+slerZ,ierflg);
+	gMinuit->mnparm(3, "interceptZ", iniZ, inerZ/1.e3, iniZ-inerZ,iniZ+inerZ,ierflg);
 //	std::cout<<"gMinuit->mnparm(0, \"slopeX\","<< sliX<<", "<<slerX/1.e2<<", "<<sliX-slerX<<","<<sliX+slerX<<","<<ierflg<<");"<<std::endl;
 //	std::cout<<"gMinuit->mnparm(1, \"interceptX\","<< iniX<<", "<<inerX/1.e2<<", "<<iniX-inerX<<","<<iniX+fabs(inerX)<<","<<ierflg<<");"<<std::endl;
 //	std::cout<<"gMinuit->mnparm(2, \"slopeZ\","<< sliZ<<", "<<slerZ/1.e2<<", "<<sliZ-slerZ<<","<<sliZ+slerZ<<","<<ierflg<<");"<<std::endl;
