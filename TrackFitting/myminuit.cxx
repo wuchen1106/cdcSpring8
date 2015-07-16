@@ -117,34 +117,34 @@ int main(int argc, char** argv){
 	double eff_p3_average = 0;
 
 	//===================Get run info============================
-	TFile * if_run = new TFile("../run_summary/run.eff.root");
-	TTree * t_run = (TTree*) if_run->Get("t");
-	double i_runNo, HVTXY1,HVTXY2,HVP2,HVP3,THRTXY1,THRTXY2,THRP2,THRP3;
-	t_run->SetBranchAddress("runNo",&i_runNo);
-	t_run->SetBranchAddress("HVTXY1",&HVTXY1);
-	t_run->SetBranchAddress("HVTXY2",&HVTXY2);
-	t_run->SetBranchAddress("HVP2",&HVP2);
-	t_run->SetBranchAddress("HVP3",&HVP3);
-	t_run->SetBranchAddress("THRTXY1",&THRTXY1);
-	t_run->SetBranchAddress("THRTXY2",&THRTXY2);
-	t_run->SetBranchAddress("THRP2",&THRP2);
-	t_run->SetBranchAddress("THRP3",&THRP3);
-	//for(int i = 0; i<t_run->GetEntries(); i++){
-	for(int i = 0; i<10; i++){
-		t_run->GetEntry(i);
-		if (i_runNo == runNo) break;
-	}
-	std::cout<<"runNo#"<<runNo<<": "<<(int)HVTXY1<<" V"<<std::endl;
-	TString gastype = "He:CH_{4}(80:20)";
-	double npair = 17.96;
-	if (runNo>=227||runNo<=147){
-		gastype = "He:iC_{4}H_{10}(90:10)";
-		npair = 27.96;
-	}
-	else if (runNo<=194){
-		gastype = "He:C_{2}H_{4}(50:50)";
-		npair = 56.10;
-	}
+//	TFile * if_run = new TFile("../run_summary/run.eff.root");
+//	TTree * t_run = (TTree*) if_run->Get("t");
+//	double i_runNo, HVTXY1,HVTXY2,HVP2,HVP3,THRTXY1,THRTXY2,THRP2,THRP3;
+//	t_run->SetBranchAddress("runNo",&i_runNo);
+//	t_run->SetBranchAddress("HVTXY1",&HVTXY1);
+//	t_run->SetBranchAddress("HVTXY2",&HVTXY2);
+//	t_run->SetBranchAddress("HVP2",&HVP2);
+//	t_run->SetBranchAddress("HVP3",&HVP3);
+//	t_run->SetBranchAddress("THRTXY1",&THRTXY1);
+//	t_run->SetBranchAddress("THRTXY2",&THRTXY2);
+//	t_run->SetBranchAddress("THRP2",&THRP2);
+//	t_run->SetBranchAddress("THRP3",&THRP3);
+//	//for(int i = 0; i<t_run->GetEntries(); i++){
+//	for(int i = 0; i<10; i++){
+//		t_run->GetEntry(i);
+//		if (i_runNo == runNo) break;
+//	}
+//	std::cout<<"runNo#"<<runNo<<": "<<(int)HVTXY1<<" V"<<std::endl;
+//	TString gastype = "He:CH_{4}(80:20)";
+//	double npair = 17.96;
+//	if (runNo>=227||runNo<=147){
+//		gastype = "He:iC_{4}H_{10}(90:10)";
+//		npair = 27.96;
+//	}
+//	else if (runNo<=194){
+//		gastype = "He:C_{2}H_{4}(50:50)";
+//		npair = 56.10;
+//	}
 
 	//===================Get a2c============================
 	TF1 * f_a2c = new TF1("a2c","5.98739+2.4852*x+0.000573394*x*x-5.21769e-05*x*x*x+3.05897e-07*x*x*x*x-7.54057e-10*x*x*x*x*x+8.60252e-13*x*x*x*x*x*x-3.68603e-16*x*x*x*x*x*x*x",-10,800);

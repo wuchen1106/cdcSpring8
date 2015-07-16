@@ -29,7 +29,8 @@ LIBS += -pthread -lm -ldl -rdynamic
 
 # Names of user defined packages
 # Change this name to your program which contains the main function
-PROJECT1 = ana
+PROJECT1 = ana_d
+PROJECT1 = ana_p
 
 .PHONY: all
 all: $(PROJECT5) $(PROJECT4) $(PROJECT3) $(PROJECT2) $(PROJECT1) $(PROJECT6) $(PROJECT7) $(PROJECT8) $(PROJECT9) $(PROJECT10)
