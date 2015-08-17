@@ -36,6 +36,9 @@ TGraph * g_k = 0; // k VS i: z/Lhalf VS ilayer
 TF1 * f_x = new TF1("f_x","pol1",50,64); // x VS y
 TGraph * g_x = 0; // x VS y
 
+TF1 * f_xt_l = new TF1("f_xt_l","pol5",-10,250);
+TF1 * f_xt_r = new TF1("f_xt_r","pol5",-10,250);
+
 //===================About geometry============================
 double map_wid[NCHT];
 double map_lid[NCHT];
@@ -57,6 +60,12 @@ double driftTMax = 220; // ns
 //===================About hits============================
 int i_layerhit[NLAY][NCEL];
 int c_layerhit[NLAY];
+
+double t2x(double dt){
+	double dd = 0;
+	//dd = dt*U/driftTMax;
+	return dd;
+}
 
 void print_usage(char* prog_name);
 double getk(int lid, int wid, double dd){
@@ -395,7 +404,7 @@ int main(int argc, char** argv){
 			c_layerhit[lid]++;
 			O_wireID->push_back(wid);
 			O_layerID->push_back(lid);
-			O_driftD->push_back(dt*U/driftTMax);
+			O_driftD->push_back(t2x(dt));
 			O_driftT->push_back(dt);
 			O_peak->push_back(d_h[ch]);
 			O_sum->push_back(d_aa[ch]);

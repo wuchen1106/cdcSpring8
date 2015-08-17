@@ -8,7 +8,7 @@
 # Specify the compiler. Usually it is g++, if you are using gcc.
 CXX = g++
 # Here you can pass different options to the compiler
-CXXFLAGS = -g -O2 -W -Wall
+CXXFLAGS = -g -O2 -W -Wall -std=c++11
 
 #--------------------------PART 2: about packages you would use-------------------------------------------
 # If you want to use external files, or third party packages, you need to specify two kinds of paths and a list of shared library files.
