@@ -43,15 +43,15 @@ int main(int argc, char** argv){
 			map_yhv[wp_lid][wp_wid] = wp_yhv/10.;
 		}
 	}
-	double yup = 62.6;
-	double ydown = 53;
+	double yup = 62.397007;
+	double ydown = 52.760011;
 
 	//===================Get ROOT File============================
 	//TChain * c = new TChain("t","t");
 	TChain * c = new TChain("t","t");
 	std::stringstream buf;
 	buf.str(""); buf.clear();
-	buf<<"../root/h_"<<runNo<<".root";
+	buf<<"../root/i_"<<runNo<<".root";
 	c->Add(buf.str().c_str());
 	std::cout<<"Adding \""<<buf.str()<<"\""<<std::endl;
 	Long64_t triggerNumber;

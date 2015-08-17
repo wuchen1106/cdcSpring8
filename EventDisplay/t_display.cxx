@@ -17,6 +17,13 @@
 int main(int argc, char** argv){
 	if (argc<2) return -1;
 	int runNo = (int)strtol(argv[1],NULL,10);
+	std::string suffix = "";
+	if (argc>=3){
+		suffix  = argv[2];
+		suffix="."+suffix;
+	}
+	int nEventMax = 0;
+	if (argc>=4) nEventMax = (int)strtol(argv[3],NULL,10);
 
 	// For wire position
 	TFile * TFile_wirepos = new TFile("../info/wire-position.v3.root");
@@ -52,15 +59,15 @@ int main(int argc, char** argv){
 			map_ch[wp_lid][wp_wid] = wp_ch+wp_bid*48;
 		}
 	}
-	double yup = 62.6;
-	double ydown = 53;
+	double yup = 62.397007;
+	double ydown = 52.760011;
 
 	//===================Get ROOT File============================
 	//TChain * c = new TChain("t","t");
 	TChain * c = new TChain("t","t");
 	std::stringstream buf;
 	buf.str(""); buf.clear();
-	buf<<"../root/t_"<<runNo<<".root";
+	buf<<"../root/t_"<<runNo<<suffix<<".root";
 	c->Add(buf.str().c_str());
 	std::cout<<"Adding \""<<buf.str()<<"\""<<std::endl;
 	int triggerNumber;
@@ -70,11 +77,15 @@ int main(int argc, char** argv){
 	double xupi, zupi, slix, sliz;
 	double chi2;
 	std::vector<double> * i_driftD = 0;
+	std::vector<double> * i_driftT = 0;
+	std::vector<double> * i_fitD = 0;
 	std::vector<int> * i_wireID = 0;
 	std::vector<int> * i_layerID = 0;
 	c->SetBranchAddress("wireID",&i_wireID);
 	c->SetBranchAddress("layerID",&i_layerID);
 	c->SetBranchAddress("driftD",&i_driftD);
+	c->SetBranchAddress("driftT",&i_driftT);
+	c->SetBranchAddress("fitD",&i_fitD);
 	c->SetBranchAddress("inX",&xup);
 	c->SetBranchAddress("inZ",&zup);
 	c->SetBranchAddress("slX",&slx);
@@ -153,18 +164,27 @@ int main(int argc, char** argv){
 //	TTree_wirepos->SetMarkerStyle(20);
 //	TTree_wirepos->SetMarkerSize(0.5);
 //	TTree_wirepos->Draw("yc/10.:xc/10.","","SAME");
-	std::string suffix = ".pdf";
+	std::string suf = ".pdf";
 //	for ( int i = 0 ; i<c->GetEntries(); i++){
-	for ( int i = 0 ; i<1000; i++){
+	for ( int i = 0 ; i<100; i++){
 		if (i%100==0) printf("%lf%...\n",(double)i/c->GetEntries()*100);
 		c->GetEntry(i);
+//		if (i!=352
+//		  &&i!=367
+//		  &&i!=758
+//		  ) continue;
+		int ihit = 0;
 		int ch = -1;
-		for (int ihit = 0; ihit<i_driftD->size(); ihit++){
+		for (; ihit<i_driftD->size(); ihit++){
 			lid = (*i_layerID)[ihit];
 			wid = (*i_wireID)[ihit];
-			if (lid==4&&wid==4) ch=map_ch[lid][wid];
+			if (lid==4){
+				ch = map_ch[lid][wid];
+				break;
+			}
 		}
 		if (ch==-1) continue;
+//		if ((*i_fitD)[ihit]>-0.52||(*i_fitD)[ihit]<-0.58||(*i_driftT)[ihit]<170||chi2>1) continue;
 
 		buf.str("");
 		buf.clear();
@@ -260,7 +280,7 @@ int main(int argc, char** argv){
 		buf.clear();
 		//FIXME
 //		buf<<i<<"_before.pdf";
-		buf<<i<<suffix;
+		buf<<i<<suf;
 //		buf<<i<<"_after.pdf";
 		ca->SaveAs(buf.str().c_str());
 //		ca->WaitPrimitive();
