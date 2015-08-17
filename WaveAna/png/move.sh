@@ -1,6 +1,7 @@
 #!/bin/bash
-mv *.ap.* ap/
-mv *.as.* as/
+mv *.aa.* aa/
+mv *.sum.* sum/
 mv *.tdc.* tdc/
-mv *.ht.* ht/
+mv *.st.* st/
+mv *.at.* at/
 mv *.wf.* wf/

@@ -31,6 +31,7 @@ LIBS += -pthread -lm -ldl -rdynamic
 # Change this name to your program which contains the main function
 PROJECT1 = getD
 PROJECT2 = getP
+PROJECT3 = getH
 
 .PHONY: all
 all: $(PROJECT5) $(PROJECT4) $(PROJECT3) $(PROJECT2) $(PROJECT1) $(PROJECT6) $(PROJECT7) $(PROJECT8) $(PROJECT9) $(PROJECT10)

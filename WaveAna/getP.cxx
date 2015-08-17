@@ -81,6 +81,10 @@ int main(int argc, char** argv){
 	t->Branch("peak",&o_peak);
 	t->Branch("width",&o_width);
 //	t->Branch("adc",adc,Form("aa[%d][%d]/I",NCHT,NSAM));
+	double prepedestal[NCHT];
+	for (int ch = 0; ch<NCHT; ch++){
+		prepedestal[ch] = 210;
+	}
 
 	// Loop in events
 	Long64_t N = c->GetEntries();
@@ -124,7 +128,13 @@ int main(int argc, char** argv){
 			for(clk = 0; clk<(tdcNhitwire<=0?NSAM:clockNumberDriftTime[ch][0]-1); clk++){
 				o_pedestal[ch]+=adc[ch][clk];
 			}
-			o_pedestal[ch]/=clk;
+			if (clk==0){
+				o_pedestal[ch] = prepedestal[ch];
+			}
+			else {
+				o_pedestal[ch]/=clk;
+				prepedestal[ch] = o_pedestal[ch];
+			}
 			for ( int ihit = 0; ihit<tdcNhitwire; ihit++){
 				if (driftTime[ch][ihit]>0) driftTime[ch][ihit]-=power2_15;
 				temp_tdc[ihit] = driftTime[ch][ihit];

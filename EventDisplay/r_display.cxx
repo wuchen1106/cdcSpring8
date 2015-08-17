@@ -7,12 +7,30 @@
 #include "TFile.h"
 #include "TStyle.h"
 #include "TROOT.h"
+#include "TMarker.h"
+#include "TLatex.h"
+#include <stdlib.h>
 #include <sstream>
 #include <iostream>
 
+void print_usage(char* prog_name)
+{
+	fprintf(stderr,"\t%s [runNo] <[nEventMax]>\n",prog_name);
+}
+
 int main(int argc, char** argv){
+	if (argc<2){
+		print_usage(argv[0]);
+		return 1;
+	}
+	int runNo = (int)strtol(argv[1],NULL,10);
 	int hmin = 13;
+	int smin = 10.7;
+	int aamin = 40;
 	int t0 = -849;
+	int tmax = -635;
+	int dtmax = tmax-t0;
+	int tres = 2;
 	// For wire position
 	TFile * TFile_wirepos = new TFile("../info/wire-position.v3.root");
 	TTree * TTree_wirepos = (TTree*) TFile_wirepos->Get("t");
@@ -42,14 +60,14 @@ int main(int argc, char** argv){
 
 	//TFile * ifile = new TFile("run.002.try003.root");
 	gROOT->ProcessLine(".L loader.C+");
-	TFile * ifile = new TFile("../root/p_117.root");
+	TFile * ifile = new TFile(Form("../root/p_%d.root",runNo));
 	TTree * it = (TTree*) ifile->Get("t");
 
 	int triggerNumber;
-	int i_nHits[50];
+	int i_nh[50];
 	double i_p[96];
 	double i_aa[96];
-	int i_n[96][50];
+	int i_np[96][50];
 	std::vector<std::vector<int> > * i_tdc = 0;
 	std::vector<std::vector<int> > * i_peak = 0;
 	std::vector<std::vector<int> > * i_clk = 0;
@@ -57,8 +75,8 @@ int main(int argc, char** argv){
 	std::vector<std::vector<double> > * i_sum = 0;
 
 	it->SetBranchAddress("triggerNumber",&triggerNumber);
-	it->SetBranchAddress("nh",i_nHits);
-	it->SetBranchAddress("np",i_n);
+	it->SetBranchAddress("nh",i_nh);
+	it->SetBranchAddress("np",i_np);
 	it->SetBranchAddress("ped",i_p);
 	it->SetBranchAddress("aa",i_aa);
 	it->SetBranchAddress("clk",&i_clk);
@@ -67,23 +85,47 @@ int main(int argc, char** argv){
 	it->SetBranchAddress("sum",&i_sum);
 	it->SetBranchAddress("tdc",&i_tdc);
 
-	TFile * iifile = new TFile("../root/run_000117_built.root");
+	TFile * iifile = new TFile(Form("../root/run_%0.6d_built.root",runNo));
 	TTree * iit = (TTree*) iifile->Get("tree");
 	iit->SetMarkerStyle(20);
+	iit->SetMarkerSize(0.3);
+	int i_adc[96][32];
+	iit->SetBranchAddress("adc",i_adc);
+
+	TMarker * marker[96][32];
+	TLatex * text2[96][32];
+	for ( int ch = 0; ch<96; ch++){
+		for ( int i = 0; i<32; i++){
+			marker[ch][i] = new TMarker(1,1,20);
+			marker[ch][i]->SetMarkerColor(kRed);
+			marker[ch][i]->SetMarkerSize(0.4);
+			text2[ch][i] = new TLatex(1,1,"");
+			text2[ch][i]->SetTextColor(kRed);
+		}
+	}
 
 	TString prefix = "";
 	TEllipse * ewiret[96];
+	TEllipse * ewiret2[96];
+	TEllipse * ewiret3[96];
 	double wx,wy,wz,dd,ddt;
 	int chs,bd,lid,wid;
 	TCanvas * c = new TCanvas("c","c",896,896);
+	TLatex * canvtitle = new TLatex(0.1,0.98,"");
+	canvtitle->SetTextSize(0.02);
 	TH2D * h0 = new TH2D("h0","h0",128,-13,13,128,50,65);
 	gStyle->SetOptStat(0);
 	TLine * l = new TLine();
 	l->SetLineColor(kRed);
 	TText * text[96];
+	TLatex* text3[96];
 	for (int ch = 0; ch<96; ch++){
 		text[ch] = 0;
+		text3[ch]= new TLatex(0.1,0.8,"");
+		text3[ch]->SetTextColor(kRed);
 		ewiret[ch] = 0;
+		ewiret2[ch] = 0;
+		ewiret3[ch] = 0;
 	}
 	TPad * pad[96];
 	TCanvas * c2 = new TCanvas("c2","c2",896,896);
@@ -111,59 +153,132 @@ int main(int argc, char** argv){
 
 	TTree_wirepos->SetMarkerStyle(20);
 	TTree_wirepos->SetMarkerSize(0.5);
-	for ( int i = 0 ; i<it->GetEntries(); i++){
-//	for ( int i = 0 ; i<100; i++){
+//	for ( int i = 0 ; i<it->GetEntries(); i++){
+	for ( int i = 0 ; i<10000; i++){
 //		if (i!=195
 //		  &&i!=205
 //		  )
 //		continue;
 		if (i%100==0) printf("%lf%...\n",(double)i/it->GetEntries()*100);
 		it->GetEntry(i);
-		if (i_nHits[hmin]!=10&&i_nHits[hmin]!=11) continue;
+		prefix = "";
+
+		// ************Cutting on channel*****************
+//		if (i_nh[hmin]!=10&&i_nh[hmin]!=11) continue;
 //		if (i!=10) continue; // 0
-		h0->SetTitle(Form("Entry#%d, TriggerNumber#%d, %d hits",i,triggerNumber,i_nHits[hmin]));
+		if (i_np[2][0]!=0) prefix = "n2";
+//		if (i_nh[hmin]<=7) prefix = "incom.";
+//		else if (i_nh[hmin]==8) prefix = "single.";
+//		else if (i_nh[hmin]==9) prefix = "single.";
+//		else if (i_nh[hmin]==10) prefix = "n10.";
+//		else if (i_nh[hmin]==11) prefix = "n11.";
+//		else if (i_nh[hmin]==12) prefix = "n12.";
+//		else if (i_nh[hmin]>=13) prefix = "multi.";
+
+		// ************Cutting on peaks in ch15****************
+//		int thepeak = 0;
+//		for (; thepeak<(*i_peak)[15].size(); thepeak++){
+//			if ((*i_sum)[15][thepeak]>=smin&&(*i_tdc)[15][thepeak]<=tmax+tres&&(*i_tdc)[15][thepeak]>=t0-tres) break;
+//		}
+//		if (thepeak==(*i_peak)[15].size()){
+//			if (i_aa[15]>aamin) prefix = "missed.";
+//		}
+//		else{
+//			if (thepeak<(*i_peak)[15].size()-1&&(*i_sum)[15][thepeak]<(*i_sum)[15][thepeak+1])
+//				prefix = "shadowed.";
+//			if (thepeak>0&&(*i_tdc)[15][thepeak-1]<=tmax+tres&&(*i_tdc)[15][thepeak-1]>=t0-tres)
+//				prefix = "prepeak.";
+//		}
+
+		if (prefix=="") continue;
+
+		h0->SetTitle(Form("Entry#%d, TriggerNumber#%d, %d hits",i,triggerNumber,i_nh[hmin]));
 		c->cd();
 		h0->Draw();
 		TTree_wirepos->Draw("yc/10.:xc/10.","","SAME");
+		canvtitle->SetText(0.1,0.98,Form("Entry#%d, TriggerNumber#%d, %d hits",i,triggerNumber,i_nh[hmin]));
 		for (int ch = 0; ch<96; ch++){
+			if (ch==0) {
+				c2->cd();
+				canvtitle->Draw("SAME");
+			}
+			else if (ch==48) {
+				c3->cd();
+				canvtitle->Draw("SAME");
+			}
 			pad[ch]->cd();
-			iit->Draw(Form("adc[%d]:Iteration$>>hist%d(32,0,32,400,180,580)",ch,ch),"","LP",1,i);
+			iit->Draw(Form("adc[%d]:Iteration$>>hist%d(32,0,32,700,50,750)",ch,ch),"","LP",1,i);
+			for (int ipeak = 0; ipeak<(*i_peak)[ch].size(); ipeak++){
+				marker[ch][ipeak]->SetX((*i_clk)[ch][ipeak]);
+				marker[ch][ipeak]->SetY(i_adc[ch][(*i_clk)[ch][ipeak]]);
+				text2[ch][ipeak]->SetText((*i_clk)[ch][ipeak],i_adc[ch][(*i_clk)[ch][ipeak]]+(0.5-ipeak%2)*100,Form("%d",(*i_tdc)[ch][ipeak]));
+				marker[ch][ipeak]->Draw("SAME");
+				text2[ch][ipeak]->Draw("SAME");
+			}
+			text3[ch]->SetText(2,700,Form("%.1lf",i_aa[ch]));
+			text3[ch]->Draw("SAME");
 //			it->Draw(Form("adc[%d]:Iteration$",ch),"","LP",1,i);
 			c->cd();
 			if (ewiret[ch]){
 				delete ewiret[ch];
 				ewiret[ch] = 0;
 			}
+			if (ewiret3[ch]){
+				delete ewiret3[ch];
+				ewiret3[ch] = 0;
+			}
+			if (ewiret2[ch]){
+				delete ewiret2[ch];
+				ewiret2[ch] = 0;
+			}
 			if (text[ch]){
 				delete text[ch];
 				text[ch] = 0;
 			}
-			if (i_n[ch][hmin]<=0) continue;
 			chs = ch%48;
 			bd = ch/48;
 			lid = map_lid[bd][chs];
 			wid = map_wid[bd][chs];
 			wx = map_xc[lid][wid];
 			wy = map_yc[lid][wid];
-			for (int ipeak = 0; ipeak<i_n[ch][0]; ipeak++){
-				if ((*i_peak)[ch][ipeak]-i_p[ch]>=hmin){
-					dd = ((*i_tdc)[ch][0]-t0)/0.96*0.8/200;
+			int ipeak = 0;
+			for (; ipeak<i_np[ch][0]; ipeak++){
+				if ((*i_sum)[ch][ipeak]>=smin){
 					break;
 				}
 			}
-			ewiret[ch] = new TEllipse(wx,wy,dd,dd);
-			ewiret[ch]->SetFillStyle(0);
-			ewiret[ch]->SetLineColor(kRed);
-			ewiret[ch]->Draw("SAME"); // Draw hits.
-			text[ch]= new TText(wx,wy,Form("%d,%d;%d",lid,wid,ch));
-			text[ch]->SetTextSize(0.02);
-			text[ch]->Draw("SAME");
+			if (ipeak<i_np[ch][0]){
+				dd = ((*i_tdc)[ch][ipeak]-t0)/0.96*0.8/dtmax;
+				ewiret[ch] = new TEllipse(wx,wy,dd,dd);
+				ewiret[ch]->SetFillStyle(0);
+				ewiret[ch]->SetLineColor(kRed);
+				ewiret[ch]->Draw("SAME"); // Draw hits.
+				text[ch]= new TText(wx,wy,Form("%d,%d;%d",lid,wid,ch));
+				text[ch]->SetTextSize(0.02);
+				text[ch]->Draw("SAME");
+			}
+			if (ipeak>0){
+				dd = ((*i_tdc)[ch][0]-t0)/0.96*0.8/dtmax;
+				ewiret2[ch] = new TEllipse(wx,wy,dd,dd);
+				ewiret2[ch]->SetFillStyle(0);
+				ewiret2[ch]->SetLineColor(kBlue);
+				ewiret2[ch]->Draw("SAME"); // Draw hits.
+			}
+			int jpeak = ipeak+1;
+			for (; jpeak<i_np[ch][0]; jpeak++){
+				if ((*i_sum)[ch][jpeak]>(*i_sum)[ch][ipeak]){
+					dd = ((*i_tdc)[ch][jpeak]-t0)/0.96*0.8/dtmax;
+					break;
+				}
+			}
+			if (jpeak<i_np[ch][0]){
+				dd = ((*i_tdc)[ch][jpeak]-t0)/0.96*0.8/dtmax;
+				ewiret3[ch] = new TEllipse(wx,wy,dd,dd);
+				ewiret3[ch]->SetFillStyle(0);
+				ewiret3[ch]->SetLineColor(kOrange);
+				ewiret3[ch]->Draw("SAME"); // Draw hits.
+			}
 		}
-		if (i_nHits[hmin]==10) prefix = "n10.";
-		if (i_nHits[hmin]==11) prefix = "n11.";
-//		else if (i_nHits[hmin]>9) prefix = "multi.";
-//		else if (i_nHits[hmin]>7) prefix = "single.";
-//		else prefix = "incom.";
 		c->SaveAs(prefix+Form("ep.%d.pdf",i));
 		c2->SaveAs(prefix+Form("wf.0.%d.pdf",i));
 		c3->SaveAs(prefix+Form("wf.1.%d.pdf",i));
