@@ -78,7 +78,7 @@ int wmax[NLAY]; // maximum wireID
 //===================About chamber============================
 double Lchamebr = 59.917; // cm
 // FIXME: currently only use costantant drift velocity. Will implement an interface to load xt cureves later.
-double tres = 2;
+double tres = 10;
 double driftTMax = 0; // ns
 std::vector<double> v_x_all_right;
 std::vector<double> v_t_all_right;
