@@ -55,7 +55,7 @@ double zhv = -59.917/2;
 double zro = 59.917/2;
 
 // ________About Track___________
-int thelayer = 5;
+int thelayer = 0;
 std::vector<double> * i_driftD = 0;
 std::vector<double> * i_driftT = 0;
 std::vector<int> * i_wireID = 0;
@@ -90,25 +90,26 @@ void print_usage(char* prog_name);
 
 //______________________________________________________________________________
 int main(int argc, char** argv){
-	if (argc<2){
+	if (argc<3){
 		print_usage(argv[0]);
 		return 1;
 	}
 	int runNo = (int)strtol(argv[1],NULL,10);
+	thelayer = (int)strtol(argv[2],NULL,10);
 	std::string suffix = "";
-	if (argc>=3){
-		suffix  = argv[2];
+	if (argc>=4){
+		suffix = argv[3];
 		suffix="."+suffix;
 	}
 	int nEventMax = 0;
-	if (argc>=4) nEventMax = (int)strtol(argv[3],NULL,10);
+	if (argc>=5) nEventMax = (int)strtol(argv[4],NULL,10);
 	int iterationNo = 0;
-	if (argc>=5) iterationNo = (int)strtol(argv[4],NULL,10);
+	if (argc>=6) iterationNo = (int)strtol(argv[5],NULL,10);
 	int N_MIN = 0;
-	if (argc>=6) N_MIN = (int)strtol(argv[5],NULL,10);
+	if (argc>=7) N_MIN = (int)strtol(argv[6],NULL,10);
 	double chi2Xmax,chi2Ymax;
 	chi2Xmax=1e9;
-	if (argc>=7) chi2Xmax = (int)strtol(argv[6],NULL,10);
+	if (argc>=8) chi2Xmax = (int)strtol(argv[7],NULL,10);
 	chi2Ymax=chi2Xmax;
 
 	double eff_p2_average = 0;
@@ -200,7 +201,7 @@ int main(int argc, char** argv){
 	TChain * c = new TChain("t","t");
 	std::stringstream buf;
 	buf.str(""); buf.clear();
-	buf<<"../root/i_"<<runNo<<suffix<<".root";
+	buf<<"../root/i_"<<runNo<<"."<<suffix<<"root";
 	c->Add(buf.str().c_str());
 	std::cout<<"Adding \""<<buf.str()<<"\""<<std::endl;
 	int triggerNumber;
@@ -230,7 +231,7 @@ int main(int argc, char** argv){
 	//===================Output file============================
 	buf.str(""); buf.clear();
 	//buf<<"../root/t_"<<runNo<<"."<<suffix<<iterationNo<<".root";
-	buf<<"../root/t_"<<runNo<<suffix<<".root";
+	buf<<"../root/t_"<<runNo<<"."<<suffix<<"root";
 	TFile * f = new TFile(buf.str().c_str(),"RECREATE"); 
 	TTree * t = new TTree("t","t");
 	Double_t chi2;

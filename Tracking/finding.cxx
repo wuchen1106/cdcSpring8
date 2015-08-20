@@ -25,7 +25,7 @@
 #define use_extra
 
 //===================About fitting============================
-int thelayer = 4;
+int thelayer = 0;
 TMinuit *gMinuit = 0;
 Double_t arglist[10];
 Int_t ierflg = 0;
@@ -336,7 +336,7 @@ int fitxy(std::vector<int> * wireID,std::vector<double> * driftD){
 			}
 		}
 	}
-	if (n_xy==0) return 1;
+	if (n_xy<=1) return 1;
 
 	double chi2min = 1e9;
 	int index = -1;
@@ -382,18 +382,19 @@ double t2x(double time, double sign){
 
 int main(int argc, char** argv){
 
-	if (argc<2){
+	if (argc<3){
 		print_usage(argv[0]);
 		return 1;
 	}
 	int runNo = (int)strtol(argv[1],NULL,10);
-	int nEventMax = 0;
-	if (argc>=3) nEventMax = (int)strtol(argv[2],NULL,10);
+	thelayer = (int)strtol(argv[2],NULL,10);
 	std::string suffix = "";
 	if (argc>=4){
 		suffix  = argv[3];
 		suffix=suffix+".";
 	}
+	int nEventMax = 0;
+	if (argc>=5) nEventMax = (int)strtol(argv[4],NULL,10);
 
 	//===================Get wire position============================
 	// For wire position
@@ -503,6 +504,8 @@ int main(int argc, char** argv){
 	c_xt->SetBranchAddress("t",&i_xt_t);
 	for ( int i = 0; i<c_xt->GetEntries(); i++ ){
 		c_xt->GetEntry(i);
+		// FIXME
+		i_xt_t*=228./223.;
 		if (i_xt_x>=0){
 			v_x_all_right.push_back(i_xt_x);
 			v_t_all_right.push_back(i_xt_t);
@@ -554,8 +557,9 @@ int main(int argc, char** argv){
 	double O_tz2;
 	int nHits;
 
-	sprintf(fileName,"../root/i_%d.root",runNo);
-	TFile * of = new TFile(fileName,"RECREATE");
+	std::stringstream buf;
+	buf<<"../root/i_"<<runNo<<"."<<suffix<<"root";
+	TFile * of = new TFile(buf.str().c_str(),"RECREATE"); 
 	TTree * ot = new TTree("t","t");
 
 	ot->Branch("nHits",&nHits);
