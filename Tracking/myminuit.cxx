@@ -201,7 +201,7 @@ int main(int argc, char** argv){
 	TChain * c = new TChain("t","t");
 	std::stringstream buf;
 	buf.str(""); buf.clear();
-	buf<<"../root/i_"<<runNo<<"."<<suffix<<"root";
+	buf<<"../root/i_"<<runNo<<suffix<<".root";
 	c->Add(buf.str().c_str());
 	std::cout<<"Adding \""<<buf.str()<<"\""<<std::endl;
 	int triggerNumber;
@@ -231,7 +231,7 @@ int main(int argc, char** argv){
 	//===================Output file============================
 	buf.str(""); buf.clear();
 	//buf<<"../root/t_"<<runNo<<"."<<suffix<<iterationNo<<".root";
-	buf<<"../root/t_"<<runNo<<"."<<suffix<<"root";
+	buf<<"../root/t_"<<runNo<<suffix<<".root";
 	TFile * f = new TFile(buf.str().c_str(),"RECREATE"); 
 	TTree * t = new TTree("t","t");
 	Double_t chi2;

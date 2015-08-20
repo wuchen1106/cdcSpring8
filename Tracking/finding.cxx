@@ -391,7 +391,7 @@ int main(int argc, char** argv){
 	std::string suffix = "";
 	if (argc>=4){
 		suffix  = argv[3];
-		suffix=suffix+".";
+		suffix="."+suffix;
 	}
 	int nEventMax = 0;
 	if (argc>=5) nEventMax = (int)strtol(argv[4],NULL,10);
@@ -558,7 +558,7 @@ int main(int argc, char** argv){
 	int nHits;
 
 	std::stringstream buf;
-	buf<<"../root/i_"<<runNo<<"."<<suffix<<"root";
+	buf<<"../root/i_"<<runNo<<suffix<<".root";
 	TFile * of = new TFile(buf.str().c_str(),"RECREATE"); 
 	TTree * ot = new TTree("t","t");
 
