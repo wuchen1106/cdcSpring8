@@ -316,7 +316,7 @@ int fitxy2(){
 int fitxy(std::vector<int> * wireID,std::vector<double> * driftD){
 	int wid1,wid2;
 	n_xy = 0;
-	for (int j = 1; j<=7; j+=2){
+	for (int j = 1-thelayer%2; j<=7; j+=2){
 		for (int hid1 = 0; hid1<c_layerhit[j]; hid1++){
 			int index1 = i_layerhit[j][hid1];
 			wid1 = (*wireID)[index1];
@@ -587,7 +587,7 @@ int main(int argc, char** argv){
 	Long64_t N = c->GetEntries();
 	if (nEventMax&&nEventMax<N) N = nEventMax;
 	for ( int i = 0; i<N; i++){
-		if (i%1000==0) printf("%lf%...\n",(double)i/N*100);
+		if (i%1000==0) std::cout<<(double)i/N*100<<"%..."<<std::endl;
 		// FIXME
 		//printf("*****Event %d*******\n",i);
 		c->GetEntry(i);
