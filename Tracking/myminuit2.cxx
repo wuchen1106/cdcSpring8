@@ -37,7 +37,7 @@
 #define MIN_ADC 180
 #define MAX_ADC 700
 #define NBINS  256
-#define NLAY    8
+#define NLAY    9
 #define NCEL    11
 
 double PI = TMath::Pi();
@@ -48,11 +48,12 @@ TF1 * XTL_func[NLAY][NCEL];
 TF1 * XTR_func[NLAY][NCEL];
 
 // ________About Cell___________
-Double_t U=0.8;
+Double_t U=8;
 std::vector<std::vector<double> > Yhv,Xhv,errord;// High Voltage side
 std::vector<std::vector<double> > Yro,Xro; // Read Out side
-double zhv = -59.917/2;
-double zro = 59.917/2;
+double zhv = -599.17/2;
+double zro = 599.17/2;
+TF1 * funcErr;
 
 // ________About Track___________
 int thelayer = 0;
@@ -62,8 +63,8 @@ std::vector<int> * i_wireID = 0;
 std::vector<int> * i_layerID = 0;
 std::vector<int> * i_peak = 0;
 std::vector<double> * i_sum = 0;
-double yup = 62.397007;
-double ydown = 52.760011;
+double yup = 623.97007;
+double ydown = 527.60011;
 double deltay = yup-ydown;
 TVector3 vTrackU, vTrackD, vTrack;
 TVector3 vWireHV, vWireRO, vWire;
@@ -76,10 +77,10 @@ Double_t arglist[10];
 Int_t ierflg = 0;
 Double_t amin,edm,errdef;
 Int_t nvpar,nparx,icstat;
-double slerZ = 0.3;
-double slerX = 0.42*2;
-double inerZ = 3;
-double inerX = 3;
+double slerZ = 0.2;
+double slerX = 0.1;
+double inerZ = 20;
+double inerX = 20;
 int badlayer = -1;
 
 // ________About Scanning___________
@@ -87,10 +88,10 @@ double slXmin = -0.85;
 double slXmax = 0.85;
 double slZmin = -0.85;
 double slZmax = 0.85;
-double inXmin = -4;
-double inXmax = 4;
-double inZmin = -4;
-double inZmax = 4;
+double inXmin = -40;
+double inXmax = 40;
+double inZmin = -40;
+double inZmax = 40;
 int slXN = 10;
 int slZN = 10;
 int inXN = 10;
@@ -181,8 +182,8 @@ int main(int argc, char** argv){
 //		npair = 56.10;
 //	}
 
-	//===================Get a2c============================
-	TF1 * f_a2c = new TF1("a2c","5.98739+2.4852*x+0.000573394*x*x-5.21769e-05*x*x*x+3.05897e-07*x*x*x*x-7.54057e-10*x*x*x*x*x+8.60252e-13*x*x*x*x*x*x-3.68603e-16*x*x*x*x*x*x*x",-10,800);
+	//===================Get error============================
+	funcErr = new TF1("funcErr","502.725-550.985*x+361.95*x*x-121.18*x*x*x+21.4605*x*x*x*x-1.90791*x*x*x*x*x+0.0670143*x*x*x*x*x*x",0,8);
 
 	//===================Set Geometry============================
 	// The z values
@@ -197,7 +198,7 @@ int main(int argc, char** argv){
 	t_geom->SetBranchAddress("yhv",&y1_geom);
 	t_geom->SetBranchAddress("xro",&x2_geom);
 	t_geom->SetBranchAddress("yro",&y2_geom);
-	Float_t error = 0.02;
+	Float_t error = 0.2;
 	for ( int i = 0; i<NLAY; i++){
 		std::vector<double> xhv;
 		std::vector<double> yhv;
@@ -219,11 +220,13 @@ int main(int argc, char** argv){
 	}
 	for(int i = 0; i<t_geom->GetEntries(); i++){
 		t_geom->GetEntry(i);
-		if (lid_geom<1||lid_geom>8) continue;
-		Xhv[lid_geom][wid_geom] = x1_geom/10.;
-		Yhv[lid_geom][wid_geom] = y1_geom/10.;
-		Xro[lid_geom][wid_geom] = x2_geom/10.;
-		Yro[lid_geom][wid_geom] = y2_geom/10.;
+		//if (lid_geom<1||lid_geom>NLAY-2) continue;
+		// FIXME: now we want to add in gaurd layer
+		if (lid_geom<1) continue;
+		Xhv[lid_geom][wid_geom] = x1_geom;
+		Yhv[lid_geom][wid_geom] = y1_geom;
+		Xro[lid_geom][wid_geom] = x2_geom;
+		Yro[lid_geom][wid_geom] = y2_geom;
 		errord[lid_geom][wid_geom]=error;
 	}
 	if_geom->Close();
@@ -267,7 +270,7 @@ int main(int argc, char** argv){
 	//===================Output file============================
 	buf.str(""); buf.clear();
 	//buf<<"../root/t_"<<runNo<<"."<<suffix<<iterationNo<<".root";
-	buf<<"../root/t_"<<runNo<<suffix<<".root";
+	buf<<"../root/t_"<<runNo<<".layer"<<thelayer<<suffix<<".root";
 	TFile * f = new TFile(buf.str().c_str(),"RECREATE"); 
 	TTree * t = new TTree("t","t");
 	Double_t chi2;
@@ -303,8 +306,8 @@ int main(int argc, char** argv){
 	Long64_t N = c->GetEntries();
 	if (nEventMax&&nEventMax<N) N = nEventMax;
 	std::cout<<"Processing "<<N<<" Events ..."<<std::endl;
-	for (Long64_t iEvent = 72;iEvent<N; iEvent++){
-		if (iEvent%10==0) std::cout<<(double)iEvent/N*100<<"..."<<std::endl;
+	for (Long64_t iEvent = 0;iEvent<N; iEvent++){
+		if (iEvent%1000==0) std::cout<<(double)iEvent/N*100<<"..."<<std::endl;
 		c->GetEntry(iEvent);
 
 		//===================Set Initial============================
@@ -758,8 +761,16 @@ void getchi2(Double_t &f, Double_t slx, Double_t inx, Double_t slz, Double_t inz
 		if ((*i_layerID)[i]==badlayer&&badlayer!=-1) continue;
 		dfit = get_dist((*i_layerID)[i],(*i_wireID)[i],slx,inx,slz,inz);
 //		double error = errord[(*i_layerID)[i]][(*i_wireID)[i]]*(fabs(fabs(dfit)-4)+2/1.5)*1.5/4;
-		double error = errord[(*i_layerID)[i]][(*i_wireID)[i]];
-		delta  = (fabs((*i_driftD)[i])-fabs(dfit))/error;
+//		double error = errord[(*i_layerID)[i]][(*i_wireID)[i]];
+		// FIXME
+		double error = 0.2;
+		if (fabs(dfit)<5.5){
+			if (fabs(dfit)>3.5) error = 0.15;
+			else if (fabs(dfit)>0.75) error = 0.18;
+			else error = 0.27;
+		}
+		//error = funcErr->Eval(fabs(dfit));
+		delta  = ((*i_driftD)[i]-dfit)/error;
 		chisq += delta*delta;
 	}
 	f = chisq;

@@ -26,3 +26,8 @@
 *.exe
 *.out
 *.app
+
+# Output
+*.png
+*.pdf
+*.root

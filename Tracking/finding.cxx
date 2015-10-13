@@ -335,6 +335,10 @@ int fitxy(std::vector<int> * wireID,std::vector<double> * driftD){
 				n_xy++;
 			}
 		}
+		if (thelayer%2&&thelayer+2<=7&&j+1==thelayer+2) j--;
+		if (thelayer%2&&thelayer+2<=7&&j==thelayer+2) j--;
+		if (thelayer%2&&thelayer+2>7&&j+1==thelayer-2) j--;
+		if (thelayer%2&&thelayer+2>7&&j==thelayer-2) j--;
 	}
 	if (n_xy<=1) return 1;
 
@@ -375,9 +379,32 @@ int fitxy(std::vector<int> * wireID,std::vector<double> * driftD){
 
 double t2x(double time, double sign){
 	TF1 * f = 0;
-	if (sign>0) f = f_xt_all_right;
-	else f = f_xt_all_left;
-	return f->Eval(time);
+//	if (sign>0) f = f_xt_all_right;
+//	else f = f_xt_all_left;
+	f = f_xt_all_right;
+	double dd = f->Eval(time);
+	if (dd<0) dd = 0;
+	return dd;
+	// FIXME
+//	double dd;
+//	int index = -1;
+//	std::vector<double> * vt;
+//	std::vector<double> * vx;
+//	if (sign>0){
+//		vt = &v_t_all_right;
+//		vx = &v_x_all_right;
+//	}
+//	else {
+//		vt = &v_t_all_left;
+//		vx = &v_x_all_left;
+//	}
+//	for (index = 0; index<vt->size(); index++){
+//		if ((*vt)[index]>time) break;
+//	}
+//	if (index==vt->size()-1) dd = 0.8;
+//	else if (index==0) dd = 0;
+//	else dd = ((*vx)[index-1]*((*vt)[index]-time)+(*vx)[index]*(time-(*vt)[index-1]))/((*vt)[index]-(*vt)[index-1]);
+//	return dd;
 }
 
 int main(int argc, char** argv){
@@ -393,12 +420,15 @@ int main(int argc, char** argv){
 		suffix  = argv[3];
 		suffix="."+suffix;
 	}
+	int t0shift = 0;
+	if (argc>=5) t0shift = (int)strtol(argv[4],NULL,10);
+	printf("t0shift = %d\n",t0shift);
 	int nEventMax = 0;
-	if (argc>=5) nEventMax = (int)strtol(argv[4],NULL,10);
+	if (argc>=6) nEventMax = (int)strtol(argv[5],NULL,10);
 
 	//===================Get wire position============================
 	// For wire position
-	TFile * TFile_wirepos = new TFile("../info/wire-position.v3.root");
+	TFile * TFile_wirepos = new TFile("../info/wire-position.root");
 	TTree * TTree_wirepos = (TTree*) TFile_wirepos->Get("t");
 	int wp_bid;
 	int wp_wid;
@@ -505,19 +535,44 @@ int main(int argc, char** argv){
 	for ( int i = 0; i<c_xt->GetEntries(); i++ ){
 		c_xt->GetEntry(i);
 		// FIXME
-		i_xt_t*=228./223.;
-		if (i_xt_x>=0){
+		//i_xt_t*=(228.+t0shift)/223.;
+		if (i_xt_x>=-0.02){
 			v_x_all_right.push_back(i_xt_x);
 			v_t_all_right.push_back(i_xt_t);
 		}
-		if (i_xt_x<=0){
+		if (i_xt_x<=0.02){
 			v_x_all_left.push_back(i_xt_x);
 			v_t_all_left.push_back(i_xt_t);
 		}
 		if (i_xt_t>driftTMax) driftTMax=i_xt_t;
 	}
-	f_xt_all_right = new TF1("f_xt_all_right","pol5",0-tres,driftTMax+tres);
-	f_xt_all_left = new TF1("f_xt_all_left","pol5",0-tres,driftTMax+tres);
+	double temp;
+	for (int i = 0; i<v_x_all_left.size(); i++){
+		for (int j = i+1; j<v_x_all_left.size(); j++){
+			if (v_t_all_left[j]<v_t_all_left[i]){
+				temp = v_t_all_left[i];
+				v_t_all_left[i]=v_t_all_left[j];
+				v_t_all_left[j]=temp;
+				temp = v_x_all_left[i];
+				v_x_all_left[i]=v_x_all_left[j];
+				v_x_all_left[j]=temp;
+			}
+		}
+	}
+	for (int i = 0; i<v_x_all_right.size(); i++){
+		for (int j = i+1; j<v_x_all_right.size(); j++){
+			if (v_t_all_right[j]<v_t_all_right[i]){
+				temp = v_t_all_right[i];
+				v_t_all_right[i]=v_t_all_right[j];
+				v_t_all_right[j]=temp;
+				temp = v_x_all_right[i];
+				v_x_all_right[i]=v_x_all_right[j];
+				v_x_all_right[j]=temp;
+			}
+		}
+	}
+	f_xt_all_right = new TF1("f_xt_all_right","pol9",0-tres,driftTMax+tres);
+	f_xt_all_left = new TF1("f_xt_all_left","pol9",0-tres,driftTMax+tres);
 	g_xt_all_right = new TGraph(v_x_all_right.size(),&(v_t_all_right[0]),&(v_x_all_right[0]));
 	g_xt_all_left = new TGraph(v_x_all_left.size(),&(v_t_all_left[0]),&(v_x_all_left[0]));
 	g_xt_all_right->Fit("f_xt_all_right","qN0","");
@@ -604,7 +659,7 @@ int main(int argc, char** argv){
 		}
 		for (int ihit = 0; ihit<i_type->size(); ihit++){
 			if ((*i_type)[ihit]!=0) continue;
-			double dt = (*i_driftT)[ihit];
+			double dt = (*i_driftT)[ihit]+t0shift;
 			if (dt<0-tres||dt>driftTMax+tres) continue;
 			if (dt>driftTMax) dt = driftTMax;
 			int lid = (*i_layerID)[ihit];
