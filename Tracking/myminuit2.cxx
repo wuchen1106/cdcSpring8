@@ -57,6 +57,7 @@ TF1 * funcErr;
 
 // ________About Track___________
 int thelayer = 0;
+std::vector<int> * i_lr = 0;
 std::vector<double> * i_driftD = 0;
 std::vector<double> * i_driftT = 0;
 std::vector<int> * i_wireID = 0;
@@ -240,16 +241,18 @@ int main(int argc, char** argv){
 	TChain * c = new TChain("t","t");
 	std::stringstream buf;
 	buf.str(""); buf.clear();
-	buf<<"../root/i_"<<runNo<<suffix<<".root";
+	buf<<"../root/i_"<<runNo<<".layer"<<thelayer<<suffix<<".root";
 	c->Add(buf.str().c_str());
 	std::cout<<"Adding \""<<buf.str()<<"\""<<std::endl;
 	int triggerNumber;
 	double xup, xdown;
 	double zup, zdown;
+	int nHits;
 	c->SetBranchAddress("wireID",&i_wireID);
 	c->SetBranchAddress("layerID",&i_layerID);
 	c->SetBranchAddress("driftD",&i_driftD);
 	c->SetBranchAddress("driftT",&i_driftT);
+	c->SetBranchAddress("lr",&i_lr);
 	c->SetBranchAddress("peak",&i_peak);
 	c->SetBranchAddress("sum",&i_sum);
 	c->SetBranchAddress("tx1",&xup);
@@ -257,6 +260,7 @@ int main(int argc, char** argv){
 	c->SetBranchAddress("tx2",&xdown);
 	c->SetBranchAddress("tz2",&zdown);
 	c->SetBranchAddress("triggerNumber",&triggerNumber);
+	c->SetBranchAddress("nHits",&nHits);
 #ifdef MC
 	double slirX, inirX, inirY;
 	double slirZ, inirZ;
@@ -289,6 +293,7 @@ int main(int argc, char** argv){
 	t->Branch("layerID",&i_layerID);
 	t->Branch("peak",&i_peak);
 	t->Branch("sum",&i_sum);
+	t->Branch("nHits",&nHits);
 
 	t->Branch("fitD",&o_fitD);
 	t->Branch("chi2",&chi2);
@@ -770,7 +775,12 @@ void getchi2(Double_t &f, Double_t slx, Double_t inx, Double_t slz, Double_t inz
 			else error = 0.27;
 		}
 		//error = funcErr->Eval(fabs(dfit));
-		delta  = ((*i_driftD)[i]-dfit)/error;
+		if ((*i_lr)[i]){
+			delta  = ((*i_driftD)[i]-dfit)/error;
+		}
+		else{
+			delta  = (fabs((*i_driftD)[i])-fabs(dfit))/error;
+		}
 		chisq += delta*delta;
 	}
 	f = chisq;

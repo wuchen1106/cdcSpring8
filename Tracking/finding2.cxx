@@ -27,6 +27,10 @@
 int pow2i[NLAY];
 
 //===================About tracking============================
+std::vector<double> * i_driftT = 0;
+std::vector<int> * i_layerID = 0;
+std::vector<int> * i_wireID = 0;
+std::vector<int> * i_type = 0;
 std::vector<int> * O_wireID = 0;
 std::vector<int> * O_layerID = 0;
 std::vector<int> * O_lr = 0;
@@ -38,6 +42,12 @@ double ydown = 527.60011;
 
 TF1 * f_x = new TF1("f_x","pol1",500,640); // x VS y
 TGraph * g_x = 0; // x VS y
+
+int testlayer = 0;
+int nHitsgood;
+std::vector<int> v_hit_index;
+std::vector<int> v_hit_flag;
+std::vector<double> v_hit_dd;
 
 //===================About chamber============================
 double U = 8; // mm
@@ -57,6 +67,7 @@ double map_yro[NLAY][NCEL];
 double tres = 0;
 double driftTMax = 0; // ns
 double driftTMin = 5; // ns
+double driftgoodTMin = 20; // ns
 std::vector<double> v_x_all_right;
 std::vector<double> v_t_all_right;
 std::vector<double> v_x_all_left;
@@ -67,7 +78,6 @@ TF1 * f_xt_all_right = 0;
 TF1 * f_xt_all_left = 0;
 
 //===================About hits============================
-int i_layerhit[NLAY][NCEL];
 int c_layerhit[NLAY];
 
 //______________________________________________________________________________
@@ -78,57 +88,68 @@ void print_usage(char* prog_name)
 
 int checkLR(){
 	double	chi2min = 1e9;
+	double	meanxmin = 1e9;
 	int thecombi = -1;
-	for (int icombi = 0; icombi<128; icombi++){
+	int ncombi = pow(2,nHitsgood);
+	for (int icombi = 0; icombi<ncombi; icombi++){
+		int usedhits = 0;
 		double chi2 = 0;
+		double xc = 0;
+		double xp = 0;
+		double sumx = 0;
 //		std::cout<<"#################################################"<<std::endl;
-		for (int ihit= 0; ihit<O_lr->size()-1; ihit++){
-			int lr0 = (icombi/pow2i[ihit])%2;
-			int lr1 = (icombi/pow2i[ihit+1])%2;
+		for (int index= 0; index<v_hit_index.size(); index++){
+			if (v_hit_flag[index]) continue;
+			int ihit = v_hit_index[index];
+			int lr0 = (icombi/pow2i[usedhits])%2;
 
-			double dd0 = (*O_driftD)[ihit];
-			double x0 = map_xc[(*O_layerID)[ihit]][(*O_wireID)[ihit]];
-			if (lr0) x0+=dd0;
-			else x0-=dd0;
-			double dd1 = (*O_driftD)[ihit+1];
-			double x1 = map_xc[(*O_layerID)[ihit+1]][(*O_wireID)[ihit+1]];
-			if (lr1) x1+=dd1;
-			else x1-=dd1;
-			chi2+= pow(x0-x1,2);
-//			std::cout<<"  dx = "<<x0<<"-"<<x1<<" = "<<x0-x1<<std::endl;
+			double dd0 = v_hit_dd[index];
+			xc = map_xc[(*i_layerID)[ihit]][(*i_wireID)[ihit]];
+			if (lr0) xc+=dd0;
+			else xc-=dd0;
+
+			if (usedhits!=0)
+				chi2+= pow(xc-xp,2);
+
+			xp = xc;
+			sumx+=xc;
+
+			usedhits++;
 		}
 //		std::cout<<"chi2 = "<<chi2<<std::endl;
 		if (chi2<chi2min){
 			chi2min=chi2;
 			thecombi=icombi;
+			meanxmin=sumx/nHitsgood;
 		}
 	}
-	for (int ihit = 0; ihit<O_lr->size(); ihit++){
-		(*O_lr)[ihit] = (thecombi/pow2i[ihit])%2;
+	nHitsgood=0;
+//	std::cout<<"meanxmin = "<<meanxmin<<std::endl;
+	for (int index = 0; index<v_hit_index.size(); index++){
+		int ihit = v_hit_index[index];
+		double xc = map_xc[(*i_layerID)[ihit]][(*i_wireID)[ihit]];
+		double xr = xc+v_hit_dd[index];
+		double xl = xc-v_hit_dd[index];
+		if (fabs(xr-meanxmin)>=1&&fabs(xl-meanxmin)>=1) v_hit_flag[index] = -2;
+		else {
+			if ((*i_layerID)[ihit]!=testlayer) nHitsgood++;
+			if (fabs(xr-meanxmin)<1&&fabs(xl-meanxmin)<1) v_hit_flag[index] = 0;
+			else if (fabs(xr-meanxmin)<1) v_hit_flag[index] = 1;
+			else v_hit_flag[index] = -1;
+		}
+//		if (v_hit_flag[index] == -2) std::cout<<"  ! x["<<(*i_layerID)[ihit]<<"]["<<(*i_wireID)[ihit]<<"] = "<<xc<<"+-"<<v_hit_dd[index]<<" = "<<xl<<" or "<<xr<<std::endl;
+//		else if (v_hit_flag[index] == -1) std::cout<<"  x["<<(*i_layerID)[ihit]<<"]["<<(*i_wireID)[ihit]<<"] = "<<xc<<"-"<<v_hit_dd[index]<<" = "<<xl<<std::endl;
+//		else if (v_hit_flag[index] == 1) std::cout<<"  x["<<(*i_layerID)[ihit]<<"]["<<(*i_wireID)[ihit]<<"] = "<<xc<<"+"<<v_hit_dd[index]<<" = "<<xr<<std::endl;
+//		else if (v_hit_flag[index] == 0) std::cout<<"  x["<<(*i_layerID)[ihit]<<"]["<<(*i_wireID)[ihit]<<"] = "<<xc<<"+-"<<v_hit_dd[index]<<" = "<<xl<<" or "<<xr<<std::endl;
 	}
+	if (nHitsgood<5) return 1;
 //	std::cout<<"chi2min = "<<chi2min<<std::endl;
-	for (int ihit= 0; ihit<O_lr->size()-1; ihit++){
-		int lr0 = (thecombi/pow2i[ihit])%2;
-		int lr1 = (thecombi/pow2i[ihit+1])%2;
-
-		double dd0 = (*O_driftD)[ihit];
-		double x0 = map_xc[(*O_layerID)[ihit]][(*O_wireID)[ihit]];
-		if (lr0) x0+=dd0;
-		else x0-=dd0;
-		double dd1 = (*O_driftD)[ihit+1];
-		double x1 = map_xc[(*O_layerID)[ihit+1]][(*O_wireID)[ihit+1]];
-		if (lr1) x1+=dd1;
-		else x1-=dd1;
-		if (fabs(x0-x1)>8) return 1;
-	}
 	return 0;
 }
 
 int fitxy(){
 	for (int ihit = 0; ihit<O_lr->size(); ihit++){
-		ar_x[ihit] = map_xc[(*O_layerID)[ihit]][(*O_wireID)[ihit]];
-		if ((*O_lr)[ihit]) ar_x[ihit] += (*O_driftD)[ihit];
-		else ar_x[ihit] -= (*O_driftD)[ihit];
+		ar_x[ihit] = map_xc[(*O_layerID)[ihit]][(*O_wireID)[ihit]]+(*O_driftD)[ihit];
 		ar_y[ihit] = map_yc[(*O_layerID)[ihit]][(*O_wireID)[ihit]];
 	}
 	if (g_x) delete g_x; g_x = new TGraph(O_lr->size(),&(ar_y[0]),&(ar_x[0]));
@@ -138,11 +159,11 @@ int fitxy(){
 
 double t2x(double time, int lr){
 	TF1 * f = 0;
-	if (lr) f = f_xt_all_right;
-	else f = f_xt_all_left;
+	if (lr==-1) f = f_xt_all_left;
+	else f = f_xt_all_right;
 	double dd = f->Eval(time);
-	if ((lr&&dd<0)||(!lr&&dd>0)) dd = 0;
-	if (time>driftTMax) dd = lr?U:-U;
+	if ((lr==1&&dd<0)||(lr==-1&&dd>0)) dd = 0;
+	if (time>driftTMax) dd = lr==1?U:-U;
 	return dd;
 	// FIXME: may want to support multi-xt
 //	double dd;
@@ -178,11 +199,12 @@ int main(int argc, char** argv){
 		suffix  = argv[2];
 		suffix="."+suffix;
 	}
+	if (argc>=4) testlayer = (int)strtol(argv[3],NULL,10);
 	int t0shift = 0;
-	if (argc>=4) t0shift = (int)strtol(argv[3],NULL,10);
+	if (argc>=5) t0shift = (int)strtol(argv[4],NULL,10);
 	printf("t0shift = %d\n",t0shift);
 	int nEventMax = 0;
-	if (argc>=5) nEventMax = (int)strtol(argv[4],NULL,10);
+	if (argc>=6) nEventMax = (int)strtol(argv[5],NULL,10);
 
 	for (int i=0; i<NLAY; i++){
 		pow2i[i] = pow(2,i);
@@ -309,8 +331,8 @@ int main(int argc, char** argv){
 			}
 		}
 	}
-	f_xt_all_right = new TF1("f_xt_all_right","pol9",driftTMin-tres,driftTMax);
-	f_xt_all_left = new TF1("f_xt_all_left","pol9",driftTMin-tres,driftTMax);
+	f_xt_all_right = new TF1("f_xt_all_right","pol5",driftTMin-tres,driftTMax);
+	f_xt_all_left = new TF1("f_xt_all_left","pol5",driftTMin-tres,driftTMax);
 	g_xt_all_right = new TGraph(v_x_all_right.size(),&(v_t_all_right[0]),&(v_x_all_right[0]));
 	g_xt_all_left = new TGraph(v_x_all_left.size(),&(v_t_all_left[0]),&(v_x_all_left[0]));
 	g_xt_all_right->Fit("f_xt_all_right","qN0","");
@@ -330,10 +352,6 @@ int main(int argc, char** argv){
 	c->Add(fileName);
 	int triggerNumber;
 	int i_nLayers, i_nHits;
-	std::vector<double> * i_driftT = 0;
-	std::vector<int> * i_layerID = 0;
-	std::vector<int> * i_wireID = 0;
-	std::vector<int> * i_type = 0;
 	c->SetBranchAddress("triggerNumber",&triggerNumber);
 	c->SetBranchAddress("nLayers",&i_nLayers);
 	c->SetBranchAddress("nHits",&i_nHits);
@@ -351,11 +369,11 @@ int main(int argc, char** argv){
 	int nHits;
 
 	std::stringstream buf;
-	buf<<"../root/i_"<<runNo<<suffix<<".root";
+	buf<<"../root/i_"<<runNo<<".layer"<<testlayer<<suffix<<".root";
 	TFile * of = new TFile(buf.str().c_str(),"RECREATE"); 
 	TTree * ot = new TTree("t","t");
 
-	ot->Branch("nHits",&nHits);
+	ot->Branch("nHits",&nHitsgood);
 	ot->Branch("triggerNumber",&triggerNumber);
 	ot->Branch("tx1",&O_tx1);
 	ot->Branch("tx2",&O_tx2);
@@ -378,7 +396,7 @@ int main(int argc, char** argv){
 	for ( int i = 0; i<N; i++){
 		if (i%1000==0) std::cout<<(double)i/N*100<<"%..."<<std::endl;
 		c->GetEntry(i);
-		//printf("*****triggerNumber %d*******\n",triggerNumber);
+//		printf("*****triggerNumber %d*******\n",triggerNumber);
 		if(O_lr) delete O_lr; O_lr= new std::vector<int>;
 		if(O_driftT) delete O_driftT; O_driftT = new std::vector<double>;
 		if(O_driftD) delete O_driftD; O_driftD = new std::vector<double>;
@@ -388,6 +406,11 @@ int main(int argc, char** argv){
 
 		// get basical cdc hit information
 		nHits= 0;
+		nHitsgood = 0;
+		v_hit_index.clear();
+		v_hit_dd.clear();
+		v_hit_flag.clear();
+		int n1 = 0;
 		for (int j = 0; j<NLAY; j++){
 			c_layerhit[j] = 0;
 		}
@@ -403,50 +426,61 @@ int main(int argc, char** argv){
 			//		continue;
 			//	}
 			//}
-			if ((*i_type)[ihit]!=0&&(*i_type)[ihit]!=1) continue;
+			if ((*i_type)[ihit]!=0&&(*i_type)[ihit]!=1) continue; // including guard layer but without dummy layer
 			double dt = (*i_driftT)[ihit]+t0shift;
-			if (dt<driftTMin-tres||dt>driftTMax+tres) continue;
 			int lid = (*i_layerID)[ihit];
-			i_layerhit[lid][c_layerhit[lid]]=ihit;
-			c_layerhit[lid]++;
-			nHits++;
+			if (lid!=testlayer&&(dt<driftTMin-tres||dt>driftTMax+tres)) continue;
+			v_hit_index.push_back(ihit);
+			v_hit_dd.push_back(t2x(dt,0));
+			if (lid==testlayer){
+				v_hit_flag.push_back(-10); // test hits
+			}
+			else{
+				c_layerhit[lid]++;
+				nHits++;
+				if (dt>driftgoodTMin-tres){
+					nHitsgood++;
+					v_hit_flag.push_back(0); // good hits without left/right sign
+				}
+				else{
+					v_hit_flag.push_back(-2); // default value: bad hits
+				}
+			}
 		}
-		bool multihits = false;
-		for (int j = 1; j<NLAY; j++){
-			if (c_layerhit[j]>1) multihits = true;
+//		std::cout<<"nHits = "<<nHits<<", nHitsgood = "<<nHitsgood<<std::endl;
+		if (nHits>7||nHitsgood<3) continue; // multiple tracks
+		for(int ilayer = 1; ilayer<NLAY; ilayer++){
+			if (ilayer==testlayer) continue;
+			if (c_layerhit[ilayer]==1) n1++;
 		}
-		if (multihits) continue;
-		if (nHits<NLAY-2) continue;
+//		std::cout<<"n1 = "<<n1<<std::endl;
+		if (n1<5) continue;
 		N_found++;
 
-		for(int ilayer = 1; ilayer<NLAY; ilayer++){
-			if (!c_layerhit[ilayer]) continue;
-			int ihit = i_layerhit[ilayer][0];
-			double dt = (*i_driftT)[ihit]+t0shift;
-			int lid = (*i_layerID)[ihit];
-			int wid = (*i_wireID)[ihit];
-			O_wireID->push_back(wid);
-			O_layerID->push_back(lid);
-			O_driftT->push_back(dt);
-			O_driftD->push_back(t2x(dt,1));
-			O_lr->push_back(0);
+		if (checkLR()) continue;
+		N_good++;
+//		std::cout<<"Good!"<<std::endl;
+
+		for(int index = 0; index<v_hit_index.size(); index++){
+			int ihit = v_hit_index[index];
+			if (v_hit_flag[index]>=-1&&v_hit_flag[index]<=1){
+				double dt = (*i_driftT)[ihit]+t0shift;
+				int lid = (*i_layerID)[ihit];
+				int wid = (*i_wireID)[ihit];
+				O_wireID->push_back(wid);
+				O_layerID->push_back(lid);
+				O_driftT->push_back(dt);
+				O_driftD->push_back(t2x(dt,v_hit_flag[index]));
+				O_lr->push_back(v_hit_flag[index]);
+			}
 		}
 
-		if(checkLR()) continue;
-		N_good++;
 		fitxy();
-
 		O_tx1 = f_x->Eval(yup);
 		O_tx2 = f_x->Eval(ydown);
 		O_tz1 = 0;
 		O_tz2 = 0;
-//		std::cout<<"#################################################"<<std::endl;
-//		std::cout<<"x1 = "<<O_tx1<<std::endl;
-//		std::cout<<"x2 = "<<O_tx2<<std::endl;
-		for ( int ihit = 0; ihit<O_driftT->size(); ihit++ ){
-			(*O_driftD)[ihit]= t2x((*O_driftT)[ihit],(*O_lr)[ihit]);
-//			std::cout<<"  x = "<<map_xc[(*O_layerID)[ihit]][(*O_wireID)[ihit]]<<"+"<<(*O_driftD)[ihit]<<" = "<<map_xc[(*O_layerID)[ihit]][(*O_wireID)[ihit]]+(*O_driftD)[ihit]<<std::endl;
-		}
+
 		ot->Fill();
 	}// end of event loop
 

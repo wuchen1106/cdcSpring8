@@ -10,7 +10,7 @@
 	TChain *chain0 = new TChain("t","t");
 	chain0->Add("../info/xt.117.root");
 	TChain *chain1 = new TChain("t","t");
-	chain1->Add("../info/xt.117.8.new7.root");
+	chain1->Add("../info/xt.117.t0fit.new.nolr.root");
 	chain0->SetLineColor(kRed);
 	chain0->SetMarkerColor(kRed);
 	chain0->Draw("t:x","","LP");

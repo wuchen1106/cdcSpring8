@@ -15,10 +15,10 @@
 ##	nohup ./myminuit 117 $i layer$i.garf.8.j3.5hits &
 #done
 
-runName="t0fit.withG"
-./finding2 117 $runName
+runName="t0fit.new.nolr"
 for i in 1 2 3 4 5 6 7 8;
 do
+#	nohup ./finding2 117 $runName $i &
 	nohup ./myminuit2 117 $i $runName &
 done
 tail -f nohup.out

@@ -44,7 +44,7 @@ int main(int argc, char** argv){
 //		for (int theWire = 3+(theLayer>3); theWire<=3+(theLayer>4); theWire++){
 			std::cout<<"################################"<<std::endl;
 			std::cout<<"       "<<theLayer<<", "<<theWire<<std::endl;
-			it->Draw("driftT:fitD>>h(500,-9,9,260,-10,250)",Form("chi2<3&&layerID==%d&&wireID==%d&&abs(slZ)<0.05",theLayer,theWire),"COLZ");
+			it->Draw("driftT:fitD>>h(500,-9,9,260,-10,250)",Form("chi2<10&&layerID==%d&&wireID==%d&&abs(slZ)<0.145",theLayer,theWire),"COLZ");
 			it->SetMarkerStyle(7);
 			it->SetMarkerColor(kRed);
 			it->Draw("driftT:driftD",Form("chi2<3&&layerID==%d&&wireID==%d&&abs(slZ)<0.17",theLayer,theWire),"SAME");

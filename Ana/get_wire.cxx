@@ -119,7 +119,7 @@ int main(int argc, char** argv){
 		if (postXT_t>driftTMax+tres) continue;
 		else if (postXT_t>driftTMax) fitD = postXT_x>=0?8:-8;
 		offset[postXT_lid]+=postXT_x-fitD;
-//		std::cout<<postXT_lid<<": "<<postXT_x<<"-("<<postXT_t<<")"<<fitD<<"="<<postXT_x-fitD<<std::endl;
+	//	std::cout<<postXT_lid<<": "<<postXT_x<<"-("<<postXT_t<<")"<<fitD<<"="<<postXT_x-fitD<<std::endl;
 		npoints[postXT_lid]++;
 	}
 	for (int ilayer = 1; ilayer<=7; ilayer++){
@@ -128,7 +128,7 @@ int main(int argc, char** argv){
 	for (int ilayer = 1; ilayer<=7; ilayer++){
 		if (ilayer==4) continue;
 		offset[ilayer]-=offset[4];
-		std::cout<<ilayer<<": "<<offset[ilayer]<<std::endl;
+//		std::cout<<ilayer<<": "<<offset[ilayer]<<std::endl;
 		offset[ilayer]/=2;
 	}
 	offset[4] = 0;
@@ -175,6 +175,7 @@ int main(int argc, char** argv){
 				xhv+=offset[l];
 			}
 		}
+		std::cout<<l<<":"<<offset[l]<<std::endl;
 		outTree->Fill();
 	}
 	outTree->Write();
