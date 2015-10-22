@@ -65,17 +65,18 @@ double map_yro[NLAY][NCEL];
 
 //===================About xt============================
 double tres = 0;
-double driftTMax = 0; // ns
-double driftTMin = 5; // ns
-double driftgoodTMin = 20; // ns
-std::vector<double> v_x_all_right;
-std::vector<double> v_t_all_right;
-std::vector<double> v_x_all_left;
-std::vector<double> v_t_all_left;
-TGraph * g_xt_all_right = 0;
-TGraph * g_xt_all_left = 0;
-TF1 * f_xt_all_right = 0;
-TF1 * f_xt_all_left = 0;
+TF1 * f_left_end[88];
+TF1 * f_right_end[88];
+TF1 * f_left[88];
+TF1 * f_right[88];
+int vtrel[88];
+int vtrer[88];
+int vtlel[88];
+int vtler[88];
+int vtrml[88];
+int vtrmr[88];
+int vtlml[88];
+int vtlmr[88];
 
 //===================About hits============================
 int c_layerhit[NLAY];
@@ -157,34 +158,38 @@ int fitxy(){
 	return 0;
 }
 
-double t2x(double time, int lr){
-	TF1 * f = 0;
-	if (lr==-1) f = f_xt_all_left;
-	else f = f_xt_all_right;
-	double dd = f->Eval(time);
-	if ((lr==1&&dd<0)||(lr==-1&&dd>0)) dd = 0;
-	if (time>driftTMax) dd = lr==1?U:-U;
+double t2x(double time, int lid, int wid, int lr, int & status){
+	TF1* fl=0;
+	TF1* fr=0;
+	// FIXME
+	//int index = (lid-1)*11+wid;
+	int index = (6-1)*11;
+	status = 0;
+	if (time<=vtlel[index]&&time>vtler[index]){
+		fl = f_left_end[index];
+		status = -2;
+	}
+	else if (time<=vtlml[index]&&time>=vtlmr[index]){
+		fl = f_left[index];
+		status = -1;
+	}
+	if (time>=vtrel[index]&&time<vtrer[index]){
+		fr = f_right_end[index];
+		status = 2;
+	}
+	else if (time>=vtrml[index]&&time<=vtrmr[index]){
+		fr = f_right[index];
+		status = 1;
+	}
+	double dd=0;
+	if (lr>=0){
+		if (fr) dd = fr->Eval(time);
+	}
+	else{
+		if (fl) dd = fl->Eval(time);
+	}
+	//std::cout<<"t2x("<<time<<","<<lid<<","<<wid<<","<<lr<<") = "<<dd<<std::endl;
 	return dd;
-	// FIXME: may want to support multi-xt
-//	double dd;
-//	int index = -1;
-//	std::vector<double> * vt;
-//	std::vector<double> * vx;
-//	if (sign>0){
-//		vt = &v_t_all_right;
-//		vx = &v_x_all_right;
-//	}
-//	else {
-//		vt = &v_t_all_left;
-//		vx = &v_x_all_left;
-//	}
-//	for (index = 0; index<vt->size(); index++){
-//		if ((*vt)[index]>time) break;
-//	}
-//	if (index==vt->size()-1) dd = 0.8;
-//	else if (index==0) dd = 0;
-//	else dd = ((*vx)[index-1]*((*vt)[index]-time)+(*vx)[index]*(time-(*vt)[index-1]))/((*vt)[index]-(*vt)[index-1]);
-//	return dd;
 }
 
 int main(int argc, char** argv){
@@ -289,61 +294,38 @@ int main(int argc, char** argv){
 	std::cout<<"runNo#"<<runNo<<": "<<gastype<<", "<<runGr<<", "<<duration<<", "<<HV<<" V, "<<THR<<" mV, "<<durationTime<<"sec"<<std::endl;
 
 	//===================Prepare XT curves==============================
-	TChain * c_xt = new TChain("t","t");
-	c_xt->Add(Form("../info/xt.%d.root",runNo));
-	double i_xt_x, i_xt_t;
-	c_xt->SetBranchAddress("x",&i_xt_x);
-	c_xt->SetBranchAddress("t",&i_xt_t);
-	for ( int i = 0; i<c_xt->GetEntries(); i++ ){
-		c_xt->GetEntry(i);
-		if (i_xt_x>=-0.02){
-			v_x_all_right.push_back(i_xt_x);
-			v_t_all_right.push_back(i_xt_t);
-		}
-		if (i_xt_x<=0.02){
-			v_x_all_left.push_back(i_xt_x);
-			v_t_all_left.push_back(i_xt_t);
-		}
-		if (i_xt_t>driftTMax) driftTMax=i_xt_t;
+	TFile * i_xt = new TFile(Form("../info/xt.%d.root",runNo));
+	for (int i = 0; i<88; i++){
+		f_left_end[i] = (TF1*) i_xt->Get(Form("f_left_end_%d_%d",i/11+1,i%11));
+		f_right_end[i] = (TF1*) i_xt->Get(Form("f_right_end_%d_%d",i/11+1,i%11));
+		f_left[i] = (TF1*) i_xt->Get(Form("f_left_%d_%d",i/11+1,i%11));
+		f_right[i] = (TF1*) i_xt->Get(Form("f_right_%d_%d",i/11+1,i%11));
 	}
-	double temp;
-	for (int i = 0; i<v_x_all_left.size(); i++){
-		for (int j = i+1; j<v_x_all_left.size(); j++){
-			if (v_t_all_left[j]<v_t_all_left[i]){
-				temp = v_t_all_left[i];
-				v_t_all_left[i]=v_t_all_left[j];
-				v_t_all_left[j]=temp;
-				temp = v_x_all_left[i];
-				v_x_all_left[i]=v_x_all_left[j];
-				v_x_all_left[j]=temp;
-			}
-		}
+	TTree * itree_xt = (TTree*) i_xt->Get("p");
+	int trel,trer,tlel,tler,tlml,tlmr,trml,trmr;
+	int lid,wid;
+	itree_xt->SetBranchAddress("lid",&lid);
+	itree_xt->SetBranchAddress("wid",&wid);
+	itree_xt->SetBranchAddress("tlel",&tlel);
+	itree_xt->SetBranchAddress("tler",&tler);
+	itree_xt->SetBranchAddress("tlml",&tlml);
+	itree_xt->SetBranchAddress("tlmr",&tlmr);
+	itree_xt->SetBranchAddress("trml",&trml);
+	itree_xt->SetBranchAddress("trmr",&trmr);
+	itree_xt->SetBranchAddress("trel",&trel);
+	itree_xt->SetBranchAddress("trer",&trer);
+	for (int i = 0; i<itree_xt->GetEntries(); i++){
+		itree_xt->GetEntry(i);
+		vtlel[(lid-1)*11+wid] = tlel;
+		vtler[(lid-1)*11+wid] = tler;
+		vtlml[(lid-1)*11+wid] = tlml;
+		vtlmr[(lid-1)*11+wid] = tlmr;
+		vtrel[(lid-1)*11+wid] = trel;
+		vtrer[(lid-1)*11+wid] = trer;
+		vtrml[(lid-1)*11+wid] = trml;
+		vtrmr[(lid-1)*11+wid] = trmr;
+		printf("%d,%d: %d | %d | %d | %d || %d | %d | %d | %d\n",lid,wid,tlel,tler,tlml,tlmr,trml,trmr,trel,trer);
 	}
-	for (int i = 0; i<v_x_all_right.size(); i++){
-		for (int j = i+1; j<v_x_all_right.size(); j++){
-			if (v_t_all_right[j]<v_t_all_right[i]){
-				temp = v_t_all_right[i];
-				v_t_all_right[i]=v_t_all_right[j];
-				v_t_all_right[j]=temp;
-				temp = v_x_all_right[i];
-				v_x_all_right[i]=v_x_all_right[j];
-				v_x_all_right[j]=temp;
-			}
-		}
-	}
-	f_xt_all_right = new TF1("f_xt_all_right","pol5",driftTMin-tres,driftTMax);
-	f_xt_all_left = new TF1("f_xt_all_left","pol5",driftTMin-tres,driftTMax);
-	g_xt_all_right = new TGraph(v_x_all_right.size(),&(v_t_all_right[0]),&(v_x_all_right[0]));
-	g_xt_all_left = new TGraph(v_x_all_left.size(),&(v_t_all_left[0]),&(v_x_all_left[0]));
-	g_xt_all_right->Fit("f_xt_all_right","qN0","");
-	g_xt_all_left->Fit("f_xt_all_left","qN0","");
-	TCanvas * c1 = new TCanvas("c1","c1");
-	g_xt_all_left->Draw("ALP");
-	f_xt_all_left->Draw("SAME");
-	c1->SaveAs("left.pdf");
-	g_xt_all_right->Draw("ALP");
-	f_xt_all_right->Draw("SAME");
-	c1->SaveAs("right.pdf");
 
 	//===================Get input ROOT file============================
 	TChain * c = new TChain("t","t");
@@ -429,16 +411,21 @@ int main(int argc, char** argv){
 			if ((*i_type)[ihit]!=0&&(*i_type)[ihit]!=1) continue; // including guard layer but without dummy layer
 			double dt = (*i_driftT)[ihit]+t0shift;
 			int lid = (*i_layerID)[ihit];
-			if (lid!=testlayer&&(dt<driftTMin-tres||dt>driftTMax+tres)) continue;
+			int wid = (*i_wireID)[ihit];
+			int status;
+			double dd = t2x(dt,lid,wid,0,status);
+			//if (lid!=testlayer&&!status) continue; // beyond the known range.
+			// FIXME
+			if (lid!=testlayer&&abs(status)!=1) continue; // beyond the known range.
 			v_hit_index.push_back(ihit);
-			v_hit_dd.push_back(t2x(dt,0));
+			v_hit_dd.push_back(dd);
 			if (lid==testlayer){
 				v_hit_flag.push_back(-10); // test hits
 			}
 			else{
 				c_layerhit[lid]++;
 				nHits++;
-				if (dt>driftgoodTMin-tres){
+				if (fabs(dd)>1){
 					nHitsgood++;
 					v_hit_flag.push_back(0); // good hits without left/right sign
 				}
@@ -470,7 +457,8 @@ int main(int argc, char** argv){
 				O_wireID->push_back(wid);
 				O_layerID->push_back(lid);
 				O_driftT->push_back(dt);
-				O_driftD->push_back(t2x(dt,v_hit_flag[index]));
+				int status;
+				O_driftD->push_back(t2x(dt,lid,wid,v_hit_flag[index],status));
 				O_lr->push_back(v_hit_flag[index]);
 			}
 		}

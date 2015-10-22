@@ -15,7 +15,7 @@
 ##	nohup ./myminuit 117 $i layer$i.garf.8.j3.5hits &
 #done
 
-runName="t0fit.new.nolr"
+runName="t0fit.1xt.8"
 for i in 1 2 3 4 5 6 7 8;
 do
 #	nohup ./finding2 117 $runName $i &
