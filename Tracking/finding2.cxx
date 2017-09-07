@@ -34,6 +34,8 @@ std::vector<int> * i_type = 0;
 std::vector<int> * O_wireID = 0;
 std::vector<int> * O_layerID = 0;
 std::vector<int> * O_lr = 0;
+std::vector<double> * O_dxl= 0;
+std::vector<double> * O_dxr= 0;
 std::vector<double> * O_driftD = 0;
 double ar_x[50]; // x VS y
 double ar_y[50]; // x VS y
@@ -93,39 +95,46 @@ int checkLR(){
 	int thecombi = -1;
 	int ncombi = pow(2,nHitsgood);
 	for (int icombi = 0; icombi<ncombi; icombi++){
-		int usedhits = 0;
 		double chi2 = 0;
 		double xc = 0;
-		double xp = 0;
-		double sumx = 0;
+		double avx = 0;
+		int usedhits = 0;
 //		std::cout<<"#################################################"<<std::endl;
 		for (int index= 0; index<v_hit_index.size(); index++){
 			if (v_hit_flag[index]) continue;
 			int ihit = v_hit_index[index];
 			int lr0 = (icombi/pow2i[usedhits])%2;
+			usedhits++;
 
 			double dd0 = v_hit_dd[index];
 			xc = map_xc[(*i_layerID)[ihit]][(*i_wireID)[ihit]];
 			if (lr0) xc+=dd0;
 			else xc-=dd0;
-
-			if (usedhits!=0)
-				chi2+= pow(xc-xp,2);
-
-			xp = xc;
-			sumx+=xc;
-
-			usedhits++;
+			avx+=xc;
 		}
-//		std::cout<<"chi2 = "<<chi2<<std::endl;
+		avx/=nHitsgood;
+		usedhits=0;
+		for (int index= 0; index<v_hit_index.size(); index++){
+			if (v_hit_flag[index]) continue;
+			int ihit = v_hit_index[index];
+			int lr0 = (icombi/pow2i[usedhits])%2;
+			usedhits++;
+
+			double dd0 = v_hit_dd[index];
+			xc = map_xc[(*i_layerID)[ihit]][(*i_wireID)[ihit]];
+			if (lr0) xc+=dd0;
+			else xc-=dd0;
+			double dx = xc-avx;
+			chi2+=dx*dx;
+		}
+//		std::cout<<icombi<<": chi2 = "<<chi2<<", avx = "<<avx<<std::endl;
 		if (chi2<chi2min){
 			chi2min=chi2;
 			thecombi=icombi;
-			meanxmin=sumx/nHitsgood;
+			meanxmin=avx;
 		}
 	}
 	nHitsgood=0;
-//	std::cout<<"meanxmin = "<<meanxmin<<std::endl;
 	for (int index = 0; index<v_hit_index.size(); index++){
 		int ihit = v_hit_index[index];
 		double xc = map_xc[(*i_layerID)[ihit]][(*i_wireID)[ihit]];
@@ -138,20 +147,17 @@ int checkLR(){
 			else if (fabs(xr-meanxmin)<1) v_hit_flag[index] = 1;
 			else v_hit_flag[index] = -1;
 		}
-//		if (v_hit_flag[index] == -2) std::cout<<"  ! x["<<(*i_layerID)[ihit]<<"]["<<(*i_wireID)[ihit]<<"] = "<<xc<<"+-"<<v_hit_dd[index]<<" = "<<xl<<" or "<<xr<<std::endl;
-//		else if (v_hit_flag[index] == -1) std::cout<<"  x["<<(*i_layerID)[ihit]<<"]["<<(*i_wireID)[ihit]<<"] = "<<xc<<"-"<<v_hit_dd[index]<<" = "<<xl<<std::endl;
-//		else if (v_hit_flag[index] == 1) std::cout<<"  x["<<(*i_layerID)[ihit]<<"]["<<(*i_wireID)[ihit]<<"] = "<<xc<<"+"<<v_hit_dd[index]<<" = "<<xr<<std::endl;
-//		else if (v_hit_flag[index] == 0) std::cout<<"  x["<<(*i_layerID)[ihit]<<"]["<<(*i_wireID)[ihit]<<"] = "<<xc<<"+-"<<v_hit_dd[index]<<" = "<<xl<<" or "<<xr<<std::endl;
 	}
+//	std::cout<<"meanxmin = "<<meanxmin<<", nHitsgood = "<<nHitsgood<<std::endl;
 	if (nHitsgood<5) return 1;
-//	std::cout<<"chi2min = "<<chi2min<<std::endl;
 	return 0;
 }
 
 int fitxy(){
 	for (int ihit = 0; ihit<O_lr->size(); ihit++){
-		ar_x[ihit] = map_xc[(*O_layerID)[ihit]][(*O_wireID)[ihit]]+(*O_driftD)[ihit];
-		ar_y[ihit] = map_yc[(*O_layerID)[ihit]][(*O_wireID)[ihit]];
+		int index = v_hit_index[ihit];
+		ar_x[ihit] = map_xc[(*i_layerID)[index]][(*i_wireID)[index]]+v_hit_dd[ihit];
+		ar_y[ihit] = map_yc[(*i_layerID)[index]][(*i_wireID)[index]];
 	}
 	if (g_x) delete g_x; g_x = new TGraph(O_lr->size(),&(ar_y[0]),&(ar_x[0]));
 	g_x->Fit("f_x","qN0","");
@@ -348,7 +354,7 @@ int main(int argc, char** argv){
 	double O_tx2;
 	double O_tz1;
 	double O_tz2;
-	int nHits;
+	double O_chi2;
 
 	std::stringstream buf;
 	buf<<"../root/i_"<<runNo<<".layer"<<testlayer<<suffix<<".root";
@@ -364,8 +370,11 @@ int main(int argc, char** argv){
 	ot->Branch("driftT",&O_driftT);
 	ot->Branch("driftD",&O_driftD);
 	ot->Branch("lr",&O_lr);
+	ot->Branch("dxl",&O_dxl);
+	ot->Branch("dxr",&O_dxr);
 	ot->Branch("wireID",&O_wireID);
 	ot->Branch("layerID",&O_layerID);
+	ot->Branch("chi2",&O_chi2);
 
 	//===================Efficiency Counter============================
 	int N_trigger = 0;
@@ -387,7 +396,6 @@ int main(int argc, char** argv){
 		N_trigger++;
 
 		// get basical cdc hit information
-		nHits= 0;
 		nHitsgood = 0;
 		v_hit_index.clear();
 		v_hit_dd.clear();
@@ -414,35 +422,26 @@ int main(int argc, char** argv){
 			int wid = (*i_wireID)[ihit];
 			int status;
 			double dd = t2x(dt,lid,wid,0,status);
-			//if (lid!=testlayer&&!status) continue; // beyond the known range.
 			// FIXME
-			if (lid!=testlayer&&abs(status)!=1) continue; // beyond the known range.
+			if (lid!=testlayer&&!status) continue; // beyond the known range.
+			//if (lid!=testlayer&&abs(status)!=1) continue; // beyond the known range.
+			c_layerhit[lid]++;
 			v_hit_index.push_back(ihit);
 			v_hit_dd.push_back(dd);
-			if (lid==testlayer){
-				v_hit_flag.push_back(-10); // test hits
-			}
-			else{
-				c_layerhit[lid]++;
-				nHits++;
-				if (fabs(dd)>1){
-					nHitsgood++;
-					v_hit_flag.push_back(0); // good hits without left/right sign
-				}
-				else{
-					v_hit_flag.push_back(-2); // default value: bad hits
-				}
+			v_hit_flag.push_back(-2); // default: bad hit
+		}
+		for(int ihit = 0; ihit<v_hit_index.size(); ihit++){
+			int lid = (*i_layerID)[v_hit_index[ihit]];
+			if (lid==testlayer) continue;
+			if ((v_hit_dd[ihit])>1&&c_layerhit[lid]==1){
+				v_hit_flag[ihit]=0; // golden hits
+				nHitsgood++;
 			}
 		}
-//		std::cout<<"nHits = "<<nHits<<", nHitsgood = "<<nHitsgood<<std::endl;
-		if (nHits>7||nHitsgood<3) continue; // multiple tracks
-		for(int ilayer = 1; ilayer<NLAY; ilayer++){
-			if (ilayer==testlayer) continue;
-			if (c_layerhit[ilayer]==1) n1++;
-		}
-//		std::cout<<"n1 = "<<n1<<std::endl;
-		if (n1<5) continue;
+//		std::cout<<"nHitsgood = "<<nHitsgood<<std::endl;
+		if (nHitsgood<3) continue;
 		N_found++;
+//		std::cout<<"Found!"<<std::endl;
 
 		if (checkLR()) continue;
 		N_good++;
@@ -450,7 +449,7 @@ int main(int argc, char** argv){
 
 		for(int index = 0; index<v_hit_index.size(); index++){
 			int ihit = v_hit_index[index];
-			if (v_hit_flag[index]>=-1&&v_hit_flag[index]<=1){
+			if (v_hit_flag[index]>=-1&&v_hit_flag[index]<=1||(*i_layerID)[ihit]==testlayer){
 				double dt = (*i_driftT)[ihit]+t0shift;
 				int lid = (*i_layerID)[ihit];
 				int wid = (*i_wireID)[ihit];
@@ -468,6 +467,9 @@ int main(int argc, char** argv){
 		O_tx2 = f_x->Eval(ydown);
 		O_tz1 = 0;
 		O_tz2 = 0;
+
+		for(int index = 0; index<v_hit_index.size(); index++){
+		}
 
 		ot->Fill();
 	}// end of event loop

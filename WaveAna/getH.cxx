@@ -377,6 +377,7 @@ int main(int argc, char** argv){
 			}
 			if (tdcNhitwire==0){
 				thepeak = -1;
+				continue;
 			}
 
 			// Fill histograms

@@ -36,6 +36,7 @@ PROJECT4 = check_xt
 PROJECT5 = get_delta
 PROJECT6 = get_wire
 PROJECT7 = get_group
+PROJECT8 = get_mcgroup
 
 .PHONY: all
 all: $(PROJECT5) $(PROJECT4) $(PROJECT3) $(PROJECT2) $(PROJECT1) $(PROJECT6) $(PROJECT7) $(PROJECT8) $(PROJECT9) $(PROJECT10)

@@ -38,16 +38,24 @@ int main(int argc, char** argv){
 
 	TFile *ofile = new TFile("output.root","RECREATE");
 	TTree * ot= new TTree("t","t");
+	int nGoodPairs;
+	int nOKPairs;
+	int nAllPairs;
 	int nLayersWith1GoodHit;
 	int nLayersWith1OKHit;
 	int nLayersWith1Hit;
+	int nLayersWithMoreHits;
 	int nHitsGood;
 	int nHitsOK;
 	int nHits;
 	int nHitsAndNoise;
+	ot->Branch("ngp",&nGoodPairs);
+	ot->Branch("nop",&nOKPairs);
+	ot->Branch("np",&nAllPairs);
 	ot->Branch("n1g",&nLayersWith1GoodHit);
 	ot->Branch("n1o",&nLayersWith1OKHit);
 	ot->Branch("n1",&nLayersWith1Hit);
+	ot->Branch("nm",&nLayersWithMoreHits);
 	ot->Branch("N",&nHits);
 	ot->Branch("No",&nHitsOK);
 	ot->Branch("Ng",&nHitsGood);
@@ -63,9 +71,13 @@ int main(int argc, char** argv){
 	for ( int i = 0 ; i<N; i++){
 		if (i%1000==0) printf("%lf%...\n",(double)i/N*100);
 		it->GetEntry(i);
+		nGoodPairs=0;
+		nOKPairs=0;
+		nAllPairs=0;
 		nLayersWith1GoodHit=0;
 		nLayersWith1OKHit=0;
 		nLayersWith1Hit=0;
+		nLayersWithMoreHits=0;
 		nHitsGood=0;
 		nHitsOK=0;
 		nHits=0;
@@ -76,16 +88,16 @@ int main(int argc, char** argv){
 			isall[ilayer] = 0;
 		}
 		for (int ihit = 0; ihit<layerID->size(); ihit++){
-			if ((*layerID)[ihit]==9||(*layerID)[ihit]==5) continue;
-			if (fabs((*driftT)[ihit])>20&&fabs((*driftT)[ihit])<210){
+			if ((*layerID)[ihit]==0||(*layerID)[ihit]==5) continue;
+			if (((*driftT)[ihit])>23&&((*driftT)[ihit])<217){
 				isgood[(*layerID)[ihit]]++;
 				nHitsGood++;
 			}
-			if (fabs((*driftT)[ihit])>5&&fabs((*driftT)[ihit])<220){
+			if (((*driftT)[ihit])>5&&((*driftT)[ihit])<217){
 				isok[(*layerID)[ihit]]++;
 				nHitsOK++;
 			}
-			if (fabs((*driftT)[ihit])>-10&&fabs((*driftT)[ihit])<235.3){
+			if (((*driftT)[ihit])>5&&((*driftT)[ihit])<450){
 				isall[(*layerID)[ihit]]++;
 				nHits++;
 			}
@@ -94,7 +106,13 @@ int main(int argc, char** argv){
 		for (int ilayer = 0; ilayer<NLAY; ilayer++){
 			if (isgood[ilayer]==1) nLayersWith1GoodHit++;
 			if (isall[ilayer]==1) nLayersWith1Hit++;
+			if (isall[ilayer]>=3) nLayersWithMoreHits++;
 			if (isok[ilayer]==1) nLayersWith1OKHit++;
+			if (ilayer<NLAY-1){
+				if (isgood[ilayer]==1&&isgood[ilayer+1]==1) nGoodPairs++;
+				if (isok[ilayer]==1&&isok[ilayer+1]==1) nOKPairs++;
+				if (isall[ilayer]==1&&isall[ilayer+1]==1) nAllPairs++;
+			}
 		}
 		ot->Fill();
 	}

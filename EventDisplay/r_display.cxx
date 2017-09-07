@@ -154,7 +154,7 @@ int main(int argc, char** argv){
 	TTree_wirepos->SetMarkerStyle(20);
 	TTree_wirepos->SetMarkerSize(0.5);
 //	for ( int i = 0 ; i<it->GetEntries(); i++){
-	for ( int i = 0 ; i<10000; i++){
+	for ( int i = 0 ; i<100; i++){
 //		if (i!=195
 //		  &&i!=205
 //		  )
@@ -190,7 +190,7 @@ int main(int argc, char** argv){
 //				prefix = "prepeak.";
 //		}
 
-		if (prefix=="") continue;
+//		if (prefix=="") continue;
 
 		h0->SetTitle(Form("Entry#%d, TriggerNumber#%d, %d hits",i,triggerNumber,i_nh[hmin]));
 		c->cd();

@@ -17,7 +17,7 @@
 #include "TVector3.h"
 #include "TCanvas.h"
 
-#define NLAY 8
+#define NLAY 9
 #define NCEL 11
 #define NCHT 96
 #define NCHS 48
@@ -76,7 +76,7 @@ double errord[NLAY][NCEL];
 int wmax[NLAY]; // maximum wireID
 
 //===================About chamber============================
-double Lchamebr = 59.917; // cm
+double Lchamebr = 599.17; // mm
 // FIXME: currently only use costantant drift velocity. Will implement an interface to load xt cureves later.
 double tres = 10;
 double driftTMax = 0; // ns
@@ -458,12 +458,12 @@ int main(int argc, char** argv){
 
 	for (int i = 0; i<TTree_wirepos->GetEntries(); i++){
 		TTree_wirepos->GetEntry(i);
-		if (wp_lid>=1&&wp_lid<=7){
-			map_xhv[wp_lid][wp_wid] = wp_xhv/10.;
-			map_yhv[wp_lid][wp_wid] = wp_yhv/10.;
-			map_xro[wp_lid][wp_wid] = wp_xro/10.;
-			map_yro[wp_lid][wp_wid] = wp_yro/10.;
-			errord[wp_lid][wp_wid] = 0.02;
+		if (wp_lid>=1&&wp_lid<=8){
+			map_xhv[wp_lid][wp_wid] = wp_xhv;
+			map_yhv[wp_lid][wp_wid] = wp_yhv;
+			map_xro[wp_lid][wp_wid] = wp_xro;
+			map_yro[wp_lid][wp_wid] = wp_yro;
+			errord[wp_lid][wp_wid] = 0.2;
 			map_wid[wp_ch+NCHS*wp_bid] = wp_wid;
 			map_lid[wp_ch+NCHS*wp_bid] = wp_lid;
 			if (wmax[wp_lid]<wp_wid) wmax[wp_lid] = wp_wid;
@@ -479,10 +479,11 @@ int main(int argc, char** argv){
 				else{
 					map_k[k][i][j] = 10;
 				}
-				printf("  [%d,%d]: %lf\n",i,j,map_k[k][i][j]);
+				printf("  [%d,%d]: %lf\n",i,j,map_k[k][i][j]*Lchamebr);
 			}
 		}
 	}
+	return 0;
 
 	//===================Get run info============================
 	TFile * if_run = new TFile("../info/run-info.root");

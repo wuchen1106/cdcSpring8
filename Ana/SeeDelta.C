@@ -1,6 +1,7 @@
 {
-	TFile * f1 = new TFile("../info/xt.117.t0fit.1xt.7.root");
-	TFile * f2 = new TFile("../info/xt.117.t0fit.1xt.8.root");
+	int iteration = 17;
+	TFile * f1 = new TFile(Form("../info/xt.117.t0fit.1xt.%d.root",iteration));
+	TFile * f2 = new TFile(Form("../info/xt.117.t0fit.1xt.%d.root",iteration+1));
 	TF1* f1_left[9];
 	TF1* f1_left_end[9];
 	TF1* f1_right[9];
@@ -57,21 +58,21 @@
 			vdx_left[il]->push_back(f2_left[il]->Eval(it)-f1_left[il]->Eval(it));
 			av+=fabs(f2_left[il]->Eval(it)-f1_left[il]->Eval(it));
 		}
-		//for (double it = f2_left_end[il]->GetXmin(); it<=f2_left_end[il]->GetXmax(); it+=2){
-		//	vt_left[il]->push_back(it);
-		//	vdx_left[il]->push_back(f2_left_end[il]->Eval(it)-f1_left_end[il]->Eval(it));
-		//	av+=fabs(f2_left_end[il]->Eval(it)-f1_left_end[il]->Eval(it));
-		//}
+		for (double it = f2_left_end[il]->GetXmin(); it<=f2_left_end[il]->GetXmax(); it+=2){
+			vt_left[il]->push_back(it);
+			vdx_left[il]->push_back(f2_left_end[il]->Eval(it)-f1_left_end[il]->Eval(it));
+			av+=fabs(f2_left_end[il]->Eval(it)-f1_left_end[il]->Eval(it));
+		}
 		for (double it = f2_right[il]->GetXmin(); it<=f2_right[il]->GetXmax(); it+=2){
 			vt_right[il]->push_back(it);
 			vdx_right[il]->push_back(f2_right[il]->Eval(it)-f1_right[il]->Eval(it));
 			av+=fabs(f2_right[il]->Eval(it)-f1_right[il]->Eval(it));
 		}
-		//for (double it = f2_right_end[il]->GetXmin(); it<=f2_right_end[il]->GetXmax(); it+=2){
-		//	vt_right[il]->push_back(it);
-		//	vdx_right[il]->push_back(f2_right_end[il]->Eval(it)-f1_right_end[il]->Eval(it));
-		//	av+=fabs(f2_right_end[il]->Eval(it)-f1_right_end[il]->Eval(it));
-		//}
+		for (double it = f2_right_end[il]->GetXmin(); it<=f2_right_end[il]->GetXmax(); it+=2){
+			vt_right[il]->push_back(it);
+			vdx_right[il]->push_back(f2_right_end[il]->Eval(it)-f1_right_end[il]->Eval(it));
+			av+=fabs(f2_right_end[il]->Eval(it)-f1_right_end[il]->Eval(it));
+		}
 		av/=(vt_right[il]->size()+vt_left[il]->size());
 		gd_left[il]=new TGraph(vt_left[il]->size(),&((*vt_left[il])[0]),&((*vdx_left[il])[0]));
 		gd_right[il]=new TGraph(vt_right[il]->size(),&((*vt_right[il])[0]),&((*vdx_right[il])[0]));
@@ -80,6 +81,7 @@
 		gd_left[il]->Draw("LSAME");
 		gd_right[il]->Draw("LSAME");
 		legend->AddEntry(gd_left[il],Form("Layer %d: %.2lf mm",il,av),"lp");
+		printf("%d %d %lf\n",iteration,il,av);
 	}
 	legend->Draw("SAME");
 	new TCanvas();

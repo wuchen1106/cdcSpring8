@@ -76,11 +76,10 @@ int main(int argc, char** argv){
 	}
 
 	TH1D * h_x[88][NBIN];
-	TF1 * f_t[88][NBIN];
+	TF1 * f_x = new TF1("f_x","gaus",-10,10);
 	for (int i = 0; i<NBIN; i++){
 		for (int j = 0; j<88; j++){
 			h_x[j][i] = new TH1D(Form("h%d_%d_%d",j/11+1,j%11,i),Form("Layer%d Cell%d: Drift Distance (Drift Time = %lf)",j/11+1,j%11,n2t(i)),256,-10,10);
-			f_t[j][i] = new TF1(Form("f%d_%d_%d",j/11+1,j%11,i),"gaus",TSTART,TMAX);
 		}
 	}
 	TF1 * f_left[88];
@@ -169,10 +168,12 @@ int main(int argc, char** argv){
 	TGraph * g_left_end = 0;
 	TGraph * g_right_end = 0;
 
+	TChain * ichain = 0;
 	for (int il = 1; il<=8; il++){
 		std::cout<<"################################"<<std::endl;
 		std::cout<<"       "<<il<<std::endl;
-		TChain * ichain = new TChain("t","t");
+		if (ichain) delete ichain;
+		ichain = new TChain("t","t");
 		ichain->SetMarkerStyle(1);
 		ichain->SetMarkerColor(kMagenta);
 		ichain->Add(Form("../root/t_%d.layer%d",runNo,il)+suffix+".root");
@@ -232,29 +233,29 @@ int main(int argc, char** argv){
 			for (int i = 0; i<NBIN; i++){
 				nent = h_x[index][i]->Integral();
 				int hmax = h_x[index][i]->GetMaximum();
-				double tleft = 0;
-				double tright = 0;
+				double xleft = 0;
+				double xright = 0;
 				for (int ibin = 1; ibin<=256; ibin++){
-					if (!tleft&&h_x[index][i]->GetBinContent(ibin)>hmax/3.) tleft = h_x[index][i]->GetBinCenter(ibin);
-					if (tleft&&!tright&&h_x[index][i]->GetBinContent(ibin)>hmax/3.){
-						tright = h_x[index][i]->GetBinCenter(ibin);
+					if (!xleft&&h_x[index][i]->GetBinContent(ibin)>hmax/3.) xleft = h_x[index][i]->GetBinCenter(ibin);
+					if (xleft&&!xright&&h_x[index][i]->GetBinContent(ibin)>hmax/3.){
+						xright = h_x[index][i]->GetBinCenter(ibin);
 						break;
 					}
 				}
 				if (nent){
-					h_x[index][i]->Fit(Form("f%d_%d_%d",il,iw,i),"qN0","",tleft,tright);
-					c->cd();
+					h_x[index][i]->Fit("f_x","qN0","",xleft,xright);
+					//c->cd();
 					//h_x[index][i]->Draw();
-					//f_t[index][i]->Draw("SAME");
+					//f_x->Draw("SAME");
 					//c->SaveAs(Form("dt.%d.%d.%d.%d.png",runNo,il,iw,i));
 				}
-				x = f_t[index][i]->GetParameter(1);
-				sig = f_t[index][i]->GetParameter(2);
+				x = f_x->GetParameter(1);
+				sig = f_x->GetParameter(2);
 				t = n2t(i);
 				otree->Fill();
 				if (nent>50&&fabs(x)<7&&fabs(x)>2){avsig+=sig;nxtpoints++;}
-				if (!tturnl&&nent>50&&x>=-7.5) tturnl = t;
-				if (!tturnr&&nent>50&&x>=7.5) tturnr = t;
+				if (!tturnl&&nent>50&&x>=-7.7) tturnl = t;
+				if (!tturnr&&nent>50&&x>=7.7) tturnr = t;
 			}
 			if (!tturnl) tturnl = TTURN;
 			if (!tturnr) tturnr = TTURN;
