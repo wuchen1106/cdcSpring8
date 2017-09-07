@@ -1,0 +1,10 @@
+1. Configuration files from Sakamoto-san: holepos_PT4_ver5 holepos_PT4_ver6 holepos_PT4_ver7
+    holepos_PT4_ver5 and holepos_PT4_ver6 are old versions. Should use holepos_PT4_ver7.
+    wirepos.proto4.v6.root is modified according to holepos_PT4_ver6.
+    wirepos.proto4.sw.ver7 is modified according to holepos_PT4_ver7.
+2. Configuration files from g4sim simulation: cdcpos.*
+    cdcpos.150616 is the configuration we assumed before Dec 2015.
+    cdcpos.151225 is the one we corrected according to discussion with REPIC people.
+    cdcpos.old is a historical log file which I cannot remember.
+    cdcpos is the one matching with wirepos.proto4.sw.ver7.
+    It has layer 1~7 with sense/field wire flipped comparing with cdcpos.150616.
