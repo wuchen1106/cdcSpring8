@@ -57,3 +57,5 @@ WaveAna/getD
 WaveAna/getH
 WaveAna/getP
 WaveAna/loader_C.d
+SimAna/generateXT
+SimAna/transform
