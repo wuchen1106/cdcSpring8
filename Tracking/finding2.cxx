@@ -200,17 +200,17 @@ double t2x(double time, int lid, int wid, int lr, int & status){
 
 int main(int argc, char** argv){
 
-	if (argc<2){
+	if (argc<3){
 		print_usage(argv[0]);
 		return 1;
 	}
 	int runNo = (int)strtol(argv[1],NULL,10);
+	testlayer = (int)strtol(argv[2],NULL,10);
 	std::string suffix = "";
-	if (argc>=3){
-		suffix  = argv[2];
+	if (argc>=4){
+		suffix  = argv[3];
 		suffix="."+suffix;
 	}
-	if (argc>=4) testlayer = (int)strtol(argv[3],NULL,10);
 	int t0shift = 0;
 	if (argc>=5) t0shift = (int)strtol(argv[4],NULL,10);
 	printf("t0shift = %d\n",t0shift);

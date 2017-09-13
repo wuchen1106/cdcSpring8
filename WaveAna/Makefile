@@ -66,9 +66,6 @@ $(PROJECT8): $(OBJ) $(PROJECT8).cxx
 $(PROJECT9): $(OBJ) $(PROJECT9).cxx
 	$(CXX) $(CXXFLAGS) $(INCDIR) $(LIBDIR) $(LIBS) $(PROJECT9).cxx $(OBJ) -o $(PROJECT9)
 
-$(PROJECT10): $(OBJ) $(PROJECT10).cpp
-	$(CXX) $(CXXFLAGS) $(INCDIR) $(LIBDIR) $(LIBS) $(PROJECT10).cpp $(OBJ) -o $(PROJECT10)
-
 #--------------------------PART 4: about make options-------------------------------------------
 # You can create new options to realise special functions
 # Here is an example showing how to make clean and make a specified user defined package

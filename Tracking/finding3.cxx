@@ -478,6 +478,8 @@ int checkHits(){
 
 int fityz(){
 	// loop in different left/right combinations
+	// FIXME: is nHitsgood correct here?
+	int ncombi = pow(2,nHitsgood);
 	for (int icombi = 0; icombi<ncombi; icombi++){
 		// get y z arrays
 		for (int ipair = 0; ipair<v_pair_iup.size(); ipair++){

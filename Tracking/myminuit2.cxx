@@ -318,8 +318,6 @@ int main(int argc, char** argv){
 		//===================Set Initial============================
 		sliX = (xup-xdown)/deltay;
 		sliZ = (zup-zdown)/deltay;
-		// FIXME: to test large slope
-		sliZ = -0.3;
 		iniX = xup;
 		iniZ = zup;
 		badlayer = -1;
@@ -368,7 +366,7 @@ int main(int argc, char** argv){
 		//}
 
 		//===================Get Info for output============================
-		if (o_fitD) delete o_fitD;
+		if (o_fitD) {delete o_fitD; o_fitD = 0;}
 		o_fitD = new std::vector<double>;
 		for (int ihit = 0; ihit<i_driftD->size(); ihit++){
 			o_fitD->push_back(get_dist((*i_layerID)[ihit],(*i_wireID)[ihit],slX,inX,slZ,inZ));
@@ -770,7 +768,7 @@ void getchi2(Double_t &f, Double_t slx, Double_t inx, Double_t slz, Double_t inz
 		dfit = get_dist((*i_layerID)[i],(*i_wireID)[i],slx,inx,slz,inz);
 //		double error = errord[(*i_layerID)[i]][(*i_wireID)[i]]*(fabs(fabs(dfit)-4)+2/1.5)*1.5/4;
 //		double error = errord[(*i_layerID)[i]][(*i_wireID)[i]];
-		// FIXME
+		// FIXME now use error function to calculate error
 		double error = 0.2;
 		//if (fabs(dfit)<5.5){
 		//	if (fabs(dfit)>3.5) error = 0.15;
@@ -814,7 +812,7 @@ void do_fit(Double_t sliX, Double_t iniX,Double_t sliZ, Double_t iniZ){
 //	gMinuit->mnparm(3, "interceptZ", iniZ, inerZ/1.e3, iniZ-inerZ,iniZ+inerZ,ierflg);
 	gMinuit->mnparm(0, "slopeX", sliX, slerX/1.e4, -slerX,slerX,ierflg);
 	gMinuit->mnparm(1, "interceptX", iniX, inerX/1.e4, -inerX,inerX,ierflg);
-	gMinuit->mnparm(2, "slopeZ", sliZ, slerZ/1.e4, -0.3-slerZ,-0.3+slerZ,ierflg);
+	gMinuit->mnparm(2, "slopeZ", sliZ, slerZ/1.e4, -slerZ,slerZ,ierflg);
 	gMinuit->mnparm(3, "interceptZ", iniZ, inerZ/1.e4, -inerZ,inerZ,ierflg);
 //	std::cout<<"gMinuit->mnparm(0, \"slopeX\","<< sliX<<", "<<slerX/1.e2<<", "<<sliX-slerX<<","<<sliX+slerX<<","<<ierflg<<");"<<std::endl;
 //	std::cout<<"gMinuit->mnparm(1, \"interceptX\","<< iniX<<", "<<inerX/1.e2<<", "<<iniX-inerX<<","<<iniX+fabs(inerX)<<","<<ierflg<<");"<<std::endl;

@@ -152,7 +152,8 @@ int main(int argc, char** argv){
 				temp_width[ihit] = clk-clockNumberDriftTime[ch][ihit];
 				o_areaall[ch] += temp_sum[ihit];
 				for(int iH = 0; iH<50; iH++){
-					if (!iH||temp_peak[ihit]>=o_pedestal[ch]+iH-1) o_nPeaks[ch][iH]++;
+//					if (!iH||temp_peak[ihit]>=o_pedestal[ch]+iH-1) o_nPeaks[ch][iH]++;
+					if (!iH||temp_sum[ihit]>=iH-1) o_nPeaks[ch][iH]++;
 				}
 			}
 			for(int iH = 0; iH<50; iH++){
