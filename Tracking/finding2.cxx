@@ -81,7 +81,7 @@ int vtlml[88];
 int vtlmr[88];
 
 //===================About hits============================
-int c_layerhit[NLAY];
+int a_nHitsLayer[NLAY];
 
 //______________________________________________________________________________
 void print_usage(char* prog_name)
@@ -402,7 +402,7 @@ int main(int argc, char** argv){
 		v_hit_flag.clear();
 		int n1 = 0;
 		for (int j = 0; j<NLAY; j++){
-			c_layerhit[j] = 0;
+			a_nHitsLayer[j] = 0;
 		}
 		for (int ihit = 0; ihit<i_type->size(); ihit++){
 			// FIXME: only use center cells
@@ -423,20 +423,18 @@ int main(int argc, char** argv){
 			int status;
 			double dd = t2x(dt,lid,wid,0,status);
 			// FIXME
-			if (lid!=testlayer&&!status) continue; // beyond the known range.
-			//if (lid!=testlayer&&abs(status)!=1) continue; // beyond the known range.
-			c_layerhit[lid]++;
+			if (lid!=testlayer&&!status) continue; // not the test layer and beyond the known range.
+			a_nHitsLayer[lid]++;
 			v_hit_index.push_back(ihit);
 			v_hit_dd.push_back(dd);
-			v_hit_flag.push_back(-2); // default: bad hit
-		}
-		for(int ihit = 0; ihit<v_hit_index.size(); ihit++){
-			int lid = (*i_layerID)[v_hit_index[ihit]];
-			if (lid==testlayer) continue;
-			if ((v_hit_dd[ihit])>1&&c_layerhit[lid]==1){
+//			if (lid!=testlayer&&dd>1&&a_nHitsLayer[lid]==1){ // driftD larger than 1 mm and no good hit in this layer yet.
+			if (lid!=testlayer&&dd>1){ // driftD larger than 1 mm
 				v_hit_flag[ihit]=0; // golden hits
 				nHitsgood++;
 			}
+            else{
+                v_hit_flag.push_back(-2); // default: bad hit
+            }
 		}
 //		std::cout<<"nHitsgood = "<<nHitsgood<<std::endl;
 		if (nHitsgood<3) continue;
@@ -449,7 +447,7 @@ int main(int argc, char** argv){
 
 		for(int index = 0; index<v_hit_index.size(); index++){
 			int ihit = v_hit_index[index];
-			if (v_hit_flag[index]>=-1&&v_hit_flag[index]<=1||(*i_layerID)[ihit]==testlayer){
+			if (v_hit_flag[index]>=-1&&v_hit_flag[index]<=1||(*i_layerID)[ihit]==testlayer){ // only keep test layer hits and good hits in other layers
 				double dt = (*i_driftT)[ihit]+t0shift;
 				int lid = (*i_layerID)[ihit];
 				int wid = (*i_wireID)[ihit];
@@ -468,8 +466,8 @@ int main(int argc, char** argv){
 		O_tz1 = 0;
 		O_tz2 = 0;
 
-		for(int index = 0; index<v_hit_index.size(); index++){
-		}
+//		for(int index = 0; index<v_hit_index.size(); index++){
+//		}
 
 		ot->Fill();
 	}// end of event loop
