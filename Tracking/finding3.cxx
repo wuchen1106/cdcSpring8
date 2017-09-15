@@ -56,7 +56,7 @@ std::vector<int> v_pair_lid;
 std::vector<int> v_pair_flag;
 std::vector<int> v_pair_iup;
 std::vector<int> v_pair_idown;
-int nHits_ldd[NLAY];
+int a_nHitsLayer[NLAY];
 
 //===================About chamber============================
 double U = 8; // mm
@@ -64,6 +64,7 @@ double Lchamebr = 599.17; // mm
 double zhv = -Lchamebr/2;
 double zro = Lchamebr/2;
 
+//===================About wireposition============================
 double map_xc[NLAY][NCEL];
 double map_yc[NLAY][NCEL];
 double map_xhv[NLAY][NCEL];
@@ -90,17 +91,17 @@ int vtlmr[88];
 
 int main(int argc, char** argv){
 
-	if (argc<2){
+	if (argc<3){
 		print_usage(argv[0]);
 		return 1;
 	}
 	int runNo = (int)strtol(argv[1],NULL,10);
+	testlayer = (int)strtol(argv[2],NULL,10);
 	std::string suffix = "";
-	if (argc>=3){
-		suffix  = argv[2];
+	if (argc>=4){
+		suffix  = argv[3];
 		suffix="."+suffix;
 	}
-	if (argc>=4) testlayer = (int)strtol(argv[3],NULL,10);
 	int t0shift = 0;
 	if (argc>=5) t0shift = (int)strtol(argv[4],NULL,10);
 	printf("t0shift = %d\n",t0shift);
@@ -191,18 +192,17 @@ int main(int argc, char** argv){
 		}
 	}
 	for(int ilayer = 0; ilayer<NLAY-1; ilayer++){
-		printf("layer %d & %d\n",ilayer,ilayer+1);
 		for (int iwire = 0; iwire<NCEL; iwire++){
 			if (!map_check[ilayer][iwire]) continue;
 			for (int jwire = 0; jwire<NCEL; jwire++){
 				if (!map_check[ilayer+1][jwire]) continue;
 				if ((-(map_xro[ilayer+1][jwire]-map_xhv[ilayer+1][jwire])+(map_xro[ilayer][iwire]-map_xhv[ilayer][iwire]))){
-					map_k[ilayer][iwire][jwire] = ((map_xro[ilayer+1][jwire]+map_xhv[ilayer+1][jwire])-(map_xro[ilayer][iwire]+map_xhv[ilayer][iwire]))/(-(map_xro[ilayer+1][jwire]-map_xhv[ilayer+1][jwire])+(map_xro[ilayer][iwire]-map_xhv[ilayer][iwire]));
+					map_k[ilayer][iwire][jwire] = ((map_xro[ilayer+1][jwire]+map_xhv[ilayer+1][jwire])-(map_xro[ilayer][iwire]+map_xhv[ilayer][iwire]))/((map_xro[ilayer][iwire]-map_xhv[ilayer][iwire])-(map_xro[ilayer+1][jwire]-map_xhv[ilayer+1][jwire]));
 				}
 				else{
 					map_k[ilayer][iwire][jwire] = 10;
 				}
-				printf("  [%d,%d]: %lf\n",iwire,jwire,map_k[ilayer][iwire][jwire]*Lchamebr/2);
+				printf("%d %d %d %d %lf %lf\n",ilayer,ilayer+1,iwire,jwire,map_k[ilayer][iwire][jwire]*Lchamebr/2,(map_xro[ilayer][iwire]*(1+map_k[ilayer][iwire][jwire])+map_xhv[ilayer][iwire]*(1-map_k[ilayer][iwire][jwire]))/2.);
 			}
 		}
 	}
@@ -240,7 +240,6 @@ int main(int argc, char** argv){
 		vtrmr[(lid-1)*11+wid] = trmr;
 		printf("%d,%d: %d | %d | %d | %d || %d | %d | %d | %d\n",lid,wid,tlel,tler,tlml,tlmr,trml,trmr,trel,trer);
 	}
-	return 0;
 
 	//===================Get input ROOT file============================
 	TChain * c = new TChain("t","t");
@@ -264,10 +263,12 @@ int main(int argc, char** argv){
 	double O_tz1;
 	double O_tz2;
 	double O_chi2;
-	std::vector<int> * O_wireID = 0;
-	std::vector<int> * O_layerID = 0;
-	std::vector<int> * O_lr = 0;
-	std::vector<double> * O_driftD = 0;
+    std::vector<int> * O_wireID = 0;
+    std::vector<int> * O_layerID = 0;
+    std::vector<int> * O_lr = 0;
+    std::vector<double> * O_driftD = 0;
+    std::vector<double> * O_dxl= 0;
+    std::vector<double> * O_dxr= 0;
 
 	std::stringstream buf;
 	buf<<"../root/i_"<<runNo<<".layer"<<testlayer<<suffix<<".root";
@@ -283,6 +284,8 @@ int main(int argc, char** argv){
 	ot->Branch("driftT",&O_driftT);
 	ot->Branch("driftD",&O_driftD);
 	ot->Branch("lr",&O_lr);
+	ot->Branch("dxl",&O_dxl);
+	ot->Branch("dxr",&O_dxr);
 	ot->Branch("wireID",&O_wireID);
 	ot->Branch("layerID",&O_layerID);
 	ot->Branch("chi2",&O_chi2);
@@ -314,7 +317,7 @@ int main(int argc, char** argv){
 		v_hit_flag.clear();
 		int n1 = 0;
 		for (int j = 0; j<NLAY; j++){
-			nHits_ldd[j] = 0;
+			a_nHitsLayer[j] = 0;
 		}
 		for (int ihit = 0; ihit<i_type->size(); ihit++){
 			if ((*i_type)[ihit]!=0&&(*i_type)[ihit]!=1) continue; // including guard layer but without dummy layer
@@ -324,12 +327,12 @@ int main(int argc, char** argv){
 			int status;
 			double dd = t2x(dt,lid,wid,0,status);
 			// FIXME: maybe we want to put more strict limitations on this
-			if (lid!=testlayer&&!status) continue; // beyond the known range.
+			if (lid!=testlayer&&!status) continue; // not the test layer and beyond the known range.
 			//if (lid!=testlayer&&abs(status)!=1) continue; // beyond the known range; without corner hits (tail)
+            a_nHitsLayer[lid]++;
 			v_hit_index.push_back(ihit);
 			v_hit_dd.push_back(dd);
 			if (dd>1){
-				nHits_ldd[lid]++;
 				v_hit_flag.push_back(1); // default: right hit
 			}
 			else{
@@ -339,10 +342,10 @@ int main(int argc, char** argv){
 
 		//========================================================================================================
 		// To find pair candidates: two adjacent golden layers
-		// golden layer: with only 1 hit and dd>1mm
+		// golden layer: with only 1 hit
 		for(int ilayer = 0; ilayer<NLAY-1; ilayer++){
 			if (ilayer==testlayer||ilayer+1==testlayer) continue;
-			if (nHits_ldd[ilayer]==1&&nHits_ldd[ilayer+1]==1){// a new pair candidate
+			if (a_nHitsLayer[ilayer]==1&&a_nHitsLayer[ilayer+1]==1){// a new pair candidate
 				v_pair_lid.push_back(ilayer);
 				v_pair_flag.push_back(0); // default: no problem
 				v_pair_idown.push_back(-1);
@@ -352,10 +355,13 @@ int main(int argc, char** argv){
 //		std::cout<<"nPairs = "<<v_pair_lid.size()<<std::endl;
 		if (v_pair_lid.size()<2) continue; // Need at least two points to determine the track on y-z projection
 		N_found++;
+
+		//========================================================================================================
+		// To get the hit indices for these pair candidates
 		for(int ipair = 0; ipair<v_pair_lid.size(); ipair++){
 			int thelayer=v_pair_lid[ipair];
 			for(int ihit = 0; ihit<v_hit_index.size(); ihit++){
-				if (!v_hit_flag[ihit]) continue; // golden hits should be with large drift distance (>1mm)
+//				if (!v_hit_flag[ihit]) continue; // golden hits should be with large drift distance (>1mm)
 				if (lid==thelayer){
 					v_pair_idown[ipair]=ihit;
 				}
@@ -386,9 +392,12 @@ int main(int argc, char** argv){
 		O_tz1 = f_z->Eval(yup);
 		O_tz2 = f_z->Eval(ydown);
 
+		//========================================================================================================
+		// To push back good hits
 		for(int index = 0; index<v_hit_index.size(); index++){
 			int ihit = v_hit_index[index];
-			if (v_hit_flag[index]>=-1&&v_hit_flag[index]<=1){ // no bad hits
+			if (v_hit_flag[index]>=-1&&v_hit_flag[index]<=1||(*i_layerID)[ihit]==testlayer){ // only keep test layer hits and good hits in other layers
+//			if (v_hit_flag[index]>=-1&&v_hit_flag[index]<=1){ // no bad hits
 				double dt = (*i_driftT)[ihit]+t0shift;
 				int lid = (*i_layerID)[ihit];
 				int wid = (*i_wireID)[ihit];
