@@ -177,6 +177,10 @@ int main(int argc, char** argv){
 			wyhv = map_yhv[lid][wid];
 			wy = (wyro+wyhv)/2.;
 			wx = (wxro+wxhv)/2.;
+			// FIXME: Use fixed x y position accroding to z?
+//			wz = ((yup-wy)*zdown+(wy-ydown)*zup)/(yup-ydown);
+//			wx = ((wzro-wz)*wxhv+(wz-wzhv)*wxro)/(wzro-wzhv);
+//			wy = ((wzro-wz)*wyhv+(wz-wzhv)*wyro)/(wzro-wzhv);
 			dd = (*i_driftD)[ihit];
 			ewiret[lid][wid] = new TEllipse(wx,wy,dd,dd);
 			ewiret[lid][wid]->SetFillStyle(0);
