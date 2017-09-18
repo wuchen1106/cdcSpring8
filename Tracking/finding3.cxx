@@ -45,7 +45,7 @@ double ydown = 527.60011;
 TF1 * f_x = new TF1("f_x","pol1",500,640); // x VS y
 TGraph * g_x = 0; // x VS y
 TF1 * f_z = new TF1("f_z","pol1",500,640); // z VS y
-TGraph * g_z = 0; // x VS y
+TGraph * g_z = 0; // z VS y
 
 int testlayer = 0;
 int nHitsgood;
@@ -302,30 +302,32 @@ int main(int argc, char** argv){
 		if (i%1000==0) std::cout<<(double)i/N*100<<"%..."<<std::endl;
 		c->GetEntry(i);
 //		printf("*****triggerNumber %d*******\n",triggerNumber);
+		N_trigger++; // triggered event
+
+		//========================================================================================================
+		// prepare
 		if(O_lr) delete O_lr; O_lr= new std::vector<int>;
 		if(O_driftT) delete O_driftT; O_driftT = new std::vector<double>;
 		if(O_driftD) delete O_driftD; O_driftD = new std::vector<double>;
 		if(O_wireID) delete O_wireID; O_wireID = new std::vector<int>;
 		if(O_layerID) delete O_layerID; O_layerID = new std::vector<int>;
-		N_trigger++;
-
-		//========================================================================================================
-		// get basical cdc hit information
-		nHitsgood = 0;
 		v_hit_index.clear();
 		v_hit_dd.clear();
 		v_hit_flag.clear();
-		int n1 = 0;
 		for (int j = 0; j<NLAY; j++){
 			a_nHitsLayer[j] = 0;
 		}
+		nHitsgood = 0;
+
+		//========================================================================================================
+		// get basical cdc hit information
 		for (int ihit = 0; ihit<i_type->size(); ihit++){
 			if ((*i_type)[ihit]!=0&&(*i_type)[ihit]!=1) continue; // including guard layer but without dummy layer
 			double dt = (*i_driftT)[ihit]+t0shift;
 			int lid = (*i_layerID)[ihit];
 			int wid = (*i_wireID)[ihit];
 			int status;
-			double dd = t2x(dt,lid,wid,0,status);
+			double dd = t2x(dt,lid,wid,0,status); // 1: right; 2: right end; -1: left; -2: left end; 0 out of range
 			// FIXME: maybe we want to put more strict limitations on this
 			if (lid!=testlayer&&!status) continue; // not the test layer and beyond the known range.
 			//if (lid!=testlayer&&abs(status)!=1) continue; // beyond the known range; without corner hits (tail)
@@ -405,7 +407,7 @@ int main(int argc, char** argv){
 				O_layerID->push_back(lid);
 				O_driftT->push_back(dt);
 				int status;
-				O_driftD->push_back(t2x(dt,lid,wid,v_hit_flag[index],status));
+				O_driftD->push_back(t2x(dt,lid,wid,v_hit_flag[index],status)); // 1: right; 2: right end; -1: left; -2: left end; 0 out of range
 				O_lr->push_back(v_hit_flag[index]);
 			}
 		}
@@ -508,7 +510,7 @@ int fityz(){
 int fityx(){
 }
 
-double t2x(double time, int lid, int wid, int lr, int & status){
+double t2x(double time, int lid, int wid, int lr, int & status){ // 1: right; 2: right end; -1: left; -2: left end; 0 out of range
 	TF1* fl=0;
 	TF1* fr=0;
 	// FIXME

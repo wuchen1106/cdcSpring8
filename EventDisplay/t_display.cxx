@@ -1,7 +1,7 @@
 #include "TText.h"
 #include "TEllipse.h"
 #include "TLine.h"
-#include "TH2D.h"
+#include "TAxis.h"
 #include "TCanvas.h"
 #include "TChain.h"
 #include "TTree.h"
@@ -11,6 +11,7 @@
 #include "TLatex.h"
 #include "TMarker.h"
 #include "TGraph.h"
+#include "TF1.h"
 
 #include <math.h>
 #include <iostream>
@@ -18,37 +19,70 @@
 
 //#define PRINT_CROSSPOINTS
 
+#define XMAX 130
+#define ZMAX 350
+
 #define NLAY 9
-#define NZXP  8
+#define NZXP 8
 #define NCEL 11
+
+#define NBRD 2
+#define NCHS 48
+#define NCHT 96
+#define NSMP 32
+#define ADCMIN 125
+#define ADCMAX 700
+
+//===================About xt============================
+double tres = 0;
+TF1 * f_left_end[88];
+TF1 * f_right_end[88];
+TF1 * f_left[88];
+TF1 * f_right[88];
+int vtrel[88];
+int vtrer[88];
+int vtlel[88];
+int vtler[88];
+int vtrml[88];
+int vtrmr[88];
+int vtlml[88];
+int vtlmr[88];
+
+double t2x(double time, int lid, int wid, int lr, int & status);
 
 int main(int argc, char** argv){
 
 	//===================Get Arguments============================
-	if (argc<2) return -1;
+	if (argc<3) return -1;
 	int runNo = (int)strtol(argv[1],NULL,10);
+	int workMode = (int)strtol(argv[2],NULL,10); // 0: h_XXX; 1: i_XXX; 2: t_XXX
 	int thelayer = 5;
-	if (argc>=3){
-	    thelayer = atoi(argv[2]);
-    }
-	int thewire = 5;
 	if (argc>=4){
-	    thewire = atoi(argv[3]);
+	    thelayer = atoi(argv[3]);
+    }
+	int thewire = -1; // negative value means just pick up the first hit, regardless of the target layer.
+	if (argc>=5){
+	    thewire = atoi(argv[4]);
     }
 	TString suffix = "";
-	if (argc>=5){
-		suffix  = argv[4];
+	if (argc>=6){
+		suffix  = argv[5];
 	}
     int iEntryStart = 0;
     int iEntryStop = 9;
-	if (argc>=7){
-	    iEntryStart = (int)strtol(argv[5],NULL,10);
-	    iEntryStop = (int)strtol(argv[6],NULL,10);
+	if (argc>=8){
+	    iEntryStart = (int)strtol(argv[6],NULL,10);
+	    iEntryStop = (int)strtol(argv[7],NULL,10);
     }
-    else if (argc>=6){
+    else if (argc>=7){
 	    iEntryStart=0;
-	    iEntryStop=(int)strtol(argv[5],NULL,10)-1;
+	    iEntryStop=(int)strtol(argv[6],NULL,10)-1;
 	}
+	printf("runNo:              %d\n",runNo);
+	printf("workMode:           %d\n",workMode);
+	printf("test wire:          [%d,%d]\n",thelayer,thewire);
+	printf("suffix:             %s\n",suffix.Data());
+	printf("Entries:            %d~%d\n",iEntryStart,iEntryStop);
 
 	//===================Chamber Parameter============================
 	double ytop = 642.;         // top of the chamber
@@ -62,24 +96,26 @@ int main(int argc, char** argv){
     double  map_y[NLAY][NCEL][2];
     double  map_z[NLAY][NCEL][2];
 	int     map_ch[NLAY][NCEL];
+	int     map_bid[NLAY][NCEL];
+	int     map_lid[NBRD][NCHS];
+	int     map_wid[NBRD][NCHS];
     int     map_check[NLAY][NCEL];
-    double  map_y_hit[NLAY];
 	// mcp for cross points
     double mcp_xc[NZXP][NCEL][NCEL]; // z-x planes corresponding to the layerID of the lower layer counting from 1 
     double mcp_zc[NZXP][NCEL][NCEL]; // z-x planes corresponding to the layerID of the lower layer counting from 1 
-	for(int ilayer = 0; ilayer<NLAY; ilayer++){
-		for (int iwire = 0; iwire<NCEL; iwire++){
-		    map_x[ilayer][iwire][0] = 0;
-		    map_y[ilayer][iwire][0] = 0;
-		    map_z[ilayer][iwire][0] = 0;
-		    map_x[ilayer][iwire][1] = 0;
-		    map_y[ilayer][iwire][1] = 0;
-		    map_z[ilayer][iwire][1] = 0;
-			map_check[ilayer][iwire]=0;
-			if (ilayer <NZXP){ // z-x planes corresponding to the layerID of the lower layer counting from 1 
-                for (int jwire = 0; jwire<NCEL; jwire++){
-                    mcp_xc[ilayer][iwire][jwire] = 999;
-                    mcp_zc[ilayer][iwire][jwire] = 999;
+	for(int lid = 0; lid<NLAY; lid++){
+		for (int wid = 0; wid<NCEL; wid++){
+		    map_x[lid][wid][0] = 0;
+		    map_y[lid][wid][0] = 0;
+		    map_z[lid][wid][0] = 0;
+		    map_x[lid][wid][1] = 0;
+		    map_y[lid][wid][1] = 0;
+		    map_z[lid][wid][1] = 0;
+			map_check[lid][wid]=0;
+			if (lid <NZXP){ // z-x planes corresponding to the layerID of the lower layer counting from 1 
+                for (int wjd = 0; wjd<NCEL; wjd++){
+                    mcp_xc[lid][wid][wjd] = 999;
+                    mcp_zc[lid][wid][wjd] = 999;
                 }
             }
 		}
@@ -104,20 +140,40 @@ int main(int argc, char** argv){
 	TTree_wirepos->SetBranchAddress("yhv",&wp_yhv);
 	TTree_wirepos->SetBranchAddress("xro",&wp_xro);
 	TTree_wirepos->SetBranchAddress("yro",&wp_yro);
+    std::vector<double> v_wire_xc; // to get a graph of wire centers
+    std::vector<double> v_wire_yc; // to get a graph of wire centers
 	for (int i = 0; i<TTree_wirepos->GetEntries(); i++){
 		TTree_wirepos->GetEntry(i);
-		if (wp_lid>=1&&wp_lid<NLAY){
-			map_x[wp_lid][wp_wid][0] = wp_xhv;
-			map_y[wp_lid][wp_wid][0] = wp_yhv;
-			map_z[wp_lid][wp_wid][0] = -chamberHL;
-			map_x[wp_lid][wp_wid][1] = wp_xro;
-			map_y[wp_lid][wp_wid][1] = wp_yro;
-			map_z[wp_lid][wp_wid][1] = chamberHL;
-            map_y_hit[wp_lid] = (wp_yro+wp_yhv)/2.;
-			map_ch[wp_lid][wp_wid] = wp_ch+wp_bid*48;
-			map_check[wp_lid][wp_wid] = 1;
+		if (wp_lid>=0&&wp_lid<NLAY&&wp_wid>=0&&wp_wid<NCEL){
+            map_x[wp_lid][wp_wid][0] = wp_xhv;
+            map_y[wp_lid][wp_wid][0] = wp_yhv;
+            map_z[wp_lid][wp_wid][0] = -chamberHL;
+            map_x[wp_lid][wp_wid][1] = wp_xro;
+            map_y[wp_lid][wp_wid][1] = wp_yro;
+            map_z[wp_lid][wp_wid][1] = chamberHL;
+            map_ch[wp_lid][wp_wid] = wp_ch;
+            map_bid[wp_lid][wp_wid] = wp_bid*48;
+            if (wp_lid>=1){ // ignore the first layer (dummy)
+                map_check[wp_lid][wp_wid] = 1;
+                v_wire_xc.push_back((wp_xhv+wp_xro)/2.);
+                v_wire_yc.push_back((wp_yhv+wp_yro)/2.);
+            }
 		}
+        else{
+            fprintf(stderr,"ERROR: Entry %d in wiremap file, lid = %d wid = %d out of range (%d,%d)!\n",i,wp_lid,wp_wid,NLAY,NCEL);
+            return -1;
+        }
+		if (wp_bid>=0&&wp_bid<NBRD&&wp_ch>=0&&wp_ch<NCHS){
+			map_lid[wp_bid][wp_ch] = wp_lid;
+			map_wid[wp_bid][wp_ch] = wp_wid;
+        }
+        else{
+            fprintf(stderr,"ERROR: Entry %d in wiremap file, bid = %d ch = %d out of range (%d,%d)!\n",i,wp_bid,wp_ch,NBRD,NCHS);
+            return -1;
+        }
 	}
+    TTree_wirepos->SetMarkerStyle(20);
+    TTree_wirepos->SetMarkerSize(0.5);
 	TFile_wirepos->Close();
 
 	//==================Get Crosspoints==========================
@@ -143,13 +199,46 @@ int main(int argc, char** argv){
     }
     TFile_crosspoint->Close();
 
+    //===================Get XT============================
+	TFile * i_xt = new TFile(Form("../info/xt.%d.root",runNo));
+	for (int i = 0; i<88; i++){
+		f_left_end[i] = (TF1*) i_xt->Get(Form("f_left_end_%d_%d",i/11+1,i%11));
+		f_right_end[i] = (TF1*) i_xt->Get(Form("f_right_end_%d_%d",i/11+1,i%11));
+		f_left[i] = (TF1*) i_xt->Get(Form("f_left_%d_%d",i/11+1,i%11));
+		f_right[i] = (TF1*) i_xt->Get(Form("f_right_%d_%d",i/11+1,i%11));
+	}
+	TTree * itree_xt = (TTree*) i_xt->Get("p");
+	int trel,trer,tlel,tler,tlml,tlmr,trml,trmr;
+	int lid,wid;
+	itree_xt->SetBranchAddress("lid",&lid);
+	itree_xt->SetBranchAddress("wid",&wid);
+	itree_xt->SetBranchAddress("tlel",&tlel);
+	itree_xt->SetBranchAddress("tler",&tler);
+	itree_xt->SetBranchAddress("tlml",&tlml);
+	itree_xt->SetBranchAddress("tlmr",&tlmr);
+	itree_xt->SetBranchAddress("trml",&trml);
+	itree_xt->SetBranchAddress("trmr",&trmr);
+	itree_xt->SetBranchAddress("trel",&trel);
+	itree_xt->SetBranchAddress("trer",&trer);
+	for (int i = 0; i<itree_xt->GetEntries(); i++){
+		itree_xt->GetEntry(i);
+		vtlel[(lid-1)*11+wid] = tlel;
+		vtler[(lid-1)*11+wid] = tler;
+		vtlml[(lid-1)*11+wid] = tlml;
+		vtlmr[(lid-1)*11+wid] = tlmr;
+		vtrel[(lid-1)*11+wid] = trel;
+		vtrer[(lid-1)*11+wid] = trer;
+		vtrml[(lid-1)*11+wid] = trml;
+		vtrmr[(lid-1)*11+wid] = trmr;
+	}
+
 	//==================Get ADC==========================
 	TChain * iChain_ADC = new TChain("tree","tree");
 	iChain_ADC->Add(Form("../root/run_%0.6d_built.root",runNo));
-	int adc[99][32];
-	int tdc[99][32];
-	int clockNumberDriftTime[99][32];
-	int tdcNhit[99];
+	int adc[NCHT][NSMP];
+	int tdc[NCHT][NSMP];
+	int clockNumberDriftTime[NCHT][NSMP];
+	int tdcNhit[NCHT];
 	int triggerNumber_ADC;
 	iChain_ADC->SetBranchAddress("adc",adc);
 	iChain_ADC->SetBranchAddress("driftTime",tdc);
@@ -158,9 +247,8 @@ int main(int argc, char** argv){
 	iChain_ADC->SetBranchAddress("triggerNumber",&triggerNumber_ADC);
 
 	//===================Get ROOT File============================
-	TChain * iChain = new TChain("t","t");
-	iChain->Add(Form("../root/t_%d.layer%d.",runNo,thelayer)+suffix+".root");
 	int triggerNumber;
+	int nHits;
 	double xup;
 	double zup;
 	double slx;
@@ -170,29 +258,75 @@ int main(int argc, char** argv){
 	double slix;
 	double sliz;
 	double chi2;
+    std::vector<double> * i_fitD = 0;
 	std::vector<double> * i_driftD = 0;
 	std::vector<double> * i_driftT = 0;
-	std::vector<double> * i_fitD = 0;
 	std::vector<int> * i_wireID = 0;
 	std::vector<int> * i_layerID = 0;
+	// file from hit picking
+	TChain * iChain_h = new TChain("t","t");
+	// file from track finding
+	// FIXME: TBA
+	// file from track fitting
+	TChain * iChain_t = new TChain("t","t");
+    // decide the main file to get hits
+    TChain * iChain = 0;
+    if (workMode==0){ // 0: h_XXX; 1: i_XXX; 2: t_XXX
+        iChain_h->Add(Form("../root/h_%d.",runNo)+suffix+".root");
+        iChain = iChain_h;
+    }
+    else if (workMode==1){
+        fprintf(stderr,"workMode 1 (i_XXX) is not supported yet!\n");
+        return -1;
+    }
+    else if (workMode==2){
+        iChain_t->Add(Form("../root/t_%d.layer%d.",runNo,thelayer)+suffix+".root");
+        iChain_t->SetBranchAddress("inX",&xup);
+        iChain_t->SetBranchAddress("inZ",&zup);
+        iChain_t->SetBranchAddress("slX",&slx);
+        iChain_t->SetBranchAddress("slZ",&slz);
+        iChain_t->SetBranchAddress("iniX",&xupi);
+        iChain_t->SetBranchAddress("iniZ",&zupi);
+        iChain_t->SetBranchAddress("sliX",&slix);
+        iChain_t->SetBranchAddress("sliZ",&sliz);
+        iChain_t->SetBranchAddress("chi2",&chi2);
+        iChain_t->SetBranchAddress("fitD",&i_fitD);
+        iChain_t->SetBranchAddress("driftD",&i_driftD);
+        iChain = iChain_t;
+    }
+    else{
+        fprintf(stderr,"workMode %d is not supported! please chose from 0,1,2\n",workMode);
+        return -1;
+    }
+	iChain->SetBranchAddress("triggerNumber",&triggerNumber);
+	iChain->SetBranchAddress("nHits",&nHits);
 	iChain->SetBranchAddress("wireID",&i_wireID);
 	iChain->SetBranchAddress("layerID",&i_layerID);
-	iChain->SetBranchAddress("driftD",&i_driftD);
 	iChain->SetBranchAddress("driftT",&i_driftT);
-	iChain->SetBranchAddress("fitD",&i_fitD);
-	iChain->SetBranchAddress("inX",&xup);
-	iChain->SetBranchAddress("inZ",&zup);
-	iChain->SetBranchAddress("slX",&slx);
-	iChain->SetBranchAddress("slZ",&slz);
-	iChain->SetBranchAddress("iniX",&xupi);
-	iChain->SetBranchAddress("iniZ",&zupi);
-	iChain->SetBranchAddress("sliX",&slix);
-	iChain->SetBranchAddress("sliZ",&sliz);
-	iChain->SetBranchAddress("chi2",&chi2);
-	iChain->SetBranchAddress("triggerNumber",&triggerNumber);
 
 	//==================Prepare for drawing==========================
-	//Prepare the Canvas for x-y plane and ADC
+	//Prepare the Canvas for waveforms
+	TLatex * canvtitle = new TLatex(0,0,"");
+	canvtitle->SetTextSize(0.02);
+	TCanvas * ca_WF[NBRD];
+	TPad * pa_WF[NBRD][NCHS];
+	for (int bid = 0; bid<NBRD; bid++){
+        ca_WF[bid] = new TCanvas(Form("ca_WF_%d",bid),"ca_WF",896,896);
+        gStyle->SetPalette(1);
+        gStyle->SetOptStat(0);
+        gStyle->SetPadTickX(1);
+        gStyle->SetPadTickY(1);
+        for (int i = 0; i<8; i++){
+            for (int j = 0; j<6; j++){
+                int index = j*8+i;
+                pa_WF[bid][index] = new TPad(Form("pa_%d_%d_%d",bid,i,j),Form("pa_%d_%d_%d",bid,i,j),1./8*i,0.95/6*(5-j),1./8*(i+1),0.95/6*(6-j));
+                pa_WF[bid][index]->Draw();
+                pa_WF[bid][index]->SetGridx(1);
+                pa_WF[bid][index]->SetGridy(1);
+            }
+        }
+    }
+	//Prepare the Canvas for x-y plane and target chanel ADC
 	TCanvas * ca_xyADC = new TCanvas("ca_xyADC","ca_xyADC",896,1024);
     gStyle->SetPalette(1);
     gStyle->SetOptStat(0);
@@ -206,52 +340,47 @@ int main(int argc, char** argv){
         p_xyADC[ipad]->SetGridy(1);
 	}
 	//Prepare the Canvas for z-x planes
-    TCanvas * ca_zx = new TCanvas("ca_zx","ca_zx",768,1024);
-    gStyle->SetPalette(1);
-    gStyle->SetOptStat(0);
-    gStyle->SetPadTickX(1);
-    gStyle->SetPadTickY(1);
-	TPad * p_zx[NZXP]; // z-x planes corresponding to the layerID of the lower layer counting from 1
-	for (int ilayer = 0; ilayer<NZXP; ilayer++){
-	    int ipad = ilayer-1;
-	    int ir = ipad/2;
-	    int il = ipad%2;
-	    double x1 = il/2.;
-	    double x2 = (il+1)/2.;
-	    double y1 = (4-ir)/4.;
-	    double y2 = (3-ir)/4.;
-	    p_zx[ilayer] = new TPad(Form("p_zx_%d",ilayer),"p_zx",x1,y1,x2,y2);
-        p_zx[ilayer]->Draw();
-        p_zx[ilayer]->SetGridx(1);
-        p_zx[ilayer]->SetGridy(1);
-	}
+	TCanvas* ca_zx[NZXP]; // z-x planes corresponding to the layerID of the lower layer counting from 1
+	for (int lid = 1; lid<NZXP; lid++){
+	    ca_zx[lid] = new TCanvas(Form("ca_zx_%d",lid),"ca_zx",1024,768);
+        gStyle->SetPalette(1);
+        gStyle->SetOptStat(0);
+        gStyle->SetPadTickX(1);
+        gStyle->SetPadTickY(1);
+        gPad->SetGridx(1);
+        gPad->SetGridy(1);
+    }
 	//Prepare for ADC
-	TGraph *gr_waveForm = 0;
-	int vSample[32];
-	for (int i=0; i<32; i++){
+	TGraph * gr_waveForm[NBRD][NCHS];
+	int vSample[NSMP];
+	for (int i=0; i<NSMP; i++){
 		vSample[i] = i;
 	}
-	TLatex *textTDC[32];
-	TMarker *markerTDC[32];
-	for (int j=0; j<32; j++) {
-		textTDC[j] = new TLatex(0,235,"");
-		textTDC[j]->SetTextSize(0.04);
-		textTDC[j]->SetTextColor(kRed);
-		markerTDC[j] = new TMarker(0,0,20);
-		markerTDC[j]->SetMarkerSize(0.55);
+	TLatex *textTDC[NBRD][NCHS][NSMP];
+	TMarker *markerTDC[NBRD][NCHS][NSMP];
+    for (int bid = 0; bid<NBRD; bid++){
+        for (int ch = 0; ch<NCHS; ch++){
+            for (int sid=0; sid<NSMP; sid++) {
+                textTDC[bid][ch][sid] = new TLatex(0,0,"");
+                textTDC[bid][ch][sid]->SetTextSize(0.04);
+                textTDC[bid][ch][sid]->SetTextColor(kRed);
+                markerTDC[bid][ch][sid] = new TMarker(0,0,20);
+                markerTDC[bid][ch][sid]->SetMarkerSize(0.3);
+                markerTDC[bid][ch][sid]->SetMarkerColor(kRed);
+            }
+        } 
 	}
 	//Prepare for hit circles on x-y plane
-	TEllipse * ewiret[NLAY][NCEL];
-	TEllipse * ewiret2[NLAY][NCEL];
 	TText * text[NLAY][NCEL];
+	TEllipse * ewiret[NLAY][NCEL];  // value from track finding/fitting;
+	TEllipse * ewiret2[NLAY][NCEL]; // initial value for track fitting;
 	for (int lid = 0; lid<NLAY; lid++){
 		for (int wid = 0; wid<NCEL; wid++){
-			text[lid][wid] = 0;
-			ewiret[lid][wid] = 0;
-			ewiret2[lid][wid] = 0;
+			ewiret[lid][wid] = new TEllipse(0,0,1,1);
+			ewiret2[lid][wid] = new TEllipse(0,0,1,1);
 		}
 	}
-	//Prepare two tracks: l: track after fitting; l2: track before fitting, after track finding.
+	//Prepare two tracks on x-y plane: l: track after fitting; l2: track before fitting, after track finding.
 	TLine * l = new TLine();
 	l->SetLineColor(kRed);
 	l->SetY1(ytop);
@@ -261,8 +390,12 @@ int main(int argc, char** argv){
 	l2->SetY1(ytop);
 	l2->SetY2(ydown);
     // Background histogram for x-y plane
-	TH2D * h0 = new TH2D("h0","h0",512,-130,130,512,500,650);
-    // Prepare wires on z-x planes
+    TGraph * gr_wireCenter = new TGraph(v_wire_yc.size(),&(v_wire_xc[0]),&(v_wire_yc[0]));
+    gr_wireCenter->SetMarkerStyle(20);
+    gr_wireCenter->SetMarkerSize(0.55);
+    gr_wireCenter->GetXaxis()->SetTitle("x [mm]");
+    gr_wireCenter->GetYaxis()->SetTitle("y [mm]");
+    // Prepare colors to be used for each wire
     int color[NCEL];
     int icolor = 0;
     color[icolor++] = kBlack;
@@ -276,181 +409,223 @@ int main(int argc, char** argv){
     color[icolor++] = kOrange;
     color[icolor++] = kRed;
     color[icolor++] = kRed+2;
-    TGraph * gr_wire[NLAY][NCEL];
-    for (int ilayer = 0; ilayer<NLAY; ilayer++){
-		for (int iwire = 0; iwire<NCEL; iwire++){
-		    if (map_check[ilayer][iwire]==0) continue;
-			gr_wire[ilayer][iwire] = new TGraph(2,map_z[ilayer][iwire],map_x[ilayer][iwire]);
-			gr_wire[ilayer][iwire]->SetLineColor(color[iwire]);
-			gr_wire[ilayer][iwire]->SetMarkerColor(color[iwire]);
-        }
-    }
     // Prepare driftT lines on z-x planes
     TLine * l_zx[NLAY][NCEL][4];
-    for (int ilayer = 0; ilayer<NLAY; ilayer++){
-		for (int iwire = 0; iwire<NCEL; iwire++){
+    for (int lid = 0; lid<NLAY; lid++){
+		for (int wid = 0; wid<NCEL; wid++){
             for (int ilr = 0; ilr<2; ilr++){
-                l_zx[ilayer][iwire][ilr] = 0;
+                l_zx[lid][wid][ilr] = new TLine();
+                l_zx[lid][wid][ilr]->SetLineColor(color[wid]);
+                if (workMode>=1&&ilr)
+                    l_zx[lid][wid][ilr]->SetLineStyle(2);
+                else
+                    l_zx[lid][wid][ilr]->SetLineStyle(3);
             }
         }
     }
     // Prepare cross points of driftT lines on z-x planes
-    TMarker * point_cross_zx[NZXP][4];
-    for (int ilayer = 1; ilayer<NZXP; ilayer++){ // z-x planes corresponding to the layerID of the lower layer counting from 1
-        for (int icombi = 0; icombi<4; icombi++){
-            if (icombi==3) // reverse lid when icombi is 0 or 1, reverse lid+1 when icombi is 0 or 2. Keep them unchanged only when icombi is 3
-                point_cross_zx[ilayer][icombi] = new TMarker(0,0,20);
-            else
-                point_cross_zx[ilayer][icombi] = new TMarker(0,0,4);
-            point_cross_zx[ilayer][icombi]->SetMarkerColor(kBlack);
-            point_cross_zx[ilayer][icombi]->SetMarkerSize(0.3);
+    TMarker * point_cross_zx[NZXP][NCEL][NCEL][4];
+    for (int lid = 1; lid<NZXP; lid++){ // z-x planes corresponding to the layerID of the lower layer counting from 1
+        for (int wid = 0; wid<NCEL; wid++){
+            for (int wjd = 0; wjd<NCEL; wjd++){
+                for (int icombi = 0; icombi<4; icombi++){
+                    if (workMode>=1&&icombi==3) // reverse lid when icombi is 0 or 1, reverse lid+1 when icombi is 0 or 2. Keep them unchanged only when icombi is 3
+                        point_cross_zx[lid][wid][wjd][icombi] = new TMarker(0,0,20);
+                    else
+                        point_cross_zx[lid][wid][wjd][icombi] = new TMarker(0,0,4);
+                    point_cross_zx[lid][wid][wjd][icombi]->SetMarkerColor(kBlack);
+                    point_cross_zx[lid][wid][wjd][icombi]->SetMarkerSize(0.55);
+                }
+            }
         }
     }
-    // to record the position of hits in each layer
-    // FIXME: should consider about how to support more or less than one hit in one layer.
-    //        now we only record one hit per layer: the last one in that layer.
-    int    wid_zx[NLAY];
-    double fd_zx[NLAY];
-    double dd_zx[NLAY];
-    double theta_zx[NLAY];
     // Prepare track points on z-x planes
     TMarker * point_track_zx[NZXP];
-    for (int ilayer = 1; ilayer<NZXP; ilayer++){ // z-x planes corresponding to the layerID of the lower layer counting from 1
-        point_track_zx[ilayer] = new TMarker(0,0,20);
-        point_track_zx[ilayer]->SetMarkerColor(kRed);
-        point_track_zx[ilayer]->SetMarkerSize(0.25);
+    if (workMode>=1){
+        for (int lid = 1; lid<NZXP; lid++){ // z-x planes corresponding to the layerID of the lower layer counting from 1
+            point_track_zx[lid] = new TMarker(0,0,20);
+            point_track_zx[lid]->SetMarkerColor(kRed);
+            point_track_zx[lid]->SetMarkerSize(0.5);
+        }
     }
-    // Draw wires on the z-x planes
-    TGraph * gr_all[NZXP];
-    for (int ilayer = 1; ilayer<NZXP; ilayer++){ // z-x planes corresponding to the layerID of the lower layer counting from 1
-        p_zx[ilayer]->cd();
-        // Background graph for z-x planes
-        gr_all[ilayer] = new TGraph(NLAY*NCEL*2,&(map_z[0][0][0]),&(map_x[0][0][0]));
-        gr_all[ilayer]->SetTitle(Form("layer #%d and layer #%d",ilayer,ilayer+1));
-        gr_all[ilayer]->SetMarkerColor(kWhite);
-        gr_all[ilayer]->SetMarkerSize(0.1);
-        gr_all[ilayer]->GetXaxis()->SetTitle("z [mm]");
-        gr_all[ilayer]->GetYaxis()->SetTitle("x [mm]");
-        gr_all[ilayer]->Draw("AP");
-        for (int iwire = 0; iwire<NCEL; iwire++){
-            TLatex * text1 = new TLatex(map_z[ilayer][0][0]-20,map_x[ilayer][0][0]+10,Form("# %d",ilayer));
-            text1->SetTextSize(0.02);
-            text1->Draw("SAME");
-            TLatex * text2 = new TLatex(map_z[ilayer+1][0][1]+10,map_x[ilayer+1][0][1]+10,Form("# %d",ilayer+1));
-            text2->SetTextSize(0.02);
-            text2->Draw("SAME");
-            if (map_check[ilayer][iwire]==1){
-                gr_wire[ilayer][iwire]->Draw("PLSAME");
-                TLatex * textl = new TLatex(map_z[ilayer][iwire][0]-10,map_x[ilayer][iwire][0],Form("%d",iwire));
-                TLatex * textr = new TLatex(map_z[ilayer][iwire][1]-10,map_x[ilayer][iwire][1],Form("%d",iwire));
-                textl->SetTextColor(color[iwire]);
-                textr->SetTextColor(color[iwire]);
-                textl->SetTextSize(0.02);
-                textr->SetTextSize(0.02);
-                textl->Draw("SAME");
-                textr->Draw("SAME");
+    // Prepare wires in each layer
+    //  and to record the position of hits in each layer
+    int    nHits_zx[NLAY];
+    bool   check_zx[NLAY][NCEL];
+    double y_zx[NLAY][NCEL];
+    double dd_zx[NLAY][NCEL];
+    double fd_zx[NLAY][NCEL];
+    double theta_zx[NLAY][NCEL];
+    TGraph * gr_wire[NLAY][NCEL];
+    for (int lid = 1; lid<NLAY; lid++){
+        for (int wid = 0; wid<NCEL; wid++){
+            if (map_check[lid][wid]==1){
+                gr_wire[lid][wid] = new TGraph(2,map_z[lid][wid],map_x[lid][wid]);
+                gr_wire[lid][wid]->SetLineColor(color[wid]);
+                gr_wire[lid][wid]->SetMarkerColor(color[wid]);
+                y_zx[lid][wid] = (map_y[lid][wid][1]+map_y[lid][wid][0])/2.;
             }
-            if (map_check[ilayer+1][iwire]==1){
-                gr_wire[ilayer+1][iwire]->Draw("PLSAME");
-                TLatex * textl = new TLatex(map_z[ilayer+1][iwire][0]+10,map_x[ilayer+1][iwire][0],Form("%d",iwire));
-                TLatex * textr = new TLatex(map_z[ilayer+1][iwire][1]+10,map_x[ilayer+1][iwire][1],Form("%d",iwire));
-                textl->SetTextColor(color[iwire]);
-                textr->SetTextColor(color[iwire]);
-                textl->SetTextSize(0.02);
-                textr->SetTextSize(0.02);
-                textl->Draw("SAME");
-                textr->Draw("SAME");
+        }
+    }
+    // Prepare texts and markers for wire on each z-x planes
+	TMarker * point_cross_wire[NZXP][NCEL][NCEL];
+	TLatex * text_cross_wire[NZXP][NCEL][NCEL];
+	TLatex * text_cr_1[NZXP];
+	TLatex * text_cr_1l[NZXP][NCEL];
+	TLatex * text_cr_2[NZXP];
+	TLatex * text_cr_2r[NZXP][NCEL];
+    TGraph * gr_all[NZXP];
+    double ar_cr_x[2] = {-ZMAX,ZMAX};
+    double ar_cr_y[2] = {-XMAX,XMAX};
+    for (int lid = 1; lid<NZXP; lid++){ // z-x planes corresponding to the layerID of the lower layer counting from 1
+        // Background graph for z-x planes
+        gr_all[lid] = new TGraph(2,ar_cr_x,ar_cr_y);
+        gr_all[lid]->SetTitle(Form("layer #%d and layer #%d",lid,lid+1));
+        gr_all[lid]->SetMarkerColor(kWhite);
+        gr_all[lid]->SetMarkerSize(0.1);
+        gr_all[lid]->GetXaxis()->SetRangeUser(-ZMAX,ZMAX);
+        gr_all[lid]->GetYaxis()->SetRangeUser(-XMAX,XMAX);
+        gr_all[lid]->GetXaxis()->SetTitle("z [mm]");
+        gr_all[lid]->GetYaxis()->SetTitle("x [mm]");
+        text_cr_1[lid] = new TLatex(map_z[lid][0][0]-30,XMAX-20,Form("Layer %d",lid));
+        text_cr_1[lid]->SetTextSize(0.025);
+        text_cr_2[lid] = new TLatex(map_z[lid+1][0][1]-30,XMAX-20,Form("Layer %d",lid+1));
+        text_cr_2[lid]->SetTextSize(0.025);
+        for (int wid = 0; wid<NCEL; wid++){
+            if (map_check[lid][wid]==1){
+                text_cr_1l[lid][wid] = new TLatex(map_z[lid][wid][0]-10,map_x[lid][wid][0],Form("%d",wid));
+                text_cr_1l[lid][wid]->SetTextColor(color[wid]);
+                text_cr_1l[lid][wid]->SetTextSize(0.02);
+            }
+            if (map_check[lid+1][wid]==1){
+                text_cr_2r[lid][wid] = new TLatex(map_z[lid+1][wid][1]+10,map_x[lid+1][wid][1],Form("%d",wid));
+                text_cr_2r[lid][wid]->SetTextColor(color[wid]);
+                text_cr_2r[lid][wid]->SetTextSize(0.02);
             }
 #ifdef PRINT_CROSSPOINTS
-            for (int jwire = 0; jwire < NCEL; jwire++){
-                if (fabs(mcp_zc[ilayer][iwire][jwire])>300) continue;
-                TMarker * p = new TMarker(mcp_zc[ilayer][iwire][jwire],mcp_xc[ilayer][iwire][jwire],20);
-                p->SetMarkerColor(color[iwire]);
-                p->SetMarkerSize(0.4);
-                p->Draw("SAME");
-                TLatex * text = new TLatex(mcp_zc[ilayer][iwire][jwire],mcp_xc[ilayer][iwire][jwire]+5,Form("%d,%d",iwire,jwire));
-                text->SetTextColor(color[iwire]);
-                text->SetTextSize(0.02);
-                text->Draw("SAME");
+            for (int wjd = 0; wjd < NCEL; wjd++){
+                if (fabs(mcp_zc[lid][wid][wjd])>300) continue;
+                point_cross_wire[lid][wid][wjd] = new TMarker(mcp_zc[lid][wid][wjd],mcp_xc[lid][wid][wjd],20);
+                point_cross_wire[lid][wid][wjd]->SetMarkerColor(color[wid]);
+                point_cross_wire[lid][wid][wjd]->SetMarkerSize(0.4);
+                text_cross_wire[lid][wid][wjd] = new TLatex(mcp_zc[lid][wid][wjd],mcp_xc[lid][wid][wjd]+5,Form("%d,%d",wid,wjd));
+                text_cross_wire[lid][wid][wjd]->SetTextColor(color[wid]);
+                text_cross_wire[lid][wid][wjd]->SetTextSize(0.02);
             }
 #endif
         }
     }
 
 	//===================Loop in Events============================
-	for ( int iEntry = iEntryStart; iEntry<iEntryStop; iEntry++){
-		if (iEntry%1000==0) printf("%lf\n",iEntry);
+	for ( int iEntry = iEntryStart; iEntry<=iEntryStop; iEntry++){
+		if ((iEntry-iEntryStart)%1000==0) printf("%lf\n",iEntry);
 		iChain->GetEntry(iEntry);
+		if (nHits<=0) continue;
+
+        // Find the target channel
 		int the_ihit = 0;
+		int the_bid = -1;
 		int the_ch = -1;
-		for (; the_ihit<i_driftD->size(); the_ihit++){
-			int lid = (*i_layerID)[the_ihit];
-			int wid = (*i_wireID)[the_ihit];
-			if (lid==thelayer&&wid==thewire){
-				the_ch = map_ch[lid][wid];
-				break;
-			}
+        if (thelayer<0||thewire<0){ // negative value means just pick up the first hit, regardless of the target layer
+            int lid = (*i_layerID)[0];
+            int wid = (*i_wireID)[0];
+            the_bid = map_bid[lid][wid];
+            the_ch = map_ch[lid][wid];
+        }
+        else{
+            for (; the_ihit<i_driftT->size(); the_ihit++){
+                int lid = (*i_layerID)[the_ihit];
+                int wid = (*i_wireID)[the_ihit];
+                if (lid==thelayer&&wid==thewire){
+                    the_ch = map_ch[lid][wid];
+                    the_bid = map_bid[lid][wid];
+                    break;
+                }
+            }
+        }
+		if (the_bid==-1||the_ch==-1) continue; // only show the events with hit in the target cell
+
+        // Get ADC information
+		for (int iEntry2 = triggerNumber; iEntry2>=0 ;iEntry2--){ // in case that the raw ROOT file missed some triggerNumbers
+			iChain_ADC->GetEntry(iEntry2);
+			if (triggerNumber==triggerNumber_ADC) break;
 		}
-		if (the_ch==-1) continue; // only show the events with hit in the target cell
 
 //		if ((*i_fitD)[the_ihit]>-2.3||(*i_fitD)[the_ihit]<-3.2||fabs((*i_driftD)[the_ihit]-(*i_fitD)[the_ihit])<0.5||chi2>1||fabs(slz)>0.15) continue;
 //		if ((*i_fitD)[the_ihit]>0.32||(*i_fitD)[the_ihit]<0.28||chi2>3) continue;
 //		if ((*i_driftT)[the_ihit]>80||chi2>3) continue;
 
         // clear objects from the previous event
+	    for (int bid = 0; bid<NBRD; bid++){
+	        for (int ch = 0; ch<NCHS; ch++){
+                if (gr_waveForm[bid][ch]) delete gr_waveForm[bid][ch]; gr_waveForm[bid][ch] = 0;
+	        }
+	    }
+
+        // Reset counters
 		for (int lid = 0; lid<NLAY; lid++){
-            wid_zx[lid] = -1;
-            dd_zx[lid] = 0;
-            fd_zx[lid] = 0;
+		    nHits_zx[lid] = 0;
 			for (int wid = 0; wid<NCEL; wid++){
-				if (ewiret[lid][wid]){
-					delete ewiret[lid][wid];
-					ewiret[lid][wid] = 0;
-				}
-				if (ewiret2[lid][wid]){
-					delete ewiret2[lid][wid];
-					ewiret2[lid][wid] = 0;
-				}
-				if (text[lid][wid]){
-					delete text[lid][wid];
-					text[lid][wid] = 0;
-				}
-				for (int ilr = 0; ilr<2; ilr++){
-                    if (l_zx[lid][wid][ilr]){
-                        delete l_zx[lid][wid][ilr];
-                        l_zx[lid][wid][ilr] = 0;
-                    }
-                }
+                check_zx[lid][wid] = false;
 			}
 		}
-        if (gr_waveForm) delete gr_waveForm; gr_waveForm = 0;
 
-        // Draw the background histogram for x-y plane
-		p_xyADC[0]->cd();
-		h0->SetTitle(Form("Entry#%d, TriggerNumber#%d, chi2 = %.2f",iEntry,triggerNumber,chi2));
-		h0->Draw();
+        // Draw waveforms
+        for (int bid = 0; bid<NBRD; bid++){
+            ca_WF[bid]->cd();
+            canvtitle->SetText(0.1,0.98,Form("Entry %d, Trigger Number %d, Board %d",iEntry,triggerNumber,bid));
+            canvtitle->Draw();
+            for (int ch = 0; ch<NCHS; ch++){
+                int chg = bid*NCHS+ch;
+                pa_WF[bid][ch]->cd();
+                gr_waveForm[bid][ch] = new TGraph(NSMP,vSample,adc[chg]);
+                gr_waveForm[bid][ch]->SetTitle(Form("Channel %d Layer %d Wire %d",ch,map_lid[bid][ch],map_wid[bid][ch]));
+                gr_waveForm[bid][ch]->GetXaxis()->SetRangeUser(0,NSMP-1);
+                gr_waveForm[bid][ch]->GetYaxis()->SetRangeUser(ADCMIN,ADCMAX);
+                gr_waveForm[bid][ch]->GetXaxis()->SetTitle("Sample Index");
+                gr_waveForm[bid][ch]->GetYaxis()->SetTitle("ADC");
+                gr_waveForm[bid][ch]->SetMarkerStyle(20);
+                gr_waveForm[bid][ch]->SetMarkerSize(0.3);
+                gr_waveForm[bid][ch]->Draw("APL");
+                for (int ihit=0; ihit<tdcNhit[chg]; ihit++) {
+                    int clk = clockNumberDriftTime[chg][ihit];
+                    markerTDC[bid][ch][ihit]->SetX(clk);
+                    markerTDC[bid][ch][ihit]->SetY(adc[chg][clk]);
+                    //if (adc[chg][clk]>Hmin[chg]) markerTDC[ihit]->SetMarkerColor(kRed);
+                    //else markerTDC[ihit]->SetMarkerColor(kBlue);
+                    markerTDC[bid][ch][ihit]->Draw();
+                    textTDC[bid][ch][ihit]->SetText(clk,adc[chg][clk]+(0.5-ihit%2)*50,Form("%d",(int)(tdc[chg][ihit])));
+                    textTDC[bid][ch][ihit]->Draw();
+                }
+            }
+        }
 
-        // get the tracks and draw them on the x-y plane
-        double zdown = zup + (ydown-yup)*slz;
-        double xdown = xup + (ydown-yup)*slx;
-        double xtop = xup + (ytop-yup)*slx;
-        double zdowni = zupi + (ydown-yup)*sliz;
-        double xdowni = xupi + (ydown-yup)*slix;
-        double xtopi = xupi + (ytop-yup)*slix;
-		l->SetX1(xtop);
-		l->SetX2(xdown);
-		l->Draw("SAME");
-		l2->SetX1(xtopi);
-		l2->SetX2(xdowni);
-		l2->Draw("SAME");
+        // draw the target channel ADC
+		p_xyADC[1]->cd();
+		gr_waveForm[the_bid][the_ch]->Draw("APL");
+		int the_chg = the_bid*NCHS+the_ch;
+		for (int ihit=0; ihit<tdcNhit[the_chg]; ihit++) {
+			textTDC[the_bid][the_ch][ihit]->Draw();
+			markerTDC[the_bid][the_ch][ihit]->Draw();
+		}
 
-        // get the hits and draw them on the x-y plane
-		for (int ihit = 0; ihit<i_driftD->size(); ihit++){
+        // get the hits and track information
+        int nHitsAll = 0;
+        double zdown  = 0; 
+        double xdown  = 0; 
+        double xtop   = 0; 
+        double zdowni = 0; 
+        double xdowni = 0; 
+        double xtopi  = 0; 
+		for (int ihit = 0; ihit<i_driftT->size(); ihit++){
 			int lid = (*i_layerID)[ihit];
-			if (lid<=0) continue;
 			int wid = (*i_wireID)[ihit];
-			double fitd = (*i_fitD)[ihit]; // !!! make sure it's mm
-			double dd = (*i_driftD)[ihit]; // !!! make sure it's mm
+			if (lid<=0) continue; // ignore the first layer (dummy)
+			nHitsAll++;
+
+            // Get hit information
+			double fitd = 0;
+			double dd = 0;
 			double dt = (*i_driftT)[ihit];
 			double wxro = map_x[lid][wid][1];
 			double wyro = map_y[lid][wid][1];
@@ -459,133 +634,218 @@ int main(int argc, char** argv){
 			double wyhv = map_y[lid][wid][0];
             double wzhv = -chamberHL;
 			double wy = (wyro+wyhv)/2.;
-			double wz = ((yup-wy)*zdown+(wy-ydown)*zup)/(yup-ydown);
-			double wx = ((wzro-wz)*wxhv+(wz-wzhv)*wxro)/(wzro-wzhv);
-			wy = ((wzro-wz)*wyhv+(wz-wzhv)*wyro)/(wzro-wzhv);
-			map_y_hit[lid] = wy;
+			double wz = 0;
+			double wx = 0;
+			if (workMode>=1){
+                fitd = (*i_fitD)[ihit]; // !!! make sure it's mm
+                dd = (*i_driftD)[ihit]; // !!! make sure it's mm
+			    // correct wx wy wz according to the track position
+                zdown = zup + (ydown-yup)*slz;
+                xdown = xup + (ydown-yup)*slx;
+                xtop = xup + (ytop-yup)*slx;
+                if (workMode>=2){
+                    zdowni = zupi + (ydown-yup)*sliz;
+                    xdowni = xupi + (ydown-yup)*slix;
+                    xtopi = xupi + (ytop-yup)*slix;
+                }
+                wz = ((yup-wy)*zdown+(wy-ydown)*zup)/(yup-ydown);
+                wx = ((wzro-wz)*wxhv+(wz-wzhv)*wxro)/(wzro-wzhv);
+                wy = ((wzro-wz)*wyhv+(wz-wzhv)*wyro)/(wzro-wzhv);
+            }
+            else{
+                // choose the center point of the wire
+                wz = 0;
+                wx = (wxhv+wxro)/2.;
+                int status = 0;
+                dd = t2x(dt,lid,wid,0,status);// FIXME: should get x-t curve
+            }
+
+            // Get information for cross points
 			double delta = dd*chamberHL*2/sqrt(chamberHL*chamberHL*4+(map_x[lid][wid][0]-map_x[lid][wid][1])*(map_x[lid][wid][0]-map_x[lid][wid][1]));
 			for (int ilr = 0; ilr<2; ilr++){
-                l_zx[lid][wid][ilr] = new TLine();
-                l_zx[lid][wid][ilr]->SetLineColor(color[wid]);
-                if (ilr)
-                    l_zx[lid][wid][ilr]->SetLineStyle(2);
-                else
-                    l_zx[lid][wid][ilr]->SetLineStyle(3);
                 l_zx[lid][wid][ilr]->SetX1(-chamberHL);
                 l_zx[lid][wid][ilr]->SetX2(chamberHL);
                 l_zx[lid][wid][ilr]->SetY1(wxhv+(ilr?delta:-delta));
                 l_zx[lid][wid][ilr]->SetY2(wxro+(ilr?delta:-delta));
             }
-            wid_zx[lid] = wid;
-            dd_zx[lid] = dd;
-            fd_zx[lid] = fitd;
-            theta_zx[lid] = atan(-(map_x[lid][wid][0]-map_x[lid][wid][1])/chamberHL/2); // rotation angle w.r.t the dart plane: read out  plane, i.e. z>0, i.e. iplane = 1; positive rotation angle point to -x direction
+            nHits_zx[lid]++;
+            check_zx[lid][wid] = true;
+			y_zx[lid][wid] = wy;
+            dd_zx[lid][wid] = dd;
+            fd_zx[lid][wid] = fitd;
+            theta_zx[lid][wid] = atan(-(map_x[lid][wid][0]-map_x[lid][wid][1])/chamberHL/2); // rotation angle w.r.t the dart plane: read out  plane, i.e. z>0, i.e. iplane = 1; positive rotation angle point to -x direction
 
-			ewiret[lid][wid] = new TEllipse(wx,wy,dd,dd);
+            // set the hit circles
+            ewiret[lid][wid]->SetX1(wx);
+            ewiret[lid][wid]->SetY1(wy);
+            ewiret[lid][wid]->SetR1(dd);
+            ewiret[lid][wid]->SetR2(dd);
 			ewiret[lid][wid]->SetFillStyle(0);
 			ewiret[lid][wid]->SetLineColor(kRed);
-			ewiret[lid][wid]->Draw("SAME"); // Draw hits.
-
+            // set the text of each hit
 			if (lid==thelayer&&wid==thewire) text[lid][wid]= new TText(wx,wy,Form("%d,%d,%.1lf,%.1lf",lid,wid,fitd,dt));
 			else text[lid][wid]= new TText(wx,wy,Form("%d,%d",lid,wid));
 			text[lid][wid]->SetTextSize(0.02);
-			text[lid][wid]->Draw("SAME");
 
-			wz = ((yup-wy)*zdowni+(wy-ydown)*zupi)/(yup-ydown);
-			//wx = ((wzro-wz)*wxhv+(wz-wzhv)*wxro)/(wzro-wzhv);
-			//wy = ((wzro-wz)*wyhv+(wz-wzhv)*wyro)/(wzro-wzhv);
-			wx = (wxhv+wxro)/2.;
-			wy = (wyhv+wyro)/2.;
-			ewiret2[lid][wid] = new TEllipse(wx,wy,dd,dd);
-			ewiret2[lid][wid]->SetFillStyle(0);
-			ewiret2[lid][wid]->SetLineColor(kBlue);
-			ewiret2[lid][wid]->Draw("SAME"); // Draw hits.
-
+            if (workMode>=2){
+                // do the correction according to the input track parameters from track finding
+                wz = ((yup-wy)*zdowni+(wy-ydown)*zupi)/(yup-ydown);
+                wx = ((wzro-wz)*wxhv+(wz-wzhv)*wxro)/(wzro-wzhv);
+                wy = ((wzro-wz)*wyhv+(wz-wzhv)*wyro)/(wzro-wzhv);
+                ewiret2[lid][wid]->SetX1(wx);
+                ewiret2[lid][wid]->SetY1(wy);
+                ewiret2[lid][wid]->SetR1(dd);
+                ewiret2[lid][wid]->SetR2(dd);
+                ewiret2[lid][wid]->SetFillStyle(0);
+                ewiret2[lid][wid]->SetLineColor(kBlue);
+            }
 		}
 
-        // get ADC information and draw the waveform
-		p_xyADC[1]->cd();
-		for (int iEntry2 = triggerNumber; iEntry2>=0 ;iEntry2--){
-			iChain_ADC->GetEntry(iEntry2);
-			if (triggerNumber==triggerNumber_ADC) break;
-		}
-		gr_waveForm = new TGraph(32,vSample,adc[the_ch]);
-		gr_waveForm->Draw("APL");
-		for (int ihit=0; ihit<tdcNhit[the_ch]; ihit++) {
-		    int clk = clockNumberDriftTime[the_ch][ihit];
-			textTDC[ihit]->SetText(clk,adc[the_ch][clk],Form("%d",(int)(tdc[the_ch][ihit])));
-			textTDC[ihit]->Draw();
-			markerTDC[ihit]->SetX(clk);
-			markerTDC[ihit]->SetY(adc[the_ch][clk]);
-			markerTDC[ihit]->SetMarkerColor(kRed);
-			//if (adc[the_ch][clk]>Hmin[the_ch]) markerTDC[ihit]->SetMarkerColor(kRed);
-			//else markerTDC[ihit]->SetMarkerColor(kBlue);
-			markerTDC[ihit]->Draw();
+        // Draw the background histogram for x-y plane
+		p_xyADC[0]->cd();
+		gr_wireCenter->SetTitle(Form("Entry %d, Trigger Number %d, nHits = %d, chi2 = %.2f",iEntry,triggerNumber,nHitsAll,chi2));
+		gr_wireCenter->Draw("AP");
+        // Draw the hit circles
+		for (int ihit = 0; ihit<i_driftT->size(); ihit++){
+			int lid = (*i_layerID)[ihit];
+			int wid = (*i_wireID)[ihit];
+			if (ewiret[lid][wid]&&text[lid][wid]){
+                ewiret[lid][wid]->Draw(); // from track fitting/finding
+                text[lid][wid]->Draw();
+            }
+            if (workMode>=2&&ewiret2[lid][wid]){
+                ewiret2[lid][wid]->Draw(); // input values for track fitting.
+            }
 		}
 
-        // draw the track and driftT lines on the z-x planes
-        for (int lid = 1; lid<NZXP; lid++){
-            p_zx[lid]->cd();
+        // draw the tracks on the x-y plane
+        if (workMode>=1){ // from track finding or track fitting
+            l->SetX1(xtop);
+            l->SetX2(xdown);
+            l->Draw();
+            l2->SetX1(xtopi);
+            l2->SetX2(xdowni);
+            l2->Draw();
+        }
+
+        // draw the z-x planes
+        for (int lid = 1; lid<NZXP; lid++){ // z-x planes corresponding to the layerID of the lower layer counting from 1
+            ca_zx[lid]->cd();
+            // draw Background graph for z-x planes
+            gr_all[lid]->Draw("AP");
+            text_cr_1[lid]->Draw();
+            text_cr_2[lid]->Draw();
+            for (int wid = 0; wid<NCEL; wid++){
+                if (map_check[lid][wid]==1){
+                    gr_wire[lid][wid]->Draw("PLSAME");
+                    text_cr_1l[lid][wid]->Draw();
+                }
+                if (map_check[lid+1][wid]==1){
+                    gr_wire[lid+1][wid]->Draw("PLSAME");
+                    text_cr_2r[lid][wid]->Draw();
+                }
+#ifdef PRINT_CROSSPOINTS
+                for (int wjd = 0; wjd < NCEL; wjd++){
+                    if (!point_cross_wire[lid][wid][wjd]
+                       ||!text_cross_wire[lid][wid][wjd]) continue;
+                    point_cross_wire[lid][wid][wjd]->Draw();
+                    text_cross_wire[lid][wid][wjd]->Draw();
+                }
+#endif
+            }
+            // draw the track and driftT lines on the z-x planes
             for (int ilr = 0; ilr<2; ilr++){
                 for (int wid = 0; wid<NCEL; wid++){
-                    if (l_zx[lid][wid][ilr])
-                        l_zx[lid][wid][ilr]->Draw("SAME");
-                    if (l_zx[lid+1][wid][ilr])
-                        l_zx[lid+1][wid][ilr]->Draw("SAME");
+                    if (check_zx[lid][wid])
+                        l_zx[lid][wid][ilr]->Draw();
+                    if (check_zx[lid+1][wid])
+                        l_zx[lid+1][wid][ilr]->Draw();
                 }
             }
             // position of the track point
-            double y = (map_y_hit[lid]+map_y_hit[lid+1])/2.;
-            double z = zup+(y-yup)*slz;
-            double x = xup+(y-yup)*slx;
+            double z_track = 0;
+            double x_track = 0;
             // is there a cross point?
-            if (wid_zx[lid]>=0&&wid_zx[lid+1]>=0){
-                // position of the cross point
-                for (int icombi = 0; icombi<4; icombi++){
-                    double fd1 = fd_zx[lid];
-                    double fd2 = fd_zx[lid+1];
-                    double dd1 = dd_zx[lid];
-                    double dd2 = dd_zx[lid+1];
-                    if (icombi<2) dd1 = -dd1; // reverse lid when icombi is 0 or 1
-                    if (icombi%2==0) dd2 = -dd2; // reverse lid+1 when icombi is 0 or 2
-                    double theta1 = theta_zx[lid];
-                    double theta2 = theta_zx[lid+1];
-                    double sintheta12 = sin(theta1-theta2);
-                    double deltaY = map_y_hit[lid+1]-map_y_hit[lid];
-                    double zc_fix_slx = deltaY*slx/(tan(theta2)-tan(theta1));
-                    double xc = mcp_xc[lid][wid_zx[lid]][wid_zx[lid+1]]+dd1*sin(theta2)/(-sintheta12)+dd2*sin(theta1)/sintheta12;
-                    double zc = mcp_zc[lid][wid_zx[lid]][wid_zx[lid+1]]+dd1*cos(theta2)/(-sintheta12)+dd2*cos(theta1)/sintheta12+zc_fix_slx;
-//                  point_cross_zx[lid][icombi]->SetMarkerColor(color[wid_zx[lid]]);
-                    point_cross_zx[lid][icombi]->SetX(zc);
-                    point_cross_zx[lid][icombi]->SetY(xc);
-                    point_cross_zx[lid][icombi]->Draw("SAME");
-                    if (icombi==3){
-                        double xcf = mcp_xc[lid][wid_zx[lid]][wid_zx[lid+1]]+fd1*sin(theta2)/(-sintheta12)+fd2*sin(theta1)/sintheta12;
-                        double zcf = mcp_zc[lid][wid_zx[lid]][wid_zx[lid+1]]+fd1*cos(theta2)/(-sintheta12)+fd2*cos(theta1)/sintheta12+zc_fix_slx;
-                        gr_all[lid]->SetTitle(Form("DD_{[%d,%d]}: %.2lf mm (%.2lf #mum) DD_{[%d,%d]}: %.2lf mm (%.2lf #mum) #Delta_{x}: %.0lf #mum #Delta_{z}: %.0lf #mum",lid,wid_zx[lid],dd1,(fd1-dd1)*1000,lid+1,wid_zx[lid+1],dd2,(fd2-dd2)*1000,(xc-x)*1000,(zc-z)*1000));
-//                        gr_all[lid]->SetTitle(Form("#Wire: %d,%d D_{meas}: %.2lf,%.2lf mm #Delta_{D}: %.0lf,%.0lf #mum #Delta_{x,xf}: %.0lf,%.0lf #mum #Delta_{z,zf}: %.0lf,%.0lf #mum",wid_zx[lid],wid_zx[lid+1],dd1,dd2,(fd1-dd1)*1000,(fd2-dd2)*1000,(xc-x)*1000,(xcf-x)*1000,(zc-z)*1000,(zcf-z)*1000));
-//                        printf("%d %d %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf\n",iEntry,lid,slx,slz,fd1-dd1,fd2-dd2,x,xc,xcf,z,zc,zcf);
+            if (nHits_zx[lid]>0&&nHits_zx[lid+1]>0){
+                for (int wid = 0; wid<NCEL; wid++){
+                    if (!check_zx[lid][wid]) continue;
+                    for (int wjd = 0; wjd<NCEL; wjd++){
+                        if (!check_zx[lid+1][wjd]) continue;
+                        // position of the cross point
+                        for (int icombi = 0; icombi<4; icombi++){
+                            double dd1 = dd_zx[lid][wid];
+                            double dd2 = dd_zx[lid+1][wjd];
+                            if (icombi<2) dd1 = -dd1; // reverse lid when icombi is 0 or 1
+                            if (icombi%2==0) dd2 = -dd2; // reverse lid+1 when icombi is 0 or 2
+                            double theta1 = theta_zx[lid][wid];
+                            double theta2 = theta_zx[lid+1][wjd];
+                            double sintheta12 = sin(theta1-theta2);
+                            double zc_fix_slx = 0;
+                            if (workMode>=1){
+                                double deltaY = y_zx[lid+1][wjd]-y_zx[lid][wid];
+                                zc_fix_slx = deltaY*slx/(tan(theta2)-tan(theta1));
+                            }
+                            double xc = mcp_xc[lid][wid][wjd]+dd1*sin(theta2)/(-sintheta12)+dd2*sin(theta1)/sintheta12;
+                            double zc = mcp_zc[lid][wid][wjd]+dd1*cos(theta2)/(-sintheta12)+dd2*cos(theta1)/sintheta12+zc_fix_slx;
+                            point_cross_zx[lid][wid][wjd][icombi]->SetX(zc);
+                            point_cross_zx[lid][wid][wjd][icombi]->SetY(xc);
+                            point_cross_zx[lid][wid][wjd][icombi]->Draw();
+                            if (workMode>=1){
+                                if (icombi==3){
+                                    double y_track = (y_zx[lid][wid]+y_zx[lid+1][wjd])/2.;
+                                    z_track = zup+(y_track-yup)*slz;
+                                    x_track = xup+(y_track-yup)*slx;
+                                    double fd1 = fd_zx[lid][wid];
+                                    double fd2 = fd_zx[lid+1][wjd];
+                                    double xcf = mcp_xc[lid][wid][wjd]+fd1*sin(theta2)/(-sintheta12)+fd2*sin(theta1)/sintheta12;
+                                    double zcf = mcp_zc[lid][wid][wjd]+fd1*cos(theta2)/(-sintheta12)+fd2*cos(theta1)/sintheta12+zc_fix_slx;
+                                    gr_all[lid]->SetTitle(Form("DD_{[%d,%d]}: %.2lf mm (%.2lf #mum) DD_{[%d,%d]}: %.2lf mm (%.2lf #mum) #Delta_{x}: %.0lf #mum #Delta_{z}: %.0lf #mum",lid,wid,dd1,(fd1-dd1)*1000,lid+1,wjd,dd2,(fd2-dd2)*1000,(xc-x_track)*1000,(zc-z_track)*1000));
+                                }
+                            }
+                            else{
+                                gr_all[lid]->SetTitle(Form("Layer %d and Layer %d",lid,lid+1));
+                            }
+                        }
                     }
                 }
             }
             else{
-                for (int icombi = 0; icombi<4; icombi++){
-                    point_cross_zx[lid][icombi]->SetX(chamberHL*2); // move the point out of the canvas
-                    point_cross_zx[lid][icombi]->Draw("SAME");
+                int wid = 0;
+                for (; wid<NCEL; wid++){
+                    if (check_zx[lid][wid]) break;
                 }
-                gr_all[lid]->SetTitle("No crosspoint");
+                if (wid==NCEL) wid = NCEL/2;
+                int wjd = 0;
+                for (; wjd<NCEL; wjd++){
+                    if (check_zx[lid+1][wjd]) break;
+                }
+                if (wjd==NCEL) wjd = NCEL/2;
+                if (workMode>=1){
+                    double y_track = (y_zx[lid][wid]+y_zx[lid+1][wjd])/2.; // take the y value from a previous event
+                    z_track = zup+(y_track-yup)*slz;
+                    x_track = xup+(y_track-yup)*slx;
+                }
+                gr_all[lid]->SetTitle(Form("Layer %d and Layer %d",lid,lid+1));
             }
             // draw the track point
-            point_track_zx[lid]->SetX(z);
-            point_track_zx[lid]->SetY(x);
-            point_track_zx[lid]->Draw("SAME");
+            if (workMode>=1){
+                point_track_zx[lid]->SetX(z_track);
+                point_track_zx[lid]->SetY(x_track);
+                point_track_zx[lid]->Draw();
+            }
         }
 
         // save the canvases
-		ca_xyADC->SaveAs(Form("%d.xyADC.pdf",iEntry));
-		ca_xyADC->SaveAs(Form("%d.xyADC.png",iEntry));
-        ca_zx->SaveAs(Form("%d.zx.pdf",iEntry));
-//        ca_zx->SaveAs(Form("%d.zx.png",iEntry)); // too vague to draw...
+		ca_xyADC->SaveAs(Form("xyADC.%d.pdf",triggerNumber));
+		ca_xyADC->SaveAs(Form("xyADC.%d.png",triggerNumber));
+        for (int lid = 1; lid<NZXP; lid++){
+            ca_zx[lid]->SaveAs(Form("zx.%d.l%d.pdf",triggerNumber,lid));
+            ca_zx[lid]->SaveAs(Form("zx.%d.l%d.png",triggerNumber,lid));
+        }
+        for (int bid = 0; bid<NBRD; bid++){
+            ca_WF[bid]->SaveAs(Form("wf.%d.b%d.pdf",triggerNumber,bid));
+            ca_WF[bid]->SaveAs(Form("wf.%d.b%d.png",triggerNumber,bid));
+        }
 
 		// FIXME: in interactive mode
 //		ca_xyADC->WaitPrimitive();
@@ -594,3 +854,38 @@ int main(int argc, char** argv){
 	}
 	return 0;
 }
+
+double t2x(double time, int lid, int wid, int lr, int & status){ // 1: right; 2: right end; -1: left; -2: left end; 0 out of range
+	TF1* fl=0;
+	TF1* fr=0;
+	// FIXME
+	//int index = (lid-1)*11+wid;
+	int index = (6-1)*11;
+	status = 0;
+	if (time<=vtlel[index]&&time>vtler[index]){
+		fl = f_left_end[index];
+		status = -2;
+	}
+	else if (time<=vtlml[index]&&time>=vtlmr[index]){
+		fl = f_left[index];
+		status = -1;
+	}
+	if (time>=vtrel[index]&&time<vtrer[index]){
+		fr = f_right_end[index];
+		status = 2;
+	}
+	else if (time>=vtrml[index]&&time<=vtrmr[index]){
+		fr = f_right[index];
+		status = 1;
+	}
+	double dd=0;
+	if (lr>=0){
+		if (fr) dd = fr->Eval(time);
+	}
+	else{
+		if (fl) dd = fl->Eval(time);
+	}
+	//std::cout<<"t2x("<<time<<","<<lid<<","<<wid<<","<<lr<<") = "<<dd<<std::endl;
+	return dd;
+}
+
