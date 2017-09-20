@@ -14,7 +14,6 @@
 #include "TF1.h"
 
 #include <math.h>
-#include <iostream>
 #include <stdlib.h>
 
 //#define PRINT_CROSSPOINTS
@@ -183,8 +182,6 @@ int main(int argc, char** argv){
             return -1;
         }
 	}
-    TTree_wirepos->SetMarkerStyle(20);
-    TTree_wirepos->SetMarkerSize(0.5);
 	TFile_wirepos->Close();
 
 	//==================Get Crosspoints==========================
@@ -1069,7 +1066,6 @@ double t2x(double time, int lid, int wid, int lr, int & status){ // 1: right; 2:
             dd = f->Eval(vtrer[index]);
         }
     }
-	//std::cout<<"t2x("<<time<<","<<lid<<","<<wid<<","<<lr<<") = "<<dd<<std::endl;
 	return dd;
 }
 

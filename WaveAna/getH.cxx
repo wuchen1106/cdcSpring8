@@ -407,9 +407,9 @@ int main(int argc, char** argv){
 				else{
 					o_type->push_back(0);
 					layerhit[map_lid[ch]] = true;
-					o_nHits++;
 				}
 			}
+            o_nHits++;
 			o_ip->push_back(ip);
 			o_driftT->push_back(((*i_tdc)[ch][thepeak]-t0[bid])/tscale);
 			o_layerID->push_back(map_lid[ch]);
