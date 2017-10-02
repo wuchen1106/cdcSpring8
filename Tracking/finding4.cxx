@@ -33,7 +33,6 @@
 
 std::vector<int> * i_layerID = 0;
 std::vector<int> * i_wireID = 0;
-std::vector<double> * o_driftD = 0;
 std::vector<double> * o_dxl = 0;
 std::vector<double> * o_dxr = 0;
 
@@ -48,10 +47,19 @@ int     map_ch[NLAY][NCEL];
 int     map_bid[NLAY][NCEL];
 int     map_lid[NBRD][NCHS];
 int     map_wid[NBRD][NCHS];
-int     map_theta[NBRD][NCHS];
+double  map_theta[NBRD][NCHS];
 // mcp for cross points
 double mcp_xc[NZXP][NCEL][NCEL]; // z-x planes corresponding to the layerID of the lower layer counting from 1 
 double mcp_zc[NZXP][NCEL][NCEL]; // z-x planes corresponding to the layerID of the lower layer counting from 1 
+
+//===================Hit Handlers============================
+std::vector<std::vector<int> > v_layer_ihit; // vectors of indices of hits in each layer
+std::vector<int> v_pick_lid; // layer index of each picked layer (for pair check)
+std::vector<int> pick_ihit; // hit index of each picked hit (for pair check)
+std::vector<double> pick_wy; // y position of each picked hit (for pair check)
+std::vector<double> pair_wx; // x position of each picked hit pair (center position)
+std::vector<double> pair_wy; // y position of each picked hit pair (center position)
+std::vector<double> pair_wz; // z position of each picked hit pair (center position)
 
 //===================About tracking============================
 double yup = 623.97007;
@@ -70,12 +78,12 @@ TGraph * g_z = 0; // z VS y
 //===================Functions============================
 void print_usage(char* prog_name);
 double t2x(double time, int lid, int wid, int lr, int & status);
-int ChooseHits(int ipick, std::vector<int> & v_pick_lid, std::vector<int> & pick_ihit, std::vector<double> & pick_wy, std::vector<std::vector<int> > & v_layer_ihit,int & iselection);
-int checkCrossPoints(int nPicks,std::vector<int> & pick_ihit, std::vector<double> & pick_wy);
-int getCrossPoints(int ihit,int jhit,int ilr,int jlr,double deltaY);
-int updateHitPositions(int nPicks, std::vector<int> & pick_ihit, std::vector<double> & pick_wy);
-int fityx();
-int fityz();
+int ChooseHits(int ipick,int & iselection);
+int checkCrossPoints(int nPicks);
+int updatePairPositions(int ipair,int ipick,int ihit,int jhit,int ilr,int jlr);
+int updateHitPositions(int nPicks,int icombi);
+int fityx(int nPairs);
+int fityz(int nPairs);
 
 //===================About xt============================
 double tres = 0;
@@ -279,6 +287,7 @@ int main(int argc, char** argv){
     //===================Prepare output ROOT file============================
     TFile * of = new TFile(Form("../root/i_%d.layer%d",runNo,testlayer)+suffix+".root","RECREATE"); 
     TTree * ot = new TTree("t","t");
+    std::vector<double> * o_driftD = 0;
     std::vector<std::vector<double> > * o_fitD = 0;
     double o_tx1[NCAND];
     double o_tx2[NCAND];
@@ -324,17 +333,18 @@ int main(int argc, char** argv){
     int N_found = 0;
     int N_good = 0;
 
-    //===================Hit handlers============================
-    std::vector<std::vector<int> > v_layer_ihit; // vectors of indices of hits in each layer
+    //===================Set Hit handlers============================
     for (int i = 0; i<NLAY; i++){
         std::vector<int> hits;
         v_layer_ihit.push_back(hits);
     }
-    std::vector<int> v_pick_lid; // layer index of each picked layer (for pair check)
-    std::vector<int> pick_ihit; // hit index of each picked hit (for pair check)
-    std::vector<double> pick_wy; // y position of each picked hit pair (for pair check)
     pick_ihit.resize(NLAY);
     pick_wy.resize(NLAY);
+    pair_wx.resize(NLAY);
+    pair_wy.resize(NLAY);
+    pair_wz.resize(NLAY);
+    g_x = new TGraph(NLAY,&(pair_wy[0]),&(pair_wx[0]));
+    g_z = new TGraph(NLAY,&(pair_wy[0]),&(pair_wz[0]));
     int nHitsgood; // number of good hits
     int nHitLayers; // number of layers with hit
 
@@ -408,7 +418,7 @@ int main(int argc, char** argv){
         //========================================================================================================
         // pick up one hit from each layer, and iterate in all combinations
         int nSelections = 0;
-        ChooseHits(0,v_pick_lid,pick_ihit,pick_wy,v_layer_ihit,nSelections);
+        ChooseHits(0,nSelections);
 
         ot->Fill();
     }// end of event loop
@@ -421,10 +431,10 @@ int main(int argc, char** argv){
     return 0;
 }
 
-int ChooseHits(int ipick, std::vector<int> & v_pick_lid, std::vector<int> & pick_ihit, std::vector<double> & pick_wy, std::vector<std::vector<int> > & v_layer_ihit,int & iselection){
+int ChooseHits(int ipick,int & iselection){
     if (ipick == v_pick_lid.size()){ // finished picking hits
         printf(" Finished picking selection %d:\n",iselection);
-        checkCrossPoints(v_pick_lid.size(),pick_ihit,pick_wy);
+        checkCrossPoints(v_pick_lid.size());
         iselection++;
     }
     else{
@@ -432,19 +442,21 @@ int ChooseHits(int ipick, std::vector<int> & v_pick_lid, std::vector<int> & pick
         for (int i = 0; i<v_layer_ihit[lid].size(); i++){
             printf(" => pick # %d, layer %d, hit[%d] %d\n",ipick,lid,i,v_layer_ihit[lid][i]);
             pick_ihit[ipick] = v_layer_ihit[lid][i];
-            ChooseHits(ipick+1,v_pick_lid,pick_ihit,pick_wy,v_layer_ihit,iselection);
+            ChooseHits(ipick+1,iselection);
         }
     }
     return 0;
 }
 
-int checkCrossPoints(int nPicks,std::vector<int> & pick_ihit, std::vector<double> & pick_wy){
+int checkCrossPoints(int nPicks){
     int ncombi = pow(2,nPicks);
     printf("  %d picked layers -> %d combinations\n",nPicks,ncombi);
-    updateHitPositions(nPicks, pick_ihit,pick_wy);
     for (int icombi = 0; icombi<ncombi; icombi++){ // each combination corresponds to a unique left/right selection set
+        updateHitPositions(nPicks,icombi); // fix wy positions
         printf("     combi %d\n",icombi);
-        for (int ipick = 0; ipick<nPicks-1; ipick++){
+        int ipick = 0;
+        int nPairs = 0;
+        for (; ipick<nPicks-1; ipick++){
             int ihit = pick_ihit[ipick];
             int jhit = pick_ihit[ipick+1];
             int lid = (*i_layerID)[ihit];
@@ -452,20 +464,35 @@ int checkCrossPoints(int nPicks,std::vector<int> & pick_ihit, std::vector<double
             if (lid+1!=ljd) continue; // not adjacent
             int ilr = (icombi&(1<<ipick))>>ipick;
             int jlr = (icombi&(1<<(ipick+1)))>>(ipick+1);
-            printf("      %d: %d,%d(%d) %d,%d(%d)\n",ipick,lid,ihit,ilr,ljd,jhit,jlr);
-            getCrossPoints(ihit,jhit,ilr,jlr,pick_wy[ipick+1]-pick_wy[ipick]);
+            int result = updatePairPositions(nPairs,ipick,ihit,jhit,ilr,jlr);
+            nPairs++;
+            if (result) {
+                printf("       bad combination!\n");
+                break;
+            }
         }
+        if (ipick==nPicks-1){
+                printf("     GOOD!\n");
+        }
+        else{
+            printf("     BAD @ %d!\n",ipick);
+        }
+        fityz(nPairs);
+        fityx(nPairs);
     }
 }
 
-int updateHitPositions(int nPicks, std::vector<int> & pick_ihit, std::vector<double> & pick_wy){
+int updateHitPositions(int nPicks,int icombi){
     // calculate pick_wy
     for (int ipick = 0; ipick<nPicks; ipick++){
         // Get hit information
+        int ilr = (icombi&(1<<ipick))>>ipick;
         int ihit = pick_ihit[ipick];
         int lid = (*i_layerID)[ihit];
         int wid = (*i_wireID)[ihit];
-        double dd = (*o_driftD)[ihit]; // !!! make sure it's mm
+        double dd;
+        if (ilr) dd = (*o_dxr)[ihit];
+        else dd = (*o_dxl)[ihit];
         double wxro = map_x[lid][wid][1];
         double wyro = map_y[lid][wid][1];
         double wzro = chamberHL;
@@ -486,7 +513,9 @@ int updateHitPositions(int nPicks, std::vector<int> & pick_ihit, std::vector<dou
     }
 }
 
-int getCrossPoints(int ihit,int jhit,int ilr,int jlr,double deltaY){
+int updatePairPositions(int ipair,int ipick,int ihit,int jhit,int ilr,int jlr){
+    // calculate pair_wxyz
+    double deltaY = pick_wy[ipick+1]-pick_wy[ipick];
     double dd1, dd2;
     if (ilr) dd1 = (*o_dxr)[ihit]; // right
     else     dd1 = (*o_dxl)[ihit]; // left
@@ -502,13 +531,34 @@ int getCrossPoints(int ihit,int jhit,int ilr,int jlr,double deltaY){
     double zc_fix_slx = deltaY*slx/(tan(theta2)-tan(theta1));
     double xc = mcp_xc[lid][wid][wjd]+dd1*sin(theta2)/(-sintheta12)+dd2*sin(theta1)/sintheta12;
     double zc = mcp_zc[lid][wid][wjd]+dd1*cos(theta2)/(-sintheta12)+dd2*cos(theta1)/sintheta12+zc_fix_slx;
-    fityz();
+    pair_wx[ipair] = xc;
+    pair_wy[ipair] = (pick_wy[ipick+1]+pick_wy[ipick])/2.;
+    pair_wz[ipair] = zc;
+    // FIXME: debug
+    printf("                  xc = %.1f+%.1f*sin(%.1f)/(-sin(%.1f-%.1f))+%.1f*sin(%.1f)/sin(%.1f-%.1f)\n",mcp_xc[lid][wid][wjd],dd1,theta2,theta1,theta2,dd2,theta1,theta1,theta2);
+    printf("       cp[%d,%d]: lr(%d,%d) w(%d,%d) i(%d,%d) dd(%f,%f)] xyz(%f,%f,%f)\n",lid,ljd,ilr,jlr,wid,wjd,ihit,jhit,dd1,dd2,xc,(pick_wy[ipick+1]+pick_wy[ipick])/2.,zc);
+    if (zc>-chamberHL&&zc<chamberHL)
+        return 0;
+    else
+        return 1;
 }
 
-int fityz(){
+int fityz(int nPairs){
+	for (int ipair = 0; ipair<nPairs; ipair++){
+	    g_z->SetPoint(ipair,pair_wy[ipair],pair_wz[ipair]);
+	}
+	g_z->Set(nPairs);
+	g_z->Fit("f_z","qN0","");
+	return 0;
 }
 
-int fityx(){
+int fityx(int nPairs){
+	for (int ipair = 0; ipair<nPairs; ipair++){
+	    g_x->SetPoint(ipair,pair_wy[ipair],pair_wx[ipair]);
+	}
+	g_x->Set(nPairs);
+	g_x->Fit("f_x","qN0","");
+	return 0;
 }
 
 double t2x(double time, int lid, int wid, int lr, int & status){ // 1: right; 2: right end; -1: left; -2: left end; 0 out of range

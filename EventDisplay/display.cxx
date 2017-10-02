@@ -828,7 +828,7 @@ int main(int argc, char** argv){
             ewiret_post[lid][wid]->SetY1(wy);
             // set the text of each hit
 			if (lid==thelayer&&wid==thewire) text[lid][wid]= new TText(wx,wy,Form("%d,%d,%.1lf,%.1lf",lid,wid,fitd,dt));
-			else text[lid][wid]= new TText(wx,wy,Form("%d,%d",lid,wid));
+			else text[lid][wid]= new TText(wx,wy,Form("%d,%d,%.2f",lid,wid,dd));
 			text[lid][wid]->SetTextSize(0.02);
 
             if (workMode>=2){
