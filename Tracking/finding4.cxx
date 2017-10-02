@@ -64,12 +64,6 @@ std::vector<double> pair_wz; // z position of each picked hit pair (center posit
 //===================About tracking============================
 double yup = 623.97007;
 double ydown = 527.60011;
-double zup;
-double zdown;
-double xup;
-double xdown;
-double slx;
-double slz;
 TF1 * f_x = new TF1("f_x","pol1",500,640); // x VS y
 TGraph * g_x = 0; // x VS y
 TF1 * f_z = new TF1("f_z","pol1",500,640); // z VS y
@@ -452,6 +446,8 @@ int checkCrossPoints(int nPicks){
     int ncombi = pow(2,nPicks);
     printf("  %d picked layers -> %d combinations\n",nPicks,ncombi);
     for (int icombi = 0; icombi<ncombi; icombi++){ // each combination corresponds to a unique left/right selection set
+        f_x->SetParameters(0,0);
+        f_z->SetParameters(0,0);
         updateHitPositions(nPicks,icombi); // fix wy positions
         printf("     combi %d\n",icombi);
         int ipick = 0;
@@ -472,13 +468,20 @@ int checkCrossPoints(int nPicks){
             }
         }
         if (ipick==nPicks-1){
-                printf("     GOOD!\n");
+                printf("       GOOD!\n");
         }
         else{
-            printf("     BAD @ %d!\n",ipick);
+            printf("       BAD @ %d!\n",ipick);
         }
         fityz(nPairs);
         fityx(nPairs);
+        double chi2_z = f_z->GetChisquare();
+        double inz = f_z->Eval(yup);
+        double slz = f_z->GetParameter(1);
+        double chi2_x = f_x->GetChisquare();
+        double inx = f_x->Eval(yup);
+        double slx = f_x->GetParameter(1);
+        printf("       RESULT: x=%.2f*(y-%.2f)+%.2f, chi2 = %.2f; y=%.2f*(y-%.2f)+%.2f, chi2 = %.2f.\n",slx,yup,inx,chi2_x,slz,yup,inz,chi2_z);
     }
 }
 
@@ -502,11 +505,8 @@ int updateHitPositions(int nPicks,int icombi){
         // assume wy
         double wy = (wyro+wyhv)/2.;
         // get wz by extrapolating the track to wy
-        double zdown = zup + (ydown-yup)*slz;
-        double xdown = xup + (ydown-yup)*slx;
-        double wz = ((yup-wy)*zdown+(wy-ydown)*zup)/(yup-ydown);
-        // get wx according to wz
-        double wx = ((wzro-wz)*wxhv+(wz-wzhv)*wxro)/(wzro-wzhv);
+        // FIXME: do we have to consider f_x here?
+        double wz = f_z->Eval(wy);
         // correct wy according to wz
         wy = ((wzro-wz)*wyhv+(wz-wzhv)*wyro)/(wzro-wzhv);
         pick_wy[ipick] = wy;
@@ -528,14 +528,15 @@ int updatePairPositions(int ipair,int ipick,int ihit,int jhit,int ilr,int jlr){
     double theta1 = map_theta[lid][wid];
     double theta2 = map_theta[ljd][wjd];
     double sintheta12 = sin(theta1-theta2);
-    double zc_fix_slx = deltaY*slx/(tan(theta2)-tan(theta1));
+    double zc_fix_slx = deltaY*f_x->GetParameter(1)/(tan(theta2)-tan(theta1));
     double xc = mcp_xc[lid][wid][wjd]+dd1*sin(theta2)/(-sintheta12)+dd2*sin(theta1)/sintheta12;
     double zc = mcp_zc[lid][wid][wjd]+dd1*cos(theta2)/(-sintheta12)+dd2*cos(theta1)/sintheta12+zc_fix_slx;
     pair_wx[ipair] = xc;
     pair_wy[ipair] = (pick_wy[ipick+1]+pick_wy[ipick])/2.;
     pair_wz[ipair] = zc;
     // FIXME: debug
-    printf("                  xc = %.1f+%.1f*sin(%.1f)/(-sin(%.1f-%.1f))+%.1f*sin(%.1f)/sin(%.1f-%.1f)\n",mcp_xc[lid][wid][wjd],dd1,theta2,theta1,theta2,dd2,theta1,theta1,theta2);
+    printf("                  xc = %.3e+%.3e*sin(%.3e)/(-sin(%.3e-%.3e))+%.3e*sin(%.3e)/sin(%.3e-%.3e)\n",mcp_xc[lid][wid][wjd],dd1,theta2,theta1,theta2,dd2,theta1,theta1,theta2);
+    printf("                  zc = %.3e+%.3e*cos(%.3e)/(-sin(%.3e-%.3e))+%.3e*cos(%.3e)/sin(%.3e-%.3e)+zc_fix_slx\n",mcp_zc[lid][wid][wjd],dd1,theta2,theta1,theta2,dd2,theta1,theta1,theta2,zc_fix_slx);
     printf("       cp[%d,%d]: lr(%d,%d) w(%d,%d) i(%d,%d) dd(%f,%f)] xyz(%f,%f,%f)\n",lid,ljd,ilr,jlr,wid,wjd,ihit,jhit,dd1,dd2,xc,(pick_wy[ipick+1]+pick_wy[ipick])/2.,zc);
     if (zc>-chamberHL&&zc<chamberHL)
         return 0;
