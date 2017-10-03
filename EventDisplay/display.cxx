@@ -54,11 +54,15 @@ double tdc2t(int tdc);
 
 int t0 = -849;
 double t2x(double time, int lid, int wid, int lr, int & status);
+void print_usage(char* progname);
 
 int main(int argc, char** argv){
 
 	//===================Get Arguments============================
-	if (argc<3) return -1;
+	if (argc<3) {
+	    print_usage(argv[0]);
+	    return -1;
+    }
 	int runNo = (int)strtol(argv[1],NULL,10);
 	int workMode = (int)strtol(argv[2],NULL,10); // 0: h_XXX; 1: i_XXX; 2: t_XXX
 	int thelayer = 5;
@@ -560,7 +564,7 @@ int main(int argc, char** argv){
 	//===================Loop in Events============================
 	TString prefix = "";
 	for ( int iEntry = iEntryStart; iEntry<=iEntryStop; iEntry++){
-		if ((iEntry-iEntryStart)%1000==0) printf("%lf\n",iEntry);
+		if ((iEntry-iEntryStart)%1000==0) printf("Entry %d\n",iEntry);
 		iChain->GetEntry(iEntry);
 		if (nHits<=0) continue;
 
@@ -1071,4 +1075,9 @@ double t2x(double time, int lid, int wid, int lr, int & status){ // 1: right; 2:
 
 double tdc2t(int tdc){
     return (tdc-t0)/0.96;
+}
+
+void print_usage(char* progname){
+	printf("%s [runNo] [workMode] <[thelayer] [thewire] [suffix] [iEntryStart] [iEntryStop]>",progname);
+	return;
 }

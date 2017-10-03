@@ -31,6 +31,8 @@
 
 #define NHITSMAX 10
 
+int debug = 0;
+
 std::vector<int> * i_layerID = 0;
 std::vector<int> * i_wireID = 0;
 std::vector<double> * o_dxl = 0;
@@ -45,9 +47,9 @@ double  map_y[NLAY][NCEL][2];
 double  map_z[NLAY][NCEL][2];
 int     map_ch[NLAY][NCEL];
 int     map_bid[NLAY][NCEL];
+double  map_theta[NLAY][NCEL];
 int     map_lid[NBRD][NCHS];
 int     map_wid[NBRD][NCHS];
-double  map_theta[NBRD][NCHS];
 // mcp for cross points
 double mcp_xc[NZXP][NCEL][NCEL]; // z-x planes corresponding to the layerID of the lower layer counting from 1 
 double mcp_zc[NZXP][NCEL][NCEL]; // z-x planes corresponding to the layerID of the lower layer counting from 1 
@@ -72,9 +74,9 @@ TGraph * g_z = 0; // z VS y
 //===================Functions============================
 void print_usage(char* prog_name);
 double t2x(double time, int lid, int wid, int lr, int & status);
-int ChooseHits(int ipick,int & iselection);
-int checkCrossPoints(int nPicks);
-int updatePairPositions(int ipair,int ipick,int ihit,int jhit,int ilr,int jlr);
+int ChooseHits(int ipick,int & iselection,int iEntry=0);
+int checkCrossPoints(int nPicks,int iEntry=0);
+int updatePairPositions(int icombi,int nPicks,int & nPairs);
 int updateHitPositions(int nPicks,int icombi);
 int fityx(int nPairs);
 int fityz(int nPairs);
@@ -117,6 +119,9 @@ int main(int argc, char** argv){
     if (argc>=7){
         iEntryStart = (int)strtol(argv[5],NULL,10);
         iEntryStop = (int)strtol(argv[6],NULL,10);
+    }
+    if (argc>=8){
+        debug = (int)strtol(argv[7],NULL,10);
     }
     printf("runNo       = %d\n",runNo);
     printf("test layer  = %d\n",testlayer);
@@ -176,6 +181,7 @@ int main(int argc, char** argv){
             map_ch[wp_lid][wp_wid] = wp_ch;
             map_bid[wp_lid][wp_wid] = wp_bid;
             map_theta[wp_lid][wp_wid] = atan(-(wp_xhv-wp_xro)/chamberHL/2); // rotation angle w.r.t the dart plane: read out  plane; positive rotation angle point to -x direction
+            if(debug>0) printf("map_theta[%d][%d] = atan(-(%.3e-%.3e)/%.3e/2) = %.3e\n",wp_lid,wp_wid,wp_xhv,wp_xro,chamberHL,map_theta[wp_lid][wp_wid]);
         }
         else{
             fprintf(stderr,"ERROR: Entry %d in wiremap file, lid = %d wid = %d out of range (%d,%d)!\n",i,wp_lid,wp_wid,NLAY,NCEL);
@@ -236,7 +242,7 @@ int main(int argc, char** argv){
     itree_xt->SetBranchAddress("trmr",&trmr);
     itree_xt->SetBranchAddress("trel",&trel);
     itree_xt->SetBranchAddress("trer",&trer);
-    printf("lid,wid: tlel | tler | tlml | tlmr || trml | trmr | trel | trer\n",lid,wid,tlel,tler,tlml,tlmr,trml,trmr,trel,trer);
+    if(debug>0) printf("lid,wid: tlel | tler | tlml | tlmr || trml | trmr | trel | trer\n",lid,wid,tlel,tler,tlml,tlmr,trml,trmr,trel,trer);
     for (int i = 0; i<itree_xt->GetEntries(); i++){
         itree_xt->GetEntry(i);
         vtlel[(lid)*NCEL+wid] = tlel;
@@ -247,7 +253,7 @@ int main(int argc, char** argv){
         vtrer[(lid)*NCEL+wid] = trer;
         vtrml[(lid)*NCEL+wid] = trml;
         vtrmr[(lid)*NCEL+wid] = trmr;
-        printf("%d,%d: %d | %d | %d | %d || %d | %d | %d | %d\n",lid,wid,tlel,tler,tlml,tlmr,trml,trmr,trel,trer);
+        if(debug>0) printf("%d,%d: %d | %d | %d | %d || %d | %d | %d | %d\n",lid,wid,tlel,tler,tlml,tlmr,trml,trmr,trel,trer);
     }
 
     //===================Get input ROOT file============================
@@ -269,7 +275,7 @@ int main(int argc, char** argv){
     c->SetBranchAddress("driftT",&i_driftT);
     c->SetBranchAddress("layerID",&i_layerID);
     c->SetBranchAddress("wireID",&i_wireID);
-    c->SetBranchAddress("type",&i_type);
+    c->SetBranchAddress("type",&i_type); // -1: dummy layer; 1: guard layer; 2: left end; 3: right end; 0: center cell;
     c->SetBranchAddress("np",&i_np);
     c->SetBranchAddress("ip",&i_ip);
     c->SetBranchAddress("clk",&i_clk);
@@ -294,7 +300,7 @@ int main(int argc, char** argv){
     ot->Branch("nHits",&i_nHits);
     ot->Branch("layerID",&i_layerID);
     ot->Branch("wireID",&i_wireID);
-    ot->Branch("type",&i_type);
+    ot->Branch("type",&i_type); // -1: dummy layer; 1(11): guard layer (out of t window); 2(12): left end (out of t window); 3(13): right end (out of t window); 0(10): center cell (out of t window);
     ot->Branch("np",&i_np);
     ot->Branch("ip",&i_ip);
     ot->Branch("clk",&i_clk);
@@ -369,25 +375,28 @@ int main(int argc, char** argv){
         //========================================================================================================
         // get basical cdc hit information
         for (int ihit = 0; ihit<i_type->size(); ihit++){
-            if ((*i_type)[ihit]!=0&&(*i_type)[ihit]!=1) continue; // including guard layer but without dummy layer
             double dt = (*i_driftT)[ihit]+t0shift;
             int lid = (*i_layerID)[ihit];
             int wid = (*i_wireID)[ihit];
-            if (dt<tmin||dt>tmax) continue; // ignore the hits which is obviously out of the signal time window
             int status; // 1: right; 2: right end; -1: left; -2: left end; 0 out of range
             o_dxl->push_back(t2x(dt,lid,wid,-1,status));
             o_dxr->push_back(t2x(dt,lid,wid,1,status));
+            if (debug>0) printf("  Entry %d: dxl[%d][%d] = dxl[%d] = t2x(%.3e) = %.3e\n",iEntry,lid,wid,ihit,dt,(*o_dxl)[o_dxl->size()-1]);
+            if (debug>0) printf("  Entry %d: dxr[%d][%d] = dxr[%d] = t2x(%.3e) = %.3e\n",iEntry,lid,wid,ihit,dt,(*o_dxr)[o_dxr->size()-1]);
             o_driftD->push_back((*o_dxr)[o_dxr->size()-1]);
-            v_layer_ihit[lid].push_back(ihit);
-            if (lid != testlayer) nHitsgood++;
+            if (dt<tmin||dt>tmax) (*i_type)[ihit]+=10; // -1: dummy layer; 1(11): guard layer (out of t window); 2(12): left end (out of t window); 3(13): right end (out of t window); 0(10): center cell (out of t window);
+            if (lid != testlayer&&(*i_type)[ihit]>=0&&(*i_type)[ihit]<10){ // not dummy layer or test layer; within time window
+                v_layer_ihit[lid].push_back(ihit);
+                nHitsgood++;
+            }
         }
 
         // get number of layers with good hits;
-        printf("#####################################\n");
-        printf("Entry %d\n",iEntry);
+        if (debug>0) printf("#####################################\n");
+        if (debug>0) printf("Entry %d\n",iEntry);
         for(int lid = 1; lid<NLAY; lid++){
-            printf(" layer %d: %d hits\n",lid,v_layer_ihit[lid].size());
-            if (lid!=testlayer&&v_layer_ihit[lid].size()>0)
+            if (debug>0)printf(" layer %d: %d hits\n",lid,v_layer_ihit[lid].size());
+            if (v_layer_ihit[lid].size()>0)
                 nHitLayers++;
         }
 
@@ -406,13 +415,13 @@ int main(int argc, char** argv){
             }
         }
         for (int ipick = 0; ipick<v_pick_lid.size(); ipick++){
-            printf(" pick layer %d\n",v_pick_lid[ipick]);
+            if (debug>0) printf(" pick layer %d\n",v_pick_lid[ipick]);
         }
 
         //========================================================================================================
         // pick up one hit from each layer, and iterate in all combinations
         int nSelections = 0;
-        ChooseHits(0,nSelections);
+        ChooseHits(0,nSelections,iEntry);
 
         ot->Fill();
     }// end of event loop
@@ -425,54 +434,34 @@ int main(int argc, char** argv){
     return 0;
 }
 
-int ChooseHits(int ipick,int & iselection){
+int ChooseHits(int ipick,int & iselection,int iEntry){
     if (ipick == v_pick_lid.size()){ // finished picking hits
-        printf(" Finished picking selection %d:\n",iselection);
-        checkCrossPoints(v_pick_lid.size());
+        if (debug>0) printf(" Finished picking selection %d:\n",iselection);
+        checkCrossPoints(v_pick_lid.size(),iEntry);
         iselection++;
     }
     else{
         int lid = v_pick_lid[ipick];
         for (int i = 0; i<v_layer_ihit[lid].size(); i++){
-            printf(" => pick # %d, layer %d, hit[%d] %d\n",ipick,lid,i,v_layer_ihit[lid][i]);
+            if (debug>0) printf(" => pick # %d, layer %d, hit[%d] %d\n",ipick,lid,i,v_layer_ihit[lid][i]);
             pick_ihit[ipick] = v_layer_ihit[lid][i];
-            ChooseHits(ipick+1,iselection);
+            ChooseHits(ipick+1,iselection,iEntry);
         }
     }
     return 0;
 }
 
-int checkCrossPoints(int nPicks){
+int checkCrossPoints(int nPicks,int iEntry){
     int ncombi = pow(2,nPicks);
-    printf("  %d picked layers -> %d combinations\n",nPicks,ncombi);
+    if (debug>0) printf("  %d picked layers -> %d combinations\n",nPicks,ncombi);
     for (int icombi = 0; icombi<ncombi; icombi++){ // each combination corresponds to a unique left/right selection set
         f_x->SetParameters(0,0);
         f_z->SetParameters(0,0);
-        updateHitPositions(nPicks,icombi); // fix wy positions
-        printf("     combi %d\n",icombi);
-        int ipick = 0;
         int nPairs = 0;
-        for (; ipick<nPicks-1; ipick++){
-            int ihit = pick_ihit[ipick];
-            int jhit = pick_ihit[ipick+1];
-            int lid = (*i_layerID)[ihit];
-            int ljd = (*i_layerID)[jhit];
-            if (lid+1!=ljd) continue; // not adjacent
-            int ilr = (icombi&(1<<ipick))>>ipick;
-            int jlr = (icombi&(1<<(ipick+1)))>>(ipick+1);
-            int result = updatePairPositions(nPairs,ipick,ihit,jhit,ilr,jlr);
-            nPairs++;
-            if (result) {
-                printf("       bad combination!\n");
-                break;
-            }
-        }
-        if (ipick==nPicks-1){
-                printf("       GOOD!\n");
-        }
-        else{
-            printf("       BAD @ %d!\n",ipick);
-        }
+
+        updateHitPositions(nPicks,icombi); // fix wy positions
+        int result = updatePairPositions(icombi,nPicks,nPairs);
+        if (result) continue;
         fityz(nPairs);
         fityx(nPairs);
         double chi2_z = f_z->GetChisquare();
@@ -481,7 +470,21 @@ int checkCrossPoints(int nPicks){
         double chi2_x = f_x->GetChisquare();
         double inx = f_x->Eval(yup);
         double slx = f_x->GetParameter(1);
-        printf("       RESULT: x=%.2f*(y-%.2f)+%.2f, chi2 = %.2f; y=%.2f*(y-%.2f)+%.2f, chi2 = %.2f.\n",slx,yup,inx,chi2_x,slz,yup,inz,chi2_z);
+        if (debug>0) printf("       1st RESULT: x=%.3e*(y-%.3e)+%.3e, chi2 = %.3e; z=%.3e*(y-%.3e)+%.3e, chi2 = %.3e\n",slx,yup,inx,chi2_x,slz,yup,inz,chi2_z);
+
+        updateHitPositions(nPicks,icombi); // fix wy positions
+        result = updatePairPositions(icombi,nPicks,nPairs);
+        if (result) continue;
+        fityz(nPairs);
+        fityx(nPairs);
+        chi2_z = f_z->GetChisquare();
+        inz = f_z->Eval(yup);
+        slz = f_z->GetParameter(1);
+        chi2_x = f_x->GetChisquare();
+        inx = f_x->Eval(yup);
+        slx = f_x->GetParameter(1);
+        if (debug>0) printf("       2nd RESULT: x=%.3e*(y-%.3e)+%.3e, chi2 = %.3e; y=%.3e*(y-%.3e)+%.3e, chi2 = %.3e\n",slx,yup,inx,chi2_x,slz,yup,inz,chi2_z);
+        printf("%d %d %.4e %.4e\n",iEntry,icombi,chi2_x,chi2_z);
     }
 }
 
@@ -513,35 +516,55 @@ int updateHitPositions(int nPicks,int icombi){
     }
 }
 
-int updatePairPositions(int ipair,int ipick,int ihit,int jhit,int ilr,int jlr){
+int updatePairPositions(int icombi,int nPicks,int & nPairs){
     // calculate pair_wxyz
-    double deltaY = pick_wy[ipick+1]-pick_wy[ipick];
-    double dd1, dd2;
-    if (ilr) dd1 = (*o_dxr)[ihit]; // right
-    else     dd1 = (*o_dxl)[ihit]; // left
-    if (jlr) dd2 = (*o_dxr)[jhit]; // right
-    else     dd2 = (*o_dxl)[jhit]; // left
-    int lid = (*i_layerID)[ihit];
-    int ljd = (*i_layerID)[jhit];
-    int wid = (*i_wireID)[ihit];
-    int wjd = (*i_wireID)[jhit];
-    double theta1 = map_theta[lid][wid];
-    double theta2 = map_theta[ljd][wjd];
-    double sintheta12 = sin(theta1-theta2);
-    double zc_fix_slx = deltaY*f_x->GetParameter(1)/(tan(theta2)-tan(theta1));
-    double xc = mcp_xc[lid][wid][wjd]+dd1*sin(theta2)/(-sintheta12)+dd2*sin(theta1)/sintheta12;
-    double zc = mcp_zc[lid][wid][wjd]+dd1*cos(theta2)/(-sintheta12)+dd2*cos(theta1)/sintheta12+zc_fix_slx;
-    pair_wx[ipair] = xc;
-    pair_wy[ipair] = (pick_wy[ipick+1]+pick_wy[ipick])/2.;
-    pair_wz[ipair] = zc;
-    // FIXME: debug
-    printf("                  xc = %.3e+%.3e*sin(%.3e)/(-sin(%.3e-%.3e))+%.3e*sin(%.3e)/sin(%.3e-%.3e)\n",mcp_xc[lid][wid][wjd],dd1,theta2,theta1,theta2,dd2,theta1,theta1,theta2);
-    printf("                  zc = %.3e+%.3e*cos(%.3e)/(-sin(%.3e-%.3e))+%.3e*cos(%.3e)/sin(%.3e-%.3e)+zc_fix_slx\n",mcp_zc[lid][wid][wjd],dd1,theta2,theta1,theta2,dd2,theta1,theta1,theta2,zc_fix_slx);
-    printf("       cp[%d,%d]: lr(%d,%d) w(%d,%d) i(%d,%d) dd(%f,%f)] xyz(%f,%f,%f)\n",lid,ljd,ilr,jlr,wid,wjd,ihit,jhit,dd1,dd2,xc,(pick_wy[ipick+1]+pick_wy[ipick])/2.,zc);
-    if (zc>-chamberHL&&zc<chamberHL)
-        return 0;
-    else
+    if (debug>1) printf("     combi %d\n",icombi);
+    nPairs = 0;
+    int ipick = 0;
+    for (; ipick<nPicks-1; ipick++){
+        int ihit = pick_ihit[ipick];
+        int jhit = pick_ihit[ipick+1];
+        int lid = (*i_layerID)[ihit];
+        int ljd = (*i_layerID)[jhit];
+        if (lid+1!=ljd) continue; // not adjacent
+        int ilr = (icombi&(1<<ipick))>>ipick;
+        int jlr = (icombi&(1<<(ipick+1)))>>(ipick+1);
+        double deltaY = pick_wy[ipick+1]-pick_wy[ipick];
+        double dd1, dd2;
+        if (ilr) dd1 = (*o_dxr)[ihit]; // right
+        else     dd1 = (*o_dxl)[ihit]; // left
+        if (jlr) dd2 = (*o_dxr)[jhit]; // right
+        else     dd2 = (*o_dxl)[jhit]; // left
+        int wid = (*i_wireID)[ihit];
+        int wjd = (*i_wireID)[jhit];
+        if (debug>2) printf("                    pick[%d]: layer %d, wire %d, ihit %d, dd %.3e\n",ipick,lid,wid,ihit,dd1);
+        if (debug>2) printf("                    pick[%d]: layer %d, wire %d, ihit %d, dd %.3e\n",ipick+1,ljd,wjd,jhit,dd2);
+        double theta1 = map_theta[lid][wid];
+        double theta2 = map_theta[ljd][wjd];
+        double sintheta12 = sin(theta1-theta2);
+        double zc_fix_slx = deltaY*f_x->GetParameter(1)/(tan(theta2)-tan(theta1));
+        double xc = mcp_xc[lid][wid][wjd]+dd1*sin(theta2)/(-sintheta12)+dd2*sin(theta1)/sintheta12;
+        double zc = mcp_zc[lid][wid][wjd]+dd1*cos(theta2)/(-sintheta12)+dd2*cos(theta1)/sintheta12+zc_fix_slx;
+        pair_wx[nPairs] = xc;
+        pair_wy[nPairs] = (pick_wy[ipick+1]+pick_wy[ipick])/2.;
+        pair_wz[nPairs] = zc;
+        if (debug>1) printf("                  xc = %.3e+%.3e*sin(%.3e)/(-sin(%.3e-%.3e))+%.3e*sin(%.3e)/sin(%.3e-%.3e)\n",mcp_xc[lid][wid][wjd],dd1,theta2,theta1,theta2,dd2,theta1,theta1,theta2);
+        if (debug>1) printf("                  zc = %.3e+%.3e*cos(%.3e)/(-sin(%.3e-%.3e))+%.3e*cos(%.3e)/sin(%.3e-%.3e)+%.3e\n",mcp_zc[lid][wid][wjd],dd1,theta2,theta1,theta2,dd2,theta1,theta1,theta2,zc_fix_slx,zc_fix_slx);
+        if (debug>1) printf("       cp[%d,%d]: lr(%d,%d) w(%d,%d) i(%d,%d) dd(%f,%f)] xyz(%f,%f,%f)\n",lid,ljd,ilr,jlr,wid,wjd,ihit,jhit,dd1,dd2,xc,(pick_wy[ipick+1]+pick_wy[ipick])/2.,zc);
+      if (zc<-chamberHL||zc>chamberHL){
+            if (debug>1) printf("       bad combination!\n");
+          break;
+      }
+      nPairs++;
+  }
+  if (ipick==nPicks-1){
+        if (debug>1) printf("       GOOD!\n");
+      return 0;
+  }
+  else{
+        if (debug>1) printf("       BAD @ %d!\n",ipick);
         return 1;
+    }
 }
 
 int fityz(int nPairs){
@@ -599,5 +622,5 @@ double t2x(double time, int lid, int wid, int lr, int & status){ // 1: right; 2:
 //______________________________________________________________________________
 void print_usage(char* prog_name)
 {
-    fprintf(stderr,"\t%s [runNo] <[nEventMax]>\n",prog_name);
+    fprintf(stderr,"\t%s [runNo] [testlayer] <[suffix] [t0shift] [iEntryStart] [iEntryStop] [debug]>\n",prog_name);
 }
