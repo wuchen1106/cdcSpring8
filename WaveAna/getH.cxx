@@ -366,6 +366,11 @@ int main(int argc, char** argv){
 			// Get the peak;
 			int thepeak = 0;
 			for(;thepeak<tdcNhitwire; thepeak++){
+                // to correct i_sum in cases where two peaks should share one peak_sum: when they are adjacent in ADC samples
+                if (thepeak+1<tdcNhitwire&&(*i_clk)[ch][thepeak]+1==(*i_clk)[ch][thepeak+1]){
+                    (*i_sum)[ch][thepeak]+=(*i_sum)[ch][thepeak+1];
+                    (*i_sum)[ch][thepeak+1]=(*i_sum)[ch][thepeak];
+                }
 				if ((*i_sum)[ch][thepeak]>=sumcut) break;
 			}
 			if (thepeak==tdcNhitwire){// didn't find the peak, choose the first one;

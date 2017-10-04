@@ -372,6 +372,13 @@ int main(int argc, char** argv){
         pad_xyADC[ipad]->SetGridy(1);
 	}
 	//Prepare the Canvas for z-x planes
+	TCanvas* ca_zx_all = new TCanvas("ca_zx_all","ca_zx_all",1024,768);
+    gStyle->SetPalette(1);
+    gStyle->SetOptStat(0);
+    gStyle->SetPadTickX(1);
+    gStyle->SetPadTickY(1);
+    gPad->SetGridx(1);
+    gPad->SetGridy(1);
 	TCanvas* ca_zx[NZXP]; // z-x planes corresponding to the layerID of the lower layer counting from 1
 	for (int lid = 1; lid<NZXP; lid++){
 	    ca_zx[lid] = new TCanvas(Form("ca_zx_%d",lid),"ca_zx",1024,768);
@@ -470,6 +477,7 @@ int main(int argc, char** argv){
     }
     // Prepare cross points of driftT lines on z-x planes
     TMarker * point_cross_zx[NZXP][NCEL][NCEL][4];
+    TText * text_cross_zx[NZXP][NCEL][NCEL][4];
     for (int lid = 1; lid<NZXP; lid++){ // z-x planes corresponding to the layerID of the lower layer counting from 1
         for (int wid = 0; wid<NCEL; wid++){
             for (int wjd = 0; wjd<NCEL; wjd++){
@@ -480,6 +488,9 @@ int main(int argc, char** argv){
                         point_cross_zx[lid][wid][wjd][icombi] = new TMarker(0,0,4);
                     point_cross_zx[lid][wid][wjd][icombi]->SetMarkerColor(kBlack);
                     point_cross_zx[lid][wid][wjd][icombi]->SetMarkerSize(0.55);
+                    text_cross_zx[lid][wid][wjd][icombi] = new TText(0,0,Form("%d",lid));
+                    text_cross_zx[lid][wid][wjd][icombi]->SetTextColor(color[lid]);
+                    text_cross_zx[lid][wid][wjd][icombi]->SetTextSize(0.01);
                 }
             }
         }
@@ -522,6 +533,14 @@ int main(int argc, char** argv){
     TGraph * gr_all[NZXP];
     double ar_cr_x[2] = {-ZMAX,ZMAX};
     double ar_cr_y[2] = {-XMAX,XMAX};
+    gr_all[0] = new TGraph(2,ar_cr_x,ar_cr_y);
+    gr_all[0]->SetTitle(Form("Cross points of all layers"));
+    gr_all[0]->SetMarkerColor(kWhite);
+    gr_all[0]->SetMarkerSize(0.1);
+    gr_all[0]->GetXaxis()->SetRangeUser(-ZMAX,ZMAX);
+    gr_all[0]->GetYaxis()->SetRangeUser(-XMAX,XMAX);
+    gr_all[0]->GetXaxis()->SetTitle("z [mm]");
+    gr_all[0]->GetYaxis()->SetTitle("x [mm]");
     for (int lid = 1; lid<NZXP; lid++){ // z-x planes corresponding to the layerID of the lower layer counting from 1
         // Background graph for z-x planes
         gr_all[lid] = new TGraph(2,ar_cr_x,ar_cr_y);
@@ -1017,6 +1036,44 @@ int main(int argc, char** argv){
             ca_WF[bid]->SaveAs(prefix+Form("wf.%d.b%d.pdf",triggerNumber,bid));
             ca_WF[bid]->SaveAs(prefix+Form("wf.%d.b%d.png",triggerNumber,bid));
         }
+
+        // create one more z-x plane with all points on it
+        ca_zx_all->cd();
+        gr_all[0]->Draw("AP");
+        for (int lid = 1; lid<NLAY; lid++){
+            if (nHits_zx[lid]>0&&nHits_zx[lid+1]>0){
+                for (int wid = 0; wid<NCEL; wid++){
+                    if (!check_zx[lid][wid]) continue;
+                    for (int wjd = 0; wjd<NCEL; wjd++){
+                        if (!check_zx[lid+1][wjd]) continue;
+                        // position of the cross point
+                        for (int icombi = 0; icombi<4; icombi++){
+                            double dd1 = dd_zx[lid][wid];
+                            double dd2 = dd_zx[lid+1][wjd];
+                            if (icombi<2) dd1 = -dd1; // reverse lid when icombi is 0 or 1
+                            if (icombi%2==0) dd2 = -dd2; // reverse lid+1 when icombi is 0 or 2
+                            double theta1 = theta_zx[lid][wid];
+                            double theta2 = theta_zx[lid+1][wjd];
+                            double sintheta12 = sin(theta1-theta2);
+                            double zc_fix_slx = 0;
+                            if (workMode>=1){
+                                double deltaY = y_zx[lid+1][wjd]-y_zx[lid][wid];
+                                zc_fix_slx = deltaY*slx/(tan(theta2)-tan(theta1));
+                            }
+                            double xc = mcp_xc[lid][wid][wjd]+dd1*sin(theta2)/(-sintheta12)+dd2*sin(theta1)/sintheta12;
+                            double zc = mcp_zc[lid][wid][wjd]+dd1*cos(theta2)/(-sintheta12)+dd2*cos(theta1)/sintheta12+zc_fix_slx;
+                            if (zc>-chamberHL&&zc<chamberHL){
+                                text_cross_zx[lid][wid][wjd][icombi]->SetX(zc);
+                                text_cross_zx[lid][wid][wjd][icombi]->SetY(xc);
+                                text_cross_zx[lid][wid][wjd][icombi]->Draw();
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        ca_zx_all->SaveAs(prefix+Form("zx.%d.all.png",triggerNumber));
+        ca_zx_all->SaveAs(prefix+Form("zx.%d.all.pdf",triggerNumber));
 
 		// FIXME: in interactive mode
 //		ca_xyADC->WaitPrimitive();

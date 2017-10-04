@@ -29,7 +29,7 @@
 
 #define NCAND 4
 
-#define NHITSMAX 10
+#define NHITSMAX 15
 
 int debug = 0;
 
@@ -136,7 +136,7 @@ int main(int argc, char** argv){
     printf("Start Entry = %d\n",iEntryStart);
     printf("Stop Entry  = %d\n",iEntryStop);
     double tmin = -50;
-    double tmax = 380; // FIXME: need to be properly set
+    double tmax = 550; // FIXME: need to be properly set
 
     //===================Prepare Maps============================
     for(int lid = 0; lid<NLAY; lid++){
@@ -449,7 +449,9 @@ int ChooseHits(int ipick,int & iselection,int iEntry){
     else{
         int lid = v_pick_lid[ipick];
         for (int i = 0; i<v_layer_ihit[lid].size(); i++){
-            if (debug>0) printf(" => pick # %d, layer %d, hit[%d] %d\n",ipick,lid,i,v_layer_ihit[lid][i]);
+            int ihit = v_layer_ihit[lid][i];
+            int wid = (*i_wireID)[ihit];
+            if (debug>0) printf(" => pick # %d, layer %d, wire %d, hit[%d], ihit = %d\n",ipick,lid,wid,i,ihit);
             pick_ihit[ipick] = v_layer_ihit[lid][i];
             ChooseHits(ipick+1,iselection,iEntry);
         }
@@ -609,11 +611,13 @@ int fityx(int nPairs){
 double t2x(double time, int lid, int wid, int lr, int & status){ // 1: right; 2: right end; -1: left; -2: left end; 0 out of range
     TF1* fl=0;
     TF1* fr=0;
-    // FIXME
+    // FIXME: now we only take one xt: layer 5 cell 0 (fake)
     //int index = (lid-1)*NCEL+wid;
     int index = (6-1)*NCEL;
     status = 0;
-    if (time<=vtlel[index]&&time>vtler[index]){
+    // FIXME: should we really set a boundary of f_left_end/f_right_end? driftT can be really long when it comes from corner...
+//    if (time<=vtlel[index]&&time>vtler[index]){
+    if (time>vtler[index]){
         fl = f_left_end[index];
         status = -2;
     }
@@ -621,7 +625,8 @@ double t2x(double time, int lid, int wid, int lr, int & status){ // 1: right; 2:
         fl = f_left[index];
         status = -1;
     }
-    if (time>=vtrel[index]&&time<vtrer[index]){
+//    if (time>=vtrel[index]&&time<vtrer[index]){
+    if (time>vtrel[index]){
         fr = f_right_end[index];
         status = 2;
     }
