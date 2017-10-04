@@ -82,6 +82,7 @@ int ChooseHits(int ipick,int & iselection,int iEntry=0);
 int checkCrossPoints(int nPicks,int iEntry=0);
 int updatePairPositions(int icombi,int nPicks,int & nPairs);
 int updateHitPositions(int nPicks,int icombi);
+int rePick(int & nPicks, int & nPairs, int icombi);
 int fityx(int nPairs);
 int fityz(int nPairs);
 
@@ -143,8 +144,12 @@ int main(int argc, char** argv){
     printf("test layer  = %d\n",testlayer);
     printf("suffix      = %s\n",suffix.Data());
     printf("t0shift     = %d\n",t0shift);
+    printf("tmin        = %d\n",tmin);
+    printf("tmax        = %d\n",tmax);
+    printf("nHitsMax    = %d\n",nHitsMax);
     printf("Start Entry = %d\n",iEntryStart);
     printf("Stop Entry  = %d\n",iEntryStop);
+    printf("debug       = %d\n",debug);
 
     //===================Prepare Maps============================
     for(int lid = 0; lid<NLAY; lid++){
@@ -488,6 +493,8 @@ int checkCrossPoints(int nPicks,int iEntry){
         slx = f_x->GetParameter(1);
         if (debug>0) printf("       1st RESULT: x=%.3e*(y-%.3e)+%.3e, chi2 = %.3e; z=%.3e*(y-%.3e)+%.3e, chi2 = %.3e\n",slx,yup,inx,chi2_x,slz,yup,inz,chi2_z);
         printf("%d %d 0 %.4e %.4e\n",iEntry,icombi,chi2_x,chi2_z);
+        
+        rePick(nPicks,nPairs,icombi);
 
         updateHitPositions(nPicks,icombi); // fix wy positions
         result = updatePairPositions(icombi,nPicks,nPairs);
@@ -502,20 +509,6 @@ int checkCrossPoints(int nPicks,int iEntry){
         slx = f_x->GetParameter(1);
         if (debug>0) printf("       2nd RESULT: x=%.3e*(y-%.3e)+%.3e, chi2 = %.3e; y=%.3e*(y-%.3e)+%.3e, chi2 = %.3e\n",slx,yup,inx,chi2_x,slz,yup,inz,chi2_z);
         printf("%d %d 1 %.4e %.4e\n",iEntry,icombi,chi2_x,chi2_z);
-
-        updateHitPositions(nPicks,icombi); // fix wy positions
-        result = updatePairPositions(icombi,nPicks,nPairs);
-        if (result) continue;
-        fityz(nPairs);
-        fityx(nPairs);
-        chi2_z = f_z->GetChisquare();
-        inz = f_z->Eval(yup);
-        slz = f_z->GetParameter(1);
-        chi2_x = f_x->GetChisquare();
-        inx = f_x->Eval(yup);
-        slx = f_x->GetParameter(1);
-        if (debug>0) printf("       2nd RESULT: x=%.3e*(y-%.3e)+%.3e, chi2 = %.3e; y=%.3e*(y-%.3e)+%.3e, chi2 = %.3e\n",slx,yup,inx,chi2_x,slz,yup,inz,chi2_z);
-        printf("%d %d 2 %.4e %.4e\n",iEntry,icombi,chi2_x,chi2_z);
     }
 }
 
@@ -582,20 +575,29 @@ int updatePairPositions(int icombi,int nPicks,int & nPairs){
         if (debug>1) printf("                  xc = %.3e+%.3e*sin(%.3e)/(-sin(%.3e-%.3e))+%.3e*sin(%.3e)/sin(%.3e-%.3e)\n",mcp_xc[lid][wid][wjd],dd1,theta2,theta1,theta2,dd2,theta1,theta1,theta2);
         if (debug>1) printf("                  zc = %.3e+%.3e*cos(%.3e)/(-sin(%.3e-%.3e))+%.3e*cos(%.3e)/sin(%.3e-%.3e)+%.3e\n",mcp_zc[lid][wid][wjd],dd1,theta2,theta1,theta2,dd2,theta1,theta1,theta2,zc_fix_slx,zc_fix_slx);
         if (debug>1) printf("       cp[%d,%d]: lr(%d,%d) w(%d,%d) i(%d,%d) dd(%f,%f)] xyz(%f,%f,%f)\n",lid,ljd,ilr,jlr,wid,wjd,ihit,jhit,dd1,dd2,xc,(pick_wy[ipick+1]+pick_wy[ipick])/2.,zc);
-      if (zc<-chamberHL||zc>chamberHL){
+        if (zc<-chamberHL||zc>chamberHL){
             if (debug>1) printf("       bad combination!\n");
-          break;
-      }
-      nPairs++;
-  }
-  if (ipick==nPicks-1){
+            break;
+        }
+        nPairs++;
+    }
+    if (ipick==nPicks-1){
         if (debug>1) printf("       GOOD!\n");
-      return 0;
-  }
-  else{
+        return 0;
+    }
+    else{
         if (debug>1) printf("       BAD @ %d!\n",ipick);
         return 1;
     }
+}
+
+int rePick(int & nPicks, int & nPairs, int icombi){
+    // calculate pair_wxyz
+    for (int ipair = 0; ipair<nPairs; ipair++){
+        double tz = f_z->Eval(pair_wy[ipair]);
+        printf("%.4e\n",pair_wz[ipair]-tz);
+    }
+    return 0;
 }
 
 int fityz(int nPairs){
