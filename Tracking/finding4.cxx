@@ -70,6 +70,12 @@ TF1 * f_x = new TF1("f_x","pol1",500,640); // x VS y
 TGraph * g_x = 0; // x VS y
 TF1 * f_z = new TF1("f_z","pol1",500,640); // z VS y
 TGraph * g_z = 0; // z VS y
+double chi2_z = 0;
+double inz = 0;
+double slz = 0;
+double chi2_x = 0;
+double inx = 0;
+double slx = 0;
 
 //===================Functions============================
 void print_usage(char* prog_name);
@@ -464,13 +470,14 @@ int checkCrossPoints(int nPicks,int iEntry){
         if (result) continue;
         fityz(nPairs);
         fityx(nPairs);
-        double chi2_z = f_z->GetChisquare();
-        double inz = f_z->Eval(yup);
-        double slz = f_z->GetParameter(1);
-        double chi2_x = f_x->GetChisquare();
-        double inx = f_x->Eval(yup);
-        double slx = f_x->GetParameter(1);
+        chi2_z = f_z->GetChisquare();
+        inz = f_z->Eval(yup);
+        slz = f_z->GetParameter(1);
+        chi2_x = f_x->GetChisquare();
+        inx = f_x->Eval(yup);
+        slx = f_x->GetParameter(1);
         if (debug>0) printf("       1st RESULT: x=%.3e*(y-%.3e)+%.3e, chi2 = %.3e; z=%.3e*(y-%.3e)+%.3e, chi2 = %.3e\n",slx,yup,inx,chi2_x,slz,yup,inz,chi2_z);
+        printf("%d %d 0 %.4e %.4e\n",iEntry,icombi,chi2_x,chi2_z);
 
         updateHitPositions(nPicks,icombi); // fix wy positions
         result = updatePairPositions(icombi,nPicks,nPairs);
@@ -484,7 +491,21 @@ int checkCrossPoints(int nPicks,int iEntry){
         inx = f_x->Eval(yup);
         slx = f_x->GetParameter(1);
         if (debug>0) printf("       2nd RESULT: x=%.3e*(y-%.3e)+%.3e, chi2 = %.3e; y=%.3e*(y-%.3e)+%.3e, chi2 = %.3e\n",slx,yup,inx,chi2_x,slz,yup,inz,chi2_z);
-        printf("%d %d %.4e %.4e\n",iEntry,icombi,chi2_x,chi2_z);
+        printf("%d %d 1 %.4e %.4e\n",iEntry,icombi,chi2_x,chi2_z);
+
+        updateHitPositions(nPicks,icombi); // fix wy positions
+        result = updatePairPositions(icombi,nPicks,nPairs);
+        if (result) continue;
+        fityz(nPairs);
+        fityx(nPairs);
+        chi2_z = f_z->GetChisquare();
+        inz = f_z->Eval(yup);
+        slz = f_z->GetParameter(1);
+        chi2_x = f_x->GetChisquare();
+        inx = f_x->Eval(yup);
+        slx = f_x->GetParameter(1);
+        if (debug>0) printf("       2nd RESULT: x=%.3e*(y-%.3e)+%.3e, chi2 = %.3e; y=%.3e*(y-%.3e)+%.3e, chi2 = %.3e\n",slx,yup,inx,chi2_x,slz,yup,inz,chi2_z);
+        printf("%d %d 2 %.4e %.4e\n",iEntry,icombi,chi2_x,chi2_z);
     }
 }
 

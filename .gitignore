@@ -42,12 +42,9 @@ Ana/get_mcgroup
 Ana/get_wire
 Ana/get_xt
 Ana/loader_C.d
-EventDisplay/d_display
-EventDisplay/h_display
-EventDisplay/i_display
 EventDisplay/loader_C.d
-EventDisplay/r_display
-EventDisplay/t_display
+EventDisplay/display
+EventDisplay/loader_C_ACLiC_dict_rdict.pcm
 Tracking/finding
 Tracking/finding2
 Tracking/finding3
@@ -59,3 +56,6 @@ WaveAna/getP
 WaveAna/loader_C.d
 SimAna/generateXT
 SimAna/transform
+Tracking/ana_finding_chi2
+Tracking/finding4
+WaveAna/loader_C_ACLiC_dict_rdict.pcm
