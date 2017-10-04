@@ -29,8 +29,6 @@
 
 #define NCAND 4
 
-#define NHITSMAX 15
-
 int debug = 0;
 
 std::vector<int> * i_layerID = 0;
@@ -126,8 +124,20 @@ int main(int argc, char** argv){
         iEntryStart = (int)strtol(argv[5],NULL,10);
         iEntryStop = (int)strtol(argv[6],NULL,10);
     }
+    int nHitsMax = 10;
     if (argc>=8){
-        debug = (int)strtol(argv[7],NULL,10);
+        nHitsMax = (int)strtol(argv[7],NULL,10);
+    }
+    int tmin = -50;
+    if (argc>=9){
+        tmin = (int)strtol(argv[8],NULL,10);
+    }
+    int tmax = 1000; // FIXME: need to be properly set
+    if (argc>=10){
+        tmax = (int)strtol(argv[9],NULL,10);
+    }
+    if (argc>=11){
+        debug = (int)strtol(argv[10],NULL,10);
     }
     printf("runNo       = %d\n",runNo);
     printf("test layer  = %d\n",testlayer);
@@ -135,8 +145,6 @@ int main(int argc, char** argv){
     printf("t0shift     = %d\n",t0shift);
     printf("Start Entry = %d\n",iEntryStart);
     printf("Stop Entry  = %d\n",iEntryStop);
-    double tmin = -50;
-    double tmax = 550; // FIXME: need to be properly set
 
     //===================Prepare Maps============================
     for(int lid = 0; lid<NLAY; lid++){
@@ -264,7 +272,7 @@ int main(int argc, char** argv){
 
     //===================Get input ROOT file============================
     TChain * c = new TChain("t","t");
-    c->Add(Form("../root/h_%d.root",runNo));
+    c->Add(Form("../root/h_%d",runNo)+suffix+".root");
     int triggerNumber;
     int i_nHits;
     std::vector<double> * i_driftT = 0;
@@ -406,7 +414,7 @@ int main(int argc, char** argv){
                 nHitLayers++;
         }
 
-        if (nHitsgood>NHITSMAX||nHitLayers<6) continue; // Need at least 6 layers with good hit and no more than NHITSMAX good hits in total
+        if (nHitsgood>nHitsMax||nHitLayers<6) continue; // Need at least 6 layers with good hit and no more than nHitsMax good hits in total
         N_found++;
 
         //========================================================================================================
@@ -648,5 +656,5 @@ double t2x(double time, int lid, int wid, int lr, int & status){ // 1: right; 2:
 //______________________________________________________________________________
 void print_usage(char* prog_name)
 {
-    fprintf(stderr,"\t%s [runNo] [testlayer] <[suffix] [t0shift] [iEntryStart] [iEntryStop] [debug]>\n",prog_name);
+    fprintf(stderr,"\t%s [runNo] [testlayer] <[suffix] [t0shift] [iEntryStart] [iEntryStop] [nHitsMax] [tmin] [tmax] [debug]>\n",prog_name);
 }
