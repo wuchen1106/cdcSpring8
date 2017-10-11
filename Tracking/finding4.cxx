@@ -8,7 +8,7 @@
 #include "TFile.h"
 #include "TF1.h"
 #include "TString.h"
-#include "TGraph.h"
+#include "TGraphErrors.h"
 
 #define XMAX 130
 #define ZMAX 350
@@ -65,9 +65,9 @@ std::vector<double> pair_wz; // z position of each picked hit pair (center posit
 double yup = 623.97007;
 double ydown = 527.60011;
 TF1 * f_x = new TF1("f_x","pol1",500,640); // x VS y
-TGraph * g_x = 0; // x VS y
+TGraphErrors * g_x = 0; // x VS y
 TF1 * f_z = new TF1("f_z","pol1",500,640); // z VS y
-TGraph * g_z = 0; // z VS y
+TGraphErrors * g_z = 0; // z VS y
 double chi2_z = 0;
 double inz = 0;
 double slz = 0;
@@ -82,7 +82,7 @@ int ChooseHits(int ipick,int & iselection,int iEntry=0);
 int checkCrossPoints(int nPicks,int iEntry=0);
 int updatePairPositions(int icombi,int nPicks,int & nPairs);
 int updateHitPositions(int nPicks,int icombi);
-int rePick(int & nPicks, int & nPairs, int icombi);
+int setErrors(int & nPairs, bool noError = false);
 int fityx(int nPairs);
 int fityz(int nPairs);
 
@@ -362,8 +362,8 @@ int main(int argc, char** argv){
     pair_wx.resize(NLAY);
     pair_wy.resize(NLAY);
     pair_wz.resize(NLAY);
-    g_x = new TGraph(NLAY,&(pair_wy[0]),&(pair_wx[0]));
-    g_z = new TGraph(NLAY,&(pair_wy[0]),&(pair_wz[0]));
+    g_x = new TGraphErrors(NLAY,&(pair_wy[0]),&(pair_wx[0]),0,0);
+    g_z = new TGraphErrors(NLAY,&(pair_wy[0]),&(pair_wz[0]),0,0);
     int nHitsgood; // number of good hits
     int nHitLayers; // number of layers with hit
 
@@ -483,6 +483,7 @@ int checkCrossPoints(int nPicks,int iEntry){
         updateHitPositions(nPicks,icombi); // fix wy positions
         int result = updatePairPositions(icombi,nPicks,nPairs);
         if (result) continue;
+        setErrors(nPairs,true);
         fityz(nPairs);
         fityx(nPairs);
         chi2_z = f_z->GetChisquare();
@@ -494,10 +495,9 @@ int checkCrossPoints(int nPicks,int iEntry){
         if (debug>0) printf("       1st RESULT: x=%.3e*(y-%.3e)+%.3e, chi2 = %.3e; z=%.3e*(y-%.3e)+%.3e, chi2 = %.3e\n",slx,yup,inx,chi2_x,slz,yup,inz,chi2_z);
         printf("%d %d 0 %.4e %.4e\n",iEntry,icombi,chi2_x,chi2_z);
         
-        rePick(nPicks,nPairs,icombi);
-
         updateHitPositions(nPicks,icombi); // fix wy positions
         result = updatePairPositions(icombi,nPicks,nPairs);
+        setErrors(nPairs,false);
         if (result) continue;
         fityz(nPairs);
         fityx(nPairs);
@@ -509,6 +509,23 @@ int checkCrossPoints(int nPicks,int iEntry){
         slx = f_x->GetParameter(1);
         if (debug>0) printf("       2nd RESULT: x=%.3e*(y-%.3e)+%.3e, chi2 = %.3e; y=%.3e*(y-%.3e)+%.3e, chi2 = %.3e\n",slx,yup,inx,chi2_x,slz,yup,inz,chi2_z);
         printf("%d %d 1 %.4e %.4e\n",iEntry,icombi,chi2_x,chi2_z);
+
+        updateHitPositions(nPicks,icombi); // fix wy positions
+        result = updatePairPositions(icombi,nPicks,nPairs);
+        setErrors(nPairs,false);
+        if (result) continue;
+        fityz(nPairs);
+        fityx(nPairs);
+        chi2_z = f_z->GetChisquare();
+        inz = f_z->Eval(yup);
+        slz = f_z->GetParameter(1);
+        chi2_x = f_x->GetChisquare();
+        inx = f_x->Eval(yup);
+        slx = f_x->GetParameter(1);
+        if (debug>0) printf("       3rd RESULT: x=%.3e*(y-%.3e)+%.3e, chi2 = %.3e; y=%.3e*(y-%.3e)+%.3e, chi2 = %.3e\n",slx,yup,inx,chi2_x,slz,yup,inz,chi2_z);
+        printf("%d %d 2 %.4e %.4e\n",iEntry,icombi,chi2_x,chi2_z);
+
+        setErrors(nPairs,false);
     }
 }
 
@@ -591,11 +608,18 @@ int updatePairPositions(int icombi,int nPicks,int & nPairs){
     }
 }
 
-int rePick(int & nPicks, int & nPairs, int icombi){
+int setErrors(int & nPairs, bool noError){
     // calculate pair_wxyz
     for (int ipair = 0; ipair<nPairs; ipair++){
-        double tz = f_z->Eval(pair_wy[ipair]);
-        printf("%.4e\n",pair_wz[ipair]-tz);
+        double tz = 0;
+        double tx = 0;
+        if (!noError){
+            tz = f_z->Eval(pair_wy[ipair]);
+            tx = f_x->Eval(pair_wy[ipair]);
+        }
+        if (debug>=2) printf("           pair[%d]: error x = %.3e, error z = %.3e\n",ipair,pair_wx[ipair]-tx,pair_wz[ipair]-tz);
+	    g_z->SetPointError(ipair,0,pair_wz[ipair]-tz);
+	    g_x->SetPointError(ipair,0,pair_wx[ipair]-tx);
     }
     return 0;
 }
@@ -605,7 +629,7 @@ int fityz(int nPairs){
 	    g_z->SetPoint(ipair,pair_wy[ipair],pair_wz[ipair]);
 	}
 	g_z->Set(nPairs);
-	g_z->Fit("f_z","qN0","");
+	g_z->Fit("f_z","qN0F","");
 	return 0;
 }
 
@@ -614,7 +638,7 @@ int fityx(int nPairs){
 	    g_x->SetPoint(ipair,pair_wy[ipair],pair_wx[ipair]);
 	}
 	g_x->Set(nPairs);
-	g_x->Fit("f_x","qN0","");
+	g_x->Fit("f_x","qN0F","");
 	return 0;
 }
 
