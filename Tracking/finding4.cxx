@@ -75,16 +75,28 @@ double chi2_x = 0;
 double inx = 0;
 double slx = 0;
 
+//===================About beam============================
+double slzMax = 0.2;
+double slxMax = 0.05;
+
+//===================About scintillator============================
+double ytop = yup+50+8; // top scintillator
+double ybot = ydown-50-8; // bottom scintillator
+double hLtri = 150; // normal scintillator
+double hHtri = 45; // normal scintillator
+
 //===================Functions============================
 void print_usage(char* prog_name);
 double t2x(double time, int lid, int wid, int lr, int & status);
 int ChooseHits(int ipick,int & iselection,int iEntry=0);
-int checkCrossPoints(int nPicks,int iEntry=0);
+int checkCrossPoints(int nPicks,int iEntry=0,int iselection = 0);
 int updatePairPositions(int icombi,int nPicks,int & nPairs);
 int updateHitPositions(int nPicks,int icombi);
-int setErrors(int & nPairs, bool noError = false);
+int setErrors(int nPairs, bool noError = false);
+int getChi2XZ(int nPairs, double & chi2x, double & chi2z);
 int fityx(int nPairs);
 int fityz(int nPairs);
+bool checkScintillator();
 
 //===================About xt============================
 double tres = 0;
@@ -456,7 +468,7 @@ int main(int argc, char** argv){
 int ChooseHits(int ipick,int & iselection,int iEntry){
     if (ipick == v_pick_lid.size()){ // finished picking hits
         if (debug>0) printf(" Finished picking selection %d:\n",iselection);
-        checkCrossPoints(v_pick_lid.size(),iEntry);
+        checkCrossPoints(v_pick_lid.size(),iEntry,iselection);
         iselection++;
     }
     else{
@@ -472,7 +484,7 @@ int ChooseHits(int ipick,int & iselection,int iEntry){
     return 0;
 }
 
-int checkCrossPoints(int nPicks,int iEntry){
+int checkCrossPoints(int nPicks,int iEntry,int iselection){
     int ncombi = pow(2,nPicks);
     if (debug>0) printf("  %d picked layers -> %d combinations\n",nPicks,ncombi);
     for (int icombi = 0; icombi<ncombi; icombi++){ // each combination corresponds to a unique left/right selection set
@@ -486,14 +498,16 @@ int checkCrossPoints(int nPicks,int iEntry){
         setErrors(nPairs,true);
         fityz(nPairs);
         fityx(nPairs);
-        chi2_z = f_z->GetChisquare();
+        bool inScint = checkScintillator();
         inz = f_z->Eval(yup);
         slz = f_z->GetParameter(1);
-        chi2_x = f_x->GetChisquare();
         inx = f_x->Eval(yup);
         slx = f_x->GetParameter(1);
-        if (debug>0) printf("       1st RESULT: x=%.3e*(y-%.3e)+%.3e, chi2 = %.3e; z=%.3e*(y-%.3e)+%.3e, chi2 = %.3e\n",slx,yup,inx,chi2_x,slz,yup,inz,chi2_z);
-        printf("%d %d 0 %.4e %.4e\n",iEntry,icombi,chi2_x,chi2_z);
+        bool fromSource = slx>-slxMax&&slx<slxMax&&slz>-slzMax&&slz<slzMax;
+        int nGood = getChi2XZ(nPairs,chi2_x,chi2_z);
+        if (debug>0) printf("       1st RESULT: nGood = %d, inScint? %s; x=%.3e*(y-%.3e)+%.3e, chi2 = %.3e, z=%.3e*(y-%.3e)+%.3e, chi2 = %.3e\n",nGood,inScint?"yes":"no",slx,yup,inx,chi2_x,slz,yup,inz,chi2_z);
+        if (debug>=0&&inScint&&fromSource) printf("%d %d 0 %d %d %.4e %.4e\n",iEntry,icombi,iselection,nGood,chi2_x,chi2_z);
+        if (!fromSource||!inScint) {f_x->SetParameters(0,0); f_z->SetParameters(0,0);}
         
         updateHitPositions(nPicks,icombi); // fix wy positions
         result = updatePairPositions(icombi,nPicks,nPairs);
@@ -501,31 +515,32 @@ int checkCrossPoints(int nPicks,int iEntry){
         if (result) continue;
         fityz(nPairs);
         fityx(nPairs);
-        chi2_z = f_z->GetChisquare();
+        inScint = checkScintillator();
         inz = f_z->Eval(yup);
         slz = f_z->GetParameter(1);
-        chi2_x = f_x->GetChisquare();
         inx = f_x->Eval(yup);
         slx = f_x->GetParameter(1);
-        if (debug>0) printf("       2nd RESULT: x=%.3e*(y-%.3e)+%.3e, chi2 = %.3e; y=%.3e*(y-%.3e)+%.3e, chi2 = %.3e\n",slx,yup,inx,chi2_x,slz,yup,inz,chi2_z);
-        printf("%d %d 1 %.4e %.4e\n",iEntry,icombi,chi2_x,chi2_z);
-
+        fromSource = slx>-slxMax&&slx<slxMax&&slz>-slzMax&&slz<slzMax;
+        nGood = getChi2XZ(nPairs,chi2_x,chi2_z);
+        if (debug>0) printf("       2nd RESULT: nGood = %d, inScint? %s; x=%.3e*(y-%.3e)+%.3e, chi2 = %.3e, z=%.3e*(y-%.3e)+%.3e, chi2 = %.3e\n",nGood,inScint?"yes":"no",slx,yup,inx,chi2_x,slz,yup,inz,chi2_z);
+        if (debug>=0&&inScint&&fromSource) printf("%d %d 1 %d %d %.4e %.4e\n",iEntry,icombi,iselection,nGood,chi2_x,chi2_z);
+        if (!fromSource||!inScint) {f_x->SetParameters(0,0); f_z->SetParameters(0,0);}
+        
         updateHitPositions(nPicks,icombi); // fix wy positions
         result = updatePairPositions(icombi,nPicks,nPairs);
         setErrors(nPairs,false);
         if (result) continue;
         fityz(nPairs);
         fityx(nPairs);
-        chi2_z = f_z->GetChisquare();
+        inScint = checkScintillator();
         inz = f_z->Eval(yup);
         slz = f_z->GetParameter(1);
-        chi2_x = f_x->GetChisquare();
         inx = f_x->Eval(yup);
         slx = f_x->GetParameter(1);
-        if (debug>0) printf("       3rd RESULT: x=%.3e*(y-%.3e)+%.3e, chi2 = %.3e; y=%.3e*(y-%.3e)+%.3e, chi2 = %.3e\n",slx,yup,inx,chi2_x,slz,yup,inz,chi2_z);
-        printf("%d %d 2 %.4e %.4e\n",iEntry,icombi,chi2_x,chi2_z);
-
-        setErrors(nPairs,false);
+        fromSource = slx>-slxMax&&slx<slxMax&&slz>-slzMax&&slz<slzMax;
+        nGood = getChi2XZ(nPairs,chi2_x,chi2_z);
+        if (debug>0) printf("       3rd RESULT: nGood = %d, inScint? %s; x=%.3e*(y-%.3e)+%.3e, chi2 = %.3e, z=%.3e*(y-%.3e)+%.3e, chi2 = %.3e\n",nGood,inScint?"yes":"no",slx,yup,inx,chi2_x,slz,yup,inz,chi2_z);
+        if (debug>=0&&inScint&&fromSource) printf("%d %d 2 %d %d %.4e %.4e\n",iEntry,icombi,iselection,nGood,chi2_x,chi2_z);
     }
 }
 
@@ -578,8 +593,6 @@ int updatePairPositions(int icombi,int nPicks,int & nPairs){
         else     dd2 = (*o_dxl)[jhit]; // left
         int wid = (*i_wireID)[ihit];
         int wjd = (*i_wireID)[jhit];
-        if (debug>2) printf("                    pick[%d]: layer %d, wire %d, ihit %d, dd %.3e\n",ipick,lid,wid,ihit,dd1);
-        if (debug>2) printf("                    pick[%d]: layer %d, wire %d, ihit %d, dd %.3e\n",ipick+1,ljd,wjd,jhit,dd2);
         double theta1 = map_theta[lid][wid];
         double theta2 = map_theta[ljd][wjd];
         double sintheta12 = sin(theta1-theta2);
@@ -589,8 +602,8 @@ int updatePairPositions(int icombi,int nPicks,int & nPairs){
         pair_wx[nPairs] = xc;
         pair_wy[nPairs] = (pick_wy[ipick+1]+pick_wy[ipick])/2.;
         pair_wz[nPairs] = zc;
-        if (debug>1) printf("                  xc = %.3e+%.3e*sin(%.3e)/(-sin(%.3e-%.3e))+%.3e*sin(%.3e)/sin(%.3e-%.3e)\n",mcp_xc[lid][wid][wjd],dd1,theta2,theta1,theta2,dd2,theta1,theta1,theta2);
-        if (debug>1) printf("                  zc = %.3e+%.3e*cos(%.3e)/(-sin(%.3e-%.3e))+%.3e*cos(%.3e)/sin(%.3e-%.3e)+%.3e\n",mcp_zc[lid][wid][wjd],dd1,theta2,theta1,theta2,dd2,theta1,theta1,theta2,zc_fix_slx,zc_fix_slx);
+//        if (debug>1) printf("                  xc = %.3e+%.3e*sin(%.3e)/(-sin(%.3e-%.3e))+%.3e*sin(%.3e)/sin(%.3e-%.3e)\n",mcp_xc[lid][wid][wjd],dd1,theta2,theta1,theta2,dd2,theta1,theta1,theta2);
+ //       if (debug>1) printf("                  zc = %.3e+%.3e*cos(%.3e)/(-sin(%.3e-%.3e))+%.3e*cos(%.3e)/sin(%.3e-%.3e)+%.3e\n",mcp_zc[lid][wid][wjd],dd1,theta2,theta1,theta2,dd2,theta1,theta1,theta2,zc_fix_slx,zc_fix_slx);
         if (debug>1) printf("       cp[%d,%d]: lr(%d,%d) w(%d,%d) i(%d,%d) dd(%f,%f)] xyz(%f,%f,%f)\n",lid,ljd,ilr,jlr,wid,wjd,ihit,jhit,dd1,dd2,xc,(pick_wy[ipick+1]+pick_wy[ipick])/2.,zc);
         if (zc<-chamberHL||zc>chamberHL){
             if (debug>1) printf("       bad combination!\n");
@@ -608,20 +621,62 @@ int updatePairPositions(int icombi,int nPicks,int & nPairs){
     }
 }
 
-int setErrors(int & nPairs, bool noError){
-    // calculate pair_wxyz
+int setErrors(int nPairs, bool noError){
+    double errorzMax0 = 0;
+    double errorzMax1 = 0;
+    int errorzMax0_i = -1;
+    int errorzMax1_i = -1;
     for (int ipair = 0; ipair<nPairs; ipair++){
-        double tz = 0;
-        double tx = 0;
+        double errorz = 0;
+        double errorx = 0;
         if (!noError){
-            tz = f_z->Eval(pair_wy[ipair]);
-            tx = f_x->Eval(pair_wy[ipair]);
+            errorz = fabs(f_z->Eval(pair_wy[ipair])-pair_wz[ipair]);
+            errorx = fabs(f_x->Eval(pair_wy[ipair])-pair_wx[ipair]);
         }
-        if (debug>=2) printf("           pair[%d]: error x = %.3e, error z = %.3e\n",ipair,pair_wx[ipair]-tx,pair_wz[ipair]-tz);
-	    g_z->SetPointError(ipair,0,pair_wz[ipair]-tz);
-	    g_x->SetPointError(ipair,0,pair_wx[ipair]-tx);
+        if (errorzMax0<errorz){
+            errorzMax0 = errorz;
+            errorzMax0_i = ipair;
+        }
+        else if (errorzMax1<errorz){
+            errorzMax1 = errorz;
+            errorzMax1_i = ipair;
+        }
+	    g_z->SetPointError(ipair,0,0.1);
+	    g_x->SetPointError(ipair,0,0.1);
+    }
+    if (errorzMax0>4) {
+        g_z->SetPointError(errorzMax0_i,0,10);
+        g_x->SetPointError(errorzMax0_i,0,10);
+        if (debug>=2) printf("           setErrors pair[%d]: error x = ->10, error z = %.3e->10\n",errorzMax0_i,errorzMax0);
+    }
+    if (errorzMax1>4) {
+        g_z->SetPointError(errorzMax1_i,0,10);
+        g_x->SetPointError(errorzMax1_i,0,10);
+        if (debug>=2) printf("           setErrors pair[%d]: error x = ->10, error z = %.3e->10\n",errorzMax1_i,errorzMax1);
     }
     return 0;
+}
+
+int getChi2XZ(int nPairs, double & chi2x, double & chi2z){
+    // calculate pair_wxyz
+    chi2x = 0;
+    chi2z = 0;
+    int nCount = 0;
+    for (int ipair = 0; ipair<nPairs; ipair++){
+        double tchi2z = pair_wz[ipair]-f_z->Eval(pair_wy[ipair]);
+        double tchi2x = pair_wx[ipair]-f_x->Eval(pair_wy[ipair]);
+        if (debug>=2) printf("           getChi2XZ pair[%d]: error x = %.3e, error z = %.3e\n",ipair,tchi2x,tchi2z);
+	    if (fabs(tchi2z)<4&&fabs(tchi2x)<1){
+            chi2z += pow(tchi2z,2);
+            chi2x += pow(tchi2x,2);
+            nCount++;
+        }
+    }
+    if (nCount){
+        chi2z/=nCount;
+        chi2x/=nCount;
+    }
+    return nCount;
 }
 
 int fityz(int nPairs){
@@ -640,6 +695,16 @@ int fityx(int nPairs){
 	g_x->Set(nPairs);
 	g_x->Fit("f_x","qN0F","");
 	return 0;
+}
+
+bool checkScintillator(){
+    double xtop = f_x->Eval(ytop);
+    double xbot = f_x->Eval(ybot);
+    double ztop = f_z->Eval(ytop);
+    double zbot = f_z->Eval(ybot);
+    if (debug>=3) printf("              top xz(%.3e, %.3e) bottom xz(%.3e, %.3e)\n",xtop,ztop,xbot,zbot);
+    if (xtop>hHtri||xtop<-hHtri||xbot>hHtri||xbot<-hHtri||ztop>hLtri||ztop<-hLtri||zbot>hLtri||zbot<-hLtri) return false;
+    else return true;
 }
 
 double t2x(double time, int lid, int wid, int lr, int & status){ // 1: right; 2: right end; -1: left; -2: left end; 0 out of range
