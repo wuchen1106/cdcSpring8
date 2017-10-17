@@ -31,10 +31,20 @@
 
 int debug = 0;
 
+//===================Input Output============================
 std::vector<int> * i_layerID = 0;
 std::vector<int> * i_wireID = 0;
 std::vector<double> * o_dxl = 0;
 std::vector<double> * o_dxr = 0;
+int o_icombi[NCAND];
+int o_iselec[NCAND];
+int o_npairs[NCAND];
+double o_slx[NCAND];
+double o_inx[NCAND];
+double o_slz[NCAND];
+double o_inz[NCAND];
+double o_chi2x[NCAND];
+double o_chi2z[NCAND];
 
 //===================Chamber Parameter============================
 double U = 8; // mm
@@ -88,7 +98,7 @@ double hHtri = 45; // normal scintillator
 //===================Functions============================
 void print_usage(char* prog_name);
 double t2x(double time, int lid, int wid, int lr, int & status);
-int ChooseHits(int ipick,int & iselection,int iEntry=0);
+int FindTrack(int ipick,int & iselection,int iEntry=0);
 int checkCrossPoints(int nPicks,int iEntry=0,int iselection = 0);
 int updatePairPositions(int icombi,int nPicks,int & nPairs);
 int updateHitPositions(int nPicks,int icombi);
@@ -97,6 +107,7 @@ int getChi2XZ(int nPairs, double & chi2x, double & chi2z);
 int fityx(int nPairs);
 int fityz(int nPairs);
 bool checkScintillator();
+bool checkChi2(int nPairs,double chi2_x, double chi2_z, int icombi, int iselection);
 
 //===================About xt============================
 double tres = 0;
@@ -316,16 +327,11 @@ int main(int argc, char** argv){
     c->SetBranchAddress("aa",&i_aa);
 
     //===================Prepare output ROOT file============================
-    TFile * of = new TFile(Form("../root/i_%d.layer%d",runNo,testlayer)+suffix+".root","RECREATE"); 
+    TFile * of = new TFile(Form("../root/i_%d.layer%d.nh%d.t0shift%d.dt%d-%d.evt%d-%d",runNo,testlayer,nHitsMax,t0shift,tmin,tmax,iEntryStart,iEntryStop)+suffix+".root","RECREATE"); 
     TTree * ot = new TTree("t","t");
-    std::vector<double> * o_driftD = 0;
-    std::vector<std::vector<double> > * o_fitD = 0;
-    double o_tx1[NCAND];
-    double o_tx2[NCAND];
-    double o_tz1[NCAND];
-    double o_tz2[NCAND];
-    double o_chi2[NCAND];
     // from h_XXX
+    int iEntry;
+    ot->Branch("evt",&iEntry);
     ot->Branch("triggerNumber",&triggerNumber);
     ot->Branch("driftT",&i_driftT);
     ot->Branch("nHits",&i_nHits);
@@ -340,22 +346,18 @@ int main(int argc, char** argv){
     ot->Branch("sum",&i_sum);
     ot->Branch("aa",&i_aa);
     // 
-    ot->Branch("driftD",&o_driftD);
     ot->Branch("dxl",&o_dxl);
     ot->Branch("dxr",&o_dxr);
     // after track finding, with different candidates;
-    ot->Branch("fitD",&o_fitD); // [NCAND][nHits]
-    ot->Branch("tx1",o_tx1);
-    ot->Branch("tx2",o_tx2);
-    ot->Branch("tz1",o_tz1);
-    ot->Branch("tz2",o_tz2);
-    ot->Branch("chi2",o_chi2);
-    o_fitD = new std::vector<std::vector<double> >;
-    for (int i = 0; i<NCAND; i++){
-        std::vector<double> fitDs;
-        o_fitD->push_back(fitDs);
-    }
-    o_driftD = new std::vector<double>;
+    ot->Branch(Form("icom[%d]",NCAND),o_icombi);
+    ot->Branch(Form("isel[%d]",NCAND),o_iselec);
+    ot->Branch(Form("npairs[%d]",NCAND),o_npairs);
+    ot->Branch(Form("slx[%d]",NCAND),o_slx);
+    ot->Branch(Form("inx[%d]",NCAND),o_inx);
+    ot->Branch(Form("slz[%d]",NCAND),o_slz);
+    ot->Branch(Form("inz[%d]",NCAND),o_inz);
+    ot->Branch(Form("chi2x[%d]",NCAND),o_chi2x);
+    ot->Branch(Form("chi2z[%d]",NCAND),o_chi2z);
     o_dxl = new std::vector<double>;
     o_dxr = new std::vector<double>;
 
@@ -381,18 +383,18 @@ int main(int argc, char** argv){
 
     //===================Track Finding============================
     Long64_t N = c->GetEntries();
-    for ( int iEntry = iEntryStart; iEntry<=iEntryStop; iEntry++){
+    for ( iEntry = iEntryStart; iEntry<=iEntryStop; iEntry++){
         if (iEntry%1000==0) std::cout<<iEntry<<std::endl;
         c->GetEntry(iEntry);
         N_trigger++; // triggered event
 
         //========================================================================================================
         // prepare
-        o_driftD->clear();
         o_dxl->clear();
         o_dxr->clear();
         for (int i = 0; i<NCAND; i++){
-            (*o_fitD)[i].clear();
+            o_chi2z[i] = 1e9;
+            o_npairs[i] = 0;
         }
 
         for (int i = 0; i<NLAY; i++){
@@ -401,7 +403,6 @@ int main(int argc, char** argv){
         nHitsgood = 0;
         nHitLayers = 0;
         v_pick_lid.clear();
-
 
         //========================================================================================================
         // get basical cdc hit information
@@ -414,7 +415,6 @@ int main(int argc, char** argv){
             o_dxr->push_back(t2x(dt,lid,wid,1,status));
             if (debug>0) printf("  Entry %d: dxl[%d][%d] = dxl[%d] = t2x(%.3e) = %.3e\n",iEntry,lid,wid,ihit,dt,(*o_dxl)[o_dxl->size()-1]);
             if (debug>0) printf("  Entry %d: dxr[%d][%d] = dxr[%d] = t2x(%.3e) = %.3e\n",iEntry,lid,wid,ihit,dt,(*o_dxr)[o_dxr->size()-1]);
-            o_driftD->push_back((*o_dxr)[o_dxr->size()-1]);
             if (dt<tmin||dt>tmax) (*i_type)[ihit]+=10; // -1: dummy layer; 1(11): guard layer (out of t window); 2(12): left end (out of t window); 3(13): right end (out of t window); 0(10): center cell (out of t window);
             if (lid != testlayer&&(*i_type)[ihit]>=0&&(*i_type)[ihit]<10){ // not dummy layer or test layer; within time window
                 v_layer_ihit[lid].push_back(ihit);
@@ -450,9 +450,9 @@ int main(int argc, char** argv){
         }
 
         //========================================================================================================
-        // pick up one hit from each layer, and iterate in all combinations
+        // pick up one hit from each layer, and iterate in all combinations including left/right ambiguity
         int nSelections = 0;
-        ChooseHits(0,nSelections,iEntry);
+        FindTrack(0,nSelections,iEntry); // 0 means starting from the 1st pick; nSelections is the number of possible choices by selecting one hit per layer;
 
         ot->Fill();
     }// end of event loop
@@ -465,7 +465,7 @@ int main(int argc, char** argv){
     return 0;
 }
 
-int ChooseHits(int ipick,int & iselection,int iEntry){
+int FindTrack(int ipick,int & iselection,int iEntry){
     if (ipick == v_pick_lid.size()){ // finished picking hits
         if (debug>0) printf(" Finished picking selection %d:\n",iselection);
         checkCrossPoints(v_pick_lid.size(),iEntry,iselection);
@@ -478,7 +478,7 @@ int ChooseHits(int ipick,int & iselection,int iEntry){
             int wid = (*i_wireID)[ihit];
             if (debug>0) printf(" => pick # %d, layer %d, wire %d, hit[%d], ihit = %d\n",ipick,lid,wid,i,ihit);
             pick_ihit[ipick] = v_layer_ihit[lid][i];
-            ChooseHits(ipick+1,iselection,iEntry);
+            FindTrack(ipick+1,iselection,iEntry);
         }
     }
     return 0;
@@ -541,6 +541,8 @@ int checkCrossPoints(int nPicks,int iEntry,int iselection){
         nGood = getChi2XZ(nPairs,chi2_x,chi2_z);
         if (debug>0) printf("       3rd RESULT: nGood = %d, inScint? %s; x=%.3e*(y-%.3e)+%.3e, chi2 = %.3e, z=%.3e*(y-%.3e)+%.3e, chi2 = %.3e\n",nGood,inScint?"yes":"no",slx,yup,inx,chi2_x,slz,yup,inz,chi2_z);
         if (debug>=0&&inScint&&fromSource) printf("%d %d 2 %d %d %.4e %.4e\n",iEntry,icombi,iselection,nGood,chi2_x,chi2_z);
+
+        if (inScint&&fromSource&&nGood>=3) checkChi2(nGood,chi2_x,chi2_z,icombi,iselection);
     }
 }
 
@@ -705,6 +707,34 @@ bool checkScintillator(){
     if (debug>=3) printf("              top xz(%.3e, %.3e) bottom xz(%.3e, %.3e)\n",xtop,ztop,xbot,zbot);
     if (xtop>hHtri||xtop<-hHtri||xbot>hHtri||xbot<-hHtri||ztop>hLtri||ztop<-hLtri||zbot>hLtri||zbot<-hLtri) return false;
     else return true;
+}
+
+bool checkChi2(int nPairs,double chi2_x, double chi2_z, int icombi, int iselection){
+    for (int i = 0; i<NCAND; i++){
+        if ((chi2_z<o_chi2z[i]&&nPairs==o_npairs[i])||nPairs>o_npairs[i]){
+            for (int j = NCAND-1; j>i; j--){
+                o_iselec[j] = o_iselec[j-1];
+                o_icombi[j] = o_icombi[j-1];
+                o_npairs[j] = o_npairs[j-1];
+                o_chi2x[j] = o_chi2x[j-1];
+                o_chi2z[j] = o_chi2z[j-1];
+                o_slx[j] = o_slx[j-1];
+                o_inx[j] = o_inx[j-1];
+                o_slz[j] = o_slz[j-1];
+                o_inz[j] = o_inz[j-1];
+            }
+            o_iselec[i] = iselection;
+            o_icombi[i] = icombi;
+            o_npairs[i] = nPairs;
+            o_chi2z[i] = chi2_z;
+            o_chi2x[i] = chi2_x;
+            o_slx[i] = slx;
+            o_inx[i] = inx;
+            o_slz[i] = slz;
+            o_inz[i] = inz;
+            break;
+        }
+    }
 }
 
 double t2x(double time, int lid, int wid, int lr, int & status){ // 1: right; 2: right end; -1: left; -2: left end; 0 out of range
