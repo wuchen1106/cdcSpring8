@@ -7,6 +7,7 @@
 #include "TTree.h"
 #include "TFile.h"
 #include "TF1.h"
+#include "TVector3.h"
 #include "TString.h"
 #include "TGraphErrors.h"
 
@@ -84,6 +85,10 @@ double slz = 0;
 double chi2_x = 0;
 double inx = 0;
 double slx = 0;
+TVector3 vTrackU, vTrackD, vTrack;
+TVector3 vWireHV, vWireRO, vWire;
+TVector3 vDist;
+TVector3 vAxis;
 
 //===================About beam============================
 double slzMax = 0.2;
@@ -108,6 +113,7 @@ int fityx(int nPairs);
 int fityz(int nPairs);
 bool checkScintillator();
 bool checkChi2(int nPairs,double chi2_x, double chi2_z, int icombi, int iselection);
+double get_dist(int lid, int wid, double slx, double inx, double slz, double inz);
 
 //===================About xt============================
 double tres = 0;
@@ -360,6 +366,12 @@ int main(int argc, char** argv){
     ot->Branch(Form("chi2z[%d]",NCAND),o_chi2z);
     o_dxl = new std::vector<double>;
     o_dxr = new std::vector<double>;
+    //
+    std::vector<double> * o_calD[NCAND] = {0};
+    for(int iCand = 0; iCand<NCAND; iCand++){
+        ot->Branch(Form("calD%d",iCand),&(o_calD[iCand]));
+        o_calD[iCand] = new std::vector<double>;
+    }
 
     //===================Efficiency Counter============================
     int N_trigger = 0;
@@ -453,6 +465,17 @@ int main(int argc, char** argv){
         // pick up one hit from each layer, and iterate in all combinations including left/right ambiguity
         int nSelections = 0;
         FindTrack(0,nSelections,iEntry); // 0 means starting from the 1st pick; nSelections is the number of possible choices by selecting one hit per layer;
+
+        //========================================================================================================
+        // update calD 
+        for (int iCand = 0; iCand<NCAND; iCand++){
+            o_calD[iCand]->clear();
+            for (int ihit = 0; ihit<i_type->size(); ihit++){
+                int lid = (*i_layerID)[ihit];
+                int wid = (*i_wireID)[ihit];
+                o_calD[iCand]->push_back(get_dist(lid,wid,o_slx[iCand],o_inx[iCand],o_slz[iCand],o_inz[iCand]));
+            }
+        }
 
         ot->Fill();
     }// end of event loop
@@ -772,6 +795,23 @@ double t2x(double time, int lid, int wid, int lr, int & status){ // 1: right; 2:
     }
     //std::cout<<"t2x("<<time<<","<<lid<<","<<wid<<","<<lr<<") = "<<dd<<std::endl;
     return dd;
+}
+
+//______________________________________________________________________________
+double get_dist(int lid, int wid, double slx, double inx, double slz, double inz)
+{
+	double xdown = inx-slx*(yup-ydown);
+	double zdown = inz-slz*(yup-ydown);
+	vTrackU.SetXYZ(inx,yup,inz);
+	vTrackD.SetXYZ(xdown,ydown,zdown);
+	vWireHV.SetXYZ(map_x[lid][wid][0],map_y[lid][wid][0],-chamberHL);
+	vWireRO.SetXYZ(map_x[lid][wid][1],map_y[lid][wid][1],chamberHL);
+	vTrack = vTrackD-vTrackU;
+	vWire = vWireRO-vWireHV;
+	vDist = vWireHV-vTrackU;
+	vAxis = vWire.Cross(vTrack);
+	double value = -vDist*(vAxis.Unit());
+	return value;
 }
 
 //______________________________________________________________________________

@@ -36,6 +36,7 @@ PROJECT4 = myminuit2
 PROJECT5 = finding3
 PROJECT6 = finding4
 PROJECT7 = ana_finding_chi2
+PROJECT8 = myminuit3
 
 .PHONY: all
 all: $(PROJECT5) $(PROJECT4) $(PROJECT3) $(PROJECT2) $(PROJECT1) $(PROJECT6) $(PROJECT7) $(PROJECT8) $(PROJECT9) $(PROJECT10)
