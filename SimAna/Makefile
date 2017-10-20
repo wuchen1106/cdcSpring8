@@ -31,6 +31,7 @@ LIBS += -pthread -lm -ldl -rdynamic
 # Change this name to your program which contains the main function
 PROJECT1 = transform
 PROJECT2 = generateXT
+PROJECT2 = transform2
 
 .PHONY: all
 all: $(PROJECT5) $(PROJECT4) $(PROJECT3) $(PROJECT2) $(PROJECT1) $(PROJECT6) $(PROJECT7) $(PROJECT8) $(PROJECT9) $(PROJECT10)
