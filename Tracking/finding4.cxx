@@ -117,18 +117,8 @@ double get_dist(int lid, int wid, double slx, double inx, double slz, double inz
 
 //===================About xt============================
 double tres = 0;
-TF1 * f_left_end[NCELA];
-TF1 * f_right_end[NCELA];
 TF1 * f_left[NCELA];
 TF1 * f_right[NCELA];
-int vtrel[NCELA];
-int vtrer[NCELA];
-int vtlel[NCELA];
-int vtler[NCELA];
-int vtrml[NCELA];
-int vtrmr[NCELA];
-int vtlml[NCELA];
-int vtlmr[NCELA];
 
 int main(int argc, char** argv){
 
@@ -272,36 +262,8 @@ int main(int argc, char** argv){
     //===================Prepare XT curves==============================
     TFile * i_xt = new TFile(Form("../info/xt.%d.root",runNo));
     for (int i = 0; i<NCELA; i++){
-        f_left_end[i] = (TF1*) i_xt->Get(Form("f_left_end_%d_%d",i/NCEL+1,i%NCEL));
-        f_right_end[i] = (TF1*) i_xt->Get(Form("f_right_end_%d_%d",i/NCEL+1,i%NCEL));
-        f_left[i] = (TF1*) i_xt->Get(Form("f_left_%d_%d",i/NCEL+1,i%NCEL));
-        f_right[i] = (TF1*) i_xt->Get(Form("f_right_%d_%d",i/NCEL+1,i%NCEL));
-    }
-    TTree * itree_xt = (TTree*) i_xt->Get("p");
-    int trel,trer,tlel,tler,tlml,tlmr,trml,trmr;
-    int lid,wid;
-    itree_xt->SetBranchAddress("lid",&lid);
-    itree_xt->SetBranchAddress("wid",&wid);
-    itree_xt->SetBranchAddress("tlel",&tlel);
-    itree_xt->SetBranchAddress("tler",&tler);
-    itree_xt->SetBranchAddress("tlml",&tlml);
-    itree_xt->SetBranchAddress("tlmr",&tlmr);
-    itree_xt->SetBranchAddress("trml",&trml);
-    itree_xt->SetBranchAddress("trmr",&trmr);
-    itree_xt->SetBranchAddress("trel",&trel);
-    itree_xt->SetBranchAddress("trer",&trer);
-    if(debug>0) printf("lid,wid: tlel | tler | tlml | tlmr || trml | trmr | trel | trer\n",lid,wid,tlel,tler,tlml,tlmr,trml,trmr,trel,trer);
-    for (int i = 0; i<itree_xt->GetEntries(); i++){
-        itree_xt->GetEntry(i);
-        vtlel[(lid)*NCEL+wid] = tlel;
-        vtler[(lid)*NCEL+wid] = tler;
-        vtlml[(lid)*NCEL+wid] = tlml;
-        vtlmr[(lid)*NCEL+wid] = tlmr;
-        vtrel[(lid)*NCEL+wid] = trel;
-        vtrer[(lid)*NCEL+wid] = trer;
-        vtrml[(lid)*NCEL+wid] = trml;
-        vtrmr[(lid)*NCEL+wid] = trmr;
-        if(debug>0) printf("%d,%d: %d | %d | %d | %d || %d | %d | %d | %d\n",lid,wid,tlel,tler,tlml,tlmr,trml,trmr,trel,trer);
+        f_left[i] = (TF1*) i_xt->Get(Form("fl_%d_%d",i/NCEL+1,i%NCEL));
+        f_right[i] = (TF1*) i_xt->Get(Form("fr_%d_%d",i/NCEL+1,i%NCEL));
     }
 
     //===================Get input ROOT file============================
@@ -465,6 +427,8 @@ int main(int argc, char** argv){
         // pick up one hit from each layer, and iterate in all combinations including left/right ambiguity
         int nSelections = 0;
         FindTrack(0,nSelections,iEntry); // 0 means starting from the 1st pick; nSelections is the number of possible choices by selecting one hit per layer;
+        if (o_npairs[0]<3) continue;
+        N_good++;
 
         //========================================================================================================
         // update calD 
@@ -761,39 +725,36 @@ bool checkChi2(int nPairs,double chi2_x, double chi2_z, int icombi, int iselecti
 }
 
 double t2x(double time, int lid, int wid, int lr, int & status){ // 1: right; 2: right end; -1: left; -2: left end; 0 out of range
-    TF1* fl=0;
-    TF1* fr=0;
+    TF1* f=0;
     // FIXME: now we only take one xt: layer 5 cell 0 (fake)
     //int index = (lid-1)*NCEL+wid;
-    int index = (6-1)*NCEL;
-    status = 0;
-    // FIXME: should we really set a boundary of f_left_end/f_right_end? driftT can be really long when it comes from corner...
-//    if (time<=vtlel[index]&&time>vtler[index]){
-    if (time>vtler[index]){
-        fl = f_left_end[index];
-        status = -2;
-    }
-    else if (time<=vtlml[index]&&time>=vtlmr[index]){
-        fl = f_left[index];
-        status = -1;
-    }
-//    if (time>=vtrel[index]&&time<vtrer[index]){
-    if (time>vtrel[index]){
-        fr = f_right_end[index];
-        status = 2;
-    }
-    else if (time>=vtrml[index]&&time<=vtrmr[index]){
-        fr = f_right[index];
-        status = 1;
-    }
-    double dd=0;
+    int index = (5-1)*NCEL;
     if (lr>=0){
-        if (fr) dd = fr->Eval(time);
+        f = f_right[index];
     }
-    else{
-        if (fl) dd = fl->Eval(time);
+    else {
+        f = f_left[index];
     }
-    //std::cout<<"t2x("<<time<<","<<lid<<","<<wid<<","<<lr<<") = "<<dd<<std::endl;
+    if (!f){
+        fprintf(stderr,"Cannot get f[%d]!\n",index);
+        return -2;
+    }
+    double tmax = f->GetXmax();
+    double tmin = f->GetXmin();
+    // FIXME: should we really set a boundary of f_left_end/f_right_end? driftT can be really long when it comes from corner...
+    status = 0;
+    double dd = 0;
+    if (time>tmax){
+        status = 1;
+        dd = f->Eval(tmax);
+    }
+    else if (time<tmin){
+        status = -1;
+        dd = 0;
+    }
+    else {
+        dd = f->Eval(time);
+    }
     return dd;
 }
 

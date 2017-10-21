@@ -38,19 +38,8 @@
 #define NCUT 50
 
 //===================About xt============================
-double tres = 0;
-TF1 * f_left_end[NCELA];
-TF1 * f_right_end[NCELA];
 TF1 * f_left[NCELA];
 TF1 * f_right[NCELA];
-int vtrel[NCELA];
-int vtrer[NCELA];
-int vtlel[NCELA];
-int vtler[NCELA];
-int vtrml[NCELA];
-int vtrmr[NCELA];
-int vtlml[NCELA];
-int vtlmr[NCELA];
 
 double t0[NBRD];
 
@@ -267,37 +256,11 @@ int main(int argc, char** argv){
 	std::cout<<"runNo#"<<runNo<<": "<<gastype<<", "<<runGr<<", "<<duration<<", "<<HV<<" V, "<<THR<<" mV, "<<durationTime<<"sec"<<std::endl;
 
     //===================Get XT============================
-	TFile * i_xt = new TFile(Form("../info/xt.%d.root",runNo));
-	for (int i = 0; i<NCELA; i++){
-		f_left_end[i] = (TF1*) i_xt->Get(Form("f_left_end_%d_%d",i/11+1,i%11));
-		f_right_end[i] = (TF1*) i_xt->Get(Form("f_right_end_%d_%d",i/11+1,i%11));
-		f_left[i] = (TF1*) i_xt->Get(Form("f_left_%d_%d",i/11+1,i%11));
-		f_right[i] = (TF1*) i_xt->Get(Form("f_right_%d_%d",i/11+1,i%11));
-	}
-	TTree * itree_xt = (TTree*) i_xt->Get("p");
-	int trel,trer,tlel,tler,tlml,tlmr,trml,trmr;
-	int lid,wid;
-	itree_xt->SetBranchAddress("lid",&lid);
-	itree_xt->SetBranchAddress("wid",&wid);
-	itree_xt->SetBranchAddress("tlel",&tlel);
-	itree_xt->SetBranchAddress("tler",&tler);
-	itree_xt->SetBranchAddress("tlml",&tlml);
-	itree_xt->SetBranchAddress("tlmr",&tlmr);
-	itree_xt->SetBranchAddress("trml",&trml);
-	itree_xt->SetBranchAddress("trmr",&trmr);
-	itree_xt->SetBranchAddress("trel",&trel);
-	itree_xt->SetBranchAddress("trer",&trer);
-	for (int i = 0; i<itree_xt->GetEntries(); i++){
-		itree_xt->GetEntry(i);
-		vtlel[(lid)*11+wid] = tlel;
-		vtler[(lid)*11+wid] = tler;
-		vtlml[(lid)*11+wid] = tlml;
-		vtlmr[(lid)*11+wid] = tlmr;
-		vtrel[(lid)*11+wid] = trel;
-		vtrer[(lid)*11+wid] = trer;
-		vtrml[(lid)*11+wid] = trml;
-		vtrmr[(lid)*11+wid] = trmr;
-	}
+    TFile * i_xt = new TFile(Form("../info/xt.%d.root",runNo));
+    for (int i = 0; i<NCELA; i++){
+        f_left[i] = (TF1*) i_xt->Get(Form("fl_%d_%d",i/NCEL+1,i%NCEL));
+        f_right[i] = (TF1*) i_xt->Get(Form("fr_%d_%d",i/NCEL+1,i%NCEL));
+    }
 
 	//==================Get ADC==========================
 	TChain * iChain_ADC = new TChain("tree","tree");
@@ -1173,50 +1136,33 @@ int main(int argc, char** argv){
 }
 
 double t2x(double time, int lid, int wid, int lr, int & status){ // 1: right; 2: right end; -1: left; -2: left end; 0 out of range
-	TF1* f=0;
-	// FIXME
-	//int index = (lid)*NCEL+wid;
-	int index = 4*NCEL;
-	status = 0;
-	if (lr>=0){
-        if (time<=vtlel[index]&&time>vtler[index]){
-            f = f_left_end[index];
-            status = -2;
-        }
-        else if (time<=vtlml[index]&&time>=vtlmr[index]){
-            f = f_left[index];
-            status = -1;
-        }
-        else if (time>vtlel[index]){
-            f = f_left_end[index];
-            status = -3;
-        }
+    TF1* f=0;
+    // FIXME: now we only take one xt: layer 5 cell 0 (fake)
+    //int index = (lid-1)*NCEL+wid;
+    int index = (5-1)*NCEL;
+    if (lr>=0){
+        f = f_right[index];
     }
-    else{
-        if (time>=vtrel[index]&&time<vtrer[index]){
-            f = f_right_end[index];
-            status = 2;
-        }
-        else if (time>=vtrml[index]&&time<=vtrmr[index]){
-            f = f_right[index];
-            status = 1;
-        }
-        else if (time>vtrer[index]){
-            f = f_right_end[index];
-            status = 3;
-        }
+    else {
+        f = f_left[index];
     }
-	double dd=0;
-    if (f) dd = f->Eval(time);
-    else{
-        if (!status){ // dt too small
-            dd = 0;
-        }
-        else{ // dt too large
-            dd = f->Eval(vtrer[index]);
-        }
+    double tmax = f->GetXmax();
+    double tmin = f->GetXmin();
+    // FIXME: should we really set a boundary of f_left_end/f_right_end? driftT can be really long when it comes from corner...
+    status = 0;
+    double dd = 0;
+    if (time>tmax){
+        status = 1;
+        dd = f->Eval(tmax);
     }
-	return dd;
+    else if (time<tmin){
+        status = -1;
+        dd = 0;
+    }
+    else {
+        dd = f->Eval(time);
+    }
+    return dd;
 }
 
 double tdc2t(int deltaTDC){
