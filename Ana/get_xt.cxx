@@ -15,33 +15,39 @@
 #include <math.h>
 #include <iostream>
 
-#define TSTART -10
-#define TMIN 5
-#define TTURN 220
-#define TMAX 455
-#define NBIN1 250
-#define STEP1 2
-#define NBIN2 100
-#define STEP2 4
-#define NBIN 330
-// SETP1*NBIN1+STEP2*NBIN2 = (TMAX-TMIN)*2
+#define NBIN1 125
+#define NBIN2 50
+#define NBIN 350 // NBIN = 2*NBIN1+2*NBIN2
+
+#define NBINX 256
+
+#define NLAY 9
+#define NCEL 11
+#define NCELA 99
+
+int TSTART=-10;
+int TMIN=0;
+int TTURN=220;
+int TMAX=450;
+double STEP1=(TTURN-TMIN)/((double)NBIN1);
+double STEP2=(TMAX-TTURN)/((double)NBIN2);
 
 double n2t(int ibin){
 	double t;
-	if (ibin<(NBIN1+NBIN2)/2){// left
-		if (ibin<NBIN2/2){// left end
+	if (ibin<NBIN1+NBIN2){// left
+		if (ibin<NBIN2){// left end
 			t = TMAX-(ibin+0.5)*STEP2;
 		}
 		else{// left normal
-			t = TMAX-NBIN2/2*STEP2-(ibin-NBIN2/2+0.5)*STEP1;
+			t = TMAX-NBIN2*STEP2-(ibin-NBIN2+0.5)*STEP1;
 		}
 	}
 	else{// right
-		if (ibin<NBIN1+NBIN2/2){// right normal
-			t = TMIN+(ibin-NBIN1/2-NBIN2/2+0.5)*STEP1;
+		if (ibin<NBIN1*2+NBIN2){// right normal
+			t = TMIN+(ibin-NBIN1-NBIN2+0.5)*STEP1;
 		}
 		else{// right end
-			t = TMIN+NBIN1/2*STEP1+(ibin-NBIN1-NBIN2/2+0.5)*STEP2;
+			t = TMIN+NBIN1*STEP1+(ibin-NBIN1*2-NBIN2+0.5)*STEP2;
 		}
 	}
 	return t;
@@ -50,80 +56,68 @@ double n2t(int ibin){
 int t2n(double t,bool isright){
 	int ibin;
 	if (t>TMAX||t<TMIN) return -1;
-	if (t>NBIN1/2*STEP1+TMIN){ // end
-		if (isright) ibin = NBIN1+NBIN2/2+(t-(NBIN1/2*STEP1+TMIN))/STEP2;
+	if (t>NBIN1*STEP1+TMIN){ // end
+		if (isright) ibin = NBIN1*2+NBIN2+(t-(NBIN1*STEP1+TMIN))/STEP2;
 		else ibin = (TMAX-t)/STEP2;
 	}
 	else{ // normal
-		if (isright) ibin = NBIN1/2+NBIN2/2+(t-TMIN)/STEP1;
-		else ibin = NBIN2/2+((NBIN1/2*STEP1+TMIN)-t)/STEP1;
+		if (isright) ibin = NBIN1+NBIN2+(t-TMIN)/STEP1;
+		else ibin = NBIN2+((NBIN1*STEP1+TMIN)-t)/STEP1;
 	}
 	return ibin;
 }
 
+void printUsage(char * name){
+    fprintf(stderr,"%s [runNo] [suffix] [workMode: 1, i_XXX; 2, t_XXX] [xtType: 2, sym, thr 0; 1, sym; 0, no req] <[TMIN] [TTURN] [TMAX]>\n",name);
+}
+
 int main(int argc, char** argv){
 
-	if (argc<2){
+	if (argc<5){
+	    printUsage(argv[0]);
 		return 1;
 	}
 	int runNo = (int)strtol(argv[1],NULL,10);
 	int nEventMax = 0;
-	//if (argc>=4) nEventMax = (int)strtol(argv[3],NULL,10);
-	TString suffix = "";
-	if (argc>=3){
-		suffix  = argv[2];
-		suffix="."+suffix;
+    TString suffix  = argv[2];
+	int workMode = (int)strtol(argv[3],NULL,10);
+	int xtType = (int)strtol(argv[4],NULL,10);
+	if (argc>=8){
+	    TMIN = (int)strtol(argv[5],NULL,10);
+	    TTURN = (int)strtol(argv[6],NULL,10);
+	    TMAX = (int)strtol(argv[7],NULL,10);
+        STEP1=(TTURN-TMIN)/NBIN1;
+        STEP2=(TMAX-TTURN)/NBIN2;
 	}
 
-	TH1D * h_x[88][NBIN];
+	TH1D * h_x[NCELA][NBIN];
 	TF1 * f_x = new TF1("f_x","gaus",-10,10);
 	for (int i = 0; i<NBIN; i++){
-		for (int j = 0; j<88; j++){
-			h_x[j][i] = new TH1D(Form("h%d_%d_%d",j/11+1,j%11,i),Form("Layer%d Cell%d: Drift Distance (Drift Time = %lf)",j/11+1,j%11,n2t(i)),256,-10,10);
+		for (int j = 0; j<NCELA; j++){
+			h_x[j][i] = new TH1D(Form("h%d_%d_%d",j/NCEL,j%NCEL,i),Form("Layer%d Cell%d: Drift Distance (Drift Time = %lf)",j/NCEL,j%NCEL,n2t(i)),NBINX,-10,10);
 		}
 	}
-	TF1 * f_left[88];
-	TF1 * f_right[88];
-	TF1 * f_left_end[88];
-	TF1 * f_right_end[88];
-	for (int j = 0; j<88; j++){
-		f_left[j] = new TF1(Form("f_left_%d_%d",j/11+1,j%11),"pol5",TSTART,TTURN+30);
-		f_left_end[j] = new TF1(Form("f_left_end_%d_%d",j/11+1,j%11),"pol2",TTURN-30,TMAX);
-		f_right[j] = new TF1(Form("f_right_%d_%d",j/11+1,j%11),"pol5",TSTART,TTURN+30);
-		f_right_end[j] = new TF1(Form("f_right_end_%d_%d",j/11+1,j%11),"pol2",TTURN-30,TMAX);
-		f_left[j]->SetLineWidth(0.3);
-		f_left_end[j]->SetLineWidth(0.3);
-		f_right[j]->SetLineWidth(0.3);
-		f_right_end[j]->SetLineWidth(0.3);
+	TF1 * f_left[NCELA];
+	TF1 * f_right[NCELA];
+	TF1 * f_left_end[NCELA];
+	TF1 * f_right_end[NCELA];
+	for (int j = 0; j<NCELA; j++){
+		f_left[j] = new TF1(Form("f_left_%d_%d",j/NCEL,j%NCEL),"pol5",TMIN,TMAX);
+		f_left_end[j] = new TF1(Form("f_left_end_%d_%d",j/NCEL,j%NCEL),"pol2",TMIN,TMAX);
+		f_right[j] = new TF1(Form("f_right_%d_%d",j/NCEL,j%NCEL),"pol5",TMIN,TMAX);
+		f_right_end[j] = new TF1(Form("f_right_end_%d_%d",j/NCEL,j%NCEL),"pol2",TMIN,TMAX);
 	}
+	TF1 * fl[NCELA];
+	TF1 * fr[NCELA];
 
-	TFile *ofile = new TFile(Form("../info/xt.%d",runNo)+suffix+".root","RECREATE");
+	TFile * ofile = new TFile(Form("../info/xt.%d.",runNo)+suffix+".root","RECREATE");
 	TTree * otree = new TTree("t","t");
-	TTree * otree2 = new TTree("p","p");
-	int tlel;
-	int tler;
-	int tlml;
-	int tlmr;
-	int trml;
-	int trmr;
-	int trel;
-	int trer;
 	int lid;
 	int wid;
 	double x;
 	double t;
 	double sig;
 	int nent;
-	otree2->Branch("lid",&lid);
-	otree2->Branch("wid",&wid);
-	otree2->Branch("tlel",&tlel);
-	otree2->Branch("tler",&tler);
-	otree2->Branch("tlml",&tlml);
-	otree2->Branch("tlmr",&tlmr);
-	otree2->Branch("trml",&trml);
-	otree2->Branch("trmr",&trmr);
-	otree2->Branch("trel",&trel);
-	otree2->Branch("trer",&trer);
 	otree->Branch("x",&x);
 	otree->Branch("t",&t);
 	otree->Branch("lid",&lid);
@@ -136,6 +130,10 @@ int main(int argc, char** argv){
 	otree->SetLineColor(kBlack);
 
 	TCanvas * canvas = new TCanvas("c","c",1440,600);
+	gStyle->SetPalette(1);
+	gStyle->SetOptStat(0);
+	gStyle->SetPadTickX(1);
+	gStyle->SetPadTickY(1);
 	TPad * pad1  =new TPad("p1","p1",0,0,0.4,1);
 	TPad * pad2  =new TPad("p2","p2",0.4,0,0.7,1);
 	TPad * pad3  =new TPad("p3","p3",0.7,0,1,1);
@@ -149,7 +147,8 @@ int main(int argc, char** argv){
 	pad3->SetGridx(1);
 	pad3->SetGridy(1);
 	gStyle->SetStatX(0.6);
-	TLine * l0 = new TLine(50,-10,50,10);
+	TLine * l0 = new TLine(0,-10,0,10);
+	l0->SetLineStyle(1);
 	TLine * l1 = new TLine(0,-10,0,10);
 	TString cutstr;
 
@@ -176,7 +175,7 @@ int main(int argc, char** argv){
 		ichain = new TChain("t","t");
 		ichain->SetMarkerStyle(1);
 		ichain->SetMarkerColor(kMagenta);
-		ichain->Add(Form("../root/t_%d.layer%d",runNo,il)+suffix+".root");
+		ichain->Add(Form("../root/t_%d.layer%d.",runNo,il)+suffix+".root");
 
 		std::vector<int> * layerID = 0;
 		std::vector<int> * wireID = 0;
@@ -196,46 +195,39 @@ int main(int argc, char** argv){
 		if (nEventMax&&nEventMax<N) N = nEventMax;
 		std::cout<<"Processing "<<N<<" events..."<<std::endl;
 		for ( int i = 0 ; i<N; i++){
-			if (i%1000==0) printf("%lf%...\n",(double)i/N*100);
 			ichain->GetEntry(i);
-			// FIXME
+			// FIXME cut for good event
 			if (chi2>5) continue;
 			if (fabs(slz-0.01)>0.1) continue;
 			for (int ihit = 0; ihit<layerID->size(); ihit++){
 				if ((*layerID)[ihit]==il){
+                    if (xtType>0) (*fitD)[ihit] = fabs((*fitD)[ihit]);
 					int idiv = t2n((*driftT)[ihit],(*fitD)[ihit]>0);
 					if (idiv>=0){
-						// FIXME
-//						h_x[(il-1)*11+(*wireID)[ihit]][idiv]->Fill((*fitD)[ihit]);
-						h_x[(il-1)*11][idiv]->Fill((*fitD)[ihit]);
+						// FIXME merge the data from all wires in the same layer into wire 0
+//						h_x[il*NCEL+(*wireID)[ihit]][idiv]->Fill((*fitD)[ihit]);
+						h_x[il*NCEL][idiv]->Fill((*fitD)[ihit]);
 					}
 				}
 			}
 		}
-		for (int iw = 0; iw<11; iw++){
+		for (int iw = 0; iw<NCEL; iw++){
 			std::cout<<"##"<<il<<" "<<iw<<std::endl;
 			lid=il;
 			wid=iw;
-			int index = (il-1)*11+iw;
-			// FIXME
+			int index = il*NCEL+iw;
+            // FIXME only fit wire 0 and skip others
 			if (iw>0){
-				otree2->Fill();
-				f_left[index] = f_left[index-iw];
-				f_right[index] = f_right[index-iw];
-				f_left_end[index] = f_left_end[index-iw];
-				f_right_end[index] = f_right_end[index-iw];
 				continue;
 			}
 			double avsig = 0;
 			int nxtpoints = 0;
-			double tturnl = 0;
-			double tturnr = 0;
 			for (int i = 0; i<NBIN; i++){
 				nent = h_x[index][i]->Integral();
 				int hmax = h_x[index][i]->GetMaximum();
 				double xleft = 0;
 				double xright = 0;
-				for (int ibin = 1; ibin<=256; ibin++){
+				for (int ibin = 1; ibin<=NBINX; ibin++){
 					if (!xleft&&h_x[index][i]->GetBinContent(ibin)>hmax/3.) xleft = h_x[index][i]->GetBinCenter(ibin);
 					if (xleft&&!xright&&h_x[index][i]->GetBinContent(ibin)>hmax/3.){
 						xright = h_x[index][i]->GetBinCenter(ibin);
@@ -253,14 +245,11 @@ int main(int argc, char** argv){
 				sig = f_x->GetParameter(2);
 				t = n2t(i);
 				otree->Fill();
+				// FIXME: cut for good xt point
 				if (nent>50&&fabs(x)<7&&fabs(x)>2){avsig+=sig;nxtpoints++;}
-				if (!tturnl&&nent>50&&x>=-7.7) tturnl = t;
-				if (!tturnr&&nent>50&&x>=7.7) tturnr = t;
 			}
-			if (!tturnl) tturnl = TTURN;
-			if (!tturnr) tturnr = TTURN;
 			avsig/=nxtpoints;
-			std::cout<<"avsig="<<avsig<<", tturnl="<<tturnl<<", tturnr = "<<tturnr<<std::endl;
+			std::cout<<"avsig="<<avsig<<std::endl;
 			int Nentries = otree->GetEntries();
 			vx_left.clear();
 			vt_left.clear();
@@ -276,56 +265,23 @@ int main(int argc, char** argv){
 				if (nent>nMax) nMax = nent;
 				if (nent<50) continue;
 				if (fabs(x)<7&&fabs(x)>2&&sig>avsig*1.1) continue;
-				if (x>0&&t<tturnr) {
+				if (x>0&&t<TTURN) {
 					vx_right.push_back(x);
 					vt_right.push_back(t);
 				}
-				else if (x<0&&t<tturnl){
+				else if (x<0&&t<TTURN){
 					vx_left.push_back(x);
 					vt_left.push_back(t);
 				}
-				else if (t>=tturnl&&x<0){
+				else if (t>=TTURN&&x<0){
 					vx_left_end.push_back(x);
 					vt_left_end.push_back(t);
 				}
-				else if (t>=tturnr&&x>0){
+				else if (t>=TTURN&&x>0){
 					vx_right_end.push_back(x);
 					vt_right_end.push_back(t);
 				}
 			}
-			if (vt_left_end.size()){
-				tlel=vt_left_end[0]+STEP1/2.;
-				tler=vt_left_end[vt_left_end.size()-1]-STEP1/2.;
-			}
-			else{
-				tlel=0;
-				tler=0;
-			}
-			if (vt_left.size()){
-				tlml=vt_left[0]+STEP1/2.;
-				tlmr=vt_left[vt_left.size()-1]-STEP1/2.;
-			}
-			else{
-				tlml=0;
-				tlmr=0;
-			}
-			if (vt_right_end.size()){
-				trel=vt_right_end[0]-STEP1/2.;
-				trer=vt_right_end[vt_right_end.size()-1]+STEP1/2.;
-			}
-			else{
-				trel=0;
-				trer=0;
-			}
-			if (vt_right.size()){
-				trml=vt_right[0]-STEP1/2.;
-				trmr=vt_right[vt_right.size()-1]+STEP1/2.;
-			}
-			else{
-				trml=0;
-				trmr=0;
-			}
-			otree2->Fill();
 			if (g_left) delete g_left;
 			if (g_right) delete g_right;
 			if (g_left_end) delete g_left_end;
@@ -335,13 +291,9 @@ int main(int argc, char** argv){
 			g_left_end = new TGraph(vx_left_end.size(),&(vt_left_end[0]),&(vx_left_end[0]));
 			g_right_end = new TGraph(vx_right_end.size(),&(vt_right_end[0]),&(vx_right_end[0]));
 			g_left->Fit(Form("f_left_%d_%d",il,iw),"qN0","");
-			f_left[index]->SetRange(tlmr,tlml);
 			g_right->Fit(Form("f_right_%d_%d",il,iw),"qN0","");
-			f_right[index]->SetRange(trml,trmr);
 			g_left_end->Fit(Form("f_left_end_%d_%d",il,iw),"qN0","");
-			f_left_end[index]->SetRange(tler,tlel);
 			g_right_end->Fit(Form("f_right_end_%d_%d",il,iw),"qN0","");
-			f_right_end[index]->SetRange(trel,trer);
 			g_left->SetMarkerColor(kRed);
 			g_left->SetMarkerStyle(7);
 			g_left->SetMarkerSize(0.5);
@@ -354,7 +306,49 @@ int main(int argc, char** argv){
 			g_right_end->SetMarkerColor(kRed);
 			g_right_end->SetMarkerStyle(7);
 			g_right_end->SetMarkerSize(0.5);
-			//FIXME
+			g_left_end->SetName(Form("gle_%d_%d",il,iw));
+			g_left_end->Write();
+			g_left->SetName(Form("gl_%d_%d",il,iw));
+			g_left->Write();
+			g_right_end->SetName(Form("gre_%d_%d",il,iw));
+			g_right_end->Write();
+			g_right->SetName(Form("gr_%d_%d",il,iw));
+			g_right->Write();
+			double p0l_end = f_left_end[index]->GetParameter(0);
+			double p1l_end = f_left_end[index]->GetParameter(1);
+			double p2l_end = f_left_end[index]->GetParameter(2);
+			double p0r_end = f_right_end[index]->GetParameter(0);
+			double p1r_end = f_right_end[index]->GetParameter(1);
+			double p2r_end = f_right_end[index]->GetParameter(2);
+            TF1 * f_delta_l = new TF1(Form("dl_%d_%d",il,iw),Form("f_left_%d_%d-x*x*%.7e-x*%.7e-%.7e",il,iw,p2l_end,p1l_end,p0l_end),TMIN,TTURN);
+            double tl = 0;
+            for (int tmax = TTURN; tmax<TMAX; tmax+=5){
+                f_delta_l->SetRange(TMIN,tmax);
+                tl = f_delta_l->GetX(0);
+                if (tl!=tmax) break;
+            }
+            TF1 * f_delta_r = new TF1(Form("dr_%d_%d",il,iw),Form("f_right_%d_%d-x*x*%.7e-x*%.7e-%.7e",il,iw,p2r_end,p1r_end,p0r_end),TMIN,TTURN);
+            double tr = 0;
+            for (int tmax = TTURN; tmax<TMAX; tmax+=5){
+                f_delta_r->SetRange(TMIN,tmax);
+                tr = f_delta_r->GetX(0);
+                if (tr!=tmax) break;
+            }
+            printf("tl[%d][%d] = %.3e, tr[%d][%d] = %.3e\n",il,iw,tl,il,iw,tr);
+            fr[index] = new TF1(Form("fr_%d_%d",il,iw),Form("(x<%.3e)*f_right_%d_%d+(x>=%.3e)*(x*x*%.7e+x*%.7e+%.7e)",tr,il,iw,tr,p2r_end,p1r_end,p0r_end),TMIN,TMAX);
+            if (xtType>0)
+                fl[index] = new TF1(Form("fl_%d_%d",il,iw),Form("-(x<%.3e)*f_right_%d_%d-(x>=%.3e)*(x*x*%.7e+x*%.7e+%.7e)",tr,il,iw,tr,p2r_end,p1r_end,p0r_end),TMIN,TMAX);
+            else
+                fl[index] = new TF1(Form("fl_%d_%d",il,iw),Form("(x<%.3e)*f_left_%d_%d+(x>=%.3e)*(x*x*%.7e+x*%.7e+%.7e)",tl,il,iw,tl,p2l_end,p1l_end,p0l_end),TMIN,TMAX);
+            fr[index]->SetLineWidth(0.3);
+            fl[index]->SetLineWidth(0.3);
+            fr[index]->Write();
+            fl[index]->Write();
+            f_right_end[index]->Write();
+            f_right[index]->Write();
+            f_left_end[index]->Write();
+            f_left[index]->Write();
+			//FIXME get all wires in this layer
 			//cutstr = Form("chi2<10&&layerID==%d&&wireID==%d&&abs(slZ)<0.15&&abs(inZ)<19",il,iw);
 			cutstr = Form("chi2<5&&layerID==%d&&abs(slZ-0.01)<0.1&&abs(inZ)<19",il);
 			if (ichain->GetEntries(cutstr)>50){
@@ -362,40 +356,27 @@ int main(int argc, char** argv){
 				ichain->Draw(Form("fitD:driftT>>h(%d,%d,%d,500,-10,10)",NBIN,TSTART,TMAX),cutstr,"COLZ");
 				ichain->Draw("driftD:driftT",cutstr,"SAME");
 				otree->Draw("x:t",Form("lid==%d&&wid==%d&&n>50",il,iw),"PSAME");
-				f_left[(il-1)*11+iw]->Draw("SAME");
-				f_right[(il-1)*11+iw]->Draw("SAME");
-				f_left_end[(il-1)*11+iw]->Draw("SAME");
-				f_right_end[(il-1)*11+iw]->Draw("SAME");
+				fl[index]->Draw("SAME");
+				fr[index]->Draw("SAME");
 				g_left->Draw("PSAME");
 				g_right->Draw("PSAME");
 				g_left_end->Draw("PSAME");
 				g_right_end->Draw("PSAME");
 				pad2->cd();
 				otree->Draw("x:sig>>htemp(1024,0,0.8,1024,-10,10)&&n>50",Form("lid==%d&&wid==%d",il,iw),"P");
+				l0->SetX1(avsig),l0->SetX2(avsig);
+				l0->Draw("SAME");
 				l1->SetX1(avsig*1.1),l1->SetX2(avsig*1.1);
 				l1->Draw("SAME");
 				pad3->cd();
 				otree->Draw(Form("x:n>>htemp(1024,0,%d,1024,-10,10)",nMax),Form("lid==%d&&wid==%d",il,iw),"P");
-				l0->Draw("SAME");
 				canvas->SaveAs(Form("xt.%d.%d.%d.png",runNo,il,iw));
 			}
 		}
 	}
 
-//	for (int i = 0; i<NBIN; i++){
-//		for (int j = 0; j<88; j++){
-//			h_x[j][i]->Write();
-//		}
-//	}
-	for (int j = 0; j<88; j++){
-		f_left[j]->Write();
-		f_right[j]->Write();
-		f_left_end[j]->Write();
-		f_right_end[j]->Write();
-	}
 	std::cout<<"finish"<<std::endl;
 	otree->Write();
-	otree2->Write();
 	ofile->Close();
 
 	return 0;

@@ -381,7 +381,8 @@ int main(int argc, char** argv){
         //========================================================================================================
         // get basical cdc hit information
         for (int ihit = 0; ihit<i_type->size(); ihit++){
-            double dt = (*i_driftT)[ihit]+t0shift;
+            (*i_driftT)[ihit]+=t0shift;
+            double dt = (*i_driftT)[ihit];
             int lid = (*i_layerID)[ihit];
             int wid = (*i_wireID)[ihit];
             int status; // 1: right; 2: right end; -1: left; -2: left end; 0 out of range
