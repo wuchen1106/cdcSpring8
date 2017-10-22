@@ -131,7 +131,6 @@ int main(int argc, char** argv){
     TString suffix = "";
     if (argc>=4){
         suffix  = argv[3];
-        suffix="."+suffix;
     }
     int t0shift = 0;
     if (argc>=5) t0shift = (int)strtol(argv[4],NULL,10);
@@ -268,7 +267,7 @@ int main(int argc, char** argv){
 
     //===================Get input ROOT file============================
     TChain * c = new TChain("t","t");
-    c->Add(Form("../root/h_%d",runNo)+suffix+".root");
+    c->Add(Form("../root/h_%d.root",runNo));
     int triggerNumber;
     int i_nHits;
     std::vector<double> * i_driftT = 0;
@@ -295,7 +294,7 @@ int main(int argc, char** argv){
     c->SetBranchAddress("aa",&i_aa);
 
     //===================Prepare output ROOT file============================
-    TFile * of = new TFile(Form("../root/i_%d.layer%d.nh%d.t0shift%d.dt%d-%d.evt%d-%d",runNo,testlayer,nHitsMax,t0shift,tmin,tmax,iEntryStart,iEntryStop)+suffix+".root","RECREATE"); 
+    TFile * of = new TFile(Form("../root/i_%d.layer%d.nh%d.t0shift%d.dt%d-%d.evt%d-%d.",runNo,testlayer,nHitsMax,t0shift,tmin,tmax,iEntryStart,iEntryStop)+suffix+".root","RECREATE"); 
     TTree * ot = new TTree("t","t");
     // from h_XXX
     int iEntry;
@@ -353,7 +352,9 @@ int main(int argc, char** argv){
     g_x = new TGraphErrors(NLAY,&(pair_wy[0]),&(pair_wx[0]),0,0);
     g_z = new TGraphErrors(NLAY,&(pair_wy[0]),&(pair_wz[0]),0,0);
     int nHitsgood; // number of good hits
+    ot->Branch("nHitsgood",&nHitsgood);
     int nHitLayers; // number of layers with hit
+    ot->Branch("nHitLayers",&nHitLayers);
 
     //===================Track Finding============================
     Long64_t N = c->GetEntries();
