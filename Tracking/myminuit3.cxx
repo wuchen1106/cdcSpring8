@@ -264,6 +264,7 @@ int main(int argc, char** argv){
 	double to_inx[NCAND];
 	double to_slz[NCAND];
 	double to_inz[NCAND];
+	double to_chi2i[NCAND];
 	double to_chi2[NCAND];
 	int sortCand[NCAND];
 
@@ -310,6 +311,7 @@ int main(int argc, char** argv){
 //                printf("Cand[%d]: nhits selected is %d!\n",theCand,o_nHitsSel[theCand]);
                 continue;
             }
+            getchi2(o_chi2i[theCand],i_slx[theCand],i_inx[theCand],i_slz[theCand],i_inz[theCand]);
             // do the fitting
             do_fit(i_slx[theCand],i_inx[theCand],i_slz[theCand],i_inz[theCand]);
             double temp;
@@ -335,6 +337,7 @@ int main(int argc, char** argv){
             to_inx[iCand] = o_inx[iCand];
             to_slz[iCand] = o_slz[iCand];
             to_inz[iCand] = o_inz[iCand];
+            to_chi2i[iCand] = o_chi2i[iCand];
             to_chi2[iCand] = o_chi2[iCand];
             for (int ihit = 0; ihit<i_nHits; ihit++){
                 ti_calD[iCand]->push_back((*i_calD[iCand])[ihit]);
@@ -367,12 +370,12 @@ int main(int argc, char** argv){
             o_inx[iSort] = to_inx[iCand];
             o_slz[iSort] = to_slz[iCand];
             o_inz[iSort] = to_inz[iCand];
+            o_chi2i[iSort] = to_chi2i[iCand];
             o_chi2[iSort] = to_chi2[iCand];
             for (int ihit = 0; ihit<i_nHits; ihit++){
                 (*i_calD[iSort])[ihit] = (*ti_calD[iCand])[ihit];
             }
             // set output
-            getchi2(o_chi2i[iSort],i_slx[iSort],i_inx[iSort],i_slz[iSort],i_inz[iSort]);
             for (int ihit = 0; ihit<i_nHits; ihit++){
                 o_fitD[iSort]->push_back(get_dist((*i_layerID)[ihit],(*i_wireID)[ihit],o_slx[iSort],o_inx[iSort],o_slz[iSort],o_inz[iSort]));
             }

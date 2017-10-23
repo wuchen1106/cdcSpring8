@@ -24,7 +24,7 @@
 #define NLAY 9
 #define NZXP 8
 #define NCEL 11
-#define NCELA 88
+#define NCELA 99
 
 #define NBRD 2
 #define NCHS 48
@@ -258,8 +258,8 @@ int main(int argc, char** argv){
     //===================Get XT============================
     TFile * i_xt = new TFile(Form("../info/xt.%d.root",runNo));
     for (int i = 0; i<NCELA; i++){
-        f_left[i] = (TF1*) i_xt->Get(Form("fl_%d_%d",i/NCEL+1,i%NCEL));
-        f_right[i] = (TF1*) i_xt->Get(Form("fr_%d_%d",i/NCEL+1,i%NCEL));
+        f_left[i] = (TF1*) i_xt->Get(Form("fl_%d_%d",i/NCEL,i%NCEL));
+        f_right[i] = (TF1*) i_xt->Get(Form("fr_%d_%d",i/NCEL,i%NCEL));
     }
 
 	//==================Get ADC==========================
@@ -1139,7 +1139,7 @@ double t2x(double time, int lid, int wid, int lr, int & status){ // 1: right; 2:
     TF1* f=0;
     // FIXME: now we only take one xt: layer 5 cell 0 (fake)
     //int index = (lid-1)*NCEL+wid;
-    int index = (5-1)*NCEL;
+    int index = 5*NCEL;
     if (lr>=0){
         f = f_right[index];
     }

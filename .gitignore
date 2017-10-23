@@ -50,12 +50,16 @@ Tracking/finding2
 Tracking/finding3
 Tracking/myminuit
 Tracking/myminuit2
+Tracking/myminuit3
+Tracking/results
 WaveAna/getD
 WaveAna/getH
 WaveAna/getP
+WaveAna/ana_threshold
 WaveAna/loader_C.d
 SimAna/generateXT
 SimAna/transform
+SimAna/transform2
 Tracking/ana_finding_chi2
 Tracking/finding4
 WaveAna/loader_C_ACLiC_dict_rdict.pcm

@@ -186,10 +186,10 @@ int main(int argc, char** argv){
 
 		ichain->SetBranchAddress("layerID",&layerID);
 		ichain->SetBranchAddress("wireID",&wireID);
-		ichain->SetBranchAddress("fitD",&fitD);
+		ichain->SetBranchAddress("fitD0",&fitD);
 		ichain->SetBranchAddress("driftT",&driftT);
-		ichain->SetBranchAddress("chi2",&chi2);
-		ichain->SetBranchAddress("slZ",&slz);
+		ichain->SetBranchAddress("chi20",&chi2);
+		ichain->SetBranchAddress("slz0",&slz);
 
 		Long64_t N = ichain->GetEntries();
 		if (nEventMax&&nEventMax<N) N = nEventMax;
@@ -350,11 +350,11 @@ int main(int argc, char** argv){
             f_left[index]->Write();
 			//FIXME get all wires in this layer
 			//cutstr = Form("chi2<10&&layerID==%d&&wireID==%d&&abs(slZ)<0.15&&abs(inZ)<19",il,iw);
-			cutstr = Form("chi2<5&&layerID==%d&&abs(slZ-0.01)<0.1&&abs(inZ)<19",il);
+			cutstr = Form("chi20<5&&layerID==%d&&abs(slz0-0.01)<0.1&&abs(inz0)<19",il);
 			if (ichain->GetEntries(cutstr)>50){
 				pad1->cd();
-				ichain->Draw(Form("fitD:driftT>>h(%d,%d,%d,500,-10,10)",NBIN,TSTART,TMAX),cutstr,"COLZ");
-				ichain->Draw("driftD:driftT",cutstr,"SAME");
+				ichain->Draw(Form("fitD0:driftT>>h(%d,%d,%d,500,-10,10)",NBIN,TSTART,TMAX),cutstr,"COLZ");
+				ichain->Draw("driftD0:driftT",cutstr,"SAME");
 				otree->Draw("x:t",Form("lid==%d&&wid==%d&&n>50",il,iw),"PSAME");
 				fl[index]->Draw("SAME");
 				fr[index]->Draw("SAME");
