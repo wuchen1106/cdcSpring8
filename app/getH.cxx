@@ -4,7 +4,6 @@
 #include <stdio.h>
 #include <math.h>
 #include "TTree.h"
-#include "TBranch.h"
 #include "TFile.h"
 #include "TChain.h"
 #include "TCanvas.h"
@@ -12,7 +11,6 @@
 #include "TString.h"
 #include "TH1D.h"
 #include "TH2D.h"
-#include "TF1.h"
 #include "TLine.h"
 #include "TLatex.h"
 
@@ -21,15 +19,10 @@
 #define NCHT 96
 #define NBD 2
 #define NLY 9
-//#define MIN_ADC 50
-//#define MAX_ADC 750
 #define MIN_ADC -50
 #define MAX_ADC 1000
 #define NBINS  256
 
-#define DEBUG
-
-int power2_15 = pow(2,15);
 double tscale = 0.96;
 
 void print_usage(char* prog_name);
@@ -41,15 +34,16 @@ int main(int argc, char** argv){
 	int runNo = (int)strtol(argv[1],NULL,10);
 	int nEventMax = 0;
 	if (argc>=3) nEventMax = (int)strtol(argv[2],NULL,10);
-	std::string suffix = "";
+	TString suffix = "";
 	if (argc>=4){
 		suffix  = argv[3];
 		suffix=suffix+".";
 	}
 
-	//===================Get wire position============================
-	// For wire position
-	TFile * TFile_wirepos = new TFile("../info/wire-position.v3.root");
+    TString HOME=getenv("CDCS8WORKING_DIR");
+
+	//===================Get channel map============================
+	TFile * TFile_wirepos = new TFile(HOME+"/info/wire-position.v3.root");
 	TTree * TTree_wirepos = (TTree*) TFile_wirepos->Get("t");
 	int wp_bid;
 	int wp_wid;
@@ -76,42 +70,8 @@ int main(int argc, char** argv){
 		if (widmax[wp_lid]<wp_wid) widmax[wp_lid] = wp_wid;
 	}
 
-	//===================Get raw input ROOT file============================
-	TChain * c_raw = new TChain("tree","tree");
-	char inputName[128];
-	sprintf(inputName,"../root/run_%0.6d_built.root",runNo);
-	c_raw->Add(inputName);
-	int adc[NCHT][NSAM];
-	c_raw->SetBranchAddress("adc",adc);
-
-	//===================Get peak input ROOT file============================
-	TChain * c_peak = new TChain("t","t");
-	sprintf(inputName,"../root/p_%d.root",runNo);
-	c_peak->Add(inputName);
-	std::vector<std::vector<int> > * i_tdc = 0;
-	std::vector<std::vector<int> > * i_peak = 0;
-	std::vector<std::vector<int> > * i_clk = 0;
-	std::vector<std::vector<int> > * i_width = 0;
-	std::vector<std::vector<double> > * i_sum = 0;
-	int i_np[NCHT][50];
-	int i_nh[50];
-	double i_ped[NCHT];
-	double i_aa[NCHT];
-	int triggerNumberMax = 0;
-	int triggerNumber;
-	c_peak->SetBranchAddress("triggerNumber",&triggerNumber);
-	c_peak->SetBranchAddress("nh",i_nh);
-	c_peak->SetBranchAddress("ped",i_ped);
-	c_peak->SetBranchAddress("aa",i_aa);
-	c_peak->SetBranchAddress("np",i_np);
-	c_peak->SetBranchAddress("clk",&i_clk);
-	c_peak->SetBranchAddress("sum",&i_sum);
-	c_peak->SetBranchAddress("tdc",&i_tdc);
-	c_peak->SetBranchAddress("peak",&i_peak);
-	c_peak->SetBranchAddress("width",&i_width);
-
 	//===================Get run info============================
-	TFile * if_run = new TFile("../info/run-info.root");
+	TFile * if_run = new TFile(HOME+"/info/run-info.root");
 	TTree * t_run = (TTree*) if_run->Get("t");
 	int i_runNo, gasID, runGr, HV, THR;
 	char runDu[128];
@@ -155,8 +115,39 @@ int main(int argc, char** argv){
 	t0[1] = t01;
 	std::cout<<"runNo#"<<runNo<<": "<<gastype<<", "<<runGr<<", "<<duration<<", "<<HV<<" V, "<<THR<<" mV, "<<durationTime<<"sec"<<std::endl;
 
+	//===================Get peak input ROOT file============================
+	TChain * c_peak = new TChain("t","t");
+	c_peak->Add(HOME+Form("/root/p_%d.root",runNo));
+	int triggerNumber;
+	int i_nh;
+	int i_np[NCHT];
+	double i_ped[NCHT];
+	double i_aa[NCHT];
+	int i_adc[NCHT][NSAM];
+	std::vector<std::vector<int> > * i_clk = 0;
+	std::vector<std::vector<int> > * i_tdc = 0;
+	std::vector<std::vector<int> > * i_peak = 0;
+	std::vector<std::vector<double> > * i_sum = 0;
+	std::vector<std::vector<int> > * i_width = 0;
+	std::vector<std::vector<int> > * i_height = 0;
+	std::vector<std::vector<int> > * i_mpn = 0;
+	std::vector<std::vector<int> > * i_mpi = 0;
+	c_peak->SetBranchAddress("triggerNumber",&triggerNumber);
+	c_peak->SetBranchAddress("nh",&i_nh);
+	c_peak->SetBranchAddress("np",i_np);
+	c_peak->SetBranchAddress("ped",i_ped);
+	c_peak->SetBranchAddress("aa",i_aa);
+	c_peak->SetBranchAddress("adc",i_adc);
+	c_peak->SetBranchAddress("clk",&i_clk);
+	c_peak->SetBranchAddress("tdc",&i_tdc);
+	c_peak->SetBranchAddress("peak",&i_peak);
+	c_peak->SetBranchAddress("sum",&i_sum);
+	c_peak->SetBranchAddress("width",&i_width);
+	c_peak->SetBranchAddress("height",&i_height);
+	c_peak->SetBranchAddress("mpn",&i_mpn);
+	c_peak->SetBranchAddress("mpi",&i_mpi);
+
 	//===================Prepare output ROOT file============================
-	char outputName[128];
 	int o_nHits;
 	int o_nLayers;
 	std::vector<int> * o_layerID = 0;
@@ -167,11 +158,13 @@ int main(int argc, char** argv){
 	std::vector<int> * o_clk = 0;
 	std::vector<int> * o_width = 0;
 	std::vector<int> * o_peak = 0;
+	std::vector<int> * o_height = 0;
+	std::vector<int> * o_mpn = 0;
+	std::vector<int> * o_mpi = 0;
 	std::vector<double> * o_sum = 0;
 	std::vector<double> * o_aa = 0;
 	std::vector<double> * o_driftT = 0;
-	sprintf(outputName,("../root/h_%d."+suffix+"root").c_str(),runNo);
-	TFile * f = new TFile(outputName,"RECREATE");
+	TFile * f = new TFile(HOME+Form("/root/h_%d.",runNo)+suffix+"root","RECREATE");
 	TTree * t = new TTree("t","t");
 	t->Branch("triggerNumber",&triggerNumber);
 	t->Branch("nHits",&o_nHits);
@@ -184,9 +177,26 @@ int main(int argc, char** argv){
 	t->Branch("clk",&o_clk);
 	t->Branch("width",&o_width);
 	t->Branch("peak",&o_peak);
+	t->Branch("height",&o_height);
+	t->Branch("mpn",&o_mpn);
+	t->Branch("mpi",&o_mpi);
 	t->Branch("sum",&o_sum);
 	t->Branch("aa",&o_aa);
 	t->Branch("driftT",&o_driftT);
+	o_layerID = new std::vector<int>;
+	o_wireID = new std::vector<int>;
+	o_type = new std::vector<int>;
+	o_ip = new std::vector<int>;
+	o_np = new std::vector<int>;
+	o_clk = new std::vector<int>;
+	o_width = new std::vector<int>;
+	o_peak = new std::vector<int>;
+	o_height = new std::vector<int>;
+	o_mpn = new std::vector<int>;
+	o_mpi = new std::vector<int>;
+	o_sum = new std::vector<double>;
+	o_aa = new std::vector<double>;
+	o_driftT = new std::vector<double>;
 
 	//===================Prepare Histograms============================
 	TCanvas * canvas;
@@ -326,10 +336,11 @@ int main(int argc, char** argv){
 	}
 
 	// Loop in events
-	Long64_t N = c_raw->GetEntries();
+	Long64_t N = c_peak->GetEntries();
 	if (nEventMax&&nEventMax<N) N = nEventMax;
 	std::cout<<"Processing "<<N<<" events..."<<std::endl;
-	int tdcNhitwire;
+	int triggerNumberMax = 0;
+	int nPeaks;
 	bool layerhit[NLY];
 	int ip = -1;
 	double avped[NCHT];
@@ -340,97 +351,78 @@ int main(int argc, char** argv){
 	for (Long64_t i = 0;i<N; i++){
 		if (i%1000==0) std::cout<<(double)i/N*100<<"%..."<<std::endl;
 		c_peak->GetEntry(i);
-		c_raw->GetEntry(i);
 		if (triggerNumberMax<triggerNumber) triggerNumberMax = triggerNumber;
 		o_nHits = 0;
 		o_nLayers = 0;
-		if(o_layerID==0) delete o_layerID; o_layerID= new std::vector<int>;
-		if(o_wireID==0) delete o_wireID; o_wireID = new std::vector<int>;
-		if(o_type==0) delete o_type; o_type = new std::vector<int>;
-		if(o_ip==0) delete o_ip; o_ip = new std::vector<int>;
-		if(o_np==0) delete o_np; o_np = new std::vector<int>;
-		if(o_clk==0) delete o_clk; o_clk = new std::vector<int>;
-		if(o_width==0) delete o_width; o_width = new std::vector<int>;
-		if(o_peak==0) delete o_peak; o_peak = new std::vector<int>;
-		if(o_sum==0) delete o_sum; o_sum = new std::vector<double>;
-		if(o_aa==0) delete o_aa; o_aa = new std::vector<double>;
-		if(o_driftT==0) delete o_driftT; o_driftT = new std::vector<double>;
+        o_layerID->clear();
+        o_wireID->clear();
+        o_type->clear();
+        o_ip->clear();
+        o_np->clear();
+        o_clk->clear();
+        o_width->clear();
+        o_peak->clear();
+        o_height->clear();
+        o_mpn->clear();
+        o_mpi->clear();
+        o_sum->clear();
+        o_aa->clear();
+        o_driftT->clear();
 		for (int il = 0; il < NLY; il++){
 			layerhit[il] = false;
 		}
 		for(int ch = 0; ch<NCHT; ch++){
-			tdcNhitwire = i_np[ch][0];
+			nPeaks = i_np[ch];
 			if (!isnan(i_ped[ch])&&!isinf(i_ped[ch]))
 				avped[ch]+= i_ped[ch];
 
-			// Get the peak;
-			int thepeak = 0;
-			for(;thepeak<tdcNhitwire; thepeak++){
-                // to correct i_sum in cases where two peaks should share one peak_sum: when they are close in ADC samples
-                if (thepeak+1<tdcNhitwire&&(*i_clk)[ch][thepeak+1]-(*i_clk)[ch][thepeak]<=3){
-                    bool overthreshold = true;
-                    for (int theclk = (*i_clk)[ch][thepeak]+1; theclk<(*i_clk)[ch][thepeak+1]; theclk++){
-                        if (adc[ch][theclk]<i_ped[ch]) overthreshold = false;
-                    }
-                    if (overthreshold){
-                        (*i_sum)[ch][thepeak]+=(*i_sum)[ch][thepeak+1];
-                        (*i_sum)[ch][thepeak+1]=(*i_sum)[ch][thepeak];
+            // Fill histograms
+            if (i_aa[ch]) ha[ch]->Fill(i_aa[ch]);
+            int offset;
+            if (nPeaks<=0) offset = 0;
+            else offset = (*i_clk)[ch][0]; // FIXME: should consider about choosing a proper peak as the center of waveform
+            for ( int clk = 0; clk<NSAM; clk++ ){
+                hwf[ch]->Fill(clk-offset,i_adc[ch][clk]);
+            }
+
+			// get peaks;
+			for(int ip = 0;ip<nPeaks; ip++){
+                // Fill histograms
+                if ((*i_mpi)[ch][ip]==0){ // do not consider the secondary peaks in the save packet, just take the first one
+                    hs[ch]->Fill((*i_sum)[ch][ip]);
+                    hst[ch]->Fill((*i_tdc)[ch][ip],(*i_sum)[ch][ip]);
+                    hat[ch]->Fill((*i_tdc)[ch][ip],i_aa[ch]);
+                    htdc[ch]->Fill((*i_tdc)[ch][ip]);
+                }
+
+                // save hits
+                if (map_lid[ch]<0) continue; // only save the channel which is connected
+                int bid = ch/NCHS;
+                if (map_lid[ch]==0) o_type->push_back(-1);
+                else if (map_lid[ch]==NLY-1) o_type->push_back(1);
+                else{
+                    if (map_wid[ch]==0)  o_type->push_back(2);
+                    else if (map_wid[ch]==widmax[ch])  o_type->push_back(3);
+                    else{
+                        o_type->push_back(0);
+                        layerhit[map_lid[ch]] = true;
                     }
                 }
-				if ((*i_sum)[ch][thepeak]>=sumcut) break;
+                o_nHits++;
+                o_ip->push_back(ip);
+                o_driftT->push_back(((*i_tdc)[ch][ip]-t0[bid])/tscale);
+                o_layerID->push_back(map_lid[ch]);
+                o_wireID->push_back(map_wid[ch]);
+                o_np->push_back(nPeaks);
+                o_clk->push_back((*i_clk)[ch][ip]);
+                o_width->push_back((*i_width)[ch][ip]);
+                o_peak->push_back((*i_peak)[ch][ip]);
+                o_height->push_back((*i_height)[ch][ip]);
+                o_mpn->push_back((*i_mpn)[ch][ip]);
+                o_mpi->push_back((*i_mpi)[ch][ip]);
+                o_sum->push_back((*i_sum)[ch][ip]);
+                o_aa->push_back(i_aa[ch]);
 			}
-			if (thepeak==tdcNhitwire){// didn't find the peak, choose the first one;
-				thepeak=0;
-				ip = -1;
-			}
-			else{
-				ip = thepeak;
-			}
-			if (tdcNhitwire==0){
-				thepeak = -1;
-				continue;
-			}
-
-			// Fill histograms
-			if (i_aa[ch]) ha[ch]->Fill(i_aa[ch]);
-			int offset;
-			if (thepeak<0) offset = 0;
-			else offset = (*i_clk)[ch][thepeak];
-			for ( int clk = 0; clk<NSAM; clk++ ){
-				hwf[ch]->Fill(clk-offset,adc[ch][clk]);
-			}
-			if (thepeak>=0){
-				hs[ch]->Fill((*i_sum)[ch][0]);
-				hst[ch]->Fill((*i_tdc)[ch][thepeak],(*i_sum)[ch][thepeak]);
-				hat[ch]->Fill((*i_tdc)[ch][thepeak],i_aa[ch]);
-				htdc[ch]->Fill((*i_tdc)[ch][thepeak]);
-			}
-
-			// cut and output the tree
-			if (i_aa[ch]<aacut) continue;
-			if (map_lid[ch]<0) continue;
-			int bid = ch/NCHS;
-			if (map_lid[ch]==0) o_type->push_back(-1);
-			else if (map_lid[ch]==NLY-1) o_type->push_back(1);
-			else{
-				if (map_wid[ch]==0)  o_type->push_back(2);
-				else if (map_wid[ch]==widmax[ch])  o_type->push_back(3);
-				else{
-					o_type->push_back(0);
-					layerhit[map_lid[ch]] = true;
-				}
-			}
-            o_nHits++;
-			o_ip->push_back(ip);
-			o_driftT->push_back(((*i_tdc)[ch][thepeak]-t0[bid])/tscale);
-			o_layerID->push_back(map_lid[ch]);
-			o_wireID->push_back(map_wid[ch]);
-			o_np->push_back(tdcNhitwire);
-			o_clk->push_back((*i_clk)[ch][thepeak]);
-			o_width->push_back((*i_width)[ch][thepeak]);
-			o_peak->push_back((*i_peak)[ch][thepeak]);
-			o_sum->push_back((*i_sum)[ch][thepeak]);
-			o_aa->push_back(i_aa[ch]);
 		}
 		for (int il = 0; il < NLY; il++ ){
 			if (layerhit[il]) o_nLayers++;
@@ -733,7 +725,6 @@ int main(int argc, char** argv){
 	}
 	canvas->SaveAs(Form("run%d.aa.b1.pdf",runNo));
 	canvas->SaveAs(Form("run%d.aa.b1.png",runNo));
-
 
 	for (int i = 0; i<NCHT; i++) hst[i]->Write();;
 	for (int i = 0; i<NCHT; i++) hat[i]->Write();;
