@@ -62,7 +62,7 @@ int main(int argc, char** argv){
 	std::vector<std::vector<int> > * o_mpi = 0;
 	TFile * f = new TFile(HOME+Form("/root/p_%d.root",runNo),"RECREATE");
 	TTree * t = new TTree("t","t");
-	t->Branch("adc",adc,Form("adc[%d][%d]/I",NCHT,NSAM));
+//	t->Branch("adc",adc,Form("adc[%d][%d]/I",NCHT,NSAM));
 	t->Branch("triggerNumber",&triggerNumber);
 	t->Branch("nh",&o_nHits,"nh/I");
 	t->Branch("ped",o_pedestal,Form("ped[%d]/D",NCHT));

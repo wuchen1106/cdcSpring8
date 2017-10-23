@@ -115,6 +115,12 @@ int main(int argc, char** argv){
 	t0[1] = t01;
 	std::cout<<"runNo#"<<runNo<<": "<<gastype<<", "<<runGr<<", "<<duration<<", "<<HV<<" V, "<<THR<<" mV, "<<durationTime<<"sec"<<std::endl;
 
+	//===================Get raw input ROOT file============================
+	TChain * c_raw = new TChain("tree","tree");
+	c_raw->Add(HOME+Form("/root/run_%0.6d_built.root",runNo));
+	int i_adc[NCHT][NSAM];
+	c_raw->SetBranchAddress("adc",i_adc);
+
 	//===================Get peak input ROOT file============================
 	TChain * c_peak = new TChain("t","t");
 	c_peak->Add(HOME+Form("/root/p_%d.root",runNo));
@@ -123,7 +129,6 @@ int main(int argc, char** argv){
 	int i_np[NCHT];
 	double i_ped[NCHT];
 	double i_aa[NCHT];
-	int i_adc[NCHT][NSAM];
 	std::vector<std::vector<int> > * i_clk = 0;
 	std::vector<std::vector<int> > * i_tdc = 0;
 	std::vector<std::vector<int> > * i_peak = 0;
@@ -137,7 +142,6 @@ int main(int argc, char** argv){
 	c_peak->SetBranchAddress("np",i_np);
 	c_peak->SetBranchAddress("ped",i_ped);
 	c_peak->SetBranchAddress("aa",i_aa);
-	c_peak->SetBranchAddress("adc",i_adc);
 	c_peak->SetBranchAddress("clk",&i_clk);
 	c_peak->SetBranchAddress("tdc",&i_tdc);
 	c_peak->SetBranchAddress("peak",&i_peak);
@@ -351,6 +355,7 @@ int main(int argc, char** argv){
 	for (Long64_t i = 0;i<N; i++){
 		if (i%1000==0) std::cout<<(double)i/N*100<<"%..."<<std::endl;
 		c_peak->GetEntry(i);
+		c_raw->GetEntry(i);
 		if (triggerNumberMax<triggerNumber) triggerNumberMax = triggerNumber;
 		o_nHits = 0;
 		o_nLayers = 0;
