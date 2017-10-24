@@ -1,5 +1,4 @@
 #include <vector>
-#include <string>
 #include <stdlib.h>
 #include <stdio.h>
 #include <math.h>
@@ -187,11 +186,11 @@ int main(int argc, char** argv){
     }
     float sumCut = 0;
     if (argc>=10){
-        sumCut = (float)std::stof(argv[9]);
+        sumCut = (float)atof(argv[9]);
     }
     float aaCut = 0;
     if (argc>=11){
-        aaCut = (float)std::stof(argv[10]);
+        aaCut = (float)atof(argv[10]);
     }
     int iEntryStart = 0;
     int iEntryStop = 0;
