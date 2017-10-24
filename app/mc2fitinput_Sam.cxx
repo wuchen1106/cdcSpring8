@@ -84,11 +84,16 @@ int main(int argc, char ** argv){
     std::vector<double> * o_driftT = 0;
     std::vector<int>    * o_layerID = 0;
     std::vector<int>    * o_cellID = 0;
-    std::vector<int>    * o_nHitsLayer = 0;
+    std::vector<int>    * o_nHitLayer = 0;
     std::vector<int>    * o_nPeaks = 0;
     std::vector<int>    * o_peakWidth = 0;
     std::vector<double> * o_adcPeak = 0;
     std::vector<double> * o_q = 0;
+    std::vector<double> * o_t0 = 0;
+    std::vector<double> * o_ped = 0;
+    std::vector<bool> * o_goodHitFlag = 0;
+    std::vector<double> * o_adccut = 0;
+    std::vector<bool> * o_choosePeakFlag = 0;
     otree->Branch("m1x",&m1x);
     otree->Branch("m1y",&m1y);
     otree->Branch("m1z",&m1z);
@@ -103,33 +108,47 @@ int main(int argc, char ** argv){
     otree->Branch("opz",&opz);
     otree->Branch("triggerNumber",&triggerNumber);
     otree->Branch("nHit",&nHit);
-    otree->Branch("nHitsLayer",&o_nHitsLayer);
+    otree->Branch("nHitLayer",&o_nHitLayer);
     otree->Branch("nPeaks",&o_nPeaks);
-    otree->Branch("driftT",&o_driftT);
+    otree->Branch("peakWidth",&o_peakWidth);
+    otree->Branch("driftTime",&o_driftT);
+    otree->Branch("driftTime2",&o_driftT);
+    otree->Branch("driftTime3",&o_driftT);
     otree->Branch("driftD",&o_driftD);
     otree->Branch("layerID",&o_layerID);
     otree->Branch("cellID",&o_cellID);
-    otree->Branch("peakWidth",&o_peakWidth);
     otree->Branch("adcPeak",&o_adcPeak);
     otree->Branch("q",&o_q);
+    otree->Branch("choosePeakFlag",&o_choosePeakFlag);
+    otree->Branch("goodHitFlag",&o_goodHitFlag);
+    otree->Branch("ped",&o_ped);
+    otree->Branch("adccut",&o_adccut);
+    otree->Branch("t0offset",&o_t0);
+    otree->Branch("t0",&o_t0);
     o_driftD    = new std::vector<double>;
     o_driftT    = new std::vector<double>;
     o_layerID   = new std::vector<int>;
     o_cellID    = new std::vector<int>;
-    o_nHitsLayer = new std::vector<int>;
+    o_nHitLayer = new std::vector<int>;
     o_nPeaks    = new std::vector<int>;
     o_peakWidth = new std::vector<int>;
     o_adcPeak   = new std::vector<double>;
     o_q         = new std::vector<double>;
+    o_t0        = new std::vector<double>;
+    o_goodHitFlag = new std::vector<bool>;
+    o_ped = new std::vector<double>;
+    o_adccut = new std::vector<double>;
+    o_choosePeakFlag = new std::vector<bool>;
 
     TRandom1 random1;
     
     // counters
     bool checkup,checkdown;
-    int nHitsLayer[NLAY];
+    int nHitLayer[NLAY];
 
     int nEntries = ichain->GetEntries();
     for (int iEntry = 0; iEntry<nEntries; iEntry++){
+        if (iEntry%1000==0) printf("iEntry %d\n",iEntry);
         ichain->GetEntry(iEntry);
         // check trigger
         checkdown = false;
@@ -176,13 +195,18 @@ int main(int argc, char ** argv){
         o_driftT->clear();
         o_layerID->clear();
         o_cellID->clear();
-        o_nHitsLayer->clear();
+        o_nHitLayer->clear();
         o_nPeaks->clear();
         o_peakWidth->clear();
         o_adcPeak->clear();
         o_q->clear();
+        o_t0->clear();
+        o_goodHitFlag->clear();
+        o_ped->clear();
+        o_adccut->clear();
+        o_choosePeakFlag->clear();
         for (int i = 0; i<NLAY; i++){
-            nHitsLayer[i] = 0;
+            nHitLayer[i] = 0;
         }
 
         // get cdc hits
@@ -199,17 +223,22 @@ int main(int argc, char ** argv){
             o_driftD->push_back(driftD);
             o_layerID->push_back(lid);
             o_cellID->push_back(wid);
-            o_nHitsLayer->push_back(1);
+            o_nHitLayer->push_back(1);
             o_nPeaks->push_back(1);
             o_peakWidth->push_back(1);
             o_adcPeak->push_back(500);
             o_q->push_back(500);
-            nHitsLayer[lid]++;
+            o_t0->push_back(0);
+            o_goodHitFlag->push_back(1);
+            o_ped->push_back(1);
+            o_adccut->push_back(1);
+            o_choosePeakFlag->push_back(1);
+            nHitLayer[lid]++;
             nHit++;
         }
-        for (int ihit = 0; ihit<o_nHitsLayer->size(); ihit++){
+        for (int ihit = 0; ihit<o_nHitLayer->size(); ihit++){
             int lid = (*o_layerID)[ihit];
-            (*o_nHitsLayer)[ihit] = nHitsLayer[lid];
+            (*o_nHitLayer)[ihit] = nHitLayer[lid];
         }
 
         otree->Fill();
