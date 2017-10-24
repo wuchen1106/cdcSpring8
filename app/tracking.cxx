@@ -215,8 +215,8 @@ int main(int argc, char** argv){
     printf("tmin        = %d\n",tmin);
     printf("tmax        = %d\n",tmax);
     printf("geoSetup:     %s\n",geoSetup==0?"normal scintillator":"finger scintillator");
-    printf("sumCut      = %d\n",sumCut);
-    printf("aaCut       = %d\n",aaCut);
+    printf("sumCut      = %f\n",sumCut);
+    printf("aaCut       = %f\n",aaCut);
     printf("Start Entry = %d\n",iEntryStart);
     printf("Stop Entry  = %d\n",iEntryStop);
     printf("debug       = %d\n",debug);
