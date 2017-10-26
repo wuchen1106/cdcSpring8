@@ -67,6 +67,7 @@ std::vector<int> * i_type = 0;
 std::vector<double> * o_dxl = 0;
 std::vector<double> * o_dxr = 0;
 // for finding
+std::vector<double> * o_driftD[NCAND] = {0};
 int o_icombi[NCAND];
 int o_iselec[NCAND];
 int o_npairs[NCAND];
@@ -104,7 +105,9 @@ double islx = 0;
 double chi2i = 0;
 std::vector<double> * t_calD = new std::vector<double>;
 std::vector<double> * t_fitD = new std::vector<double>;
+std::vector<double> * t_driftD = new std::vector<double>;
 std::vector<int> * t_sel = new std::vector<int>;
+std::vector<int> * t_lr = new std::vector<int>;
 // for track fitting
 TMinuit *gMinuit = 0;
 double arglist[10];
@@ -138,8 +141,9 @@ void print_usage(char* prog_name);
 double t2x(double time, int lid, int wid, int lr, int & status);
 int Tracking(int ipick,int & iselection,int iEntry=0); //pick up one hit from each layer, and iterate in all combinations including left/right ambiguity
 int doFitting(int nPicks,int iEntry=0,int iselection = 0);
-int updatePairPositions(int icombi,int nPicks,int & nPairs);
-int updateHitPositions(int nPicks,int icombi);
+void setLRdriftD(int nPicks,int icombi);
+int updatePairPositions(int nPicks,int & nPairs);
+int updateHitPositions(int nPicks);
 int setErrors(int nPairs, bool noError = false);
 int getChi2XZ(int nPairs, double & chi2x, double & chi2z);
 int fityx(int nPairs);
@@ -376,7 +380,7 @@ int main(int argc, char** argv){
             xmaxr = f_right[i]->Eval(tmaxr);
             xminr = f_right[i]->Eval(tminr);
         }
-        printf("  (%d,%d): (%.3e,%.3e)-(%.3e,%.3e)-(%.3e,%.3e)-(%.3e,%.3e)\n",i/NCEL,i%NCEL,tmaxl,xmaxl,tminl,xminl,tminr,xminr,tmaxr,xmaxr);
+        if (f_left[i]||f_right[i])printf("  (%d,%d): (%.3e,%.3e)-(%.3e,%.3e)-(%.3e,%.3e)-(%.3e,%.3e)\n",i/NCEL,i%NCEL,tmaxl,xmaxl,tminl,xminl,tminr,xminr,tmaxr,xmaxr);
     }
 
     //===================Get input ROOT file============================
@@ -399,7 +403,7 @@ int main(int argc, char** argv){
     c->SetBranchAddress("driftT",&i_driftT);
     c->SetBranchAddress("layerID",&i_layerID);
     c->SetBranchAddress("wireID",&i_wireID);
-    c->SetBranchAddress("type",&i_type); // -1: dummy layer; 1: guard layer; 2: left end; 3: right end; 0: center cell;
+    c->SetBranchAddress("type",&i_type); // 0 center, 1 left, 2 right, 3 guard, 4 dummy
     c->SetBranchAddress("np",&i_np);
     c->SetBranchAddress("ip",&i_ip);
     c->SetBranchAddress("clk",&i_clk);
@@ -427,7 +431,7 @@ int main(int argc, char** argv){
     ot->Branch("clk",&i_clk);
     ot->Branch("width",&i_width);
     ot->Branch("peak",&i_peak);
-    ot->Branch("height",&i_peak);
+    ot->Branch("height",&i_height);
     ot->Branch("mpn",&i_mpn);
     ot->Branch("mpi",&i_mpi);
     ot->Branch("sum",&i_sum);
@@ -439,6 +443,7 @@ int main(int argc, char** argv){
     ot->Branch("dxr",&o_dxr);
     // track finding/fitting with different candidates;
     for (int iCand = 0; iCand<NCAND; iCand++){
+        ot->Branch(Form("driftD%d",iCand),&(o_driftD[iCand]));
         ot->Branch(Form("icom%d",iCand),&(o_icombi[iCand]));
         ot->Branch(Form("isel%d",iCand),&(o_iselec[iCand]));
         ot->Branch(Form("npairs%d",iCand),&(o_npairs[iCand]));
@@ -463,6 +468,7 @@ int main(int argc, char** argv){
     o_dxl = new std::vector<double>;
     o_dxr = new std::vector<double>;
     for(int iCand = 0; iCand<NCAND; iCand++){
+        o_driftD[iCand] = new std::vector<double>;
         o_calD[iCand] = new std::vector<double>;
         o_fitD[iCand] = new std::vector<double>;
         o_sel[iCand] = new std::vector<int>;
@@ -497,8 +503,6 @@ int main(int argc, char** argv){
         N_trigger++; // triggered event
 
         // prepare
-        o_dxl->clear();
-        o_dxr->clear();
         o_dxl->resize(i_nHits);
         o_dxr->resize(i_nHits);
         for (int iCand = 0; iCand<NCAND; iCand++){
@@ -512,12 +516,10 @@ int main(int argc, char** argv){
             o_npairs[iCand] = 0;
             o_icombi[iCand] = 0;
             o_iselec[iCand] = 0;
-            o_calD[iCand]->clear();
-            o_fitD[iCand]->clear();
-            o_sel[iCand]->clear();
             o_calD[iCand]->resize(i_nHits);
             o_fitD[iCand]->resize(i_nHits);
             o_sel[iCand]->resize(i_nHits);
+            o_driftD[iCand]->resize(i_nHits);
             o_nHitsS[iCand] = 0;
             o_slx[iCand] = 0;
             o_inx[iCand] = 0;
@@ -526,12 +528,11 @@ int main(int argc, char** argv){
             o_chi2i[iCand] = 1e9;
             o_chi2[iCand] = 1e9;
         }
-        t_calD->clear();
-        t_fitD->clear();
-        t_sel->clear();
         t_calD->resize(i_nHits);
         t_fitD->resize(i_nHits);
+        t_driftD->resize(i_nHits);
         t_sel->resize(i_nHits);
+        t_lr->resize(i_nHits);
         nHitsG = 0;
         v_pick_lid.clear();
         for (int i = 0; i<NLAY; i++){
@@ -549,9 +550,7 @@ int main(int argc, char** argv){
             (*o_dxr)[ihit] = t2x(dt,lid,wid,1,status);
             int type = (*i_type)[ihit]; // MASTR
             // R: region
-            if (type==-1) type = 4; // dummy layer
-            else if (type==1) type = 3; // guard layer
-            else type-=1; // left/right boundary
+            // keep the original defination
             // T: time
             if (dt<tmin) type+=1*10;
             else if (dt>tmax) type+=2*10;
@@ -638,12 +637,16 @@ int doFitting(int nPicks,int iEntry,int iselection){
     int ncombi = pow(2,nPicks);
     if (debug>0) printf("  %d picked layers -> %d combinations\n",nPicks,ncombi);
     for (int icombi = 0; icombi<ncombi; icombi++){ // each combination corresponds to a unique left/right selection set
+        if (debug>1) printf("     combi %d\n",icombi);
+        t_lr->clear();
+        t_lr->resize(i_nHits,0); // 0 is used as a default value to indicate that this hit is not picked, thus left/right unfixed
+        setLRdriftD(nPicks,icombi); // for picked hits
         f_x->SetParameters(0,0);
         f_z->SetParameters(0,0);
         int nPairs = 0;
 
-        updateHitPositions(nPicks,icombi); // fix wy positions
-        int result = updatePairPositions(icombi,nPicks,nPairs);
+        updateHitPositions(nPicks); // fix wy positions
+        int result = updatePairPositions(nPicks,nPairs);
         if (result) continue;
         setErrors(nPairs,true);
         fityz(nPairs);
@@ -659,8 +662,8 @@ int doFitting(int nPicks,int iEntry,int iselection){
         if (debug>=0&&inScint&&fromSource) printf("%d %d 0 %d %d %.4e %.4e\n",iEntry,icombi,iselection,nGood,chi2x,chi2z);
         if (!fromSource||!inScint) {f_x->SetParameters(0,0); f_z->SetParameters(0,0);}
         
-        updateHitPositions(nPicks,icombi); // fix wy positions
-        result = updatePairPositions(icombi,nPicks,nPairs);
+        updateHitPositions(nPicks); // fix wy positions
+        result = updatePairPositions(nPicks,nPairs);
         setErrors(nPairs,false);
         if (result) continue;
         fityz(nPairs);
@@ -676,8 +679,8 @@ int doFitting(int nPicks,int iEntry,int iselection){
         if (debug>=0&&inScint&&fromSource) printf("%d %d 1 %d %d %.4e %.4e\n",iEntry,icombi,iselection,nGood,chi2x,chi2z);
         if (!fromSource||!inScint) {f_x->SetParameters(0,0); f_z->SetParameters(0,0);}
         
-        updateHitPositions(nPicks,icombi); // fix wy positions
-        result = updatePairPositions(icombi,nPicks,nPairs);
+        updateHitPositions(nPicks); // fix wy positions
+        result = updatePairPositions(nPicks,nPairs);
         setErrors(nPairs,false);
         if (result) continue;
         fityz(nPairs);
@@ -693,21 +696,22 @@ int doFitting(int nPicks,int iEntry,int iselection){
         if (debug>=0&&inScint&&fromSource) printf("%d %d 2 %d %d %.4e %.4e\n",iEntry,icombi,iselection,nGood,chi2x,chi2z);
 
         if (inScint&&fromSource&&nGood>=3){ // good candidate
-            // update calD
-            for (int ihit = 0; ihit<i_nHits; ihit++){
-                int lid = (*i_layerID)[ihit];
-                int wid = (*i_wireID)[ihit];
-                (*t_calD)[ihit] = get_dist(lid,wid,islx,iinx,islz,iinz);
-            }
+            // update calD for all hits and driftD for no-pick hits
             // get hit list
             int nHitsSel = 0;
             for (int ihit = 0; ihit<i_nHits; ihit++){
-                double fitd = (*t_calD)[ihit];
-                double dd;
-                if (fitd>0) dd = (*o_dxr)[ihit];
-                else dd = (*o_dxl)[ihit];
+                int lid = (*i_layerID)[ihit];
+                int wid = (*i_wireID)[ihit];
+                double calD = get_dist(lid,wid,islx,iinx,islz,iinz);
+                (*t_calD)[ihit] = calD;
+                if (!(*t_lr)[ihit]){ // not picked
+                    if (calD>0) (*t_driftD)[ihit] = (*o_dxr)[ihit];
+                    else (*t_driftD)[ihit] = (*o_dxl)[ihit];
+                    (*t_lr)[ihit] = calD>0?1:-1;
+                }
+                double dd = (*t_driftD)[ihit];
                 int selected = 0;
-                if (fabs(fitd-dd)<2&&testlayer!=(*i_layerID)[ihit]&&(*i_type)[ihit]<=3){ // FIXME: should tune the error limit
+                if (fabs(calD-dd)<2&&testlayer!=(*i_layerID)[ihit]&&(*i_type)[ihit]<=3){ // FIXME: should tune the error limit
                     selected = 1;
                     nHitsSel++;
                 }
@@ -732,9 +736,7 @@ int doFitting(int nPicks,int iEntry,int iselection){
                 nHitsSel = 0;
                 for (int ihit = 0; ihit<i_nHits; ihit++){
                     double fitd = (*t_fitD)[ihit];
-                    double dd;
-                    if (fitd>0) dd = (*o_dxr)[ihit];
-                    else dd = (*o_dxl)[ihit];
+                    double dd = (*t_driftD)[ihit];
                     int selected = 0;
                     if (fabs(fitd-dd)<1&&testlayer!=(*i_layerID)[ihit]&&(*i_type)[ihit]<=3){ // FIXME: should tune the error limit
                         selected = 1;
@@ -762,37 +764,40 @@ int doFitting(int nPicks,int iEntry,int iselection){
     }
 }
 
-int updateHitPositions(int nPicks,int icombi){
+void setLRdriftD(int nPicks,int icombi){
+    for (int ipick = 0; ipick<nPicks; ipick++){
+        int ilr = (icombi&(1<<ipick))>>ipick;
+        if (ilr==0) ilr = -1;
+        int ihit = pick_ihit[ipick];
+        (*t_lr)[ihit] = ilr;
+        if (ilr>0) (*t_driftD)[ihit] = (*o_dxr)[ihit];
+        else       (*t_driftD)[ihit] = (*o_dxl)[ihit];
+    }
+}
+
+int updateHitPositions(int nPicks){
     // calculate pick_wy
     for (int ipick = 0; ipick<nPicks; ipick++){
         // Get hit information
-        int ilr = (icombi&(1<<ipick))>>ipick;
         int ihit = pick_ihit[ipick];
         int lid = (*i_layerID)[ihit];
         int wid = (*i_wireID)[ihit];
-        double dd;
-        if (ilr) dd = (*o_dxr)[ihit];
-        else dd = (*o_dxl)[ihit];
-        double wxro = map_x[lid][wid][1];
         double wyro = map_y[lid][wid][1];
         double wzro = chamberHL;
-        double wxhv = map_x[lid][wid][0];
         double wyhv = map_y[lid][wid][0];
         double wzhv = -chamberHL;
-        // assume wy
-        double wy = (wyro+wyhv)/2.;
-        // get wz by extrapolating the track to wy
-        // FIXME: do we have to consider f_x here?
-        double wz = f_z->Eval(wy);
+        double wy = (wyro+wyhv)/2.;// assume wy
+        double wz = f_z->Eval(wy);// get wz by extrapolating the track to wy
         // correct wy according to wz
+        wy = ((wzro-wz)*wyhv+(wz-wzhv)*wyro)/(wzro-wzhv);
+        wz = f_z->Eval(wy);
         wy = ((wzro-wz)*wyhv+(wz-wzhv)*wyro)/(wzro-wzhv);
         pick_wy[ipick] = wy;
     }
 }
 
-int updatePairPositions(int icombi,int nPicks,int & nPairs){
+int updatePairPositions(int nPicks,int & nPairs){
     // calculate pair_wxyz
-    if (debug>1) printf("     combi %d\n",icombi);
     nPairs = 0;
     int ipick = 0;
     for (; ipick<nPicks-1; ipick++){
@@ -801,14 +806,9 @@ int updatePairPositions(int icombi,int nPicks,int & nPairs){
         int lid = (*i_layerID)[ihit];
         int ljd = (*i_layerID)[jhit];
         if (lid+1!=ljd) continue; // not adjacent
-        int ilr = (icombi&(1<<ipick))>>ipick;
-        int jlr = (icombi&(1<<(ipick+1)))>>(ipick+1);
         double deltaY = pick_wy[ipick+1]-pick_wy[ipick];
-        double dd1, dd2;
-        if (ilr) dd1 = (*o_dxr)[ihit]; // right
-        else     dd1 = (*o_dxl)[ihit]; // left
-        if (jlr) dd2 = (*o_dxr)[jhit]; // right
-        else     dd2 = (*o_dxl)[jhit]; // left
+        double dd1 = (*t_driftD)[ihit];
+        double dd2 = (*t_driftD)[jhit];
         int wid = (*i_wireID)[ihit];
         int wjd = (*i_wireID)[jhit];
         double theta1 = map_theta[lid][wid];
@@ -822,7 +822,7 @@ int updatePairPositions(int icombi,int nPicks,int & nPairs){
         pair_wz[nPairs] = zc;
 //        if (debug>1) printf("                  xc = %.3e+%.3e*sin(%.3e)/(-sin(%.3e-%.3e))+%.3e*sin(%.3e)/sin(%.3e-%.3e)\n",mcp_xc[lid][wid][wjd],dd1,theta2,theta1,theta2,dd2,theta1,theta1,theta2);
  //       if (debug>1) printf("                  zc = %.3e+%.3e*cos(%.3e)/(-sin(%.3e-%.3e))+%.3e*cos(%.3e)/sin(%.3e-%.3e)+%.3e\n",mcp_zc[lid][wid][wjd],dd1,theta2,theta1,theta2,dd2,theta1,theta1,theta2,zc_fix_slx,zc_fix_slx);
-        if (debug>1) printf("       cp[%d,%d]: lr(%d,%d) w(%d,%d) i(%d,%d) dd(%f,%f)] xyz(%f,%f,%f)\n",lid,ljd,ilr,jlr,wid,wjd,ihit,jhit,dd1,dd2,xc,(pick_wy[ipick+1]+pick_wy[ipick])/2.,zc);
+        if (debug>1) printf("       cp[%d,%d]: w(%d,%d) i(%d,%d) dd(%f,%f) xyz(%f,%f,%f)\n",lid,ljd,wid,wjd,ihit,jhit,dd1,dd2,xc,(pick_wy[ipick+1]+pick_wy[ipick])/2.,zc);
         if (zc<-chamberHL||zc>chamberHL){
             if (debug>1) printf("       bad combination!\n");
             break;
@@ -948,6 +948,7 @@ bool checkChi2(int nHitsSel, int nPairs, int icombi, int iselection){
                 for (int ihit = 0; ihit<i_nHits; ihit++){
                     (*o_sel[j])[ihit] = (*o_sel[j-1])[ihit];
                     (*o_calD[j])[ihit] = (*o_calD[j-1])[ihit];
+                    (*o_driftD[j])[ihit] = (*o_driftD[j-1])[ihit];
                 }
             }
             o_iselec[i] = iselection;
@@ -969,6 +970,7 @@ bool checkChi2(int nHitsSel, int nPairs, int icombi, int iselection){
             for (int ihit = 0; ihit<i_nHits; ihit++){
                 (*o_sel[i])[ihit] = (*t_sel)[ihit];
                 (*o_calD[i])[ihit] = (*t_calD)[ihit];
+                (*o_driftD[i])[ihit] = (*t_driftD)[ihit];
             }
             break;
         }
@@ -988,7 +990,8 @@ double t2x(double time, int lid, int wid, int lr, int & status){ // 1: right; 2:
     }
     if (!f){
         fprintf(stderr,"Cannot get f[%d]!\n",index);
-        return -2;
+        status = -2;
+        return 0;
     }
     double tmax = f->GetXmax();
     double tmin = f->GetXmin();
@@ -1073,12 +1076,13 @@ void getchi2(double &f, double slx, double inx, double slz, double inz,bool all)
 	for (int ihit=0;ihit<i_nHits; ihit++) {
 		if ((*t_sel)[ihit]==0) continue;
 		dfit = get_dist((*i_layerID)[ihit],(*i_wireID)[ihit],slx,inx,slz,inz);
+		double dd = (*t_driftD)[ihit];
 		// FIXME: we should consider about the error
 //		double error = errord[(*i_layerID)[ihit]][(*i_wireID)[ihit]]*(fabs(fabs(dfit)-4)+2/1.5)*1.5/4;
 //		double error = errord[(*i_layerID)[ihit]][(*i_wireID)[ihit]];
 //		double error = funcErr->Eval(fabs(dfit));
 		double error = 0.2;
-        delta  = ((dfit>0?(*o_dxr)[ihit]:(*o_dxl)[ihit])-dfit)/error;
+        delta  = (dfit-dd)/error;
 		chisq += delta*delta;
 		N++;
 	}

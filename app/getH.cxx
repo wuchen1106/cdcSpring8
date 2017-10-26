@@ -403,13 +403,13 @@ int main(int argc, char** argv){
                 // save hits
                 if (map_lid[ch]<0) continue; // only save the channel which is connected
                 int bid = ch/NCHS;
-                if (map_lid[ch]==0) o_type->push_back(-1);
-                else if (map_lid[ch]==NLY-1) o_type->push_back(1);
+                if (map_lid[ch]==0) o_type->push_back(4); // dummy
+                else if (map_lid[ch]==NLY-1) o_type->push_back(3); // guard
                 else{
-                    if (map_wid[ch]==0)  o_type->push_back(2);
-                    else if (map_wid[ch]==widmax[ch])  o_type->push_back(3);
+                    if (map_wid[ch]==0)  o_type->push_back(1); // left
+                    else if (map_wid[ch]==widmax[ch])  o_type->push_back(2); // right
                     else{
-                        o_type->push_back(0);
+                        o_type->push_back(0); // center
                         layerhit[map_lid[ch]] = true;
                     }
                 }
