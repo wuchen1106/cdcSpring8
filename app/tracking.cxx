@@ -591,14 +591,6 @@ int main(int argc, char** argv){
 
             int nSelections = 0;
             Tracking(0,nSelections,iEntry); // 0 means starting from the 1st pick; nSelections is the number of possible choices by selecting one hit per layer;
-            // update fitD
-            for (int iCand = 0; iCand<NCAND; iCand++){
-                for (int ihit = 0; ihit<i_nHits; ihit++){
-                    int lid = (*i_layerID)[ihit];
-                    int wid = (*i_wireID)[ihit];
-                    (*o_fitD[iCand])[ihit] = get_dist(lid,wid,o_slx[iCand],o_inx[iCand],o_slz[iCand],o_inz[iCand]);
-                }
-            }
             if (o_nHitsS[0]>=5){ // at least 5 hits to fit: NDF of 3-D track without field is 4
                 N_good++;
             }
@@ -707,7 +699,6 @@ int doFitting(int nPicks,int iEntry,int iselection){
                 if (!(*t_lr)[ihit]){ // not picked
                     if (calD>0) (*t_driftD)[ihit] = (*o_dxr)[ihit];
                     else (*t_driftD)[ihit] = (*o_dxl)[ihit];
-                    (*t_lr)[ihit] = calD>0?1:-1;
                 }
                 double dd = (*t_driftD)[ihit];
                 int selected = 0;
@@ -727,18 +718,20 @@ int doFitting(int nPicks,int iEntry,int iselection){
                 gMinuit->GetParameter(2, slz, temp);
                 gMinuit->GetParameter(3, inz, temp);
                 // update fitD
-                for (int ihit = 0; ihit<i_nHits; ihit++){
-                    int lid = (*i_layerID)[ihit];
-                    int wid = (*i_wireID)[ihit];
-                    (*t_fitD)[ihit] = get_dist(lid,wid,slx,inx,slz,inz);
-                }
                 // reselect
                 nHitsSel = 0;
                 for (int ihit = 0; ihit<i_nHits; ihit++){
-                    double fitd = (*t_fitD)[ihit];
+                    int lid = (*i_layerID)[ihit];
+                    int wid = (*i_wireID)[ihit];
+                    double fitD = get_dist(lid,wid,slx,inx,slz,inz);
+                    (*t_fitD)[ihit] = fitD;
+                    if (!(*t_lr)[ihit]){ // not picked
+                        if (fitD>0) (*t_driftD)[ihit] = (*o_dxr)[ihit];
+                        else (*t_driftD)[ihit] = (*o_dxl)[ihit];
+                    }
                     double dd = (*t_driftD)[ihit];
                     int selected = 0;
-                    if (fabs(fitd-dd)<1&&testlayer!=(*i_layerID)[ihit]&&(*i_type)[ihit]<=3){ // FIXME: should tune the error limit
+                    if (fabs(fitD-dd)<1&&testlayer!=(*i_layerID)[ihit]&&(*i_type)[ihit]<=3){ // FIXME: should tune the error limit
                         selected = 1;
                         nHitsSel++;
                     }
@@ -757,6 +750,15 @@ int doFitting(int nPicks,int iEntry,int iselection){
                     getchi2(chi2,slx,inx,slz,inz);
                     // check chi2 and see where the result fits
                     if (debug>0) printf("         final RESULT: x=%.3e*(y-%.3e)+%.3e, z=%.3e*(y-%.3e)+%.3e, chi2i = %.3e chi2 = %.3e\n",slx,sciYup,inx,slz,sciYup,inz,chi2i,chi2);
+                    // at last, update driftD for all hit according to final fitting
+                    for (int ihit = 0; ihit<i_nHits; ihit++){
+                        int lid = (*i_layerID)[ihit];
+                        int wid = (*i_wireID)[ihit];
+                        double fitD = get_dist(lid,wid,slx,inx,slz,inz);
+                        (*t_fitD)[ihit] = fitD;
+                        if (fitD>0) (*t_driftD)[ihit] = (*o_dxr)[ihit];
+                        else (*t_driftD)[ihit] = (*o_dxl)[ihit];
+                    }
                     checkChi2(nHitsSel,nGood,icombi,iselection);
                 }
             }
@@ -948,6 +950,7 @@ bool checkChi2(int nHitsSel, int nPairs, int icombi, int iselection){
                 for (int ihit = 0; ihit<i_nHits; ihit++){
                     (*o_sel[j])[ihit] = (*o_sel[j-1])[ihit];
                     (*o_calD[j])[ihit] = (*o_calD[j-1])[ihit];
+                    (*o_fitD[j])[ihit] = (*o_fitD[j-1])[ihit];
                     (*o_driftD[j])[ihit] = (*o_driftD[j-1])[ihit];
                 }
             }
@@ -970,6 +973,7 @@ bool checkChi2(int nHitsSel, int nPairs, int icombi, int iselection){
             for (int ihit = 0; ihit<i_nHits; ihit++){
                 (*o_sel[i])[ihit] = (*t_sel)[ihit];
                 (*o_calD[i])[ihit] = (*t_calD)[ihit];
+                (*o_fitD[i])[ihit] = (*t_fitD)[ihit];
                 (*o_driftD[i])[ihit] = (*t_driftD)[ihit];
             }
             break;
