@@ -148,7 +148,7 @@ int setErrors(int nPairs, bool noError = false);
 int getChi2XZ(int nPairs, double & chi2x, double & chi2z);
 int fityx(int nPairs);
 int fityz(int nPairs);
-bool checkScintillator();
+bool checkScintillator(double saftyFactor,double inx, double slx, double inz, double slz);
 bool checkChi2(int nHitsSel,int nPairs,int icombi, int iselection);
 double get_dist(int lid, int wid, double slx, double inx, double slz, double inz);
 void getchi2(double &f, double slx, double inx, double slz, double inz,bool all = false);
@@ -251,10 +251,10 @@ int main(int argc, char** argv){
 
 	//===================Set beam property============================
     // FIXME: currently set a broader range. Need further investigation
-    beamSlzMax = 0.25;
+    beamSlzMax = 0.2;
     beamSlxMax = 0.1;
-    beamInzMax = 20; // mm
-    beamInxMax = 20;
+    beamInzMax = sciHL*1.5; // mm
+    beamInxMax = sciHW*1.5;
     printf("##############Beam##################\n");
     printf("beamSlzMax  = %.3e\n",beamSlzMax);
     printf("beamSlxMax  = %.3e\n",beamSlxMax);
@@ -643,11 +643,11 @@ int doFitting(int nPicks,int iEntry,int iselection){
         setErrors(nPairs,true);
         fityz(nPairs);
         fityx(nPairs);
-        bool inScint = checkScintillator();
         iinz = f_z->Eval(sciYup);
         islz = f_z->GetParameter(1);
         iinx = f_x->Eval(sciYup);
         islx = f_x->GetParameter(1);
+        bool inScint = checkScintillator(2.5,iinx,islx,iinz,islz); // FIXME: need to tune
         bool fromSource = islx>-beamSlxMax&&islx<beamSlxMax&&islz>-beamSlzMax&&islz<beamSlzMax;
         int nGood = getChi2XZ(nPairs,chi2x,chi2z);
         if (debug>0) printf("       1st RESULT: nGood = %d, inScint? %s; x=%.3e*(y-%.3e)+%.3e, chi2 = %.3e, z=%.3e*(y-%.3e)+%.3e, chi2 = %.3e\n",nGood,inScint?"yes":"no",islx,sciYup,iinx,chi2x,islz,sciYup,iinz,chi2z);
@@ -660,11 +660,11 @@ int doFitting(int nPicks,int iEntry,int iselection){
         if (result) continue;
         fityz(nPairs);
         fityx(nPairs);
-        inScint = checkScintillator();
         iinz = f_z->Eval(sciYup);
         islz = f_z->GetParameter(1);
         iinx = f_x->Eval(sciYup);
         islx = f_x->GetParameter(1);
+        inScint = checkScintillator(2.5,iinx,islx,iinz,islz); // FIXME: need to tune
         fromSource = islx>-beamSlxMax&&islx<beamSlxMax&&islz>-beamSlzMax&&islz<beamSlzMax;
         nGood = getChi2XZ(nPairs,chi2x,chi2z);
         if (debug>0) printf("       2nd RESULT: nGood = %d, inScint? %s; x=%.3e*(y-%.3e)+%.3e, chi2 = %.3e, z=%.3e*(y-%.3e)+%.3e, chi2 = %.3e\n",nGood,inScint?"yes":"no",islx,sciYup,iinx,chi2x,islz,sciYup,iinz,chi2z);
@@ -677,11 +677,11 @@ int doFitting(int nPicks,int iEntry,int iselection){
         if (result) continue;
         fityz(nPairs);
         fityx(nPairs);
-        inScint = checkScintillator();
         iinz = f_z->Eval(sciYup);
         islz = f_z->GetParameter(1);
         iinx = f_x->Eval(sciYup);
         islx = f_x->GetParameter(1);
+        inScint = checkScintillator(2.5,iinx,islx,iinz,islz); // FIXME: need to tune
         fromSource = islx>-beamSlxMax&&islx<beamSlxMax&&islz>-beamSlzMax&&islz<beamSlzMax;
         nGood = getChi2XZ(nPairs,chi2x,chi2z);
         if (debug>0) printf("       3rd RESULT: nGood = %d, inScint? %s; x=%.3e*(y-%.3e)+%.3e, chi2 = %.3e, z=%.3e*(y-%.3e)+%.3e, chi2 = %.3e\n",nGood,inScint?"yes":"no",islx,sciYup,iinx,chi2x,islz,sciYup,iinz,chi2z);
@@ -745,21 +745,27 @@ int doFitting(int nPicks,int iEntry,int iselection){
                     gMinuit->GetParameter(1, inx, temp);
                     gMinuit->GetParameter(2, slz, temp);
                     gMinuit->GetParameter(3, inz, temp);
-                    // update chi2
-                    getchi2(chi2i,islx,iinx,islz,iinz);
-                    getchi2(chi2,slx,inx,slz,inz);
-                    // check chi2 and see where the result fits
-                    if (debug>0) printf("         final RESULT: x=%.3e*(y-%.3e)+%.3e, z=%.3e*(y-%.3e)+%.3e, chi2i = %.3e chi2 = %.3e\n",slx,sciYup,inx,slz,sciYup,inz,chi2i,chi2);
-                    // at last, update driftD for all hit according to final fitting
-                    for (int ihit = 0; ihit<i_nHits; ihit++){
-                        int lid = (*i_layerID)[ihit];
-                        int wid = (*i_wireID)[ihit];
-                        double fitD = get_dist(lid,wid,slx,inx,slz,inz);
-                        (*t_fitD)[ihit] = fitD;
-                        if (fitD>0) (*t_driftD)[ihit] = (*o_dxr)[ihit];
-                        else (*t_driftD)[ihit] = (*o_dxl)[ihit];
+                    inScint = checkScintillator(1.5,inx,slx,inz,slz); // FIXME
+                    fromSource = slx>-beamSlxMax&&slx<beamSlxMax&&slz>-beamSlzMax&&slz<beamSlzMax;
+                    if (inScint&&fromSource){
+                        // update chi2
+                        getchi2(chi2i,islx,iinx,islz,iinz);
+                        getchi2(chi2,slx,inx,slz,inz);
+                        // check chi2 and see where the result fits
+                        if (debug>0) printf("         final RESULT: x=%.3e*(y-%.3e)+%.3e, z=%.3e*(y-%.3e)+%.3e, chi2i = %.3e chi2 = %.3e\n",slx,sciYup,inx,slz,sciYup,inz,chi2i,chi2);
+                        // at last, update driftD for unpick and unselected hits
+                        for (int ihit = 0; ihit<i_nHits; ihit++){
+                            int lid = (*i_layerID)[ihit];
+                            int wid = (*i_wireID)[ihit];
+                            double fitD = get_dist(lid,wid,slx,inx,slz,inz);
+                            (*t_fitD)[ihit] = fitD;
+                            if (!(*t_lr)[ihit]&&!(*t_sel)[ihit]){ // not picked
+                                if (fitD>0) (*t_driftD)[ihit] = (*o_dxr)[ihit];
+                                else (*t_driftD)[ihit] = (*o_dxl)[ihit];
+                            }
+                        }
+                        checkChi2(nHitsSel,nGood,icombi,iselection);
                     }
-                    checkChi2(nHitsSel,nGood,icombi,iselection);
                 }
             }
         }
@@ -917,11 +923,11 @@ int fityx(int nPairs){
 	return 0;
 }
 
-bool checkScintillator(){
-    double xtop = 0.95*f_x->Eval(sciYup); // 0.95 as a safety margin in case of inaccurate alignment
-    double xbot = 0.95*f_x->Eval(sciYdown);
-    double ztop = 0.95*f_z->Eval(sciYup);
-    double zbot = 0.95*f_z->Eval(sciYdown);
+bool checkScintillator(double saftyFactor,double inx, double slx, double inz, double slz){
+    double xtop = 1/saftyFactor*inx;
+    double xbot = 1/saftyFactor*(inx+slx*(sciYdown-sciYup));
+    double ztop = 1/saftyFactor*inz;
+    double zbot = 1/saftyFactor*(inz+slz*(sciYdown-sciYup));
     if (debug>=3) printf("              top xz(%.3e, %.3e) bottom xz(%.3e, %.3e)\n",xtop,ztop,xbot,zbot);
     if (xtop>sciHW||xtop<-sciHW||xbot>sciHW||xbot<-sciHW||ztop>sciHL||ztop<-sciHL||zbot>sciHL||zbot<-sciHL) return false;
     else return true;
