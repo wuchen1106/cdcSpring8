@@ -132,7 +132,7 @@ int main(int argc, char** argv){
         ichain->SetBranchAddress("fitD0",&i_fitD);
         ichain->SetBranchAddress("sel0",&i_sel);
         Long64_t N = ichain->GetEntries();
-        if (debugLevel>0) printf("Processing %d events\n",lid,N);
+        if (debugLevel>0) printf("Processing %d events\n",N);
 
 		fXTAnalyzer->Initialize(Form("%d.%s.layer%d",runNo,runname.Data(),lid),lid,preXTFile,newXTFile,newXTTree,xtType,saveHists); // read xt from tracking input xt file
         // Loop in events
