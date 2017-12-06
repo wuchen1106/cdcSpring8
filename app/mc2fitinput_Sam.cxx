@@ -94,6 +94,7 @@ int main(int argc, char ** argv){
     std::vector<bool> * o_goodHitFlag = 0;
     std::vector<double> * o_adccut = 0;
     std::vector<bool> * o_choosePeakFlag = 0;
+    std::vector<std::vector<double> > * o_driftTAll = 0;
     otree->Branch("m1x",&m1x);
     otree->Branch("m1y",&m1y);
     otree->Branch("m1z",&m1z);
@@ -125,6 +126,7 @@ int main(int argc, char ** argv){
     otree->Branch("adccut",&o_adccut);
     otree->Branch("t0offset",&o_t0);
     otree->Branch("t0",&o_t0);
+    otree->Branch("driftTAll",&o_driftTAll);
     o_driftD    = new std::vector<double>;
     o_driftT    = new std::vector<double>;
     o_layerID   = new std::vector<int>;
@@ -139,6 +141,9 @@ int main(int argc, char ** argv){
     o_ped = new std::vector<double>;
     o_adccut = new std::vector<double>;
     o_choosePeakFlag = new std::vector<bool>;
+    o_driftTAll = new std::vector<std::vector<double> >;
+
+	std::vector<double> t_driftT;
 
     TRandom1 random1;
     
@@ -205,6 +210,7 @@ int main(int argc, char ** argv){
         o_ped->clear();
         o_adccut->clear();
         o_choosePeakFlag->clear();
+        o_driftTAll->clear();
         for (int i = 0; i<NLAY; i++){
             nHitLayer[i] = 0;
         }
@@ -219,6 +225,8 @@ int main(int argc, char ** argv){
             int cellID = (*CdcCell_cellID)[ihit];
             int lid = layerID;
             int wid = getwid(layerID,cellID);
+			t_driftT.clear();
+            t_driftT.push_back(driftT);
             o_driftT->push_back(driftT);
             o_driftD->push_back(driftD);
             o_layerID->push_back(lid);
@@ -233,6 +241,7 @@ int main(int argc, char ** argv){
             o_ped->push_back(1);
             o_adccut->push_back(1);
             o_choosePeakFlag->push_back(1);
+			o_driftTAll->push_back(t_driftT);
             nHitLayer[lid]++;
             nHit++;
         }

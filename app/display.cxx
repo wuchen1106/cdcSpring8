@@ -823,8 +823,8 @@ int main(int argc, char** argv){
                 textWF[bid][ch]->Draw();
             }
             else{ // bad hit
-                markerTDC[bid][ch][ip]->SetMarkerColor(kGray);
-                textTDC[bid][ch][ip]->SetTextColor(kGray);
+                markerTDC[bid][ch][ip]->SetMarkerColor(kGray+4);
+                textTDC[bid][ch][ip]->SetTextColor(kGray+4);
             }
             markerTDC[bid][ch][ip]->Draw();
             textTDC[bid][ch][ip]->Draw();
@@ -910,7 +910,7 @@ int main(int argc, char** argv){
                         circle_driftD[lid][wid][ip]->SetR2(fabs(dd));
                         if (type>3){ // bad hit
                             circle_driftD[lid][wid][ip]->SetLineStyle(2);
-                            circle_driftD[lid][wid][ip]->SetLineColor(kGray);
+                            circle_driftD[lid][wid][ip]->SetLineColor(kGray+4);
                         }
                         else{
                             circle_driftD[lid][wid][ip]->SetLineStyle(1);
@@ -1000,7 +1000,7 @@ int main(int argc, char** argv){
                             if (itype<=3)
                                 l_zx[izx][wid][ip][ilr]->SetLineColor(color[wid]);
                             else 
-                                l_zx[izx][wid][ip][ilr]->SetLineColor(kGray);
+                                l_zx[izx][wid][ip][ilr]->SetLineColor(kGray+4);
                             l_zx[izx][wid][ip][ilr]->Draw();
                         }
                         for (int ip = 0; ip<nHits_cell[izx+1][wid]; ip++){
@@ -1009,7 +1009,7 @@ int main(int argc, char** argv){
                             if (itype<=3)
                                 l_zx[izx+1][wid][ip][ilr]->SetLineColor(color[wid]);
                             else 
-                                l_zx[izx+1][wid][ip][ilr]->SetLineColor(kGray);
+                                l_zx[izx+1][wid][ip][ilr]->SetLineColor(kGray+4);
                             l_zx[izx+1][wid][ip][ilr]->Draw();
                         }
                     }
@@ -1038,7 +1038,7 @@ int main(int argc, char** argv){
                                     // position of the cross point
                                     for (int icombi = 0; icombi<4; icombi++){
                                         if (itype>3||jtype>3){ // bad cross
-                                            point_cross_zx[izx][wid][wjd][ip][jp][icombi]->SetMarkerColor(kGray);
+                                            point_cross_zx[izx][wid][wjd][ip][jp][icombi]->SetMarkerColor(kGray+4);
                                         }
                                         else if (isel&&jsel){ // selected cross
                                             point_cross_zx[izx][wid][wjd][ip][jp][icombi]->SetMarkerColor(kBlack);
@@ -1145,7 +1145,7 @@ int main(int argc, char** argv){
                                     // position of the cross point
                                     for (int icombi = 0; icombi<4; icombi++){
                                         if (itype>3||jtype>3){ // bad cross
-                                            text_cross_zx[izx][wid][wjd][ip][jp][icombi]->SetTextColor(kGray);
+                                            text_cross_zx[izx][wid][wjd][ip][jp][icombi]->SetTextColor(kGray+4);
                                         }
                                         double dd1 = dd_cell[izx][wid][ip];
                                         double dd2 = dd_cell[izx+1][wjd][jp];

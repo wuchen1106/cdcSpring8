@@ -763,6 +763,11 @@ int doFitting(int nPicks,int iEntry,int iselection){
                                 if (fitD>0) (*t_driftD)[ihit] = (*o_dxr)[ihit];
                                 else (*t_driftD)[ihit] = (*o_dxl)[ihit];
                             }
+                            if (debug>0)
+                                if ((*i_type)[ihit]<=3)
+                                    printf("        %d (%d,%d) dd %.3e fd %.3e res %.3e\n",ihit,lid,wid,(*t_driftD)[ihit],fitD,fitD-(*t_driftD)[ihit]);
+                                else 
+                                    printf("              # %d (%d,%d) dd %.3e fd %.3e res %.3e\n",ihit,lid,wid,(*t_driftD)[ihit],fitD,fitD-(*t_driftD)[ihit]);
                         }
                         checkChi2(nHitsSel,nGood,icombi,iselection);
                     }
