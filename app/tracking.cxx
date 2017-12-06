@@ -994,9 +994,9 @@ bool checkChi2(int nHitsSel, int nPairs, int icombi, int iselection){
 
 double t2x(double time, int lid, int wid, int lr, int & status){ // 1: right; 2: right end; -1: left; -2: left end; 0 out of range
     TF1* f=0;
-    // FIXME: now we only take one xt: layer 5 cell 0 (fake)
+    // FIXME: now we only take one xt: layer 0 cell 0 (fake wire as average)
     //int index = lid*NCEL+wid;
-    int index = 5*NCEL;
+    int index = 0*NCEL+0;
     if (lr>=0){
         f = f_right[index];
     }

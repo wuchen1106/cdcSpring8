@@ -60,8 +60,8 @@ int XTAnalyzer::Initialize(TString runname, int lid, TFile * infile, TFile * out
 
 	// load previous xt curves
 	if (!mInFile) return 1;
-	fo_left = (TF1*)mInFile->Get(Form("fl_%d_0",5)); // FIXME: currently we are using the xt from the same layer.
-	fo_right = (TF1*)mInFile->Get(Form("fr_%d_0",5));
+	fo_left = (TF1*)mInFile->Get(Form("fl_%d_0",0)); // FIXME: currently we are using the xt from the same layer.
+	fo_right = (TF1*)mInFile->Get(Form("fr_%d_0",0));
 	fo_both = fo_right; // currently the XT file we used doesn't keep the copy of both-side xt
 	if (!fo_left||!fo_right) return 2;
 	fo_left->SetName(Form("fl_old_%d",mLayerID));
