@@ -943,7 +943,7 @@ int fityx(int nPairs){
 	for (int ipair = 0; ipair<nPairs; ipair++){
 	    g_x->SetPoint(ipair,pair_wy[ipair],pair_wx[ipair]);
 	}
-	g_x->Fit("f_z","qN0FG","",pair_wy[0],pair_wy[nPairs-1]);
+	g_x->Fit("f_x","qN0FG","",pair_wy[0],pair_wy[nPairs-1]);
 	return 0;
 }
 
