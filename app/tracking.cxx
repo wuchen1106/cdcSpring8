@@ -12,6 +12,8 @@
 #include "TGraphErrors.h"
 #include "TMinuit.h"
 
+#include "MyProcessManager.h"
+
 #define NZXP 8
 #define NLAY 9
 #define NLAYG 8
@@ -24,6 +26,7 @@
 #define NCAND 4
 
 int debug = 0;
+int memdebug = 0;
 
 //===================Chamber Parameter============================
 double U = 8; // mm
@@ -155,6 +158,8 @@ void getchi2(double &f, double slx, double inx, double slz, double inz,bool all 
 void fcn(int &npar, double *gin, double &f, double *par, int iflag);
 void do_fit(double slix, double inix,double sliz, double iniz);
 
+MyProcessManager * pMyProcessManager;
+
 //===================About xt============================
 TF1 * f_left[NCELA];
 TF1 * f_right[NCELA];
@@ -210,6 +215,9 @@ int main(int argc, char** argv){
         suffix = argv[14];
         suffix="."+suffix;
     }
+    if (argc>=16){
+        memdebug = (int)strtol(argv[15],NULL,10);
+    }
     printf("##############Input Parameters##################\n");
     printf("runNo       = %d\n",runNo);
     printf("test layer  = %d\n",testlayer);
@@ -224,9 +232,16 @@ int main(int argc, char** argv){
     printf("Start Entry = %d\n",iEntryStart);
     printf("Stop Entry  = %d\n",iEntryStop);
     printf("debug       = %d\n",debug);
+    printf("memdebug    = %d\n",memdebug);
     printf("suffix      = \"%s\"\n",suffix.Data());
 
     TString HOME=getenv("CDCS8WORKING_DIR");
+
+    if (memdebug>0){
+        pMyProcessManager = MyProcessManager::GetMyProcessManager();
+        if (!pMyProcessManager) return -1;
+        std::cout<<"Memory size @"<<__LINE__<<": "<<pMyProcessManager->GetMemorySize()<<std::endl;
+    }
 
 	//===================Set scintillator geometry============================
 	if (geoSetup==0){
@@ -495,9 +510,12 @@ int main(int argc, char** argv){
     //===================Tracking====================================
     Long64_t N = c->GetEntries();
     if (!iEntryStop&&iEntryStart){iEntryStart = 0; iEntryStop=N-1;}
+    if (memdebug>0) std::cout<<"Memory size @"<<__LINE__<<": "<<pMyProcessManager->GetMemorySize()<<std::endl;
     for (Long64_t iEntry = iEntryStart; iEntry<=iEntryStop; iEntry++){
-        if (debug>0) printf("#####################################\n");
-        if (debug>0) printf("Entry %d\n",iEntry);
+        if (debug>10) printf("#####################################\n");
+        if (debug>10) printf("Entry %d\n",iEntry);
+        if (memdebug>10) std::cout<<"Memory size @"<<__LINE__<<": "<<pMyProcessManager->GetMemorySize()<<std::endl;
+        else if (iEntry%1000==0&&memdebug>1) std::cout<<"Memory size @"<<__LINE__<<": "<<pMyProcessManager->GetMemorySize()<<std::endl;
         if (iEntry%1000==0) std::cout<<iEntry<<std::endl;
         c->GetEntry(iEntry);
         N_trigger++; // triggered event
@@ -562,8 +580,8 @@ int main(int argc, char** argv){
             type+=(*i_mpi)[ihit]*10000;
             (*i_type)[ihit] = type;
             if (lid != testlayer&&type<=3){ // good hit
-                if (debug>0) printf("  Entry %d: dxl[%d][%d] = dxl[%d] = t2x(%.3e) = %.3e\n",iEntry,lid,wid,ihit,dt,(*o_dxl)[ihit]);
-                if (debug>0) printf("  Entry %d: dxr[%d][%d] = dxr[%d] = t2x(%.3e) = %.3e\n",iEntry,lid,wid,ihit,dt,(*o_dxr)[ihit]);
+                if (debug>11) printf("  Entry %d: dxl[%d][%d] = dxl[%d] = t2x(%.3e) = %.3e\n",iEntry,lid,wid,ihit,dt,(*o_dxl)[ihit]);
+                if (debug>11) printf("  Entry %d: dxr[%d][%d] = dxr[%d] = t2x(%.3e) = %.3e\n",iEntry,lid,wid,ihit,dt,(*o_dxr)[ihit]);
                 v_layer_ihit[lid].push_back(ihit);
                 nHitsG++;
             }
@@ -582,7 +600,7 @@ int main(int argc, char** argv){
             }
         }
         for (int ipick = 0; ipick<v_pick_lid.size(); ipick++){
-            if (debug>0) printf(" pick layer %d\n",v_pick_lid[ipick]);
+            if (debug>11) printf(" pick layer %d\n",v_pick_lid[ipick]);
         }
 
         // Do tracking
@@ -596,7 +614,9 @@ int main(int argc, char** argv){
             }
         }
         ot->Fill();
+        if (memdebug>10) std::cout<<"Memory size @"<<__LINE__<<": "<<pMyProcessManager->GetMemorySize()<<std::endl;
     }// end of event loop
+    if (memdebug>0) std::cout<<"Memory size @"<<__LINE__<<": "<<pMyProcessManager->GetMemorySize()<<std::endl;
 
     ot->Write();
     of->Close();
@@ -608,8 +628,10 @@ int main(int argc, char** argv){
 
 int Tracking(int ipick,int & iselection,int iEntry){
     if (ipick == v_pick_lid.size()){ // finished picking hits
-        if (debug>0) printf(" Finished picking selection %d:\n",iselection);
+        if (debug>11) printf(" Finished picking selection %d:\n",iselection);
+        if (memdebug>11) std::cout<<"Memory size @"<<__LINE__<<": "<<pMyProcessManager->GetMemorySize()<<std::endl;
         doFitting(v_pick_lid.size(),iEntry,iselection);
+        if (memdebug>11) std::cout<<"Memory size @"<<__LINE__<<": "<<pMyProcessManager->GetMemorySize()<<std::endl;
         iselection++;
     }
     else{
@@ -617,7 +639,7 @@ int Tracking(int ipick,int & iselection,int iEntry){
         for (int i = 0; i<v_layer_ihit[lid].size(); i++){
             int ihit = v_layer_ihit[lid][i];
             int wid = (*i_wireID)[ihit];
-            if (debug>0) printf(" => pick # %d, layer %d, wire %d, hit[%d], ihit = %d\n",ipick,lid,wid,i,ihit);
+            if (debug>11) printf(" => pick # %d, layer %d, wire %d, hit[%d], ihit = %d\n",ipick,lid,wid,i,ihit);
             pick_ihit[ipick] = v_layer_ihit[lid][i];
             Tracking(ipick+1,iselection,iEntry);
         }
@@ -627,7 +649,7 @@ int Tracking(int ipick,int & iselection,int iEntry){
 
 int doFitting(int nPicks,int iEntry,int iselection){
     int ncombi = pow(2,nPicks);
-    if (debug>0) printf("  %d picked layers -> %d combinations\n",nPicks,ncombi);
+    if (debug>11) printf("  %d picked layers -> %d combinations\n",nPicks,ncombi);
     for (int icombi = 0; icombi<ncombi; icombi++){ // each combination corresponds to a unique left/right selection set
         if (debug>1) printf("     combi %d\n",icombi);
         t_lr->clear();
@@ -650,8 +672,7 @@ int doFitting(int nPicks,int iEntry,int iselection){
         bool inScint = checkScintillator(2.5,iinx,islx,iinz,islz); // FIXME: need to tune
         bool fromSource = islx>-beamSlxMax&&islx<beamSlxMax&&islz>-beamSlzMax&&islz<beamSlzMax;
         int nGood = getChi2XZ(nPairs,chi2x,chi2z);
-        if (debug>0) printf("       1st RESULT: nGood = %d, inScint? %s; x=%.3e*(y-%.3e)+%.3e, chi2 = %.3e, z=%.3e*(y-%.3e)+%.3e, chi2 = %.3e\n",nGood,inScint?"yes":"no",islx,sciYup,iinx,chi2x,islz,sciYup,iinz,chi2z);
-        if (debug>=0&&inScint&&fromSource) printf("%d %d 0 %d %d %.4e %.4e\n",iEntry,icombi,iselection,nGood,chi2x,chi2z);
+        if (debug>11) printf("       1st RESULT: nGood = %d, inScint? %s; x=%.3e*(y-%.3e)+%.3e, chi2 = %.3e, z=%.3e*(y-%.3e)+%.3e, chi2 = %.3e\n",nGood,inScint?"yes":"no",islx,sciYup,iinx,chi2x,islz,sciYup,iinz,chi2z);
         if (!fromSource||!inScint) {f_x->SetParameters(0,0); f_z->SetParameters(0,0);}
         
         updateHitPositions(nPicks); // fix wy positions
@@ -667,8 +688,7 @@ int doFitting(int nPicks,int iEntry,int iselection){
         inScint = checkScintillator(2.5,iinx,islx,iinz,islz); // FIXME: need to tune
         fromSource = islx>-beamSlxMax&&islx<beamSlxMax&&islz>-beamSlzMax&&islz<beamSlzMax;
         nGood = getChi2XZ(nPairs,chi2x,chi2z);
-        if (debug>0) printf("       2nd RESULT: nGood = %d, inScint? %s; x=%.3e*(y-%.3e)+%.3e, chi2 = %.3e, z=%.3e*(y-%.3e)+%.3e, chi2 = %.3e\n",nGood,inScint?"yes":"no",islx,sciYup,iinx,chi2x,islz,sciYup,iinz,chi2z);
-        if (debug>=0&&inScint&&fromSource) printf("%d %d 1 %d %d %.4e %.4e\n",iEntry,icombi,iselection,nGood,chi2x,chi2z);
+        if (debug>11) printf("       2nd RESULT: nGood = %d, inScint? %s; x=%.3e*(y-%.3e)+%.3e, chi2 = %.3e, z=%.3e*(y-%.3e)+%.3e, chi2 = %.3e\n",nGood,inScint?"yes":"no",islx,sciYup,iinx,chi2x,islz,sciYup,iinz,chi2z);
         if (!fromSource||!inScint) {f_x->SetParameters(0,0); f_z->SetParameters(0,0);}
         
         updateHitPositions(nPicks); // fix wy positions
@@ -684,8 +704,7 @@ int doFitting(int nPicks,int iEntry,int iselection){
         inScint = checkScintillator(2.5,iinx,islx,iinz,islz); // FIXME: need to tune
         fromSource = islx>-beamSlxMax&&islx<beamSlxMax&&islz>-beamSlzMax&&islz<beamSlzMax;
         nGood = getChi2XZ(nPairs,chi2x,chi2z);
-        if (debug>0) printf("       3rd RESULT: nGood = %d, inScint? %s; x=%.3e*(y-%.3e)+%.3e, chi2 = %.3e, z=%.3e*(y-%.3e)+%.3e, chi2 = %.3e\n",nGood,inScint?"yes":"no",islx,sciYup,iinx,chi2x,islz,sciYup,iinz,chi2z);
-        if (debug>=0&&inScint&&fromSource) printf("%d %d 2 %d %d %.4e %.4e\n",iEntry,icombi,iselection,nGood,chi2x,chi2z);
+        if (debug>11) printf("       3rd RESULT: nGood = %d, inScint? %s; x=%.3e*(y-%.3e)+%.3e, chi2 = %.3e, z=%.3e*(y-%.3e)+%.3e, chi2 = %.3e\n",nGood,inScint?"yes":"no",islx,sciYup,iinx,chi2x,islz,sciYup,iinz,chi2z);
 
         if (inScint&&fromSource&&nGood>=3){ // good candidate
             // update calD for all hits and driftD for no-pick hits
@@ -708,7 +727,7 @@ int doFitting(int nPicks,int iEntry,int iselection){
                 }
                 (*t_sel)[ihit] = selected;
             }
-            if (debug>0) printf("       good! nHitsSel = %d\n",nHitsSel);
+            if (debug>11) printf("       good! nHitsSel = %d\n",nHitsSel);
             if (nHitsSel>=5){ // at least 5 hits to fit: NDF of 3-D track without field is 4
                 // fitting with TMinuit
                 do_fit(islx,iinx,islz,iinz);
@@ -752,7 +771,7 @@ int doFitting(int nPicks,int iEntry,int iselection){
                         getchi2(chi2i,islx,iinx,islz,iinz);
                         getchi2(chi2,slx,inx,slz,inz);
                         // check chi2 and see where the result fits
-                        if (debug>0) printf("         final RESULT: x=%.3e*(y-%.3e)+%.3e, z=%.3e*(y-%.3e)+%.3e, chi2i = %.3e chi2 = %.3e\n",slx,sciYup,inx,slz,sciYup,inz,chi2i,chi2);
+                        if (debug>11) printf("         final RESULT: x=%.3e*(y-%.3e)+%.3e, z=%.3e*(y-%.3e)+%.3e, chi2i = %.3e chi2 = %.3e\n",slx,sciYup,inx,slz,sciYup,inz,chi2i,chi2);
                         // at last, update driftD for unpick and unselected hits
                         for (int ihit = 0; ihit<i_nHits; ihit++){
                             int lid = (*i_layerID)[ihit];
@@ -763,7 +782,7 @@ int doFitting(int nPicks,int iEntry,int iselection){
                                 if (fitD>0) (*t_driftD)[ihit] = (*o_dxr)[ihit];
                                 else (*t_driftD)[ihit] = (*o_dxl)[ihit];
                             }
-                            if (debug>0)
+                            if (debug>11)
                                 if ((*i_type)[ihit]<=3)
                                     printf("        %d (%d,%d) dd %.3e fd %.3e res %.3e\n",ihit,lid,wid,(*t_driftD)[ihit],fitD,fitD-(*t_driftD)[ihit]);
                                 else 
@@ -833,21 +852,21 @@ int updatePairPositions(int nPicks,int & nPairs){
         pair_wx[nPairs] = xc;
         pair_wy[nPairs] = (pick_wy[ipick+1]+pick_wy[ipick])/2.;
         pair_wz[nPairs] = zc;
-//        if (debug>1) printf("                  xc = %.3e+%.3e*sin(%.3e)/(-sin(%.3e-%.3e))+%.3e*sin(%.3e)/sin(%.3e-%.3e)\n",mcp_xc[lid][wid][wjd],dd1,theta2,theta1,theta2,dd2,theta1,theta1,theta2);
- //       if (debug>1) printf("                  zc = %.3e+%.3e*cos(%.3e)/(-sin(%.3e-%.3e))+%.3e*cos(%.3e)/sin(%.3e-%.3e)+%.3e\n",mcp_zc[lid][wid][wjd],dd1,theta2,theta1,theta2,dd2,theta1,theta1,theta2,zc_fix_slx,zc_fix_slx);
-        if (debug>1) printf("       cp[%d,%d]: w(%d,%d) i(%d,%d) dd(%f,%f) xyz(%f,%f,%f)\n",lid,ljd,wid,wjd,ihit,jhit,dd1,dd2,xc,(pick_wy[ipick+1]+pick_wy[ipick])/2.,zc);
+//        if (debug>11) printf("                  xc = %.3e+%.3e*sin(%.3e)/(-sin(%.3e-%.3e))+%.3e*sin(%.3e)/sin(%.3e-%.3e)\n",mcp_xc[lid][wid][wjd],dd1,theta2,theta1,theta2,dd2,theta1,theta1,theta2);
+ //       if (debug>11) printf("                  zc = %.3e+%.3e*cos(%.3e)/(-sin(%.3e-%.3e))+%.3e*cos(%.3e)/sin(%.3e-%.3e)+%.3e\n",mcp_zc[lid][wid][wjd],dd1,theta2,theta1,theta2,dd2,theta1,theta1,theta2,zc_fix_slx,zc_fix_slx);
+        if (debug>11) printf("       cp[%d,%d]: w(%d,%d) i(%d,%d) dd(%f,%f) xyz(%f,%f,%f)\n",lid,ljd,wid,wjd,ihit,jhit,dd1,dd2,xc,(pick_wy[ipick+1]+pick_wy[ipick])/2.,zc);
         if (zc<-chamberHL||zc>chamberHL){
-            if (debug>1) printf("       bad combination!\n");
+            if (debug>11) printf("       bad combination!\n");
             break;
         }
         nPairs++;
     }
     if (ipick==nPicks-1){
-        if (debug>1) printf("       GOOD!\n");
+        if (debug>11) printf("       GOOD!\n");
         return 0;
     }
     else{
-        if (debug>1) printf("       BAD @ %d!\n",ipick);
+        if (debug>11) printf("       BAD @ %d!\n",ipick);
         return 1;
     }
 }
@@ -878,12 +897,12 @@ int setErrors(int nPairs, bool noError){
     if (errorzMax0>4) {
         g_z->SetPointError(errorzMax0_i,0,10);
         g_x->SetPointError(errorzMax0_i,0,10);
-        if (debug>=2) printf("           setErrors pair[%d]: error x = ->10, error z = %.3e->10\n",errorzMax0_i,errorzMax0);
+        if (debug>=12) printf("           setErrors pair[%d]: error x = ->10, error z = %.3e->10\n",errorzMax0_i,errorzMax0);
     }
     if (errorzMax1>4) {
         g_z->SetPointError(errorzMax1_i,0,10);
         g_x->SetPointError(errorzMax1_i,0,10);
-        if (debug>=2) printf("           setErrors pair[%d]: error x = ->10, error z = %.3e->10\n",errorzMax1_i,errorzMax1);
+        if (debug>=12) printf("           setErrors pair[%d]: error x = ->10, error z = %.3e->10\n",errorzMax1_i,errorzMax1);
     }
     return 0;
 }
@@ -896,7 +915,7 @@ int getChi2XZ(int nPairs, double & chi2x, double & chi2z){
     for (int ipair = 0; ipair<nPairs; ipair++){
         double tchi2z = pair_wz[ipair]-f_z->Eval(pair_wy[ipair]);
         double tchi2x = pair_wx[ipair]-f_x->Eval(pair_wy[ipair]);
-        if (debug>=2) printf("           getChi2XZ pair[%d]: error x = %.3e, error z = %.3e\n",ipair,tchi2x,tchi2z);
+        if (debug>=12) printf("           getChi2XZ pair[%d]: error x = %.3e, error z = %.3e\n",ipair,tchi2x,tchi2z);
 	    if (fabs(tchi2z)<4&&fabs(tchi2x)<1){ // FIXME: error limit should be tuned
             chi2z += pow(tchi2z,2);
             chi2x += pow(tchi2x,2);
@@ -914,8 +933,9 @@ int fityz(int nPairs){
 	for (int ipair = 0; ipair<nPairs; ipair++){
 	    g_z->SetPoint(ipair,pair_wy[ipair],pair_wz[ipair]);
 	}
-	g_z->Set(nPairs);
-	g_z->Fit("f_z","qN0F","");
+//    if (memdebug>11) std::cout<<"Memory size @"<<__LINE__<<": "<<pMyProcessManager->GetMemorySize()<<std::endl;
+	g_z->Fit("f_z","qN0FG","",pair_wy[0],pair_wy[nPairs-1]);
+//    if (memdebug>11) std::cout<<"Memory size @"<<__LINE__<<": "<<pMyProcessManager->GetMemorySize()<<std::endl;
 	return 0;
 }
 
@@ -923,8 +943,7 @@ int fityx(int nPairs){
 	for (int ipair = 0; ipair<nPairs; ipair++){
 	    g_x->SetPoint(ipair,pair_wy[ipair],pair_wx[ipair]);
 	}
-	g_x->Set(nPairs);
-	g_x->Fit("f_x","qN0F","");
+	g_x->Fit("f_z","qN0FG","",pair_wy[0],pair_wy[nPairs-1]);
 	return 0;
 }
 
@@ -933,7 +952,7 @@ bool checkScintillator(double saftyFactor,double inx, double slx, double inz, do
     double xbot = 1/saftyFactor*(inx+slx*(sciYdown-sciYup));
     double ztop = 1/saftyFactor*inz;
     double zbot = 1/saftyFactor*(inz+slz*(sciYdown-sciYup));
-    if (debug>=3) printf("              top xz(%.3e, %.3e) bottom xz(%.3e, %.3e)\n",xtop,ztop,xbot,zbot);
+    if (debug>12) printf("              top xz(%.3e, %.3e) bottom xz(%.3e, %.3e)\n",xtop,ztop,xbot,zbot);
     if (xtop>sciHW||xtop<-sciHW||xbot>sciHW||xbot<-sciHW||ztop>sciHL||ztop<-sciHL||zbot>sciHL||zbot<-sciHL) return false;
     else return true;
 }
@@ -1108,5 +1127,5 @@ void getchi2(double &f, double slx, double inx, double slz, double inz,bool all)
 //______________________________________________________________________________
 void print_usage(char* prog_name)
 {
-    fprintf(stderr,"\t%s [runNo] [testlayer] [runname] <[nHitsMax] [t0shift] [tmin] [tmax] [geoSetup] [sumCut] [aaCut] [iEntryStart] [iEntryStop] [debug] [suffix]>\n",prog_name);
+    fprintf(stderr,"\t%s [runNo] [testlayer] [runname] <[nHitsMax] [t0shift] [tmin] [tmax] [geoSetup] [sumCut] [aaCut] [iEntryStart] [iEntryStop] [debug] [suffix] [memdebug]>\n",prog_name);
 }
