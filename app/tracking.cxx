@@ -677,8 +677,8 @@ int doFitting(int nPicks,int iEntry,int iselection){
         
         updateHitPositions(nPicks); // fix wy positions
         result = updatePairPositions(nPicks,nPairs);
-        setErrors(nPairs,false);
         if (result) continue;
+        setErrors(nPairs,false);
         fityz(nPairs);
         fityx(nPairs);
         iinz = f_z->Eval(sciYup);
@@ -693,8 +693,8 @@ int doFitting(int nPicks,int iEntry,int iselection){
         
         updateHitPositions(nPicks); // fix wy positions
         result = updatePairPositions(nPicks,nPairs);
-        setErrors(nPairs,false);
         if (result) continue;
+        setErrors(nPairs,false);
         fityz(nPairs);
         fityx(nPairs);
         iinz = f_z->Eval(sciYup);
@@ -872,6 +872,10 @@ int updatePairPositions(int nPicks,int & nPairs){
 }
 
 int setErrors(int nPairs, bool noError){
+    if (g_z) delete g_z;
+    if (g_x) delete g_x;
+    g_z = new TGraphErrors(nPairs,&(pair_wy[0]),&(pair_wz[0]),0,0);
+    g_x = new TGraphErrors(nPairs,&(pair_wy[0]),&(pair_wx[0]),0,0);
     double errorzMax0 = 0;
     double errorzMax1 = 0;
     int errorzMax0_i = -1;
@@ -930,20 +934,12 @@ int getChi2XZ(int nPairs, double & chi2x, double & chi2z){
 }
 
 int fityz(int nPairs){
-	for (int ipair = 0; ipair<nPairs; ipair++){
-	    g_z->SetPoint(ipair,pair_wy[ipair],pair_wz[ipair]);
-	}
-//    if (memdebug>11) std::cout<<"Memory size @"<<__LINE__<<": "<<pMyProcessManager->GetMemorySize()<<std::endl;
-	g_z->Fit("f_z","qN0FG","",pair_wy[0],pair_wy[nPairs-1]);
-//    if (memdebug>11) std::cout<<"Memory size @"<<__LINE__<<": "<<pMyProcessManager->GetMemorySize()<<std::endl;
+	g_z->Fit("f_z","QN0G","");
 	return 0;
 }
 
 int fityx(int nPairs){
-	for (int ipair = 0; ipair<nPairs; ipair++){
-	    g_x->SetPoint(ipair,pair_wy[ipair],pair_wx[ipair]);
-	}
-	g_x->Fit("f_x","qN0FG","",pair_wy[0],pair_wy[nPairs-1]);
+	g_x->Fit("f_x","QN0G","");
 	return 0;
 }
 
