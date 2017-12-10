@@ -64,11 +64,11 @@ int XTAnalyzer::Initialize(TString runname, int lid, TFile * infile, TFile * out
 		fprintf(stderr,"WARNING: input XT file is not valid\n");
 		return 1;
 	}
-	fo_left = (TF1*)mInFile->Get(Form("fl_%d_0",0)); // FIXME: currently we are using the xt from the same layer.
-	fo_right = (TF1*)mInFile->Get(Form("fr_%d_0",0));
-	fo_both = fo_right; // currently the XT file we used doesn't keep the copy of both-side xt
-	if (!fo_left||!fo_right){
-		fprintf(stderr,"WARNING: cannot find fl_%d_0 and fr_%d_0 in input XT file\n",0,0);
+	fo_left = (TF1*)mInFile->Get(Form("fl_%d",0)); // FIXME: currently we are using the xt from the same layer.
+	fo_right = (TF1*)mInFile->Get(Form("fr_%d",0));
+	fo_both = (TF1*)mInFile->Get(Form("fb_%d",0));
+	if (!fo_left||!fo_right||!fo_both){
+		fprintf(stderr,"WARNING: cannot find fl_%d and fr_%d in input XT file\n",0,0);
 		return 2;
 	}
 	fo_left->SetName(Form("fl_old_%d",mLayerID));
@@ -482,9 +482,9 @@ void XTAnalyzer::Process(void){
 	double tTurnLeft = findFirstZero(f_left_delta,t7Left,mTmax,1);
 	double tTurnRight = findFirstZero(f_right_delta,t7Right,mTmax,1);
 	double tTurnBoth = findFirstZero(f_both_delta,t7Both,mTmax,1);
-	double tZeroLeft = f_left_mid->GetX(0);
-	double tZeroRight = f_right_mid->GetX(0);
-	double tZeroBoth = f_both_mid->GetX(0);
+	double tZeroLeft = findFirstZero(f_left_mid,mTmin,mTmax,1);
+	double tZeroRight = findFirstZero(f_right_mid,mTmin,mTmax,1);
+	double tZeroBoth = findFirstZero(f_both_mid,mTmin,mTmax,1);
 	double tEndLeft = v_left_end_t.size()>0?v_left_end_t[0]:0;
 	double tEndRight = v_right_end_t.size()>0?v_right_end_t[v_right_end_t.size()-1]:0;
 	double tEndBoth = v_both_end_t.size()>0?v_both_end_t[v_both_end_t.size()-1]:0;

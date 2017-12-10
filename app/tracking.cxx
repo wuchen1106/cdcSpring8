@@ -210,10 +210,9 @@ int main(int argc, char** argv){
     if (argc>=14){
         debug = (int)strtol(argv[13],NULL,10);
     }
-    TString suffix = "";
+    TString prerunname = "";
     if (argc>=15){
-        suffix = argv[14];
-        suffix="."+suffix;
+        prerunname = argv[14];
     }
     if (argc>=16){
         memdebug = (int)strtol(argv[15],NULL,10);
@@ -233,7 +232,7 @@ int main(int argc, char** argv){
     printf("Stop Entry  = %d\n",iEntryStop);
     printf("debug       = %d\n",debug);
     printf("memdebug    = %d\n",memdebug);
-    printf("suffix      = \"%s\"\n",suffix.Data());
+    printf("prerunname  = \"%s\"\n",prerunname.Data());
 
     TString HOME=getenv("CDCS8WORKING_DIR");
 
@@ -370,11 +369,11 @@ int main(int argc, char** argv){
 
     //===================Prepare XT curves==============================
     printf("##############XT##################\n");
-    printf("Reading from %s/info/xt.%d.%s.root\n",HOME.Data(),runNo,runname.Data());
-    TFile * i_xt = new TFile(HOME+Form("/info/xt.%d.",runNo)+runname+".root");
+    printf("Reading from %s/info/xt.%d.%s.root\n",HOME.Data(),runNo,prerunname.Data());
+    TFile * i_xt = new TFile(HOME+Form("/info/xt.%d.",runNo)+prerunname+".root");
     for (int i = 0; i<NCELA; i++){
-        f_left[i] = (TF1*) i_xt->Get(Form("fl_%d_%d",i/NCEL,i%NCEL));
-        f_right[i] = (TF1*) i_xt->Get(Form("fr_%d_%d",i/NCEL,i%NCEL));
+        f_left[i] = (TF1*) i_xt->Get(Form("fl_%d",i/NCEL));
+        f_right[i] = (TF1*) i_xt->Get(Form("fr_%d",i/NCEL));
         double tmaxl = 0;
         double tmaxr = 0;
         double tminl = 0;
@@ -431,8 +430,8 @@ int main(int argc, char** argv){
     c->SetBranchAddress("aa",&i_aa);
 
     //===================Prepare output ROOT file============================
-    printf("Output file: %s/root/t_%d.%s%s.layer%d.root\n",HOME.Data(),runNo,runname.Data(),suffix.Data(),testlayer);
-    TFile * of = new TFile(Form("%s/root/t_%d.%s%s.layer%d.root",HOME.Data(),runNo,runname.Data(),suffix.Data(),testlayer),"RECREATE"); 
+    printf("Output file: %s/root/t_%d.%s.layer%d.root\n",HOME.Data(),runNo,runname.Data(),testlayer);
+    TFile * of = new TFile(Form("%s/root/t_%d.%s.layer%d.root",HOME.Data(),runNo,runname.Data(),testlayer),"RECREATE"); 
     TTree * ot = new TTree("t","t");
     // from h_XXX
     ot->Branch("triggerNumber",&triggerNumber);
@@ -1123,5 +1122,5 @@ void getchi2(double &f, double slx, double inx, double slz, double inz,bool all)
 //______________________________________________________________________________
 void print_usage(char* prog_name)
 {
-    fprintf(stderr,"\t%s [runNo] [testlayer] [runname] <[nHitsMax] [t0shift] [tmin] [tmax] [geoSetup] [sumCut] [aaCut] [iEntryStart] [iEntryStop] [debug] [suffix] [memdebug]>\n",prog_name);
+    fprintf(stderr,"\t%s [runNo] [testlayer] [runname] <[nHitsMax] [t0shift] [tmin] [tmax] [geoSetup] [sumCut] [aaCut] [iEntryStart] [iEntryStop] [debug] [memdebug]>\n",prog_name);
 }
