@@ -48,7 +48,7 @@ void XTAnalyzer::SetSaveHists(int save){
 	else mSaveHists = false;
 }
 
-int XTAnalyzer::Initialize(TString runname, int lid, TFile * infile, TFile * outfile, TTree * otree, int xttype, bool savehists){
+int XTAnalyzer::Initialize(TString runname, int lid, TFile * infile, TFile * outfile, TTree * otree, int xttype, bool savehists, bool saveXT0){
 	// Set options
 	mRunName = runname;
 	mLayerID = lid;
@@ -57,18 +57,28 @@ int XTAnalyzer::Initialize(TString runname, int lid, TFile * infile, TFile * out
 	mOutTree = otree;
 	mXTType = xttype;
 	mSaveHists = savehists;
+	mSaveXT0 = saveXT0;
 
 	// load previous xt curves
-	if (!mInFile) return 1;
+	if (!mInFile) {
+		fprintf(stderr,"WARNING: input XT file is not valid\n");
+		return 1;
+	}
 	fo_left = (TF1*)mInFile->Get(Form("fl_%d_0",0)); // FIXME: currently we are using the xt from the same layer.
 	fo_right = (TF1*)mInFile->Get(Form("fr_%d_0",0));
 	fo_both = fo_right; // currently the XT file we used doesn't keep the copy of both-side xt
-	if (!fo_left||!fo_right) return 2;
+	if (!fo_left||!fo_right){
+		fprintf(stderr,"WARNING: cannot find fl_%d_0 and fr_%d_0 in input XT file\n",0,0);
+		return 2;
+	}
 	fo_left->SetName(Form("fl_old_%d",mLayerID));
 	fo_right->SetName(Form("fr_old_%d",mLayerID));
 
 	// set branches for the output tree.
-	if (!mOutTree) return 3;
+	if (!mOutTree){
+		fprintf(stderr,"WARNING: output XT tree is not initialized!\n");
+		return 3;
+	}
 	mOutTree->SetBranchAddress("x",&mX);
 	mOutTree->SetBranchAddress("t",&mT);
 	mOutTree->SetBranchAddress("lid",&mLayerID);
@@ -164,15 +174,19 @@ int XTAnalyzer::Initialize(TString runname, int lid, TFile * infile, TFile * out
 	m_TmL_B_max = 0;
 
 	// prepare new XT functions
-	f_left_mid = myNewTF1(Form("flm_%d",mLayerID),"pol5",mTmin,mTmax);
-	f_right_mid = myNewTF1(Form("frm_%d",mLayerID),"pol5",mTmin,mTmax);
-	f_both_mid = myNewTF1(Form("fbm_%d",mLayerID),"pol5",mTmin,mTmax);
+	f_left_mid = myNewTF1(Form("flm_%d",mLayerID),"pol9",mTmin,mTmax);
+	f_right_mid = myNewTF1(Form("frm_%d",mLayerID),"pol9",mTmin,mTmax);
+	f_both_mid = myNewTF1(Form("fbm_%d",mLayerID),"pol9",mTmin,mTmax);
 	f_left_end = myNewTF1(Form("fle_%d",mLayerID),"pol5",mTmin,mTmax);
 	f_right_end = myNewTF1(Form("fre_%d",mLayerID),"pol5",mTmin,mTmax);
 	f_both_end = myNewTF1(Form("fbe_%d",mLayerID),"pol5",mTmin,mTmax);
+
+	if (mDebugLevel>=1) printf("XTAnalyzer successfully initialized!\n");
+	return 0;
 }
 
 void XTAnalyzer::Push(double t, double x){
+	if (mDebugLevel>=10) printf("XTAnalyzer::push(%.2e,%.2e)\n",t,x);
 	double absx = fabs(x);
 	h2_xt->Fill(t,x);
 	h2_xtn->Fill(t,absx);
@@ -184,6 +198,7 @@ void XTAnalyzer::Push(double t, double x){
 	if (ix>=0&&ix<NSLICEX) h_tn[ix]->Fill(t);
 	it = t2i(t,true);
 	if (it>=0&&it<NSLICET)h_xn[it]->Fill(absx);
+	if (mDebugLevel>=10) printf("            pushed\n",t,x);
 }
 
 void XTAnalyzer::Process(void){
@@ -328,14 +343,18 @@ void XTAnalyzer::Process(void){
 		printf(" t7l:%.1f, t7r:%.1f, t7b:%.1f\n",t7Left,t7Right,t7Both);
 	}
 	for (int i = 0; i<NSLICET; i++){ // x samples in t slices
+		if (mDebugLevel>=2) printf("  LR T slice[%d]: x=%.2f, t=%.1f, n=%.0f, sig=%.2f\n",i,v_x_slicet[i],v_t_slicet[i],v_n_slicet[i],v_sig_slicet[i]);
 		if (v_n_slicet[i]<minEntries||v_sig_slicet[i]>0.4||v_sig_slicet[i]<=0) continue;
+		if (mDebugLevel>=2) printf("                  Passed!\n");
 		if (i<NSLICET/2){ // left
 			if (v_t_slicet[i]>t8Left){ // left end
+				if (mDebugLevel>=2) printf("                  t>=%.1f, push to left_end!\n",t8Left);
 				v_left_end_x.push_back(v_x_slicet[i]);
 				v_leftR_end_x.push_back(-v_x_slicet[i]);
 				v_left_end_t.push_back(v_t_slicet[i]);
 			}
 			else if (v_x_slicet[i]<=-xStart2Turn){ // turning part
+				if (mDebugLevel>=2) printf("                  x<=%.2f, push to left_mid!\n",-xStart2Turn);
 				v_left_mid_x.push_back(v_x_slicet[i]);
 				v_leftR_mid_x.push_back(-v_x_slicet[i]);
 				v_left_mid_t.push_back(v_t_slicet[i]);
@@ -343,19 +362,24 @@ void XTAnalyzer::Process(void){
 		}
 		else{ // right
 			if (v_t_slicet[i]>t8Right){ // right end
+				if (mDebugLevel>=2) printf("                  t>=%.1f, push to right_end!\n",t8Right);
 				v_right_end_x.push_back(v_x_slicet[i]);
 				v_right_end_t.push_back(v_t_slicet[i]);
 			}
 			else if (v_x_slicet[i]>=xStart2Turn){ // turning part
+				if (mDebugLevel>=2) printf("                  x>=%.2f, push to right_mid!\n",xStart2Turn);
 				v_right_mid_x.push_back(v_x_slicet[i]);
 				v_right_mid_t.push_back(v_t_slicet[i]);
 			}
 		}
 	}
 	for (int i = 0; i<NSLICEX; i++){ // t samples in x slices
+		if (mDebugLevel>=2) printf("  LR X slice[%d]: x=%.2f, t=%.1f, n=%.0f, sig=%.1f\n",i,v_x_slicex[i],v_t_slicex[i],v_n_slicex[i],v_sig_slicex[i]);
 		if (v_n_slicex[i]<minEntries||v_sig_slicex[i]>10||v_sig_slicex[i]<=0) continue;
+		if (mDebugLevel>=2) printf("                  Passed!\n");
 		if (i<=NSLICEX/2){ // left
 			if (v_x_slicex[i]>-xStart2Turn){ // middle part
+				if (mDebugLevel>=2) printf("                  x>%.2f, push to left_mid!\n",-xStart2Turn);
 				v_left_mid_x.push_back(v_x_slicex[i]);
 				v_leftR_mid_x.push_back(-v_x_slicex[i]);
 				v_left_mid_t.push_back(v_t_slicex[i]);
@@ -363,13 +387,14 @@ void XTAnalyzer::Process(void){
 		}
 		if (i>=NSLICEX/2){ // right
 			if (v_x_slicex[i]<xStart2Turn){ // middle part
+				if (mDebugLevel>=2) printf("                  x<%.2f, push to right_mid!\n",xStart2Turn);
 				v_right_mid_x.push_back(v_x_slicex[i]);
 				v_right_mid_t.push_back(v_t_slicex[i]);
 			}
 		}
 	}
 	for (int i = NSLICEX/2; i<NSLICEX; i++){ // t samples in x slices, both-side
-		if (mDebugLevel>=2) printf("  BS X slice[%d]: x=%.2f, t=%.1f, n=%d, sig=%.1f\n",i,v_x_slicexn[i],v_t_slicexn[i],v_n_slicexn[i],v_sig_slicexn[i]);
+		if (mDebugLevel>=2) printf("  BS X slice[%d]: x=%.2f, t=%.1f, n=%.0f, sig=%.1f\n",i,v_x_slicexn[i],v_t_slicexn[i],v_n_slicexn[i],v_sig_slicexn[i]);
 		if (v_n_slicexn[i]<minEntries||v_sig_slicexn[i]>10||v_sig_slicexn[i]<=0) continue;
 		if (mDebugLevel>=2) printf("                  Passed!\n");
 		if (v_x_slicexn[i]<xStart2Turn){ // middle part
@@ -379,7 +404,7 @@ void XTAnalyzer::Process(void){
 		}
 	}
 	for (int i = NSLICET/2; i<NSLICET; i++){ // x samples in t slices, both-side
-		if (mDebugLevel>=2) printf("  BS T slice[%d]: x=%.2f, t=%.1f, n=%d, sig=%.2f\n",i,v_x_slicetn[i],v_t_slicetn[i],v_n_slicetn[i],v_sig_slicetn[i]);
+		if (mDebugLevel>=2) printf("  BS T slice[%d]: x=%.2f, t=%.1f, n=%.0f, sig=%.2f\n",i,v_x_slicetn[i],v_t_slicetn[i],v_n_slicetn[i],v_sig_slicetn[i]);
 		if (v_n_slicetn[i]<minEntries||v_sig_slicetn[i]>0.4||v_sig_slicetn[i]<=0) continue;
 		if (mDebugLevel>=2) printf("                  Passed!\n");
 		if (v_t_slicetn[i]>t8Both){ // both-side end
@@ -443,12 +468,12 @@ void XTAnalyzer::Process(void){
 	// fit xt functions
 	// FIXME: should think about fixing some parameters to let left/right sides XTs go through the same 0 point
 	//        now we have poor shape of XT near 0 point, and we'd better rely on both-side XT
-	gr_left_end->Fit(Form("fle_%d",mLayerID),"qN0","");
-	gr_left_mid->Fit(Form("flm_%d",mLayerID),"qN0","");
-	gr_right_mid->Fit(Form("frm_%d",mLayerID),"qN0","");
-	gr_right_end->Fit(Form("fre_%d",mLayerID),"qN0","");
-	gr_both_mid->Fit(Form("fbm_%d",mLayerID),"qN0","");
-	gr_both_end->Fit(Form("fbe_%d",mLayerID),"qN0","");
+	if (!gr_left_end->GetN()) fprintf(stderr,"WARNING: gr_left_end is empty!\n"); else gr_left_end->Fit(Form("fle_%d",mLayerID),"qN0","");;
+	if (!gr_left_mid->GetN()) fprintf(stderr,"WARNING: gr_left_mid is empty!\n"); else gr_left_mid->Fit(Form("flm_%d",mLayerID),"qN0","");;
+	if (!gr_right_mid->GetN()) fprintf(stderr,"WARNING: gr_right_mid is empty!\n"); else gr_right_mid->Fit(Form("frm_%d",mLayerID),"qN0","");;
+	if (!gr_right_end->GetN()) fprintf(stderr,"WARNING: gr_right_end is empty!\n"); else gr_right_end->Fit(Form("fre_%d",mLayerID),"qN0","");;
+	if (!gr_both_mid->GetN()) fprintf(stderr,"WARNING: gr_both_mid is empty!\n"); else gr_both_mid->Fit(Form("fbm_%d",mLayerID),"qN0","");;
+	if (!gr_both_end->GetN()) fprintf(stderr,"WARNING: gr_both_end is empty!\n"); else gr_both_end->Fit(Form("fbe_%d",mLayerID),"qN0","");;
 
 	// get ranges for XT functions
 	f_left_delta = minusPolN(Form("fld_%d",mLayerID),f_left_mid,f_left_end,0,mTmax);
@@ -460,9 +485,9 @@ void XTAnalyzer::Process(void){
 	double tZeroLeft = f_left_mid->GetX(0);
 	double tZeroRight = f_right_mid->GetX(0);
 	double tZeroBoth = f_both_mid->GetX(0);
-	double tEndLeft = v_left_end_t[0];
-	double tEndRight = v_right_end_t[v_right_end_t.size()-1];
-	double tEndBoth = v_both_end_t[v_both_end_t.size()-1];
+	double tEndLeft = v_left_end_t.size()>0?v_left_end_t[0]:0;
+	double tEndRight = v_right_end_t.size()>0?v_right_end_t[v_right_end_t.size()-1]:0;
+	double tEndBoth = v_both_end_t.size()>0?v_both_end_t[v_both_end_t.size()-1]:0;
 
 	// combine functions
 	f_left_com = combinePolN(Form("flc_%d",mLayerID),f_left_mid,f_left_end,tZeroLeft,tTurnLeft,tEndLeft,mTmin,tEndLeft);
@@ -476,10 +501,18 @@ void XTAnalyzer::Process(void){
 	if (mXTType==0){ // use Left/Right case
 		f_left = combinePolN(Form("fl_%d",mLayerID),f_left_mid,f_left_end,tZeroLeft,tTurnLeft,tEndLeft,mTmin,tEndLeft);
 		f_right = combinePolN(Form("fr_%d",mLayerID),f_right_mid,f_right_end,tZeroRight,tTurnRight,tEndRight,mTmin,tEndRight);
+		if (mSaveXT0){
+			f_left0 = combinePolN(Form("fl_%d",0),f_left_mid,f_left_end,tZeroLeft,tTurnLeft,tEndLeft,mTmin,tEndLeft);
+			f_right0 = combinePolN(Form("fr_%d",0),f_right_mid,f_right_end,tZeroRight,tTurnRight,tEndRight,mTmin,tEndRight);
+		}
 	}
 	else{ // use Both-Side case
 		f_left = combinePolN(Form("fl_%d",mLayerID),scalePolN(f_both_mid,-1),scalePolN(f_both_end,-1),tZeroBoth,tTurnBoth,tEndBoth,mTmin,tEndBoth);
 		f_right = combinePolN(Form("fr_%d",mLayerID),f_both_mid,f_both_end,tZeroBoth,tTurnBoth,tEndBoth,mTmin,tEndBoth);
+		if (mSaveXT0){
+			f_left0 = combinePolN(Form("fl_%d",0),scalePolN(f_both_mid,-1),scalePolN(f_both_end,-1),tZeroBoth,tTurnBoth,tEndBoth,mTmin,tEndBoth);
+			f_right0 = combinePolN(Form("fr_%d",0),f_both_mid,f_both_end,tZeroBoth,tTurnBoth,tEndBoth,mTmin,tEndBoth);
+		}
 	}
 
 	//==========================Prepare more graphs==============================
@@ -1008,6 +1041,7 @@ void XTAnalyzer::drawIteration(){
 	f_both_com->Draw("SAME");
 	fo_both->SetLineColor(kRed);
 	fo_both->SetLineStyle(2);
+	fo_both->SetLineWidth(0.3);
 	fo_both->Draw("SAME");
 	pad_IterN[1]->cd();
 	TH2D * h2_IterN = new TH2D("h2_IterN","XT Differences Comparing with Last Time",mNbint,mTmin,mTmax,1024,-m_TmL_B_max*1.05,m_TmL_B_max*1.05);
@@ -1040,6 +1074,8 @@ void XTAnalyzer::drawIteration(){
 	fo_right->SetLineColor(kBlack);
 	fo_left->SetLineStyle(2);
 	fo_right->SetLineStyle(2);
+	fo_left->SetLineWidth(0.3);
+	fo_right->SetLineWidth(0.3);
 	fo_left->Draw("SAME");
 	fo_right->Draw("SAME");
 	pad_Iter[1]->cd();
@@ -1112,4 +1148,8 @@ void XTAnalyzer::writeObjects(){
 //	f_both_delta->Write();
 	f_right->Write();
 	f_left->Write();
+	if (mSaveXT0){
+		f_right0->Write();
+		f_left0->Write();
+	}
 }

@@ -131,11 +131,16 @@ int main(int argc, char** argv){
         ichain->SetBranchAddress("chi20",&chi2);
         ichain->SetBranchAddress("fitD0",&i_fitD);
         ichain->SetBranchAddress("sel0",&i_sel);
+
+		int statusInitialize = fXTAnalyzer->Initialize(Form("%d.%s.layer%d",runNo,runname.Data(),lid),lid,preXTFile,newXTFile,newXTTree,xtType,saveHists, lid==4); // take the XT from layer 4 as default output XT (0)
+		if (statusInitialize){
+			fprintf(stderr,"WARNING: something wrong with initializing XTAnalyzer for layer[%], will ignore this layer!\n",lid);
+			continue;
+		}
+
+        // Loop in events
         Long64_t N = ichain->GetEntries();
         if (debugLevel>0) printf("Processing %d events\n",N);
-
-		fXTAnalyzer->Initialize(Form("%d.%s.layer%d",runNo,runname.Data(),lid),lid,preXTFile,newXTFile,newXTTree,xtType,saveHists); // read xt from tracking input xt file
-        // Loop in events
         for ( int iEntry = 0 ; iEntry<N; iEntry++){
             if (N%1000==0) printf("%d\n",N);
             if (debugLevel>=10) printf("Entry%d: \n",iEntry);

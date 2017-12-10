@@ -25,7 +25,7 @@ class XTAnalyzer{
 		void SetXTType(int type);
 		void SetSaveHists(int save);
 
-		int  Initialize(TString runname, int lid, TFile * infile, TFile * outfile, TTree * otree, int xttype, bool savehists);
+		int  Initialize(TString runname, int lid, TFile * infile, TFile * outfile, TTree * otree, int xttype, bool savehists,bool saveXT0 = false);
 		void Process(void);
 
 		void Push(double t, double x);
@@ -58,6 +58,7 @@ class XTAnalyzer{
 		// options
 		int mDebugLevel;
 		bool mSaveHists;
+		bool mSaveXT0;
 		int mXTType;
 		TString mRunName;
 
@@ -252,6 +253,8 @@ class XTAnalyzer{
 		TF1 * fo_both; // previous XT curve
 		TF1 * f_right;
 		TF1 * f_left;
+		TF1 * f_right0;
+		TF1 * f_left0;
 };
 
 #endif
