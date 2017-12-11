@@ -744,7 +744,7 @@ TF1 * XTAnalyzer::combinePolN(TString name, TF1 * f1, TF1 * f2, double x0, doubl
 	TString form1 = formPolN(f1);
 	TString form2 = formPolN(f2);
 	double ymax = f2->Eval(x2);
-	TF1 * f = new TF1(name,Form("(x>=%.6f&&x<%.6f)*(%s)+(x>=%.6f&&x<%.6f)*(%s)+(x>=%.6f)*%.6e",x0,x1,form1.Data(),x1,x2,form2.Data(),x2,ymax),xmin,xmax);
+	TF1 * f = new TF1(name,Form("(x>=%.14f&&x<%.14f)*(%s)+(x>=%.14f&&x<%.14f)*(%s)+(x>=%.14f)*%.14e",x0,x1,form1.Data(),x1,x2,form2.Data(),x2,ymax),xmin,xmax);
 	f->SetNpx(1024);
 	f->SetNumberFitPoints(1024);
 	f->SetLineWidth(0.3);
@@ -754,11 +754,11 @@ TF1 * XTAnalyzer::combinePolN(TString name, TF1 * f1, TF1 * f2, double x0, doubl
 TString XTAnalyzer::formPolN(TF1 * f){
 	int n = f->GetNpar();
 	double p0 = f->GetParameter(0);
-	TString form = Form("%.5e",p0);
+	TString form = Form("%.14e",p0);
 	TString x = "x";
 	for (int i = 1; i<n; i++){
 		double p = f->GetParameter(i);
-		form+=Form("+(%.5e*%s)",p,x.Data());
+		form+=Form("+(%.14e*%s)",p,x.Data());
 		x+="*x";
 	}
 	return form;
