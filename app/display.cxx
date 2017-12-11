@@ -287,10 +287,10 @@ int main(int argc, char** argv){
 	std::cout<<"runNo#"<<runNo<<": "<<gastype<<", "<<runGr<<", "<<duration<<", "<<HV<<" V, "<<THR<<" mV, "<<durationTime<<"sec"<<std::endl;
 
     //===================Get XT============================
-    TFile * i_xt = new TFile(HOME+Form("/info/xt.%d.root",runNo));
+    TFile * i_xt = new TFile(HOME+Form("/info/xt.%d.%s.root",runNo,runname.Data()));
     for (int i = 0; i<NCELA; i++){
-        f_left[i] = (TF1*) i_xt->Get(Form("fl_%d_%d",i/NCEL,i%NCEL));
-        f_right[i] = (TF1*) i_xt->Get(Form("fr_%d_%d",i/NCEL,i%NCEL));
+        f_left[i] = (TF1*) i_xt->Get(Form("fl_%d",i/NCEL));
+        f_right[i] = (TF1*) i_xt->Get(Form("fr_%d",i/NCEL));
     }
 
 	//==================Get ADC==========================
@@ -492,7 +492,7 @@ int main(int argc, char** argv){
 
 	//==================Prepare drawing objects==========================
 	//Prepare for ADC
-	TGraph * gr_waveForm[NBRD][NCHS];
+	TGraph * gr_waveForm[NBRD][NCHS] = {0};
 	int vSample[NSMP];
 	for (int i=0; i<NSMP; i++){
 		vSample[i] = i;
@@ -823,8 +823,8 @@ int main(int argc, char** argv){
                 textWF[bid][ch]->Draw();
             }
             else{ // bad hit
-                markerTDC[bid][ch][ip]->SetMarkerColor(kGray+4);
-                textTDC[bid][ch][ip]->SetTextColor(kGray+4);
+                markerTDC[bid][ch][ip]->SetMarkerColor(14);
+                textTDC[bid][ch][ip]->SetTextColor(14);
             }
             markerTDC[bid][ch][ip]->Draw();
             textTDC[bid][ch][ip]->Draw();
@@ -910,7 +910,7 @@ int main(int argc, char** argv){
                         circle_driftD[lid][wid][ip]->SetR2(fabs(dd));
                         if (type>3){ // bad hit
                             circle_driftD[lid][wid][ip]->SetLineStyle(2);
-                            circle_driftD[lid][wid][ip]->SetLineColor(kGray+4);
+                            circle_driftD[lid][wid][ip]->SetLineColor(14);
                         }
                         else{
                             circle_driftD[lid][wid][ip]->SetLineStyle(1);
@@ -1000,7 +1000,7 @@ int main(int argc, char** argv){
                             if (itype<=3)
                                 l_zx[izx][wid][ip][ilr]->SetLineColor(color[wid]);
                             else 
-                                l_zx[izx][wid][ip][ilr]->SetLineColor(kGray+4);
+                                l_zx[izx][wid][ip][ilr]->SetLineColor(14);
                             l_zx[izx][wid][ip][ilr]->Draw();
                         }
                         for (int ip = 0; ip<nHits_cell[izx+1][wid]; ip++){
@@ -1009,7 +1009,7 @@ int main(int argc, char** argv){
                             if (itype<=3)
                                 l_zx[izx+1][wid][ip][ilr]->SetLineColor(color[wid]);
                             else 
-                                l_zx[izx+1][wid][ip][ilr]->SetLineColor(kGray+4);
+                                l_zx[izx+1][wid][ip][ilr]->SetLineColor(14);
                             l_zx[izx+1][wid][ip][ilr]->Draw();
                         }
                     }
@@ -1038,7 +1038,7 @@ int main(int argc, char** argv){
                                     // position of the cross point
                                     for (int icombi = 0; icombi<4; icombi++){
                                         if (itype>3||jtype>3){ // bad cross
-                                            point_cross_zx[izx][wid][wjd][ip][jp][icombi]->SetMarkerColor(kGray+4);
+                                            point_cross_zx[izx][wid][wjd][ip][jp][icombi]->SetMarkerColor(14);
                                         }
                                         else if (isel&&jsel){ // selected cross
                                             point_cross_zx[izx][wid][wjd][ip][jp][icombi]->SetMarkerColor(kBlack);
@@ -1145,7 +1145,7 @@ int main(int argc, char** argv){
                                     // position of the cross point
                                     for (int icombi = 0; icombi<4; icombi++){
                                         if (itype>3||jtype>3){ // bad cross
-                                            text_cross_zx[izx][wid][wjd][ip][jp][icombi]->SetTextColor(kGray+4);
+                                            text_cross_zx[izx][wid][wjd][ip][jp][icombi]->SetTextColor(14);
                                         }
                                         double dd1 = dd_cell[izx][wid][ip];
                                         double dd2 = dd_cell[izx+1][wjd][jp];
@@ -1193,9 +1193,9 @@ int main(int argc, char** argv){
 
 double t2x(double time, int lid, int wid, int lr, int & status){ // 1: right; 2: right end; -1: left; -2: left end; 0 out of range
     TF1* f=0;
-    // FIXME: now we only take one xt: layer 5 cell 0 (fake)
+    // FIXME: now we only take the default xt: layer 0 wire 0 (fake) 
     //int index = (lid-1)*NCEL+wid;
-    int index = 5*NCEL;
+    int index = 0;
     if (lr>=0){
         f = f_right[index];
     }

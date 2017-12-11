@@ -64,15 +64,16 @@ int XTAnalyzer::Initialize(TString runname, int lid, TFile * infile, TFile * out
 		fprintf(stderr,"WARNING: input XT file is not valid\n");
 		return 1;
 	}
-	fo_left = (TF1*)mInFile->Get(Form("fl_%d",0)); // FIXME: currently we are using the xt from the same layer.
-	fo_right = (TF1*)mInFile->Get(Form("fr_%d",0));
-	fo_both = (TF1*)mInFile->Get(Form("fb_%d",0));
+	fo_left = (TF1*)mInFile->Get(Form("flc_%d",mLayerID)); // FIXME: currently we are using the xt from the same layer.
+	fo_right = (TF1*)mInFile->Get(Form("frc_%d",mLayerID));
+	fo_both = (TF1*)mInFile->Get(Form("fbc_%d",mLayerID));
 	if (!fo_left||!fo_right||!fo_both){
-		fprintf(stderr,"WARNING: cannot find fl_%d and fr_%d in input XT file\n",0,0);
+		fprintf(stderr,"WARNING: cannot find flc_%d/frc_%d/fbc_%d in input XT file\n",mLayerID,mLayerID,mLayerID);
 		return 2;
 	}
 	fo_left->SetName(Form("fl_old_%d",mLayerID));
 	fo_right->SetName(Form("fr_old_%d",mLayerID));
+	fo_both->SetName(Form("fb_old_%d",mLayerID));
 
 	// set branches for the output tree.
 	if (!mOutTree){
@@ -743,7 +744,7 @@ TF1 * XTAnalyzer::combinePolN(TString name, TF1 * f1, TF1 * f2, double x0, doubl
 	TString form1 = formPolN(f1);
 	TString form2 = formPolN(f2);
 	double ymax = f2->Eval(x2);
-	TF1 * f = new TF1(name,Form("(x>=%.1f&&x<%.1f)*(%s)+(x>=%.1f&&x<%.1f)*(%s)+(x>=%.1f)*%.6e",x0,x1,form1.Data(),x1,x2,form2.Data(),x2,ymax),xmin,xmax);
+	TF1 * f = new TF1(name,Form("(x>=%.6f&&x<%.6f)*(%s)+(x>=%.6f&&x<%.6f)*(%s)+(x>=%.6f)*%.6e",x0,x1,form1.Data(),x1,x2,form2.Data(),x2,ymax),xmin,xmax);
 	f->SetNpx(1024);
 	f->SetNumberFitPoints(1024);
 	f->SetLineWidth(0.3);
@@ -1143,9 +1144,9 @@ void XTAnalyzer::writeObjects(){
 	f_leftR_com->Write();
 	f_right_com->Write();
 	f_both_com->Write();
-//	f_left_delta->Write();
-//	f_right_delta->Write();
-//	f_both_delta->Write();
+	f_left_delta->Write();
+	f_right_delta->Write();
+	f_both_delta->Write();
 	f_right->Write();
 	f_left->Write();
 	if (mSaveXT0){

@@ -140,6 +140,10 @@ int main(int argc, char** argv){
 
         // Loop in events
         Long64_t N = ichain->GetEntries();
+        if (N==0){
+            fprintf(stderr,"WARNING: \"%s/root/t_%d.%s.layer%d.root\" is empty! Will ignore this layer.\n",HOME.Data(),runNo,runname.Data(),lid);
+            continue;
+        }
         if (debugLevel>0) printf("Processing %d events\n",N);
         for ( int iEntry = 0 ; iEntry<N; iEntry++){
             if (N%1000==0) printf("%d\n",N);
