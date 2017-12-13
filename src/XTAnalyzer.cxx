@@ -96,14 +96,13 @@ int XTAnalyzer::Initialize(TString runname, int lid, TFile * infile, TFile * out
 	mBWX = 0.1;
 	mXLEFT = -mBWX*NSLICEX/2;
 	mXRIGHT = mBWX*NSLICEX/2;
-	printf("mXLEFT = %.2f, mXRIGHT = %.2f\n",mXLEFT,mXRIGHT);
 	mBWT = 3/0.96;
 	mTLEFT = -mBWT*NSLICET/2;
 	mTRIGHT = mBWT*NSLICET/2;
 	// set for binning
-	mTmin = -25; // t range for one x bin
-	mTmax = 800;
-	mNbint = 800;
+	mTmin = -24.5; // t range for one x bin
+	mTmax = 800.5;
+	mNbint = 264;
 	mXmax = 10; // x range for one t bin
 	mNbinx = 256;
 
@@ -494,6 +493,12 @@ void XTAnalyzer::Process(void){
 	double tEndLeft = v_left_end_t.size()>0?v_left_end_t[0]:0;
 	double tEndRight = v_right_end_t.size()>0?v_right_end_t[v_right_end_t.size()-1]:0;
 	double tEndBoth = v_both_end_t.size()>0?v_both_end_t[v_both_end_t.size()-1]:0;
+	if (mDebugLevel>=1){
+		printf("After selecting samples:\n");
+		printf(" t0l:%.1f, t0r:%.1f, t0b:%.1f\n",tZeroLeft,tZeroRight,tZeroBoth);
+		printf(" ttl:%.1f, ttr:%.1f, ttb:%.1f\n",tTurnLeft,tTurnRight,tTurnBoth);
+		printf(" tel:%.1f, ter:%.1f, teb:%.1f\n",tEndLeft,tEndRight,tEndBoth);
+	}
 
 	// combine functions
 	f_left_com = combinePolN(Form("flc_%d",mLayerID),f_left_mid,f_left_end,tZeroLeft,tTurnLeft,tEndLeft,mTmin,tEndLeft);
@@ -708,11 +713,12 @@ void XTAnalyzer::getT8(double & t8left, double & t8right, double & t8both){
 			else{
 				t2 = v_t_slicex[i];
 				x2 = v_x_slicex[i];
+				find2 = true;
 				break;
 			}
 		}
 	}
-	if (find1&&x1==-8) t8left = t1;
+	if (find1&&fabs(x1+8)<1e-4) t8left = t1;
 	else if (find1&&find2){
 		t8left = t1+(t2-t1)*(-8-x1)/(x2-x1);
 	}
@@ -732,11 +738,12 @@ void XTAnalyzer::getT8(double & t8left, double & t8right, double & t8both){
 			else{
 				t2 = v_t_slicex[i];
 				x2 = v_x_slicex[i];
+				find2 = true;
 				break;
 			}
 		}
 	}
-	if (find1&&x1==8) t8right = t1;
+	if (find1&&fabs(x1-8)<1e-4) t8right = t1;
 	else if (find1&&find2){
 		t8right = t1+(t2-t1)*(8-x1)/(x2-x1);
 	}
@@ -756,11 +763,12 @@ void XTAnalyzer::getT8(double & t8left, double & t8right, double & t8both){
 			else{
 				t2 = v_t_slicexn[i];
 				x2 = v_x_slicexn[i];
+				find2 = true;
 				break;
 			}
 		}
 	}
-	if (find1&&x1==8) t8both = t1;
+	if (find1&&fabs(x1-8)<1e-4) t8both = t1;
 	else if (find1&&find2){
 		t8both = t1+(t2-t1)*(8-x1)/(x2-x1);
 	}
