@@ -6,7 +6,7 @@
 #include "TString.h"
 
 #define NSLICEX 161 // 161 bins from -8.05 mm to 8.05 mm, binning every 100 um
-#define NSLICET 384 // 192 bins from 0 ns to 600 ns including left and right side, bining every 3.125 ns (3 TDC)
+#define NSLICET 528 // 264 bins from -25 ns to 800 ns including left and right side, bining every 3.125 ns (3 TDC)
 
 class TFile;
 class TF1;
@@ -40,6 +40,7 @@ class XTAnalyzer{
 		void i2t(int i,double & dtmin, double & dtmid, double & dtmax);
 		void getOneThirdLines(TH1D* h, double & left, double & right);
 		double findFirstZero(TF1 * f, double xmin, double xmax, double delta);
+		void getT8(double & t8left, double & t8right, double & t8both);
 		TF1 * myNewTF1(TString name, TString form, double left, double right);
 		TGraph * myNewTGraph(TString name, int n, const double * x, const double * y, TString title, TString Xtitle, TString Ytitle, int mType, double mSize, int mColor, double lSize, int lColor);
 		TF1 * scalePolN(TF1 * f, double factor, TString name = "f_test");
@@ -61,6 +62,10 @@ class XTAnalyzer{
 		bool mSaveXT0;
 		int mXTType;
 		TString mRunName;
+
+		int mEntriesMin;
+		double mSigXmax;
+		double mSigTmax;
 
 		// input file
 		TFile * mInFile;

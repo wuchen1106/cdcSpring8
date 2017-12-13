@@ -59,6 +59,10 @@ int XTAnalyzer::Initialize(TString runname, int lid, TFile * infile, TFile * out
 	mSaveHists = savehists;
 	mSaveXT0 = saveXT0;
 
+	mEntriesMin = 30;
+	mSigTmax = 15;
+	mSigXmax = 0.5;
+
 	// load previous xt curves
 	if (!mInFile) {
 		fprintf(stderr,"WARNING: input XT file is not valid\n");
@@ -92,21 +96,22 @@ int XTAnalyzer::Initialize(TString runname, int lid, TFile * infile, TFile * out
 	mBWX = 0.1;
 	mXLEFT = -mBWX*NSLICEX/2;
 	mXRIGHT = mBWX*NSLICEX/2;
+	printf("mXLEFT = %.2f, mXRIGHT = %.2f\n",mXLEFT,mXRIGHT);
 	mBWT = 3/0.96;
 	mTLEFT = -mBWT*NSLICET/2;
 	mTRIGHT = mBWT*NSLICET/2;
 	// set for binning
 	mTmin = -25; // t range for one x bin
-	mTmax = 600;
-	mNbint = 600;
+	mTmax = 800;
+	mNbint = 800;
 	mXmax = 10; // x range for one t bin
 	mNbinx = 256;
 
 	// prepare 2D histograms
-	h2_xt = new TH2D(Form("h2_xt_%d",mLayerID),"XT Relation",600,-25,600,512,-10,10);
+	h2_xt = new TH2D(Form("h2_xt_%d",mLayerID),"XT Relation",mNbint,mTmin,mTmax,mNbinx*2,-mXmax,mXmax);
 	h2_xt->GetXaxis()->SetTitle("T [ns]");
 	h2_xt->GetYaxis()->SetTitle("X [mm]");
-	h2_xtn = new TH2D(Form("h2_xtn_%d",mLayerID),"XT Relation",600,-25,600,256,0,10);
+	h2_xtn = new TH2D(Form("h2_xtn_%d",mLayerID),"XT Relation",mNbint,mTmin,mTmax,mNbinx,0,mXmax);
 	h2_xtn->GetXaxis()->SetTitle("T [ns]");
 	h2_xtn->GetYaxis()->SetTitle("X [mm]");
 
@@ -114,8 +119,8 @@ int XTAnalyzer::Initialize(TString runname, int lid, TFile * infile, TFile * out
 	for (int ix = 0; ix<NSLICEX; ix++){
         double fdmin,fdmid,fdmax;
         i2x(ix,fdmin,fdmid,fdmax);
-		h_t[ix] = new TH1D(Form("h_t_%d_%d",mLayerID,ix),Form("T_{drift} distribution with DOCA [%.1f~%.1f] mm",fdmin,fdmax),mNbint,mTmin,mTmax);
-		h_tn[ix] = new TH1D(Form("h_tn_%d_%d",mLayerID,ix),Form("T_{drift} distribution with DOCA [%.1f~%.1f] mm",fdmin,fdmax),mNbint,mTmin,mTmax);
+		h_t[ix] = new TH1D(Form("h_t_%d_%d",mLayerID,ix),Form("T_{drift} distribution with DOCA [%.2f~%.2f] mm",fdmin,fdmax),mNbint,mTmin,mTmax);
+		h_tn[ix] = new TH1D(Form("h_tn_%d_%d",mLayerID,ix),Form("T_{drift} distribution with DOCA [%.2f~%.2f] mm",fdmin,fdmax),mNbint,mTmin,mTmax);
 	}
 	for (int it = 0; it<NSLICET; it++){
         double dtmin,dtmid,dtmax;
@@ -330,11 +335,11 @@ void XTAnalyzer::Process(void){
 	//==========================Select Samples==============================
 	// select sample points and make graphs
 	// FIXME: Currently seperate the mid/end graphs by 7.8 mm line, and search for the real one from 7.5 line.
-	int minEntries = 30;
 	double xStart2Turn = 7.8;
 	double t8Left = v_t_slicex[0];
 	double t8Right = v_t_slicex[NSLICEX-1];
 	double t8Both = v_t_slicexn[NSLICEX-1];
+	getT8(t8Left,t8Right,t8Both);
 	double t7Left = v_t_slicex[1./mBWX];
 	double t7Right = v_t_slicex[NSLICEX-1./mBWX];
 	double t7Both = v_t_slicexn[NSLICEX-1./mBWX];
@@ -345,7 +350,7 @@ void XTAnalyzer::Process(void){
 	}
 	for (int i = 0; i<NSLICET; i++){ // x samples in t slices
 		if (mDebugLevel>=2) printf("  LR T slice[%d]: x=%.2f, t=%.1f, n=%.0f, sig=%.2f\n",i,v_x_slicet[i],v_t_slicet[i],v_n_slicet[i],v_sig_slicet[i]);
-		if (v_n_slicet[i]<minEntries||v_sig_slicet[i]>0.4||v_sig_slicet[i]<=0) continue;
+		if (v_n_slicet[i]<mEntriesMin||v_sig_slicet[i]>mSigXmax||v_sig_slicet[i]<=0) continue;
 		if (mDebugLevel>=2) printf("                  Passed!\n");
 		if (i<NSLICET/2){ // left
 			if (v_t_slicet[i]>t8Left){ // left end
@@ -376,7 +381,7 @@ void XTAnalyzer::Process(void){
 	}
 	for (int i = 0; i<NSLICEX; i++){ // t samples in x slices
 		if (mDebugLevel>=2) printf("  LR X slice[%d]: x=%.2f, t=%.1f, n=%.0f, sig=%.1f\n",i,v_x_slicex[i],v_t_slicex[i],v_n_slicex[i],v_sig_slicex[i]);
-		if (v_n_slicex[i]<minEntries||v_sig_slicex[i]>10||v_sig_slicex[i]<=0) continue;
+		if (v_n_slicex[i]<mEntriesMin||v_sig_slicex[i]>mSigTmax||v_sig_slicex[i]<=0) continue;
 		if (mDebugLevel>=2) printf("                  Passed!\n");
 		if (i<=NSLICEX/2){ // left
 			if (v_x_slicex[i]>-xStart2Turn){ // middle part
@@ -396,7 +401,7 @@ void XTAnalyzer::Process(void){
 	}
 	for (int i = NSLICEX/2; i<NSLICEX; i++){ // t samples in x slices, both-side
 		if (mDebugLevel>=2) printf("  BS X slice[%d]: x=%.2f, t=%.1f, n=%.0f, sig=%.1f\n",i,v_x_slicexn[i],v_t_slicexn[i],v_n_slicexn[i],v_sig_slicexn[i]);
-		if (v_n_slicexn[i]<minEntries||v_sig_slicexn[i]>10||v_sig_slicexn[i]<=0) continue;
+		if (v_n_slicexn[i]<mEntriesMin||v_sig_slicexn[i]>mSigTmax||v_sig_slicexn[i]<=0) continue;
 		if (mDebugLevel>=2) printf("                  Passed!\n");
 		if (v_x_slicexn[i]<xStart2Turn){ // middle part
 			if (mDebugLevel>=2) printf("                  x<%.2f, push to both_mid!\n",xStart2Turn);
@@ -406,7 +411,7 @@ void XTAnalyzer::Process(void){
 	}
 	for (int i = NSLICET/2; i<NSLICET; i++){ // x samples in t slices, both-side
 		if (mDebugLevel>=2) printf("  BS T slice[%d]: x=%.2f, t=%.1f, n=%.0f, sig=%.2f\n",i,v_x_slicetn[i],v_t_slicetn[i],v_n_slicetn[i],v_sig_slicetn[i]);
-		if (v_n_slicetn[i]<minEntries||v_sig_slicetn[i]>0.4||v_sig_slicetn[i]<=0) continue;
+		if (v_n_slicetn[i]<mEntriesMin||v_sig_slicetn[i]>mSigXmax||v_sig_slicetn[i]<=0) continue;
 		if (mDebugLevel>=2) printf("                  Passed!\n");
 		if (v_t_slicetn[i]>t8Both){ // both-side end
 			if (mDebugLevel>=2) printf("                  t>=%.1f, push to both_end!\n",t8Both);
@@ -685,8 +690,84 @@ double XTAnalyzer::findFirstZero(TF1 * f, double xmin, double xmax, double delta
 			break;
 		}
 	}
-	if (mDebugLevel>=3) printf("findFirstZero: theX = %.1f from [%.1f,%.1f]\n",theX,xmin,xmax);
+	if (mDebugLevel>=3) printf("findFirstZero: theX = %.2f from [%.2f,%.2f]\n",theX,xmin,xmax);
 	return theX;
+}
+
+void XTAnalyzer::getT8(double & t8left, double & t8right, double & t8both){
+	double t1,t2,x1,x2;
+	bool find1 = false;
+	bool find2 = false;
+	for (int i = 0; i<NSLICEX; i++){
+		if (v_sig_slicex[i]<mSigTmax&&v_n_slicex[i]>mEntriesMin){
+			if (!find1){
+				t1 = v_t_slicex[i];
+				x1 = v_x_slicex[i];
+				find1 = true;
+			}
+			else{
+				t2 = v_t_slicex[i];
+				x2 = v_x_slicex[i];
+				break;
+			}
+		}
+	}
+	if (find1&&x1==-8) t8left = t1;
+	else if (find1&&find2){
+		t8left = t1+(t2-t1)*(-8-x1)/(x2-x1);
+	}
+	else{
+		t8left = t1;
+		fprintf(stderr,"WARNING: cannot find the valid point at -8 mm or two valid points in x slices!\n");
+	}
+	find1 = false;
+	find2 = false;
+	for (int i = NSLICEX-1; i>=0; i--){
+		if (v_sig_slicex[i]<mSigTmax&&v_n_slicex[i]>mEntriesMin){
+			if (!find1){
+				t1 = v_t_slicex[i];
+				x1 = v_x_slicex[i];
+				find1 = true;
+			}
+			else{
+				t2 = v_t_slicex[i];
+				x2 = v_x_slicex[i];
+				break;
+			}
+		}
+	}
+	if (find1&&x1==8) t8right = t1;
+	else if (find1&&find2){
+		t8right = t1+(t2-t1)*(8-x1)/(x2-x1);
+	}
+	else{
+		t8right = t1;
+		fprintf(stderr,"WARNING: cannot find the valid point at 8 mm or two valid points in x slices!\n");
+	}
+	find1 = false;
+	find2 = false;
+	for (int i = NSLICEX-1; i>=0; i--){
+		if (v_sig_slicexn[i]<mSigTmax&&v_n_slicexn[i]>mEntriesMin){
+			if (!find1){
+				t1 = v_t_slicexn[i];
+				x1 = v_x_slicexn[i];
+				find1 = true;
+			}
+			else{
+				t2 = v_t_slicexn[i];
+				x2 = v_x_slicexn[i];
+				break;
+			}
+		}
+	}
+	if (find1&&x1==8) t8both = t1;
+	else if (find1&&find2){
+		t8both = t1+(t2-t1)*(8-x1)/(x2-x1);
+	}
+	else{
+		t8both = t1;
+		fprintf(stderr,"WARNING: cannot find the valid point at 8 mm or two valid points in x slices (with both sides)!\n");
+	}
 }
 
 TF1 * XTAnalyzer::myNewTF1(TString name, TString form, double left, double right){
