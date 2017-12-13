@@ -266,7 +266,7 @@ int main(int argc, char** argv){
 
 	//===================Set beam property============================
     // FIXME: currently set a broader range. Need further investigation
-    beamSlzMax = 0.2;
+    beamSlzMax = 0.3;
     beamSlxMax = 0.1;
     beamInzMax = sciHL*1.5; // mm
     beamInxMax = sciHW*1.5;
