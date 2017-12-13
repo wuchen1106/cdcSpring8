@@ -22,12 +22,15 @@ int main(int argc, char** argv){
 	int xtType = 2;
     if (argc>=5)
 		xtType = (int)strtol(argv[4],NULL,10);
-    int saveHists = 0;
+	int geoSetup = 0; // 0: normal scintillator; 1: finger scintillator
     if (argc>=6)
-        saveHists = (int)strtol(argv[5],NULL,10);
-    int debugLevel = 0;
+        geoSetup = (int)strtol(argv[5],NULL,10);
+    int saveHists = 0;
     if (argc>=7)
-        debugLevel = (int)strtol(argv[6],NULL,10);
+        saveHists = (int)strtol(argv[6],NULL,10);
+    int debugLevel = 0;
+    if (argc>=8)
+        debugLevel = (int)strtol(argv[7],NULL,10);
 
     TString HOME=getenv("CDCS8WORKING_DIR");
 
@@ -153,8 +156,14 @@ int main(int argc, char** argv){
             // ignore events with bad fitting
             if (nHitsS<7) continue;
             //if (nHitsG>nHitsS) continue;
-            if (chi2>1) continue;
-            if (abs(inz)>24) continue;
+            if (geoSetup==1){
+                if (chi2>1) continue;
+                if (fabs(inz)>24) continue;
+            }
+            else{
+                if (chi2>2) continue;
+                if (fabs(slz)>0.15) continue;
+            }
 
             if (debugLevel>=11) printf("  Good Event! Looping in %d hits\n",nHits);
             // find the closest hit in the test layer
@@ -294,5 +303,5 @@ int main(int argc, char** argv){
 }
 
 void printUsage(char * name){
-    fprintf(stderr,"%s [runNo] [prerunname] [runname] <[xtType: 2, sym, thr 0; 1, sym; 0, no req] [saveHists: 0;1] [debug: 0;...]>\n",name);
+    fprintf(stderr,"%s [runNo] [prerunname] [runname] <[xtType: 2, sym, thr 0; 1, sym; 0, no req] [geoSetup: 0, normal;1, finger] [saveHists: 0;1] [debug: 0;...]>\n",name);
 }

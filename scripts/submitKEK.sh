@@ -20,7 +20,8 @@ debug=-1
 
 QUEUE="h"
 
-for i in 1 2 3 4 5 6 7 8;
+#for i in 1 2 3 4 5 6 7 8;
+for i in 4;
 do
     testlayer=$i
     for (( j=0; j<N; j+=10000 ))

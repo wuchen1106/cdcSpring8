@@ -157,6 +157,7 @@ double get_dist(int lid, int wid, double slx, double inx, double slz, double inz
 void getchi2(double &f, double slx, double inx, double slz, double inz,bool all = false);
 void fcn(int &npar, double *gin, double &f, double *par, int iflag);
 void do_fit(double slix, double inix,double sliz, double iniz);
+int getHitIndex(int lid, int wid, int nHits);
 
 MyProcessManager * pMyProcessManager;
 
@@ -265,7 +266,7 @@ int main(int argc, char** argv){
 
 	//===================Set beam property============================
     // FIXME: currently set a broader range. Need further investigation
-    beamSlzMax = 0.2;
+    beamSlzMax = 0.3;
     beamSlxMax = 0.1;
     beamInzMax = sciHL*1.5; // mm
     beamInxMax = sciHW*1.5;
@@ -709,6 +710,8 @@ int doFitting(int nPicks,int iEntry,int iselection){
             // update calD for all hits and driftD for no-pick hits
             // get hit list
             int nHitsSel = 0;
+            t_sel->clear();
+            t_sel->resize(i_nHits,0);
             for (int ihit = 0; ihit<i_nHits; ihit++){
                 int lid = (*i_layerID)[ihit];
                 int wid = (*i_wireID)[ihit];
@@ -721,8 +724,10 @@ int doFitting(int nPicks,int iEntry,int iselection){
                 double dd = (*t_driftD)[ihit];
                 int selected = 0;
                 if (fabs(calD-dd)<2&&testlayer!=(*i_layerID)[ihit]&&(*i_type)[ihit]<=3){ // FIXME: should tune the error limit
-                    selected = 1;
-                    nHitsSel++;
+                    if (getHitIndex(lid,wid,ihit)==-1){ // no previous chosen hit yet
+                        selected = 1;
+                        nHitsSel++;
+                    }
                 }
                 (*t_sel)[ihit] = selected;
             }
@@ -738,6 +743,8 @@ int doFitting(int nPicks,int iEntry,int iselection){
                 // update fitD
                 // reselect
                 nHitsSel = 0;
+                t_sel->clear();
+                t_sel->resize(i_nHits,0);
                 for (int ihit = 0; ihit<i_nHits; ihit++){
                     int lid = (*i_layerID)[ihit];
                     int wid = (*i_wireID)[ihit];
@@ -750,8 +757,10 @@ int doFitting(int nPicks,int iEntry,int iselection){
                     double dd = (*t_driftD)[ihit];
                     int selected = 0;
                     if (fabs(fitD-dd)<1&&testlayer!=(*i_layerID)[ihit]&&(*i_type)[ihit]<=3){ // FIXME: should tune the error limit
-                        selected = 1;
-                        nHitsSel++;
+                        if (getHitIndex(lid,wid,ihit)==-1){ // no previous chosen hit yet
+                            selected = 1;
+                            nHitsSel++;
+                        }
                     }
                     (*t_sel)[ihit] = selected;
                 }
@@ -804,6 +813,20 @@ void setLRdriftD(int nPicks,int icombi){
         if (ilr>0) (*t_driftD)[ihit] = (*o_dxr)[ihit];
         else       (*t_driftD)[ihit] = (*o_dxl)[ihit];
     }
+}
+
+int getHitIndex(int lid, int wid, int nHits){
+    int theHit = -1;
+    for (int ihit = 0; ihit<nHits; ihit++){
+        int tlid = (*i_layerID)[ihit];
+        int twid = (*i_wireID)[ihit];
+        int sel = (*t_sel)[ihit];
+        if (tlid==lid&&twid==wid&&sel==1){
+            theHit = ihit;
+            break;
+        }
+    }
+    return theHit;
 }
 
 int updateHitPositions(int nPicks){
