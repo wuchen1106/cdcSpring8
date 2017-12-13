@@ -134,7 +134,7 @@ int main(int argc, char** argv){
 
 		int statusInitialize = fXTAnalyzer->Initialize(Form("%d.%s.layer%d",runNo,runname.Data(),lid),lid,preXTFile,newXTFile,newXTTree,xtType,saveHists, lid==4); // take the XT from layer 4 as default output XT (0)
 		if (statusInitialize){
-			fprintf(stderr,"WARNING: something wrong with initializing XTAnalyzer for layer[%], will ignore this layer!\n",lid);
+			fprintf(stderr,"WARNING: something wrong with initializing XTAnalyzer for layer[%d], will ignore this layer!\n",lid);
 			continue;
 		}
 
