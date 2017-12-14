@@ -68,9 +68,14 @@ int XTAnalyzer::Initialize(TString runname, int lid, TFile * infile, TFile * out
 		fprintf(stderr,"WARNING: input XT file is not valid\n");
 		return 1;
 	}
-	fo_left = (TF1*)mInFile->Get(Form("flc_%d",mLayerID)); // FIXME: currently we are using the xt from the same layer.
+	fo_left = (TF1*)mInFile->Get(Form("flc_%d",mLayerID));
 	fo_right = (TF1*)mInFile->Get(Form("frc_%d",mLayerID));
 	fo_both = (TF1*)mInFile->Get(Form("fbc_%d",mLayerID));
+	if (!fo_left||!fo_right||!fo_both){
+        fo_left = (TF1*)mInFile->Get(Form("fl_%d",0));
+        fo_right = (TF1*)mInFile->Get(Form("fr_%d",0));
+        fo_both = (TF1*)mInFile->Get(Form("fr_%d",0));
+    }
 	if (!fo_left||!fo_right||!fo_both){
 		fprintf(stderr,"WARNING: cannot find flc_%d/frc_%d/fbc_%d in input XT file\n",mLayerID,mLayerID,mLayerID);
 		return 2;
