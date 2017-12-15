@@ -5,8 +5,8 @@ MSGDIR=$PWD/root
 
 runNo=1012
 N=493190
-runname="syml4.i0"
-prerunname="syml4.im1"
+runname="syml4.i2.t7"
+prerunname="syml4.i1.t7"
 #geoSetup=1 # 1: finger; 0: normal
 geoSetup=0 # 1: finger; 0: normal
 
@@ -24,11 +24,11 @@ QUEUE="h"
 for i in 4;
 do
     testlayer=$i
-    for (( j=0; j<N; j+=10000 ))
+    for (( j=0; j<N; j+=5000 ))
     do
         iEntryStart=$j
-        iEntryStop=$((j+9999))
-        if (( iEntryStop>N ))
+        iEntryStop=$((j+4999))
+        if (( iEntryStop>=N ))
         then
             iEntryStop=$((N-1))
         fi
