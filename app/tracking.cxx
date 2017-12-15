@@ -563,15 +563,24 @@ int main(int argc, char** argv){
             double dt = (*i_driftT)[ihit];
             int lid = (*i_layerID)[ihit];
             int wid = (*i_wireID)[ihit];
-            int status; // 1:  large t; -1: small t; 0: good t
-            (*o_dxl)[ihit] = t2x(dt,lid,wid,-1,status);
-            (*o_dxr)[ihit] = t2x(dt,lid,wid,1,status);
+            int statusl,statusr; // 1:  large t; -1: small t; 0: good t
+            (*o_dxl)[ihit] = t2x(dt,lid,wid,-1,statusl);
+            (*o_dxr)[ihit] = t2x(dt,lid,wid,1,statusr);
             int type = (*i_type)[ihit]; // MASTR
             // R: region
             // keep the original defination
             // T: time
-            if (dt<tmin) type+=1*10;
-            else if (dt>tmax) type+=2*10;
+            if (dt<tmin) type+=3*10;
+            else if (dt>tmax) type+=6*10;
+			else{
+				if (statusl==-1&&statusr==0) type+=1*10;
+				else if (statusl==0&&statusr==-1) type+=2*10;
+				else if (statusl==-1&&statusr==-1) type+=3*10;
+				else if (statusl==1&&statusr==0) type+=4*10;
+				else if (statusl==0&&statusr==1) type+=5*10;
+				else if (statusl==1&&statusr==1) type+=6*10;
+				else type+=7*10;
+			}
             // S: sum of wave packet
             if ((*i_sum)[ihit]<sumCut) type+=1*100;
             // A: sum of full waveform
