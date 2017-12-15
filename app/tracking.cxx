@@ -1124,7 +1124,7 @@ void getchi2(double &f, double slx, double inx, double slz, double inz,bool all)
 	double delta;
 	double dfit;
 
-    int N = 0;
+    int N = -4;
 	for (int ihit=0;ihit<i_nHits; ihit++) {
 		if ((*t_sel)[ihit]==0) continue;
 		dfit = get_dist((*i_layerID)[ihit],(*i_wireID)[ihit],slx,inx,slz,inz);
@@ -1138,7 +1138,7 @@ void getchi2(double &f, double slx, double inx, double slz, double inz,bool all)
 		chisq += delta*delta;
 		N++;
 	}
-	if (N) chisq/=N;
+	if (N>0) chisq/=N;
 	f = chisq;
 }
 

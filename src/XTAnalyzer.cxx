@@ -339,7 +339,7 @@ void XTAnalyzer::Process(void){
 	//==========================Select Samples==============================
 	// select sample points and make graphs
 	// FIXME: Currently seperate the mid/end graphs by 7.8 mm line, and search for the real one from 7.5 line.
-	double xStart2Turn = 7.8;
+	double xStart2Turn = 7;
 	double t8Left = v_t_slicex[0];
 	double t8Right = v_t_slicex[NSLICEX-1];
 	double t8Both = v_t_slicexn[NSLICEX-1];
