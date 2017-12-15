@@ -57,35 +57,40 @@ int main(int argc, char** argv){
     }
 	int runNo = (int)strtol(argv[1],NULL,10);
 	int workMode = (int)strtol(argv[2],NULL,10); // 0: h_XXX; 1: t_XXX
-	int testlayer = 5;
+	int testlayer = 4;
 	if (argc>=4){
 	    testlayer = atoi(argv[3]);
     }
-	int thewire = -1; // negative value means just pick up the first hit, regardless of the target layer.
+	int thelayer = 4;
 	if (argc>=5){
-	    thewire = atoi(argv[4]);
+	    thelayer = atoi(argv[4]);
+    }
+	int thewire = -1; // negative value means just pick up the first hit, regardless of the target layer.
+	if (argc>=6){
+	    thewire = atoi(argv[5]);
     }
 	TString runname = "";
-	if (argc>=6){
-		runname  = argv[5];
+	if (argc>=7){
+		runname  = argv[6];
 	}
     int iEntryStart = 0;
     int iEntryStop = 9;
-	if (argc>=8){
-	    iEntryStart = (int)strtol(argv[6],NULL,10);
-	    iEntryStop = (int)strtol(argv[7],NULL,10);
+	if (argc>=9){
+	    iEntryStart = (int)strtol(argv[7],NULL,10);
+	    iEntryStop = (int)strtol(argv[8],NULL,10);
     }
-    else if (argc>=7){
+    else if (argc>=8){
 	    iEntryStart=0;
-	    iEntryStop=(int)strtol(argv[6],NULL,10)-1;
+	    iEntryStop=(int)strtol(argv[7],NULL,10)-1;
 	}
     int geoSetup = 0; // 0: normal; 1: finger
-    if (argc>=9){
-	    geoSetup=(int)strtol(argv[8],NULL,10);
+    if (argc>=10){
+	    geoSetup=(int)strtol(argv[9],NULL,10);
 	}
 	printf("runNo:              %d\n",runNo);
 	printf("workMode:           %d\n",workMode);
-	printf("test wire:          [%d,%d]\n",testlayer,thewire);
+	printf("test layer:         %d\n",testlayer);
+	printf("check wire:         [%d,%d]\n",thelayer,thewire);
 	printf("runname:             %s\n",runname.Data());
 	printf("Entries:            %d~%d\n",iEntryStart,iEntryStop);
     printf("geoSetup:           %s\n",geoSetup==0?"normal scintillator":"finger scintillator");
@@ -363,10 +368,7 @@ int main(int argc, char** argv){
     int triggerNumberMax = 0;
     int nEntries = iChain->GetEntries();
 	iChain->SetBranchAddress("triggerNumber",&triggerNumber);
-    for (int iEntry = 0; iEntry<nEntries; iEntry++){
-        iChain->GetEntry(iEntry);
-		if (triggerNumberMax<triggerNumber) triggerNumberMax = triggerNumber;
-    }
+	iChain->GetEntry(nEntries-1); triggerNumberMax = triggerNumber;
     if (workMode==0){
         i_driftD[0] = new std::vector<double>;
     }
@@ -419,6 +421,7 @@ int main(int argc, char** argv){
 
 	//==================Prepare canvas for drawing==========================
 	// run summary
+	printf("Preparing canvas...\n");
 	TLatex * text_runsum = new TLatex();
 	text_runsum->SetTextSize(0.02);
 	text_runsum->SetText(0.05,0.98,Form("run#%d ",runNo)+gastype+Form(", %d V,%d mV, Grade#%d",HV,THR,runGr)+", "+duration+Form(", %d events, Eff_{daq} = %2.2lf%%, Rate_{tri} = %1.1lfkHz",nEntries,((double)nEntries)/(triggerNumberMax+1)*100,(triggerNumberMax+1)/durationTime/1000));
@@ -680,33 +683,36 @@ int main(int argc, char** argv){
 
 	//===================Loop in Events============================
 	TString prefix = "";
+	printf("Looping in events %d~%d\n",iEntryStart,iEntryStop);
 	for ( int iEntry = iEntryStart; iEntry<=iEntryStop; iEntry++){
 		iChain->GetEntry(iEntry);
-		if (nHits<=0) continue;
+		if (nHits<=0){
+			printf("No hits in event %d, continue\n",iEntry);
+			continue;
+		}
 
         // Find the target channel
 		int the_ihit = 0;
 		int the_bid = -1;
 		int the_ch = -1;
-        if (testlayer<0||thewire<0){ // negative value means just pick up the first hit, regardless of the target layer
-            int lid = (*i_layerID)[0];
-            int wid = (*i_wireID)[0];
-            the_bid = map_bid[lid][wid];
-            the_ch = map_ch[lid][wid];
-        }
-        else{
+        if (thelayer>=0&&thewire>=0){
             for (; the_ihit<i_driftT->size(); the_ihit++){
                 int lid = (*i_layerID)[the_ihit];
                 int wid = (*i_wireID)[the_ihit];
-                int type = (*i_type)[the_ihit];
-                if (lid==testlayer&&wid==thewire&&type<=3){
+                if (lid==thelayer&&wid==thewire){
                     the_ch = map_ch[lid][wid];
                     the_bid = map_bid[lid][wid];
                     break;
                 }
             }
         }
-		if (the_bid==-1||the_ch==-1) continue; // only show the events with hit in the target cell
+		if (the_bid==-1||the_ch==-1){ // Didn't find the wire? just pick up the first hit, regardless of the target layer
+			printf("Didn't find the wire to check! Will pick the first one\n");
+            int lid = (*i_layerID)[0];
+            int wid = (*i_wireID)[0];
+            the_bid = map_bid[lid][wid];
+            the_ch = map_ch[lid][wid];
+		}
 
         iChain_ADC->GetEntry(iEntry);
         iChain_p->GetEntry(iEntry);
@@ -1230,6 +1236,6 @@ double tdc2t(int deltaTDC){
 }
 
 void print_usage(char* progname){
-	printf("%s [runNo] [workMode] <[testlayer] [thewire] [runname] [iEntryStart] [iEntryStop] [geoSetup]>",progname);
+	printf("%s [runNo] [workMode] <[testlayer] [thelayer] [thewire] [runname] [iEntryStart] [iEntryStop] [geoSetup]>",progname);
 	return;
 }
