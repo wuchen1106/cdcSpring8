@@ -73,7 +73,9 @@ int main(int argc, char** argv){
     std::vector<int> *    i_height = 0;
     std::vector<int> *    i_mpn = 0;
     std::vector<int> *    i_mpi = 0;
+    std::vector<int> *    i_rank = 0;
     std::vector<double> * i_aa = 0;
+    std::vector<double> * i_ped = 0;
     std::vector<double> * i_sum = 0;
     int npairs;
     int isel;
@@ -95,6 +97,8 @@ int main(int argc, char** argv){
     std::vector<int> * i_sel = 0;
 
 	// output file
+    std::vector<double> * o_peak = 0;
+    std::vector<double> * o_height = 0;
     std::vector<double> * o_driftD = 0;
     std::vector<int>    * o_driftDs = 0;
 
@@ -116,7 +120,9 @@ int main(int argc, char** argv){
         ichain->SetBranchAddress("height",&i_height);
         ichain->SetBranchAddress("mpn",&i_mpn);
         ichain->SetBranchAddress("mpi",&i_mpi);
+        ichain->SetBranchAddress("rank",&i_rank);
         ichain->SetBranchAddress("aa",&i_aa);
+        ichain->SetBranchAddress("ped",&i_ped);
         ichain->SetBranchAddress("sum",&i_sum);
         ichain->SetBranchAddress("driftD0",&i_driftD);
         ichain->SetBranchAddress("npairs0",&npairs);
@@ -205,17 +211,32 @@ int main(int argc, char** argv){
 		double minres = 1e9;
 		double theDD = 1e9;
 		double theDT = 1e9;
-        int theWid = -1;
 		int has = 0;
-		int nBad = 0;
-		int nBadS = 0;
+        int theWid = -1;
+		double theSum = 0;
+		double thePeak = 0;
+		double theHeight = 0;
+		int theIp = 0;
+		int theMpi = 0;
+		int nSmallSumHits = 0;
+		int nShadowedHits = 0;
+		int nLateHits = 0;
+		int nBoundaryHits = 0;
+		int nSmallBoundaryHits = 0;
         otree->Branch("res",&minres);
         otree->Branch("theDD",&theDD);
         otree->Branch("theDT",&theDT);
         otree->Branch("theWid",&theWid);
-        otree->Branch("has",&has);
-        otree->Branch("nBad",&nBad);
-        otree->Branch("nBadS",&nBadS);
+        otree->Branch("theSum",&theSum);
+        otree->Branch("thePeak",&thePeak);
+        otree->Branch("theHeight",&theHeight);
+        otree->Branch("theIp",&theIp);
+        otree->Branch("theMpi",&theMpi);
+        otree->Branch("nSHits",&nShadowedHits);
+        otree->Branch("nLHits",&nLateHits);
+        otree->Branch("nSSHits",&nSmallSumHits);
+        otree->Branch("nBHits",&nBoundaryHits);
+        otree->Branch("nSBHits",&nSmallBoundaryHits);
         otree->Branch("nHits",&nHits);
         otree->Branch("nHitsG",&nHitsG);
         otree->Branch("layerID",&i_layerID);
@@ -225,11 +246,13 @@ int main(int argc, char** argv){
         otree->Branch("np",&i_np);
         otree->Branch("ip",&i_ip);
         otree->Branch("width",&i_width);
-        otree->Branch("peak",&i_peak);
-        otree->Branch("height",&i_height);
+        otree->Branch("peak",&o_peak);
+        otree->Branch("height",&o_height);
         otree->Branch("mpn",&i_mpn);
         otree->Branch("mpi",&i_mpi);
+        otree->Branch("rank",&i_rank);
         otree->Branch("aa",&i_aa);
+        otree->Branch("ped",&i_ped);
         otree->Branch("sum",&i_sum);
         otree->Branch("driftD",&o_driftD);
         otree->Branch("driftDs",&o_driftDs);
@@ -248,7 +271,10 @@ int main(int argc, char** argv){
         otree->Branch("inz0",&inz);
         otree->Branch("chi20",&chi2);
         otree->Branch("fitD0",&i_fitD);
+        otree->Branch("sel0",&i_sel);
         o_driftD = new std::vector<double>;
+        o_peak = new std::vector<double>;
+        o_height = new std::vector<double>;
         o_driftDs = new std::vector<int>;
 
 		// Get new driftD
@@ -263,18 +289,32 @@ int main(int argc, char** argv){
             minres = 1e9;
             theDD = 1e9;
             theDT = 1e9;
-            theWid = -1;
             has = 0;
-            nBadS = 0;
-            nBad = 0;
+            theWid = -1;
+			theSum = 0;
+			thePeak = 0;
+			theHeight = 0;
+			theIp = 0;
+			theMpi = 0;
+			nSmallSumHits = 0;
+			nShadowedHits = 0;
+			nLateHits = 0;
+            nSmallBoundaryHits = 0;
+            nBoundaryHits = 0;
             for (int ihit = 0; ihit<nHits; ihit++){
             	double dt = (*i_driftT)[ihit];
             	double dd0 = (*i_driftD)[ihit];
             	if ((*i_sel)[ihit]==1){
             		if((fabs(dd0)<0.5||fabs(dd0)>7.5))
-						nBad++;
+						nBoundaryHits++;
             		if((fabs(dd0)<0.25||fabs(dd0)>7.75))
-						nBadS++;
+						nSmallBoundaryHits++;
+					if((*i_ip)[ihit]!=0)
+						nLateHits++;
+					if((*i_mpi)[ihit]!=0)
+						nShadowedHits++;
+					if((*i_rank)[ihit]!=0)
+						nSmallSumHits++;
 				}
             	double dd;
             	int status = fXTAnalyzer->t2d(dt,dd,dd0>0);
@@ -288,6 +328,11 @@ int main(int argc, char** argv){
                     theDD = dd;
                     theDT = dt;
                     theWid = (*i_wireID)[ihit];
+                    theSum = (*i_sum)[ihit];
+                    thePeak = (*i_peak)[ihit]-(*i_ped)[ihit];
+                    theHeight = (*i_height)[ihit]-(*i_ped)[ihit];
+                    theIp = (*i_ip)[ihit];
+                    theMpi = (*i_mpi)[ihit];
                     has = 1;
                 }
 			}

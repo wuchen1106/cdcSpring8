@@ -165,6 +165,8 @@ int main(int argc, char** argv){
 	std::vector<int> * o_height = 0;
 	std::vector<int> * o_mpn = 0;
 	std::vector<int> * o_mpi = 0;
+	std::vector<int> * o_rank = 0;
+	std::vector<double> * o_ped = 0;
 	std::vector<double> * o_sum = 0;
 	std::vector<double> * o_aa = 0;
 	std::vector<double> * o_driftT = 0;
@@ -184,6 +186,8 @@ int main(int argc, char** argv){
 	t->Branch("height",&o_height);
 	t->Branch("mpn",&o_mpn);
 	t->Branch("mpi",&o_mpi);
+	t->Branch("rank",&o_rank);
+	t->Branch("ped",&o_ped);
 	t->Branch("sum",&o_sum);
 	t->Branch("aa",&o_aa);
 	t->Branch("driftT",&o_driftT);
@@ -198,6 +202,8 @@ int main(int argc, char** argv){
 	o_height = new std::vector<int>;
 	o_mpn = new std::vector<int>;
 	o_mpi = new std::vector<int>;
+	o_rank = new std::vector<int>;
+	o_ped = new std::vector<double>;
 	o_sum = new std::vector<double>;
 	o_aa = new std::vector<double>;
 	o_driftT = new std::vector<double>;
@@ -351,6 +357,7 @@ int main(int argc, char** argv){
 	for ( int ch = 0; ch<NCHT; ch++ ){
 		avped[ch] = 0;
 	}
+	int rank[NSAM];
 	//N=1;
 	for (Long64_t i = 0;i<N; i++){
 		if (i%1000==0) std::cout<<(double)i/N*100<<"%..."<<std::endl;
@@ -370,6 +377,8 @@ int main(int argc, char** argv){
         o_height->clear();
         o_mpn->clear();
         o_mpi->clear();
+        o_rank->clear();
+        o_ped->clear();
         o_sum->clear();
         o_aa->clear();
         o_driftT->clear();
@@ -389,6 +398,20 @@ int main(int argc, char** argv){
             for ( int clk = 0; clk<NSAM; clk++ ){
                 hwf[ch]->Fill(clk-offset,i_adc[ch][clk]);
             }
+
+            // sort peaks by sum
+			for(int ip = 0;ip<nPeaks; ip++){
+				rank[ip] = ip;
+			}
+			for(int ip = 0;ip<nPeaks; ip++){
+				for(int jp = ip+1;jp<nPeaks; jp++){
+					if ((*i_sum)[ch][ip]<(*i_sum)[ch][jp]){
+						int temp = rank[ip];
+						rank[ip] = rank[jp];
+						rank[jp] = temp;
+					}
+				}
+			}
 
 			// get peaks;
 			for(int ip = 0;ip<nPeaks; ip++){
@@ -425,6 +448,8 @@ int main(int argc, char** argv){
                 o_height->push_back((*i_height)[ch][ip]);
                 o_mpn->push_back((*i_mpn)[ch][ip]);
                 o_mpi->push_back((*i_mpi)[ch][ip]);
+                o_rank->push_back(rank[ip]);
+                o_ped->push_back(i_ped[ch]);
                 o_sum->push_back((*i_sum)[ch][ip]);
                 o_aa->push_back(i_aa[ch]);
 			}

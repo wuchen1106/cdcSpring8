@@ -411,6 +411,8 @@ int main(int argc, char** argv){
     std::vector<int> * i_height = 0;
     std::vector<int> * i_mpn = 0;
     std::vector<int> * i_mpi = 0;
+    std::vector<int> * i_rank = 0;
+    std::vector<double> * i_ped = 0;
     std::vector<double> * i_sum = 0;
     std::vector<double> * i_aa = 0;
     c->SetBranchAddress("triggerNumber",&triggerNumber);
@@ -427,6 +429,8 @@ int main(int argc, char** argv){
     c->SetBranchAddress("height",&i_height);
     c->SetBranchAddress("mpn",&i_mpn);
     c->SetBranchAddress("mpi",&i_mpi);
+    c->SetBranchAddress("rank",&i_rank);
+    c->SetBranchAddress("ped",&i_ped);
     c->SetBranchAddress("sum",&i_sum);
     c->SetBranchAddress("aa",&i_aa);
 
@@ -449,6 +453,8 @@ int main(int argc, char** argv){
     ot->Branch("height",&i_height);
     ot->Branch("mpn",&i_mpn);
     ot->Branch("mpi",&i_mpi);
+    ot->Branch("rank",&i_rank);
+    ot->Branch("ped",&i_ped);
     ot->Branch("sum",&i_sum);
     ot->Branch("aa",&i_aa);
     // basic
