@@ -626,7 +626,6 @@ int main(int argc, char** argv){
 
             int nSelections = 0;
             Tracking(0,nSelections,iEntry); // 0 means starting from the 1st pick; nSelections is the number of possible choices by selecting one hit per layer;
-            printf("nHitsS[0] = %d\n",o_nHitsS[0]);
             if (o_nHitsS[0]>=5){ // at least 5 hits to fit: NDF of 3-D track without field is 4
                 N_good++;
             }

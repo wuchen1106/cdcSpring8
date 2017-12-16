@@ -228,6 +228,7 @@ int main(int argc, char** argv){
         otree->Branch("theDT",&theDT);
         otree->Branch("theWid",&theWid);
         otree->Branch("theSum",&theSum);
+        otree->Branch("has",&has);
         otree->Branch("thePeak",&thePeak);
         otree->Branch("theHeight",&theHeight);
         otree->Branch("theIp",&theIp);
