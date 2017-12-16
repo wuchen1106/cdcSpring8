@@ -157,7 +157,9 @@ double get_dist(int lid, int wid, double slx, double inx, double slz, double inz
 void getchi2(double &f, double slx, double inx, double slz, double inz,bool all = false);
 void fcn(int &npar, double *gin, double &f, double *par, int iflag);
 void do_fit(double slix, double inix,double sliz, double iniz);
-int getHitIndex(int lid, int wid, int nHits);
+int getHitIndex(int lid, int nHits);
+int getHitType(int type,bool isRight);
+bool isSame(int iCand);
 
 MyProcessManager * pMyProcessManager;
 
@@ -741,10 +743,18 @@ int doFitting(int nPicks,int iEntry,int iselection){
                 }
                 double dd = (*t_driftD)[ihit];
                 int selected = 0;
-                if (fabs(calD-dd)<2&&testlayer!=(*i_layerID)[ihit]&&(*i_type)[ihit]<=3){ // FIXME: should tune the error limit
-                    if (getHitIndex(lid,wid,ihit)==-1){ // no previous chosen hit yet
+                int type = getHitType((*i_type)[ihit],calD>=0);
+                if (fabs(calD-dd)<2&&testlayer!=(*i_layerID)[ihit]&&type<=3){ // FIXME: should tune the error limit
+                	int jhit = getHitIndex(lid,ihit);
+                    if (jhit==-1){ // no previous chosen hit yet
                         selected = 1;
                         nHitsSel++;
+                    }
+                    else{
+                    	if (fabs(calD-dd)<fabs((*t_calD)[jhit]-(*t_driftD)[jhit])){ // better than the previous hit, then replace it
+                    		selected = 1;
+                    		(*t_sel)[jhit] = 0;
+                    	}
                     }
                 }
                 (*t_sel)[ihit] = selected;
@@ -774,11 +784,19 @@ int doFitting(int nPicks,int iEntry,int iselection){
                     }
                     double dd = (*t_driftD)[ihit];
                     int selected = 0;
-                    if (fabs(fitD-dd)<1&&testlayer!=(*i_layerID)[ihit]&&(*i_type)[ihit]<=3){ // FIXME: should tune the error limit
-                        if (getHitIndex(lid,wid,ihit)==-1){ // no previous chosen hit yet
+					int type = getHitType((*i_type)[ihit],fitD>=0);
+                    if (fabs(fitD-dd)<1&&testlayer!=(*i_layerID)[ihit]&&type<=3){ // FIXME: should tune the error limit
+						int jhit = getHitIndex(lid,ihit);
+						if (jhit==-1){ // no previous chosen hit yet
                             selected = 1;
                             nHitsSel++;
                         }
+						else{
+							if (fabs(fitD-dd)<fabs((*t_fitD)[jhit]-(*t_driftD)[jhit])){ // better than the previous hit, then replace it
+								selected = 1;
+								(*t_sel)[jhit] = 0;
+							}
+						}
                     }
                     (*t_sel)[ihit] = selected;
                 }
@@ -808,11 +826,13 @@ int doFitting(int nPicks,int iEntry,int iselection){
                                 if (fitD>0) (*t_driftD)[ihit] = (*o_dxr)[ihit];
                                 else (*t_driftD)[ihit] = (*o_dxl)[ihit];
                             }
-                            if (debug>11)
-                                if ((*i_type)[ihit]<=3)
+                            if (debug>11){
+								int type = getHitType((*i_type)[ihit],fitD>=0);
+                                if (type<=3)
                                     printf("        %d (%d,%d) dd %.3e fd %.3e res %.3e\n",ihit,lid,wid,(*t_driftD)[ihit],fitD,fitD-(*t_driftD)[ihit]);
                                 else 
                                     printf("              # %d (%d,%d) dd %.3e fd %.3e res %.3e\n",ihit,lid,wid,(*t_driftD)[ihit],fitD,fitD-(*t_driftD)[ihit]);
+							}
                         }
                         checkChi2(nHitsSel,nGood,icombi,iselection);
                     }
@@ -833,18 +853,39 @@ void setLRdriftD(int nPicks,int icombi){
     }
 }
 
-int getHitIndex(int lid, int wid, int nHits){
+int getHitIndex(int lid, int nHits){
     int theHit = -1;
     for (int ihit = 0; ihit<nHits; ihit++){
         int tlid = (*i_layerID)[ihit];
-        int twid = (*i_wireID)[ihit];
         int sel = (*t_sel)[ihit];
-        if (tlid==lid&&twid==wid&&sel==1){
+        if (tlid==lid&&sel==1){
             theHit = ihit;
             break;
         }
     }
     return theHit;
+}
+
+int getHitType(int type,bool isRight){
+	int ttype = (type/10)%10;
+	if (isRight){
+		if (ttype==1||ttype==4) type-=ttype*10; // l- or l+
+	}
+	else{
+		if (ttype==2||ttype==5) type-=ttype*10; // r- or r+
+	}
+	return type;
+}
+
+bool isSame(int iCand){
+	bool allTheSame = true;
+	for (int ihit = 0; ihit<i_nHits; ihit++){
+		if ((*o_sel[iCand])[ihit] != (*t_sel)[ihit] || (*o_fitD[iCand])[ihit]*(*t_fitD)[ihit] <0 ){
+			allTheSame = false;
+			break;
+		}
+	}
+	return allTheSame;
 }
 
 int updateHitPositions(int nPicks){
@@ -994,57 +1035,90 @@ bool checkScintillator(double saftyFactor,double inx, double slx, double inz, do
 }
 
 bool checkChi2(int nHitsSel, int nPairs, int icombi, int iselection){
+	bool issame = false;
     for (int i = 0; i<NCAND; i++){
-        if ((chi2<o_chi2[i]&&(nHitsSel==o_nHitsS[i]||nHitsSel==NLAYG-1))||nHitsSel>o_nHitsS[i]){ // FIXME: here I considered the case that some track has more hits than good layers, but the corner hits might not be reliable. So for now I choose not to emphasize on them. Need tuning!
-            for (int j = NCAND-1; j>i; j--){
-                o_iselec[j] = o_iselec[j-1];
-                o_icombi[j] = o_icombi[j-1];
-                o_npairs[j] = o_npairs[j-1];
-                o_islx[j] = o_islx[j-1];
-                o_iinx[j] = o_iinx[j-1];
-                o_islz[j] = o_islz[j-1];
-                o_iinz[j] = o_iinz[j-1];
-                o_chi2x[j] = o_chi2x[j-1];
-                o_chi2z[j] = o_chi2z[j-1];
-                o_chi2i[j] = o_chi2i[j-1];
-                o_nHitsS[j] = o_nHitsS[j-1];
-                o_slx[j] = o_slx[j-1];
-                o_inx[j] = o_inx[j-1];
-                o_slz[j] = o_slz[j-1];
-                o_inz[j] = o_inz[j-1];
-                o_chi2[j] = o_chi2[j-1];
-                for (int ihit = 0; ihit<i_nHits; ihit++){
-                    (*o_sel[j])[ihit] = (*o_sel[j-1])[ihit];
-                    (*o_calD[j])[ihit] = (*o_calD[j-1])[ihit];
-                    (*o_fitD[j])[ihit] = (*o_fitD[j-1])[ihit];
-                    (*o_driftD[j])[ihit] = (*o_driftD[j-1])[ihit];
-                }
-            }
-            o_iselec[i] = iselection;
-            o_icombi[i] = icombi;
-            o_npairs[i] = nPairs;
-            o_islx[i] = islx;
-            o_iinx[i] = iinx;
-            o_islz[i] = islz;
-            o_iinz[i] = iinz;
-            o_chi2z[i] = chi2z;
-            o_chi2x[i] = chi2x;
-            o_chi2i[i] = chi2i;
-            o_nHitsS[i] = nHitsSel;
-            o_slx[i] = slx;
-            o_inx[i] = inx;
-            o_slz[i] = slz;
-            o_inz[i] = inz;
-            o_chi2[i] = chi2;
-            for (int ihit = 0; ihit<i_nHits; ihit++){
-                (*o_sel[i])[ihit] = (*t_sel)[ihit];
-                (*o_calD[i])[ihit] = (*t_calD)[ihit];
-                (*o_fitD[i])[ihit] = (*t_fitD)[ihit];
-                (*o_driftD[i])[ihit] = (*t_driftD)[ihit];
-            }
-            break;
-        }
-    }
+    	issame = isSame(i);
+    	if (issame){ // yes, there is a candidate with the same hits
+    		if (chi2<o_chi2[i]){// better? then replace it
+				o_iselec[i] = iselection;
+				o_icombi[i] = icombi;
+				o_npairs[i] = nPairs;
+				o_islx[i] = islx;
+				o_iinx[i] = iinx;
+				o_islz[i] = islz;
+				o_iinz[i] = iinz;
+				o_chi2z[i] = chi2z;
+				o_chi2x[i] = chi2x;
+				o_chi2i[i] = chi2i;
+				o_nHitsS[i] = nHitsSel;
+				o_slx[i] = slx;
+				o_inx[i] = inx;
+				o_slz[i] = slz;
+				o_inz[i] = inz;
+				o_chi2[i] = chi2;
+				for (int ihit = 0; ihit<i_nHits; ihit++){
+					(*o_sel[i])[ihit] = (*t_sel)[ihit];
+					(*o_calD[i])[ihit] = (*t_calD)[ihit];
+					(*o_fitD[i])[ihit] = (*t_fitD)[ihit];
+					(*o_driftD[i])[ihit] = (*t_driftD)[ihit];
+				}
+			}
+			break;
+    	}
+	}
+	if (!issame){ // didn't find a candidate with the same hits
+		for (int i = 0; i<NCAND; i++){
+			if ((chi2<o_chi2[i]&&nHitsSel==o_nHitsS[i])||nHitsSel>o_nHitsS[i]){ // now we only pick up one hit per layer since the XT shape in the corener is very sensitive to position/angle thus less reliable
+				for (int j = NCAND-1; j>i; j--){
+					o_iselec[j] = o_iselec[j-1];
+					o_icombi[j] = o_icombi[j-1];
+					o_npairs[j] = o_npairs[j-1];
+					o_islx[j] = o_islx[j-1];
+					o_iinx[j] = o_iinx[j-1];
+					o_islz[j] = o_islz[j-1];
+					o_iinz[j] = o_iinz[j-1];
+					o_chi2x[j] = o_chi2x[j-1];
+					o_chi2z[j] = o_chi2z[j-1];
+					o_chi2i[j] = o_chi2i[j-1];
+					o_nHitsS[j] = o_nHitsS[j-1];
+					o_slx[j] = o_slx[j-1];
+					o_inx[j] = o_inx[j-1];
+					o_slz[j] = o_slz[j-1];
+					o_inz[j] = o_inz[j-1];
+					o_chi2[j] = o_chi2[j-1];
+					for (int ihit = 0; ihit<i_nHits; ihit++){
+						(*o_sel[j])[ihit] = (*o_sel[j-1])[ihit];
+						(*o_calD[j])[ihit] = (*o_calD[j-1])[ihit];
+						(*o_fitD[j])[ihit] = (*o_fitD[j-1])[ihit];
+						(*o_driftD[j])[ihit] = (*o_driftD[j-1])[ihit];
+					}
+				}
+				o_iselec[i] = iselection;
+				o_icombi[i] = icombi;
+				o_npairs[i] = nPairs;
+				o_islx[i] = islx;
+				o_iinx[i] = iinx;
+				o_islz[i] = islz;
+				o_iinz[i] = iinz;
+				o_chi2z[i] = chi2z;
+				o_chi2x[i] = chi2x;
+				o_chi2i[i] = chi2i;
+				o_nHitsS[i] = nHitsSel;
+				o_slx[i] = slx;
+				o_inx[i] = inx;
+				o_slz[i] = slz;
+				o_inz[i] = inz;
+				o_chi2[i] = chi2;
+				for (int ihit = 0; ihit<i_nHits; ihit++){
+					(*o_sel[i])[ihit] = (*t_sel)[ihit];
+					(*o_calD[i])[ihit] = (*t_calD)[ihit];
+					(*o_fitD[i])[ihit] = (*t_fitD)[ihit];
+					(*o_driftD[i])[ihit] = (*t_driftD)[ihit];
+				}
+				break;
+			}
+		}
+	}
 }
 
 double t2x(double time, int lid, int wid, int lr, int & status){ // 1: right; 2: right end; -1: left; -2: left end; 0 out of range
