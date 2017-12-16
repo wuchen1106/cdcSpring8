@@ -401,14 +401,13 @@ int main(int argc, char** argv){
 
             // sort peaks by sum
 			for(int ip = 0;ip<nPeaks; ip++){
-				rank[ip] = ip;
+				rank[ip] = 0;
 			}
 			for(int ip = 0;ip<nPeaks; ip++){
-				for(int jp = ip+1;jp<nPeaks; jp++){
+				for(int jp = 0;jp<nPeaks; jp++){
+					if (jp==ip) continue;
 					if ((*i_sum)[ch][ip]<(*i_sum)[ch][jp]){
-						int temp = rank[ip];
-						rank[ip] = rank[jp];
-						rank[jp] = temp;
+						rank[ip]++;
 					}
 				}
 			}

@@ -585,6 +585,7 @@ int main(int argc, char** argv){
 				else if (statusl==1&&statusr==0) type+=4*10;
 				else if (statusl==0&&statusr==1) type+=5*10;
 				else if (statusl==1&&statusr==1) type+=6*10;
+				else if (statusl==0&&statusr==0) type+=0;
 				else type+=7*10;
 			}
             // S: sum of wave packet
@@ -619,11 +620,13 @@ int main(int argc, char** argv){
         }
 
         // Do tracking
+        if (debug>11) printf("nHitsG = %d, npairs = %d\n",nHitsG,npairs);
         if (nHitsG<=nHitsMax&&npairs>=3){ // need at least 3 pairs to do the fitting; number of hits should be small to control the time cost
             N_found++;
 
             int nSelections = 0;
             Tracking(0,nSelections,iEntry); // 0 means starting from the 1st pick; nSelections is the number of possible choices by selecting one hit per layer;
+            printf("nHitsS[0] = %d\n",o_nHitsS[0]);
             if (o_nHitsS[0]>=5){ // at least 5 hits to fit: NDF of 3-D track without field is 4
                 N_good++;
             }
