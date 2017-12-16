@@ -305,12 +305,17 @@ int main(int argc, char** argv){
             for (int ihit = 0; ihit<nHits; ihit++){
             	double dt = (*i_driftT)[ihit];
             	double dd0 = (*i_driftD)[ihit];
+				int ip = 0;
+				for (int jhit = ihit-1; jhit>0; jhit--){
+					if ((*i_layerID)[jhit]!=(*i_layerID)[ihit]) break;
+					if ((*i_type)[jhit]<=3) ip++;
+				}
             	if ((*i_sel)[ihit]==1){
             		if((fabs(dd0)<0.5||fabs(dd0)>7.5))
 						nBoundaryHits++;
             		if((fabs(dd0)<0.25||fabs(dd0)>7.75))
 						nSmallBoundaryHits++;
-					if((*i_ip)[ihit]!=0)
+					if(ip!=0)
 						nLateHits++;
 					if((*i_mpi)[ihit]!=0)
 						nShadowedHits++;
@@ -332,7 +337,7 @@ int main(int argc, char** argv){
                     theSum = (*i_sum)[ihit];
                     thePeak = (*i_peak)[ihit]-(*i_ped)[ihit];
                     theHeight = (*i_height)[ihit]-(*i_ped)[ihit];
-                    theIp = (*i_ip)[ihit];
+                    theIp = ip;
                     theMpi = (*i_mpi)[ihit];
                     has = 1;
                 }
