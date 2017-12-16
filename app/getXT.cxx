@@ -153,14 +153,47 @@ int main(int argc, char** argv){
             fprintf(stderr,"WARNING: \"%s/root/t_%d.%s.layer%d.root\" is empty! Will ignore this layer.\n",HOME.Data(),runNo,runname.Data(),lid);
             continue;
         }
+		int nSmallSumHits = 0;
+		int nShadowedHits = 0;
+		int nLateHits = 0;
+		int nBoundaryHits = 0;
+		int nSmallBoundaryHits = 0;
         if (debugLevel>0) printf("Processing %d events\n",N);
         for ( int iEntry = 0 ; iEntry<N; iEntry++){
             if (N%1000==0) printf("%d\n",N);
             if (debugLevel>=10) printf("Entry%d: \n",iEntry);
             ichain->GetEntry(iEntry);
 
+			nSmallSumHits = 0;
+			nShadowedHits = 0;
+			nLateHits = 0;
+			nBoundaryHits = 0;
+			nSmallBoundaryHits = 0;
+            for (int ihit = 0; ihit<nHits; ihit++){
+            	double dt = (*i_driftT)[ihit];
+            	double dd0 = (*i_driftD)[ihit];
+				int ip = 0;
+				for (int jhit = ihit-1; jhit>0; jhit--){
+					if ((*i_layerID)[jhit]!=(*i_layerID)[ihit]) break;
+					if ((*i_type)[jhit]<=3) ip++;
+				}
+            	if ((*i_sel)[ihit]==1){
+            		if((fabs(dd0)<0.5||fabs(dd0)>7.5))
+						nBoundaryHits++;
+            		if((fabs(dd0)<0.25||fabs(dd0)>7.75))
+						nSmallBoundaryHits++;
+					if(ip!=0)
+						nLateHits++;
+					if((*i_mpi)[ihit]!=0)
+						nShadowedHits++;
+					if((*i_rank)[ihit]!=0)
+						nSmallSumHits++;
+				}
+			}
+
             // ignore events with bad fitting
             if (nHitsS<7) continue;
+			if (nLateHits!=0) continue;
             //if (nHitsG>nHitsS) continue;
             if (geoSetup==1){
                 if (chi2>1) continue;
@@ -218,11 +251,6 @@ int main(int argc, char** argv){
 		double theHeight = 0;
 		int theIp = 0;
 		int theMpi = 0;
-		int nSmallSumHits = 0;
-		int nShadowedHits = 0;
-		int nLateHits = 0;
-		int nBoundaryHits = 0;
-		int nSmallBoundaryHits = 0;
         otree->Branch("res",&minres);
         otree->Branch("theDD",&theDD);
         otree->Branch("theDT",&theDT);
