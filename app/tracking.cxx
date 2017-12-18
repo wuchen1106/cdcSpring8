@@ -1260,6 +1260,8 @@ void getchi2(double &f, double & cp, double & ca, double slx, double inx, double
 		for (int ihit=0;ihit<i_nHits; ihit++) {
 			if ((*i_layerID)[ihit]!=testlayer) continue;
 			dfit = get_dist((*i_layerID)[ihit],(*i_wireID)[ihit],slx,inx,slz,inz);
+			int type = getHitType((*i_type)[ihit],dfit>=0);
+			if (type>3) continue;
 			double dd = dfit>0?(*o_dxr)[ihit]:(*o_dxl)[ihit];
 			if (fabs(minres)>fabs(dfit-dd)){
 				minres = dfit-dd;
