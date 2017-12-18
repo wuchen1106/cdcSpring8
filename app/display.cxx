@@ -900,6 +900,7 @@ int main(int argc, char** argv){
                         wy = ((wzro-wz)*wyhv+(wz-wzhv)*wyro)/(wzro-wzhv);
                     }
                     double resmin = 1e9;
+                    double thefitd = 0;
                     for (int ip = 0; ip<nHits_cell[lid][wid]; ip++){
                         int ihit = iHit_cell[lid][wid][ip];
                         int type = (*i_type)[ihit];
@@ -931,6 +932,7 @@ int main(int argc, char** argv){
                         // get the min residual
                         if (fabs(fitd-dd)<fabs(resmin)&&(workMode==1&&type<=3)){ // only print when t_XXX and good hit
                             resmin = fitd-dd;
+                            thefitd = fitd;
                         }
 
                         // Get information for cross points
@@ -943,7 +945,7 @@ int main(int argc, char** argv){
                         }
                     }
                     if (resmin<1e9){ // found a hit in this wire
-                        text_xyhit[lid][wid]->SetText(wx,wy,Form("%d,%d,%.1lf",lid,wid,resmin));// draw the one with the smallest res
+                        text_xyhit[lid][wid]->SetText(wx,wy,Form("%d,%.1lf,%.3lf",wid,thefitd,resmin));// draw the one with the smallest res
                         text_xyhit[lid][wid]->Draw();
                     }
                     y_cell[lid][wid] = wy;
