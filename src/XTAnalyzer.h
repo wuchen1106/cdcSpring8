@@ -6,7 +6,7 @@
 #include "TString.h"
 
 #define NSLICEX 161 // 161 bins from -8.05 mm to 8.05 mm, binning every 100 um
-#define NSLICET 528 // 264 bins from -25 ns to 800 ns including left and right side, bining every 3.125 ns (3 TDC)
+#define NSLICET 512 // 256 bins from 0 ns to 800 ns including left and right side, bining every 3.125 ns (3 TDC)
 
 class TFile;
 class TF1;
