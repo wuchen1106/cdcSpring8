@@ -260,6 +260,7 @@ int main(int argc, char** argv){
 		int theIp = 0;
 		int theMpi = 0;
 		int theCand = 0;
+        otree->Branch("triggerNumber",&triggerNumber);
         otree->Branch("res",&minres);
         otree->Branch("theDD",&theDD);
         otree->Branch("theDT",&theDT);
