@@ -297,7 +297,7 @@ int main(int argc, char** argv){
         otree->Branch("sum",&i_sum);
         otree->Branch("driftD",&o_driftD);
         otree->Branch("driftDs",&o_driftDs);
-        otree->Branch("driftD",&(i_driftD[0]));
+        otree->Branch("driftD0",&(i_driftD[0]));
         otree->Branch("npairs",&(npairs[0]));
         otree->Branch("isel",&(isel[0]));
         otree->Branch("icom",&(icom[0]));

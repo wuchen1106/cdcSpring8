@@ -907,6 +907,9 @@ int main(int argc, char** argv){
                         // Get hit information
                         double fitd = 0;
                         double dd = (*i_driftD[iCand])[ihit];
+                        if (nHitsS[iCand]==0){ // bad fitting, driftD nonsense.
+                        	dd = (*i_dxr)[ihit];
+                        }
                         if (workMode==1){
                             fitd = (*i_fitD[iCand])[ihit]; // !!! make sure it's mm
                         }
