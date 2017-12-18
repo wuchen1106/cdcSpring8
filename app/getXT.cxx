@@ -177,25 +177,27 @@ int main(int argc, char** argv){
             ichain->GetEntry(iEntry);
 
 			// decide which candidate to use
-			int nLateHitsMin = 1e9;
 			int theCand = 0;
-			for (int iCand = 0; iCand<NCAND; iCand++){
-				nLateHits = 0;
-				for (int ihit = 0; ihit<nHits; ihit++){
-					int ip = 0;
-					for (int jhit = ihit-1; jhit>0; jhit--){
-						if ((*i_layerID)[jhit]!=(*i_layerID)[ihit]) break;
-						int type = getHitType((*i_type)[jhit],(*i_fitD[iCand])[jhit]>=0);
-						if (type<=3) ip++;
+			if (xtType==3){
+				int nLateHitsMin = 1e9;
+				for (int iCand = 0; iCand<NCAND; iCand++){
+					nLateHits = 0;
+					for (int ihit = 0; ihit<nHits; ihit++){
+						int ip = 0;
+						for (int jhit = ihit-1; jhit>0; jhit--){
+							if ((*i_layerID)[jhit]!=(*i_layerID)[ihit]) break;
+							int type = getHitType((*i_type)[jhit],(*i_fitD[iCand])[jhit]>=0);
+							if (type<=3) ip++;
+						}
+						if ((*i_sel[iCand])[ihit]==1){
+							if(ip!=0)
+								nLateHits++;
+						}
 					}
-					if ((*i_sel[iCand])[ihit]==1){
-						if(ip!=0)
-							nLateHits++;
+					if (nLateHits<nLateHitsMin){
+						nLateHitsMin = nLateHits;
+						theCand = iCand;
 					}
-				}
-				if (nLateHits<nLateHitsMin){
-					nLateHitsMin = nLateHits;
-					theCand = iCand;
 				}
 			}
 
@@ -324,47 +326,49 @@ int main(int argc, char** argv){
             ichain->GetEntry(iEntry);
 
 			// decide which candidate to use
-			int nLateHitsMin = 1e9;
 			theCand = 0;
-			for (int iCand = 0; iCand<NCAND; iCand++){
-				nLateHits = 0;
-				for (int ihit = 0; ihit<nHits; ihit++){
-					int ip = 0;
-					for (int jhit = ihit-1; jhit>0; jhit--){
-						if ((*i_layerID)[jhit]!=(*i_layerID)[ihit]) break;
-						int type = getHitType((*i_type)[jhit],(*i_fitD[iCand])[jhit]>=0);
-						if (type<=3) ip++;
+			if (xtType==3){
+				int nLateHitsMin = 1e9;
+				for (int iCand = 0; iCand<NCAND; iCand++){
+					nLateHits = 0;
+					for (int ihit = 0; ihit<nHits; ihit++){
+						int ip = 0;
+						for (int jhit = ihit-1; jhit>0; jhit--){
+							if ((*i_layerID)[jhit]!=(*i_layerID)[ihit]) break;
+							int type = getHitType((*i_type)[jhit],(*i_fitD[iCand])[jhit]>=0);
+							if (type<=3) ip++;
+						}
+						if ((*i_sel[iCand])[ihit]==1){
+							if(ip!=0)
+								nLateHits++;
+						}
 					}
-					if ((*i_sel[iCand])[ihit]==1){
-						if(ip!=0)
-							nLateHits++;
+					if (nLateHits<nLateHitsMin){
+						nLateHitsMin = nLateHits;
+						theCand = iCand;
 					}
 				}
-				if (nLateHits<nLateHitsMin){
-					nLateHitsMin = nLateHits;
-					theCand = iCand;
-				}
+				otree->SetBranchAddress("driftD",&(i_driftD[theCand]));
+				otree->SetBranchAddress("npairs",&(npairs[theCand]));
+				otree->SetBranchAddress("isel",&(isel[theCand]));
+				otree->SetBranchAddress("icom",&(icom[theCand]));
+				otree->SetBranchAddress("islx",&(islx[theCand]));
+				otree->SetBranchAddress("islz",&(islz[theCand]));
+				otree->SetBranchAddress("iinx",&(iinx[theCand]));
+				otree->SetBranchAddress("iinz",&(iinz[theCand]));
+				otree->SetBranchAddress("chi2x",&(chi2x[theCand]));
+				otree->SetBranchAddress("chi2z",&(chi2z[theCand]));
+				otree->SetBranchAddress("chi2i",&(chi2i[theCand]));
+				otree->SetBranchAddress("calD",&(i_calD[theCand]));
+				otree->SetBranchAddress("nHitsS",&(nHitsS[theCand]));
+				otree->SetBranchAddress("slx",&(slx[theCand]));
+				otree->SetBranchAddress("slz",&(slz[theCand]));
+				otree->SetBranchAddress("inx",&(inx[theCand]));
+				otree->SetBranchAddress("inz",&(inz[theCand]));
+				otree->SetBranchAddress("chi2",&(chi2[theCand]));
+				otree->SetBranchAddress("fitD",&(i_fitD[theCand]));
+				otree->SetBranchAddress("sel",&(i_sel[theCand]));
 			}
-			otree->SetBranchAddress("driftD",&(i_driftD[theCand]));
-			otree->SetBranchAddress("npairs",&(npairs[theCand]));
-			otree->SetBranchAddress("isel",&(isel[theCand]));
-			otree->SetBranchAddress("icom",&(icom[theCand]));
-			otree->SetBranchAddress("islx",&(islx[theCand]));
-			otree->SetBranchAddress("islz",&(islz[theCand]));
-			otree->SetBranchAddress("iinx",&(iinx[theCand]));
-			otree->SetBranchAddress("iinz",&(iinz[theCand]));
-			otree->SetBranchAddress("chi2x",&(chi2x[theCand]));
-			otree->SetBranchAddress("chi2z",&(chi2z[theCand]));
-			otree->SetBranchAddress("chi2i",&(chi2i[theCand]));
-			otree->SetBranchAddress("calD",&(i_calD[theCand]));
-			otree->SetBranchAddress("nHitsS",&(nHitsS[theCand]));
-			otree->SetBranchAddress("slx",&(slx[theCand]));
-			otree->SetBranchAddress("slz",&(slz[theCand]));
-			otree->SetBranchAddress("inx",&(inx[theCand]));
-			otree->SetBranchAddress("inz",&(inz[theCand]));
-			otree->SetBranchAddress("chi2",&(chi2[theCand]));
-			otree->SetBranchAddress("fitD",&(i_fitD[theCand]));
-			otree->SetBranchAddress("sel",&(i_sel[theCand]));
 
             // set driftD
             o_driftD->clear();
@@ -448,5 +452,5 @@ int getHitType(int type,bool isRight){
 }
 
 void printUsage(char * name){
-    fprintf(stderr,"%s [runNo] [prerunname] [runname] <[xtType: 2, sym, thr 0; 1, sym; 0, no req] [geoSetup: 0, normal;1, finger] [saveHists: 0;1] [debug: 0;...]>\n",name);
+    fprintf(stderr,"%s [runNo] [prerunname] [runname] <[xtType: 3, sym with min nLHits, 2, sym, thr 0; 1, sym; 0, no req] [geoSetup: 0, normal;1, finger] [saveHists: 0;1] [debug: 0;...]>\n",name);
 }
