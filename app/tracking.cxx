@@ -11,6 +11,7 @@
 #include "TString.h"
 #include "TGraphErrors.h"
 #include "TMinuit.h"
+#include "TMath.h"
 
 #include "MyProcessManager.h"
 
@@ -87,6 +88,8 @@ std::vector<int> * o_sel[NCAND] = {0};
 std::vector<double> * o_fitD[NCAND] = {0};
 int o_nHitsS[NCAND];
 double o_chi2[NCAND];
+double o_chi2p[NCAND];
+double o_chi2a[NCAND];
 double o_slx[NCAND];
 double o_inx[NCAND];
 double o_slz[NCAND];
@@ -118,6 +121,8 @@ int ierflg = 0;
 double amin,edm,errdef;
 int nvpar,nparx,icstat;
 double chi2 = 0;
+double chi2p = 0;
+double chi2a = 0;
 double inz = 0;
 double slz = 0;
 double inx = 0;
@@ -154,7 +159,7 @@ int fityz(int nPairs);
 bool checkScintillator(double saftyFactor,double inx, double slx, double inz, double slz);
 bool checkChi2(int nHitsSel,int nPairs,int icombi, int iselection);
 double get_dist(int lid, int wid, double slx, double inx, double slz, double inz);
-void getchi2(double &f, double slx, double inx, double slz, double inz,bool all = false);
+void getchi2(double &f, double & cp, double & ca, double slx, double inx, double slz, double inz,bool all = false);
 void fcn(int &npar, double *gin, double &f, double *par, int iflag);
 void do_fit(double slix, double inix,double sliz, double iniz);
 int getHitIndex(int lid, int nHits);
@@ -484,6 +489,8 @@ int main(int argc, char** argv){
         ot->Branch(Form("slz%d",iCand),&(o_slz[iCand]));
         ot->Branch(Form("inz%d",iCand),&(o_inz[iCand]));
         ot->Branch(Form("chi2%d",iCand),&(o_chi2[iCand]));
+        ot->Branch(Form("chi2p%d",iCand),&(o_chi2p[iCand]));
+        ot->Branch(Form("chi2a%d",iCand),&(o_chi2a[iCand]));
         ot->Branch(Form("fitD%d",iCand),&(o_fitD[iCand]));
         ot->Branch(Form("nHitsS%d",iCand),&(o_nHitsS[iCand])); // number of hits selected from finding and fed to fitting
     }
@@ -553,6 +560,8 @@ int main(int argc, char** argv){
             o_inz[iCand] = 0;
             o_chi2i[iCand] = 1e9;
             o_chi2[iCand] = 1e9;
+            o_chi2p[iCand] = 1e9;
+            o_chi2a[iCand] = 1e9;
         }
         t_calD->resize(i_nHits);
         t_fitD->resize(i_nHits);
@@ -811,8 +820,9 @@ int doFitting(int nPicks,int iEntry,int iselection){
                     fromSource = slx>-beamSlxMax&&slx<beamSlxMax&&slz>-beamSlzMax&&slz<beamSlzMax;
                     if (inScint&&fromSource){
                         // update chi2
-                        getchi2(chi2i,islx,iinx,islz,iinz);
-                        getchi2(chi2,slx,inx,slz,inz);
+                        double chi2pi,chi2ai;
+                        getchi2(chi2i,chi2pi,chi2ai,islx,iinx,islz,iinz,false);
+                        getchi2(chi2,chi2p,chi2a,slx,inx,slz,inz,true);
                         // check chi2 and see where the result fits
                         if (debug>11) printf("         final RESULT: x=%.3e*(y-%.3e)+%.3e, z=%.3e*(y-%.3e)+%.3e, chi2i = %.3e chi2 = %.3e\n",slx,sciYup,inx,slz,sciYup,inz,chi2i,chi2);
                         // at last, update driftD for unpick and unselected hits
@@ -1038,7 +1048,9 @@ bool checkChi2(int nHitsSel, int nPairs, int icombi, int iselection){
     for (int i = 0; i<NCAND; i++){
     	issame = isSame(i);
     	if (issame){ // yes, there is a candidate with the same hits
-    		if (chi2<o_chi2[i]){// better? then replace it
+//    		if (chi2<o_chi2[i]){// better? then replace it
+			// FIXME: WARNING, now we reply on total chi2 including test layer hit, a slight bias
+    		if (chi2a<o_chi2a[i]){// better? then replace it
 				o_iselec[i] = iselection;
 				o_icombi[i] = icombi;
 				o_npairs[i] = nPairs;
@@ -1055,6 +1067,8 @@ bool checkChi2(int nHitsSel, int nPairs, int icombi, int iselection){
 				o_slz[i] = slz;
 				o_inz[i] = inz;
 				o_chi2[i] = chi2;
+				o_chi2p[i] = chi2p;
+				o_chi2a[i] = chi2a;
 				for (int ihit = 0; ihit<i_nHits; ihit++){
 					(*o_sel[i])[ihit] = (*t_sel)[ihit];
 					(*o_calD[i])[ihit] = (*t_calD)[ihit];
@@ -1067,7 +1081,9 @@ bool checkChi2(int nHitsSel, int nPairs, int icombi, int iselection){
 	}
 	if (!issame){ // didn't find a candidate with the same hits
 		for (int i = 0; i<NCAND; i++){
-			if ((chi2<o_chi2[i]&&nHitsSel==o_nHitsS[i])||nHitsSel>o_nHitsS[i]){ // now we only pick up one hit per layer since the XT shape in the corener is very sensitive to position/angle thus less reliable
+//			if ((chi2<o_chi2[i]&&nHitsSel==o_nHitsS[i])||nHitsSel>o_nHitsS[i]){ // now we only pick up one hit per layer since the XT shape in the corener is very sensitive to position/angle thus less reliable
+			// FIXME: WARNING, now we reply on total chi2 including test layer hit, a slight bias
+			if ((chi2a<o_chi2a[i]&&nHitsSel==o_nHitsS[i])||nHitsSel>o_nHitsS[i]){ // now we only pick up one hit per layer since the XT shape in the corener is very sensitive to position/angle thus less reliable
 				for (int j = NCAND-1; j>i; j--){
 					o_iselec[j] = o_iselec[j-1];
 					o_icombi[j] = o_icombi[j-1];
@@ -1085,6 +1101,8 @@ bool checkChi2(int nHitsSel, int nPairs, int icombi, int iselection){
 					o_slz[j] = o_slz[j-1];
 					o_inz[j] = o_inz[j-1];
 					o_chi2[j] = o_chi2[j-1];
+					o_chi2p[j] = o_chi2p[j-1];
+					o_chi2a[j] = o_chi2a[j-1];
 					for (int ihit = 0; ihit<i_nHits; ihit++){
 						(*o_sel[j])[ihit] = (*o_sel[j-1])[ihit];
 						(*o_calD[j])[ihit] = (*o_calD[j-1])[ihit];
@@ -1108,6 +1126,8 @@ bool checkChi2(int nHitsSel, int nPairs, int icombi, int iselection){
 				o_slz[i] = slz;
 				o_inz[i] = inz;
 				o_chi2[i] = chi2;
+				o_chi2p[i] = chi2p;
+				o_chi2a[i] = chi2a;
 				for (int ihit = 0; ihit<i_nHits; ihit++){
 					(*o_sel[i])[ihit] = (*t_sel)[ihit];
 					(*o_calD[i])[ihit] = (*t_calD)[ihit];
@@ -1204,11 +1224,12 @@ void do_fit(double sliX, double iniX,double sliZ, double iniZ){
 //______________________________________________________________________________
 void fcn(int &npar, double *gin, double &f, double *par, int iflag)
 {
-	getchi2(f,*par,*(par+1),*(par+2),*(par+3));
+	double cp,ca;
+	getchi2(f,cp,ca,*par,*(par+1),*(par+2),*(par+3),false);
 }
 
 //______________________________________________________________________________
-void getchi2(double &f, double slx, double inx, double slz, double inz,bool all)
+void getchi2(double &f, double & cp, double & ca, double slx, double inx, double slz, double inz,bool all)
 {
 	//calculate chisquare
 	double chisq = 0;
@@ -1231,6 +1252,26 @@ void getchi2(double &f, double slx, double inx, double slz, double inz,bool all)
 	}
 	if (N>0) chisq/=N;
 	f = chisq;
+	if (all){ // should calculate chi2_pValue (cp) and chi2_all (ca)
+		cp = TMath::Prob(f*N,N);
+		// now find the closest hit in the test layer and add it into ca
+		double minres = 1e9;
+		bool found = false;
+		for (int ihit=0;ihit<i_nHits; ihit++) {
+			if ((*i_layerID)[ihit]!=testlayer) continue;
+			dfit = get_dist((*i_layerID)[ihit],(*i_wireID)[ihit],slx,inx,slz,inz);
+			double dd = dfit>0?(*o_dxr)[ihit]:(*o_dxl)[ihit];
+			if (fabs(minres)>fabs(dfit-dd)){
+				minres = dfit-dd;
+				found = true;
+			}
+		}
+		if (found){
+			double error = 0.2; // FIXME: may consider non-constant error
+			ca = f*N+minres*minres/error/error;
+			ca/=(N+1);
+		}
+	}
 }
 
 //______________________________________________________________________________
