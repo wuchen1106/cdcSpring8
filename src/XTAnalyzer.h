@@ -146,9 +146,11 @@ class XTAnalyzer{
 		TGraph * gr_xchi2_slicex;
 		TGraph * gr_nt_slicetl;
 		TGraph * gr_sigt_slicetl;
+		TGraph * gr_sigts_slicetl;
 		TGraph * gr_chi2t_slicetl;
 		TGraph * gr_nt_slicetr;
 		TGraph * gr_sigt_slicetr;
+		TGraph * gr_sigts_slicetr;
 		TGraph * gr_chi2t_slicetr;
 		TGraph * gr_xt_slicetn;
 		TGraph * gr_xt_slicexn;
@@ -157,6 +159,7 @@ class XTAnalyzer{
 		TGraph * gr_xchi2_slicexn;
 		TGraph * gr_nt_slicetn;
 		TGraph * gr_sigt_slicetn;
+		TGraph * gr_sigts_slicetn;
 		TGraph * gr_chi2t_slicetn;
 
 		// vectors selected for XT graphs
@@ -193,6 +196,13 @@ class XTAnalyzer{
 		std::vector<double> v_LmB_func_end_t;
 		std::vector<double> v_RmB_func_end_dx;
 		std::vector<double> v_RmB_func_end_t;
+
+		std::vector<double> v_t_slicetls;
+		std::vector<double> v_t_slicetrs;
+		std::vector<double> v_t_slicetns;
+		std::vector<double> v_sig_slicetls;
+		std::vector<double> v_sig_slicetrs;
+		std::vector<double> v_sig_slicetns;
 
 		double m_RLmB_dx_max;
 		double m_RLmB_dt_max;

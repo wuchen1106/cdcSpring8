@@ -177,6 +177,13 @@ int XTAnalyzer::Initialize(TString runname, int lid, TFile * infile, TFile * out
 	v_TmL_both_dx.clear();
 	v_TmL_both_t.clear();
 
+	v_t_slicetls.clear();
+	v_t_slicetrs.clear();
+	v_t_slicetns.clear();
+	v_sig_slicetls.clear();
+	v_sig_slicetrs.clear();
+	v_sig_slicetns.clear();
+
 	m_RLmB_dt_max = 0;
 	m_RLmB_dx_max = 0;
 
@@ -369,6 +376,8 @@ void XTAnalyzer::Process(void){
 				v_leftR_mid_x.push_back(-v_x_slicet[i]);
 				v_left_mid_t.push_back(v_t_slicet[i]);
 			}
+			v_t_slicetls.push_back(v_t_slicet[i]);
+			v_sig_slicetls.push_back(v_sig_slicet[i]);
 		}
 		else{ // right
 			if (v_t_slicet[i]>t8Right){ // right end
@@ -381,6 +390,8 @@ void XTAnalyzer::Process(void){
 				v_right_mid_x.push_back(v_x_slicet[i]);
 				v_right_mid_t.push_back(v_t_slicet[i]);
 			}
+			v_t_slicetrs.push_back(v_t_slicet[i]);
+			v_sig_slicetrs.push_back(v_sig_slicet[i]);
 		}
 	}
 	for (int i = 0; i<NSLICEX; i++){ // t samples in x slices
@@ -427,6 +438,8 @@ void XTAnalyzer::Process(void){
 			v_both_mid_x.push_back(v_x_slicetn[i]);
 			v_both_mid_t.push_back(v_t_slicetn[i]);
 		}
+		v_t_slicetns.push_back(v_t_slicetn[i]);
+		v_sig_slicetns.push_back(v_sig_slicetn[i]);
 	}
 
 	// get Left/Right/Both-sides differences by samples
@@ -881,6 +894,9 @@ void XTAnalyzer::createGraphs(){
 	gr_sigt_slicetl = myNewTGraph(Form("gr_sigt_slicetl_%d",mLayerID),NSLICET/2,&(v_t_slicet[0]),&(v_sig_slicet[0]),
 			"Sigma of X in each T slice","T [ns]","#sigma_{X} [mm]",
 			20,0.5,kMagenta,0.5,kMagenta);
+	gr_sigts_slicetl = myNewTGraph(Form("gr_sigts_slicetl_%d",mLayerID),v_t_slicetls.size(),&(v_t_slicetls[0]),&(v_sig_slicetls[0]),
+			"Sigma of X in each T slice","T [ns]","#sigma_{X} [mm]",
+			20,0.5,kMagenta,0.5,kMagenta);
 	gr_chi2t_slicetl = myNewTGraph(Form("gr_chi2t_slicetl_%d",mLayerID),NSLICET/2,&(v_t_slicet[0]),&(v_chi2_slicet[0]),
 			"#chi^{2} of X in each T slice","T [ns]","#chi^{2}_{X}",
 			20,0.5,kMagenta,0.5,kMagenta);
@@ -888,6 +904,9 @@ void XTAnalyzer::createGraphs(){
 			"Number of Entries in each X slice","T [ns]","Entries",
 			20,0.5,kRed,0.5,kRed);
 	gr_sigt_slicetr = myNewTGraph(Form("gr_sigt_slicetr_%d",mLayerID),NSLICET/2,&(v_t_slicet[NSLICET/2]),&(v_sig_slicet[NSLICET/2]),
+			"Sigma of X in each T slice","T [ns]","#sigma_{X} [mm]",
+			20,0.5,kRed,0.5,kRed);
+	gr_sigts_slicetr = myNewTGraph(Form("gr_sigts_slicetr_%d",mLayerID),v_t_slicetrs.size(),&(v_t_slicetrs[0]),&(v_sig_slicetrs[NSLICET/2]),
 			"Sigma of X in each T slice","T [ns]","#sigma_{X} [mm]",
 			20,0.5,kRed,0.5,kRed);
 	gr_chi2t_slicetr = myNewTGraph(Form("gr_chi2t_slicetr_%d",mLayerID),NSLICET/2,&(v_t_slicet[NSLICET/2]),&(v_chi2_slicet[NSLICET/2]),
@@ -913,6 +932,9 @@ void XTAnalyzer::createGraphs(){
 			"Number of Entries in each T slice","T [ns]","Entries",
 			20,0.5,kBlack,0.5,kBlack);
 	gr_sigt_slicetn = myNewTGraph(Form("gr_sigt_slicetn_%d",mLayerID),NSLICET/2,&(v_t_slicetn[NSLICET/2]),&(v_sig_slicetn[NSLICET/2]),
+			"Sigma of X in each T slice","T [ns]","#sigma_{X} [mm]",
+			20,0.5,kBlack,0.5,kBlack);
+	gr_sigts_slicetn = myNewTGraph(Form("gr_sigts_slicetn_%d",mLayerID),v_t_slicetns.size(),&(v_t_slicetns[0]),&(v_sig_slicetns[0]),
 			"Sigma of X in each T slice","T [ns]","#sigma_{X} [mm]",
 			20,0.5,kBlack,0.5,kBlack);
 	gr_chi2t_slicetn = myNewTGraph(Form("gr_chi2t_slicetn_%d",mLayerID),NSLICET/2,&(v_t_slicetn[NSLICET/2]),&(v_chi2_slicetn[NSLICET/2]),
@@ -1201,14 +1223,23 @@ void XTAnalyzer::writeObjects(){
 	gr_xt_slicexn->Write();
 	gr_xt_slicetn->Write();
 	gr_sigt_slicetl->Write();
+	gr_sigts_slicetl->Write();
 	gr_nt_slicetl->Write();
 	gr_chi2t_slicetl->Write();
 	gr_sigt_slicetr->Write();
+	gr_sigts_slicetr->Write();
 	gr_nt_slicetr->Write();
 	gr_chi2t_slicetr->Write();
+	gr_sigt_slicetn->Write();
+	gr_sigts_slicetn->Write();
+	gr_nt_slicetn->Write();
+	gr_chi2t_slicetn->Write();
 	gr_xsig_slicex->Write();
 	gr_xn_slicex->Write();
 	gr_xchi2_slicex->Write();
+	gr_xsig_slicexn->Write();
+	gr_xn_slicexn->Write();
+	gr_xchi2_slicexn->Write();
 	gr_left_end->Write();
 	gr_left_mid->Write();
 	gr_leftR_end->Write();
