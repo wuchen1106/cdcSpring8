@@ -149,11 +149,9 @@ class XTAnalyzer{
 		TGraph * gr_xchi2_slicex;
 		TGraph * gr_nt_slicetl;
 		TGraph * gr_sigt_slicetl;
-		TGraph * gr_sigts_slicetl;
 		TGraph * gr_chi2t_slicetl;
 		TGraph * gr_nt_slicetr;
 		TGraph * gr_sigt_slicetr;
-		TGraph * gr_sigts_slicetr;
 		TGraph * gr_chi2t_slicetr;
 		TGraph * gr_xt_slicetn;
 		TGraph * gr_xt_slicexn;
@@ -162,8 +160,14 @@ class XTAnalyzer{
 		TGraph * gr_xchi2_slicexn;
 		TGraph * gr_nt_slicetn;
 		TGraph * gr_sigt_slicetn;
-		TGraph * gr_sigts_slicetn;
 		TGraph * gr_chi2t_slicetn;
+
+		TGraph * gr_sigts_slicetl;
+		TGraph * gr_sigts_slicetr;
+		TGraph * gr_sigts_slicetn;
+		TGraph * gr_sigts_slicetl0;
+		TGraph * gr_sigts_slicetr0;
+		TGraph * gr_sigts_slicetn0;
 
 		// vectors selected for XT graphs
 		std::vector<double> v_left_mid_x;
