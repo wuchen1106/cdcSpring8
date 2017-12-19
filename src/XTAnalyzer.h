@@ -54,6 +54,9 @@ class XTAnalyzer{
 		void drawLRB();
 		void drawIteration();
 		void writeObjects();
+		void sigmaXReset();
+		void sigmaXIncrement(double t, double sig, double n, std::vector<double> & vt, std::vector<double> & vs);
+		void sigmaXFinalcheck(std::vector<double> & vt, std::vector<double> & vs);
 
 	private:
 		// options
@@ -203,6 +206,11 @@ class XTAnalyzer{
 		std::vector<double> v_sig_slicetls;
 		std::vector<double> v_sig_slicetrs;
 		std::vector<double> v_sig_slicetns;
+
+		double m_sig_sel;
+		double m_t_sel;
+		double m_n_sel;
+		int m_i_sel;
 
 		double m_RLmB_dx_max;
 		double m_RLmB_dt_max;

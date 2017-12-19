@@ -366,6 +366,7 @@ void XTAnalyzer::Process(void){
 		printf(" t8l:%.1f, t8r:%.1f, t8b:%.1f\n",t8Left,t8Right,t8Both);
 		printf(" t7l:%.1f, t7r:%.1f, t7b:%.1f\n",t7Left,t7Right,t7Both);
 	}
+	sigmaXReset();
 	for (int i = 0; i<NSLICET/2; i++){ // x samples in t slices, left
 		if (mDebugLevel>=2) printf("  LR T slice[%d]: x=%.2f, t=%.1f, n=%.0f, sig=%.2f\n",i,v_x_slicet[i],v_t_slicet[i],v_n_slicet[i],v_sig_slicet[i]);
 		if (v_n_slicet[i]<mEntriesMin||v_sig_slicet[i]>mSigXmax||v_sig_slicet[i]<=0) continue;
@@ -382,9 +383,9 @@ void XTAnalyzer::Process(void){
 			v_leftR_mid_x.push_back(-v_x_slicet[i]);
 			v_left_mid_t.push_back(v_t_slicet[i]);
 		}
-		v_t_slicetls.push_back(v_t_slicet[i]);
-		v_sig_slicetls.push_back(v_sig_slicet[i]);
+		sigmaXIncrement(v_t_slicet[i],v_sig_slicet[i],v_n_slicet[i],v_t_slicetls,v_sig_slicetls);
 	}
+	sigmaXFinalcheck(v_t_slicetls,v_sig_slicetls);
 	for (int i = 0; i<NSLICEX; i++){ // t samples in x slices
 		if (mDebugLevel>=2) printf("  LR X slice[%d]: x=%.2f, t=%.1f, n=%.0f, sig=%.1f\n",i,v_x_slicex[i],v_t_slicex[i],v_n_slicex[i],v_sig_slicex[i]);
 		if (v_n_slicex[i]<mEntriesMin||v_sig_slicex[i]>mSigTmax||v_sig_slicex[i]<=0) continue;
@@ -405,7 +406,10 @@ void XTAnalyzer::Process(void){
 			}
 		}
 	}
+	sigmaXReset();
 	for (int i = NSLICET/2; i<NSLICET; i++){ // x samples in t slices, right 
+		if (mDebugLevel>=2) printf("  LR T slice[%d]: x=%.2f, t=%.1f, n=%.0f, sig=%.2f\n",i,v_x_slicet[i],v_t_slicet[i],v_n_slicet[i],v_sig_slicet[i]);
+		if (v_n_slicet[i]<mEntriesMin||v_sig_slicet[i]>mSigXmax||v_sig_slicet[i]<=0) continue;
 		if (v_t_slicet[i]>t8Right){ // right end
 			if (mDebugLevel>=2) printf("                  t>=%.1f, push to right_end!\n",t8Right);
 			v_right_end_x.push_back(v_x_slicet[i]);
@@ -416,9 +420,9 @@ void XTAnalyzer::Process(void){
 			v_right_mid_x.push_back(v_x_slicet[i]);
 			v_right_mid_t.push_back(v_t_slicet[i]);
 		}
-		v_t_slicetrs.push_back(v_t_slicet[i]);
-		v_sig_slicetrs.push_back(v_sig_slicet[i]);
+		sigmaXIncrement(v_t_slicet[i],v_sig_slicet[i],v_n_slicet[i],v_t_slicetrs,v_sig_slicetrs);
 	}
+	sigmaXFinalcheck(v_t_slicetrs,v_sig_slicetrs);
 	for (int i = NSLICEX/2; i<NSLICEX; i++){ // t samples in x slices, both-side
 		if (mDebugLevel>=2) printf("  BS X slice[%d]: x=%.2f, t=%.1f, n=%.0f, sig=%.1f\n",i,v_x_slicexn[i],v_t_slicexn[i],v_n_slicexn[i],v_sig_slicexn[i]);
 		if (v_n_slicexn[i]<mEntriesMin||v_sig_slicexn[i]>mSigTmax||v_sig_slicexn[i]<=0) continue;
@@ -429,6 +433,7 @@ void XTAnalyzer::Process(void){
 			v_both_mid_t.push_back(v_t_slicexn[i]);
 		}
 	}
+	sigmaXReset();
 	for (int i = NSLICET/2; i<NSLICET; i++){ // x samples in t slices, both-side
 		if (mDebugLevel>=2) printf("  BS T slice[%d]: x=%.2f, t=%.1f, n=%.0f, sig=%.2f\n",i,v_x_slicetn[i],v_t_slicetn[i],v_n_slicetn[i],v_sig_slicetn[i]);
 		if (v_n_slicetn[i]<mEntriesMin||v_sig_slicetn[i]>mSigXmax||v_sig_slicetn[i]<=0) continue;
@@ -443,9 +448,9 @@ void XTAnalyzer::Process(void){
 			v_both_mid_x.push_back(v_x_slicetn[i]);
 			v_both_mid_t.push_back(v_t_slicetn[i]);
 		}
-		v_t_slicetns.push_back(v_t_slicetn[i]);
-		v_sig_slicetns.push_back(v_sig_slicetn[i]);
+		sigmaXIncrement(v_t_slicetn[i],v_sig_slicetn[i],v_n_slicetn[i],v_t_slicetns,v_sig_slicetns);
 	}
+	sigmaXFinalcheck(v_t_slicetns,v_sig_slicetns);
 
 	// get Left/Right/Both-sides differences by samples
 	for (int i = 0; i<v_left_mid_x.size(); i++){
@@ -851,6 +856,40 @@ void XTAnalyzer::getT8(double & t8left, double & t8right, double & t8both){
 	}
 }
 
+void XTAnalyzer::sigmaXReset(){
+	m_sig_sel = 0;
+	m_t_sel = 0;
+	m_n_sel = 0;
+	m_i_sel = 0;
+}
+
+void XTAnalyzer::sigmaXIncrement(double t, double sig, double n, std::vector<double> & vt, std::vector<double> & vs){
+	m_sig_sel += sig*n;
+	m_t_sel += t*n;
+	m_n_sel += n;
+	if (m_i_sel%4==3){
+		if (m_n_sel){
+			m_t_sel/=m_n_sel;
+			m_sig_sel/=m_n_sel;
+		}
+		vt.push_back(m_t_sel);
+		vs.push_back(m_sig_sel);
+		m_t_sel = 0; m_sig_sel = 0; m_n_sel = 0;
+	}
+	m_i_sel++;
+}
+
+void XTAnalyzer::sigmaXFinalcheck(std::vector<double> & vt, std::vector<double> & vs){
+	if (m_i_sel%4!=0){
+		if (m_n_sel){
+			m_t_sel/=m_n_sel;
+			m_sig_sel/=m_n_sel;
+		}
+		vt.push_back(m_t_sel);
+		vs.push_back(m_sig_sel);
+	}
+}
+
 TF1 * XTAnalyzer::myNewTF1(TString name, TString form, double left, double right){
 	TF1 * f = new TF1(name,form,left,right);
 	f->SetNpx(1024);
@@ -952,6 +991,7 @@ void XTAnalyzer::createGraphs(){
 	gr_sigts_slicetl = myNewTGraph(Form("gr_sigts_slicetl_%d",mLayerID),v_t_slicetls.size(),&(v_t_slicetls[0]),&(v_sig_slicetls[0]),
 			"Sigma of X in each T slice","T [ns]","#sigma_{X} [mm]",
 			20,0.5,kMagenta,0.5,kMagenta);
+	gr_sigts_slicetl->Print();
 	gr_chi2t_slicetl = myNewTGraph(Form("gr_chi2t_slicetl_%d",mLayerID),NSLICET/2,&(v_t_slicet[0]),&(v_chi2_slicet[0]),
 			"#chi^{2} of X in each T slice","T [ns]","#chi^{2}_{X}",
 			20,0.5,kMagenta,0.5,kMagenta);
@@ -961,7 +1001,7 @@ void XTAnalyzer::createGraphs(){
 	gr_sigt_slicetr = myNewTGraph(Form("gr_sigt_slicetr_%d",mLayerID),NSLICET/2,&(v_t_slicet[NSLICET/2]),&(v_sig_slicet[NSLICET/2]),
 			"Sigma of X in each T slice","T [ns]","#sigma_{X} [mm]",
 			20,0.5,kRed,0.5,kRed);
-	gr_sigts_slicetr = myNewTGraph(Form("gr_sigts_slicetr_%d",mLayerID),v_t_slicetrs.size(),&(v_t_slicetrs[0]),&(v_sig_slicetrs[NSLICET/2]),
+	gr_sigts_slicetr = myNewTGraph(Form("gr_sigts_slicetr_%d",mLayerID),v_t_slicetrs.size(),&(v_t_slicetrs[0]),&(v_sig_slicetrs[0]),
 			"Sigma of X in each T slice","T [ns]","#sigma_{X} [mm]",
 			20,0.5,kRed,0.5,kRed);
 	gr_chi2t_slicetr = myNewTGraph(Form("gr_chi2t_slicetr_%d",mLayerID),NSLICET/2,&(v_t_slicet[NSLICET/2]),&(v_chi2_slicet[NSLICET/2]),
