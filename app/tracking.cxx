@@ -9,6 +9,7 @@
 #include "TF1.h"
 #include "TVector3.h"
 #include "TString.h"
+#include "TGraph.h"
 #include "TGraphErrors.h"
 #include "TMinuit.h"
 #include "TMath.h"
@@ -19,7 +20,6 @@
 #define NLAY 9
 #define NLAYG 8
 #define NCEL 11
-#define NCELA 99
 
 #define NBRD 2
 #define NCHS 48
@@ -68,8 +68,11 @@ int i_nHits;
 std::vector<int> * i_layerID = 0;
 std::vector<int> * i_wireID = 0;
 std::vector<int> * i_type = 0;
+std::vector<double> * i_driftT = 0;
 std::vector<double> * o_dxl = 0;
 std::vector<double> * o_dxr = 0;
+int o_nFind = 0;
+int o_nFit = 0;
 // for finding
 std::vector<double> * o_driftD[NCAND] = {0};
 int o_icombi[NCAND];
@@ -134,6 +137,8 @@ TVector3 vDist;
 TVector3 vAxis;
 // for error function
 TF1 * funcErr;
+TGraph * gr_error_left[NLAY];
+TGraph * gr_error_right[NLAY];
 
 //===================Hit Handlers============================
 std::vector<std::vector<int> > v_layer_ihit; // vectors of indices of hits in each layer
@@ -165,62 +170,57 @@ void do_fit(double slix, double inix,double sliz, double iniz);
 int getHitIndex(int lid, int nHits);
 int getHitType(int type,bool isRight);
 bool isSame(int iCand);
+double getError(double dt, bool isR);
 
 MyProcessManager * pMyProcessManager;
 
 //===================About xt============================
-TF1 * f_left[NCELA];
-TF1 * f_right[NCELA];
+TF1 * f_left[NLAY];
+TF1 * f_right[NLAY];
 
 int main(int argc, char** argv){
 
-    if (argc<4){
+    if (argc<5){
         print_usage(argv[0]);
         return 1;
     }
     int runNo = (int)strtol(argv[1],NULL,10);
     testlayer = (int)strtol(argv[2],NULL,10);
-    TString runname = "";
-    if (argc>=4){
-        runname  = argv[3];
-    }
+    TString prerunname = argv[3];
+    TString runname = argv[4];
     int nHitsMax = 10;
-    if (argc>=5){
-        nHitsMax = (int)strtol(argv[4],NULL,10);
+    if (argc>=6){
+        nHitsMax = (int)strtol(argv[5],NULL,10);
     }
     int t0shift = 0;
-    if (argc>=6) t0shift = (int)strtol(argv[5],NULL,10);
-    int tmin = -10; // FIXME: need to be properly set
-    if (argc>=7){
-        tmin = (int)strtol(argv[6],NULL,10);
-    }
-    int tmax = 800; // FIXME: need to be properly set
+    if (argc>=7) t0shift = (int)strtol(argv[6],NULL,10);
+    int tmin = -10;
     if (argc>=8){
-        tmax = (int)strtol(argv[7],NULL,10);
+        tmin = (int)strtol(argv[7],NULL,10);
     }
+    int tmax = 800;
     if (argc>=9){
-        geoSetup = (int)strtol(argv[8],NULL,10);
+        tmax = (int)strtol(argv[8],NULL,10);
+    }
+    if (argc>=10){
+        geoSetup = (int)strtol(argv[9],NULL,10);
     }
     float sumCut = 0;
-    if (argc>=10){
-        sumCut = (float)atof(argv[9]);
+    if (argc>=11){
+        sumCut = (float)atof(argv[10]);
     }
     float aaCut = 0;
-    if (argc>=11){
-        aaCut = (float)atof(argv[10]);
+    if (argc>=12){
+        aaCut = (float)atof(argv[11]);
     }
     int iEntryStart = 0;
     int iEntryStop = 0;
-    if (argc>=13){
-        iEntryStart = (int)strtol(argv[11],NULL,10);
-        iEntryStop = (int)strtol(argv[12],NULL,10);
-    }
     if (argc>=14){
-        debug = (int)strtol(argv[13],NULL,10);
+        iEntryStart = (int)strtol(argv[12],NULL,10);
+        iEntryStop = (int)strtol(argv[13],NULL,10);
     }
-    TString prerunname = "";
     if (argc>=15){
-        prerunname = argv[14];
+        debug = (int)strtol(argv[14],NULL,10);
     }
     if (argc>=16){
         memdebug = (int)strtol(argv[15],NULL,10);
@@ -379,9 +379,11 @@ int main(int argc, char** argv){
     printf("##############XT##################\n");
     printf("Reading from %s/info/xt.%d.%s.root\n",HOME.Data(),runNo,prerunname.Data());
     TFile * i_xt = new TFile(HOME+Form("/info/xt.%d.",runNo)+prerunname+".root");
-    for (int i = 0; i<NCELA; i++){
-        f_left[i] = (TF1*) i_xt->Get(Form("fl_%d",i/NCEL));
-        f_right[i] = (TF1*) i_xt->Get(Form("fr_%d",i/NCEL));
+    for (int i = 0; i<NLAY; i++){
+        f_left[i] = (TF1*) i_xt->Get(Form("fl_%d",i));
+        f_right[i] = (TF1*) i_xt->Get(Form("fr_%d",i));
+		gr_error_left[i] = (TGraph*)i_xt->Get(Form("gr_sigts_slicetl_%d",i));
+		gr_error_right[i] = (TGraph*)i_xt->Get(Form("gr_sigts_slicetr_%d",i));
         double tmaxl = 0;
         double tmaxr = 0;
         double tminl = 0;
@@ -402,14 +404,13 @@ int main(int argc, char** argv){
             xmaxr = f_right[i]->Eval(tmaxr);
             xminr = f_right[i]->Eval(tminr);
         }
-        if (f_left[i]||f_right[i])printf("  (%d,%d): (%.3e,%.3e)-(%.3e,%.3e)-(%.3e,%.3e)-(%.3e,%.3e)\n",i/NCEL,i%NCEL,tmaxl,xmaxl,tminl,xminl,tminr,xminr,tmaxr,xmaxr);
+        if (f_left[i]||f_right[i])printf("  XT in layer[%d]: (%.3e,%.3e)-(%.3e,%.3e)-(%.3e,%.3e)-(%.3e,%.3e)\n",i,tmaxl,xmaxl,tminl,xminl,tminr,xminr,tmaxr,xmaxr);
     }
 
     //===================Get input ROOT file============================
     TChain * c = new TChain("t","t");
     c->Add(HOME+Form("/root/h_%d.root",runNo));
     int triggerNumber;
-    std::vector<double> * i_driftT = 0;
     std::vector<int> * i_np = 0;
     std::vector<int> * i_ip = 0;
     std::vector<int> * i_clk = 0;
@@ -470,6 +471,8 @@ int main(int argc, char** argv){
     ot->Branch("dxl",&o_dxl);
     ot->Branch("dxr",&o_dxr);
     // track finding/fitting with different candidates;
+    ot->Branch("nFit",&o_nFit);
+    ot->Branch("nFind",&o_nFind);
     for (int iCand = 0; iCand<NCAND; iCand++){
         ot->Branch(Form("driftD%d",iCand),&(o_driftD[iCand]));
         ot->Branch(Form("icom%d",iCand),&(o_icombi[iCand]));
@@ -536,6 +539,8 @@ int main(int argc, char** argv){
         N_trigger++; // triggered event
 
         // prepare
+        o_nFind = 0;
+        o_nFit = 0;
         o_dxl->resize(i_nHits);
         o_dxr->resize(i_nHits);
         for (int iCand = 0; iCand<NCAND; iCand++){
@@ -679,6 +684,7 @@ int doFitting(int nPicks,int iEntry,int iselection){
     int ncombi = pow(2,nPicks);
     if (debug>11) printf("  %d picked layers -> %d combinations\n",nPicks,ncombi);
     for (int icombi = 0; icombi<ncombi; icombi++){ // each combination corresponds to a unique left/right selection set
+    	o_nFind++;
         if (debug>1) printf("     combi %d\n",icombi);
         t_lr->clear();
         t_lr->resize(i_nHits,0); // 0 is used as a default value to indicate that this hit is not picked, thus left/right unfixed
@@ -769,6 +775,7 @@ int doFitting(int nPicks,int iEntry,int iselection){
             }
             if (debug>11) printf("       good! nHitsSel = %d\n",nHitsSel);
             if (nHitsSel>=5){ // at least 5 hits to fit: NDF of 3-D track without field is 4
+            	o_nFit++;
                 // fitting with TMinuit
                 do_fit(islx,iinx,islz,iinz);
                 double temp;
@@ -1049,7 +1056,7 @@ bool checkChi2(int nHitsSel, int nPairs, int icombi, int iselection){
     	issame = isSame(i);
     	if (issame){ // yes, there is a candidate with the same hits
 //    		if (chi2<o_chi2[i]){// better? then replace it
-			// FIXME: WARNING, now we reply on total chi2 including test layer hit, a slight bias
+			// FIXME: WARNING, now we rely on total chi2 including test layer hit, a slight bias
     		if (chi2a<o_chi2a[i]){// better? then replace it
 				o_iselec[i] = iselection;
 				o_icombi[i] = icombi;
@@ -1082,7 +1089,7 @@ bool checkChi2(int nHitsSel, int nPairs, int icombi, int iselection){
 	if (!issame){ // didn't find a candidate with the same hits
 		for (int i = 0; i<NCAND; i++){
 //			if ((chi2<o_chi2[i]&&nHitsSel==o_nHitsS[i])||nHitsSel>o_nHitsS[i]){ // now we only pick up one hit per layer since the XT shape in the corener is very sensitive to position/angle thus less reliable
-			// FIXME: WARNING, now we reply on total chi2 including test layer hit, a slight bias
+			// FIXME: WARNING, now we rely on total chi2 including test layer hit, a slight bias
 			if ((chi2a<o_chi2a[i]&&nHitsSel==o_nHitsS[i])||nHitsSel>o_nHitsS[i]){ // now we only pick up one hit per layer since the XT shape in the corener is very sensitive to position/angle thus less reliable
 				for (int j = NCAND-1; j>i; j--){
 					o_iselec[j] = o_iselec[j-1];
@@ -1143,16 +1150,14 @@ bool checkChi2(int nHitsSel, int nPairs, int icombi, int iselection){
 double t2x(double time, int lid, int wid, int lr, int & status){ // 1: right; 2: right end; -1: left; -2: left end; 0 out of range
     TF1* f=0;
     // FIXME: now we only take one xt: layer 0 cell 0 (fake wire as average)
-    //int index = lid*NCEL+wid;
-    int index = 0*NCEL+0;
     if (lr>=0){
-        f = f_right[index];
+        f = f_right[0];
     }
     else {
-        f = f_left[index];
+        f = f_left[0];
     }
     if (!f){
-        fprintf(stderr,"Cannot get f[%d]!\n",index);
+        fprintf(stderr,"Cannot get f[%d]!\n",0);
         status = -2;
         return 0;
     }
@@ -1245,7 +1250,7 @@ void getchi2(double &f, double & cp, double & ca, double slx, double inx, double
 //		double error = errord[(*i_layerID)[ihit]][(*i_wireID)[ihit]]*(fabs(fabs(dfit)-4)+2/1.5)*1.5/4;
 //		double error = errord[(*i_layerID)[ihit]][(*i_wireID)[ihit]];
 //		double error = funcErr->Eval(fabs(dfit));
-		double error = 0.2;
+		double error = getError((*i_driftT)[ihit],dd>0);
         delta  = (dfit-dd)/error;
 		chisq += delta*delta;
 		N++;
@@ -1276,8 +1281,32 @@ void getchi2(double &f, double & cp, double & ca, double slx, double inx, double
 	}
 }
 
+double getError(double dt, bool isR){
+	double error = 0.2; // default value 200 um
+	TGraph * gr = 0;
+	// FIXME: now we only take the error from one default layer (0 as fake layer)
+	if (isR) // right side
+		gr = gr_error_right[0];
+	else
+		gr = gr_error_left[0];
+	if (!gr){
+		fprintf(stderr,"ERROR: cannot find error graph gr_sigts_slicet%s_%d",isR?"r":"l",0);
+	}
+	int N = gr->GetN();
+	for (int i = 0; i<N-1; i++){
+		double t1,sig1;
+		double t2,sig2;
+		gr->GetPoint(i,t1,sig1);
+		gr->GetPoint(i+1,t2,sig2);
+		if (t1<dt&&t2>=dt){
+			error = (sig1+sig2)/2.;
+		}
+	}
+	return error;
+}
+
 //______________________________________________________________________________
 void print_usage(char* prog_name)
 {
-    fprintf(stderr,"\t%s [runNo] [testlayer] [runname] <[nHitsMax] [t0shift] [tmin] [tmax] [geoSetup] [sumCut] [aaCut] [iEntryStart] [iEntryStop] [debug] [memdebug]>\n",prog_name);
+    fprintf(stderr,"\t%s [runNo] [testlayer] [prerunname] [runname] <[nHitsMax] [t0shift] [tmin] [tmax] [geoSetup] [sumCut] [aaCut] [iEntryStart] [iEntryStop] [debug] [memdebug]>\n",prog_name);
 }

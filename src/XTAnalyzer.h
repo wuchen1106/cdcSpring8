@@ -164,10 +164,8 @@ class XTAnalyzer{
 
 		TGraph * gr_sigts_slicetl;
 		TGraph * gr_sigts_slicetr;
-		TGraph * gr_sigts_slicetn;
 		TGraph * gr_sigts_slicetl0;
 		TGraph * gr_sigts_slicetr0;
-		TGraph * gr_sigts_slicetn0;
 
 		// vectors selected for XT graphs
 		std::vector<double> v_left_mid_x;

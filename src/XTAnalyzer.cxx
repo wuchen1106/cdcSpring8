@@ -1051,25 +1051,37 @@ void XTAnalyzer::createGraphs(){
 	gr_RmB_end= myNewTGraph(Form("gr_RmB_end_%d",mLayerID),v_RmB_end_t.size(),&(v_RmB_end_t[0]),&(v_RmB_end_dx[0]),
 			"XT Differences with Both-side Combined Case","T [ns]","#Delta_{X} [um]",20,0.5,kRed,0.5,kRed);
 	// selected graphs for error reference
-	gr_sigts_slicetl = myNewTGraph(Form("gr_sigts_slicetl_%d",mLayerID),v_t_slicetls.size(),&(v_t_slicetls[0]),&(v_sig_slicetls[0]),
-			"Sigma of X in each T slice","T [ns]","#sigma_{X} [mm]",
-			20,0.5,kMagenta,0.5,kMagenta);
-	gr_sigts_slicetr = myNewTGraph(Form("gr_sigts_slicetr_%d",mLayerID),v_t_slicetrs.size(),&(v_t_slicetrs[0]),&(v_sig_slicetrs[0]),
-			"Sigma of X in each T slice","T [ns]","#sigma_{X} [mm]",
-			20,0.5,kRed,0.5,kRed);
-	gr_sigts_slicetn = myNewTGraph(Form("gr_sigts_slicetn_%d",mLayerID),v_t_slicetns.size(),&(v_t_slicetns[0]),&(v_sig_slicetns[0]),
-			"Sigma of X in each T slice","T [ns]","#sigma_{X} [mm]",
-			20,0.5,kBlack,0.5,kBlack);
-	if (mSaveXT0){
-		gr_sigts_slicetl0 = myNewTGraph(Form("gr_sigts_slicetl0_%d",mLayerID),v_t_slicetls.size(),&(v_t_slicetls[0]),&(v_sig_slicetls[0]),
+	if (mXTType==0){
+		gr_sigts_slicetl = myNewTGraph(Form("gr_sigts_slicetl_%d",mLayerID),v_t_slicetls.size(),&(v_t_slicetls[0]),&(v_sig_slicetls[0]),
 				"Sigma of X in each T slice","T [ns]","#sigma_{X} [mm]",
 				20,0.5,kMagenta,0.5,kMagenta);
-		gr_sigts_slicetr0 = myNewTGraph(Form("gr_sigts_slicetr0_%d",mLayerID),v_t_slicetrs.size(),&(v_t_slicetrs[0]),&(v_sig_slicetrs[0]),
+		gr_sigts_slicetr = myNewTGraph(Form("gr_sigts_slicetr_%d",mLayerID),v_t_slicetrs.size(),&(v_t_slicetrs[0]),&(v_sig_slicetrs[0]),
 				"Sigma of X in each T slice","T [ns]","#sigma_{X} [mm]",
 				20,0.5,kRed,0.5,kRed);
-		gr_sigts_slicetn0 = myNewTGraph(Form("gr_sigts_slicetn0_%d",mLayerID),v_t_slicetns.size(),&(v_t_slicetns[0]),&(v_sig_slicetns[0]),
+		if (mSaveXT0){
+			gr_sigts_slicetl0 = myNewTGraph(Form("gr_sigts_slicetl_%d",0),v_t_slicetls.size(),&(v_t_slicetls[0]),&(v_sig_slicetls[0]),
+					"Sigma of X in each T slice","T [ns]","#sigma_{X} [mm]",
+					20,0.5,kMagenta,0.5,kMagenta);
+			gr_sigts_slicetr0 = myNewTGraph(Form("gr_sigts_slicetr_%d",0),v_t_slicetrs.size(),&(v_t_slicetrs[0]),&(v_sig_slicetrs[0]),
+					"Sigma of X in each T slice","T [ns]","#sigma_{X} [mm]",
+					20,0.5,kRed,0.5,kRed);
+		}
+	}
+	else{
+		gr_sigts_slicetl = myNewTGraph(Form("gr_sigts_slicetl_%d",mLayerID),v_t_slicetns.size(),&(v_t_slicetns[0]),&(v_sig_slicetns[0]),
 				"Sigma of X in each T slice","T [ns]","#sigma_{X} [mm]",
-				20,0.5,kBlack,0.5,kBlack);
+				20,0.5,kMagenta,0.5,kMagenta);
+		gr_sigts_slicetr = myNewTGraph(Form("gr_sigts_slicetr_%d",mLayerID),v_t_slicetns.size(),&(v_t_slicetns[0]),&(v_sig_slicetns[0]),
+				"Sigma of X in each T slice","T [ns]","#sigma_{X} [mm]",
+				20,0.5,kRed,0.5,kRed);
+		if (mSaveXT0){
+			gr_sigts_slicetl0 = myNewTGraph(Form("gr_sigts_slicetl_%d",0),v_t_slicetns.size(),&(v_t_slicetns[0]),&(v_sig_slicetns[0]),
+					"Sigma of X in each T slice","T [ns]","#sigma_{X} [mm]",
+					20,0.5,kMagenta,0.5,kMagenta);
+			gr_sigts_slicetr0 = myNewTGraph(Form("gr_sigts_slicetr_%d",0),v_t_slicetns.size(),&(v_t_slicetns[0]),&(v_sig_slicetns[0]),
+					"Sigma of X in each T slice","T [ns]","#sigma_{X} [mm]",
+					20,0.5,kRed,0.5,kRed);
+		}
 	}
 }
 
@@ -1370,7 +1382,6 @@ void XTAnalyzer::writeObjects(){
 	gr_nt_slicetr->Write();
 	gr_chi2t_slicetr->Write();
 	gr_sigt_slicetn->Write();
-	gr_sigts_slicetn->Write();
 	gr_nt_slicetn->Write();
 	gr_chi2t_slicetn->Write();
 	gr_xsig_slicex->Write();
@@ -1418,6 +1429,5 @@ void XTAnalyzer::writeObjects(){
 		f_left0->Write();
 		gr_sigts_slicetl0->Write();
 		gr_sigts_slicetr0->Write();
-		gr_sigts_slicetn0->Write();
 	}
 }
