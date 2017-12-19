@@ -218,6 +218,14 @@ class XTAnalyzer{
 		double m_TmL_LR_max;
 		double m_TmL_B_max;
 
+		// for comparing sample points with functions
+		std::vector<double> v_SmF_left_t;
+		std::vector<double> v_SmF_left_dx;
+		std::vector<double> v_SmF_right_t;
+		std::vector<double> v_SmF_right_dx;
+		std::vector<double> v_SmF_both_t;
+		std::vector<double> v_SmF_both_dx;
+
 		// Graphs for XT fitting
 		TGraph * gr_right_mid;
 		TGraph * gr_left_mid;
@@ -243,6 +251,11 @@ class XTAnalyzer{
 		TGraph * gr_TmL_left;
 		TGraph * gr_TmL_right;
 		TGraph * gr_TmL_both;
+
+		// for comparing sample points with functions
+		TGraph * gr_SmF_left;
+		TGraph * gr_SmF_right;
+		TGraph * gr_SmF_both;
 
 		// Functions for XT fitting
 		TF1 * f_right_mid;

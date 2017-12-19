@@ -184,6 +184,13 @@ int XTAnalyzer::Initialize(TString runname, int lid, TFile * infile, TFile * out
 	v_sig_slicetrs.clear();
 	v_sig_slicetns.clear();
 
+	v_SmF_left_t.clear();
+	v_SmF_left_dx.clear();
+	v_SmF_right_t.clear();
+	v_SmF_right_dx.clear();
+	v_SmF_both_t.clear();
+	v_SmF_both_dx.clear();
+
 	m_RLmB_dt_max = 0;
 	m_RLmB_dx_max = 0;
 
@@ -359,40 +366,24 @@ void XTAnalyzer::Process(void){
 		printf(" t8l:%.1f, t8r:%.1f, t8b:%.1f\n",t8Left,t8Right,t8Both);
 		printf(" t7l:%.1f, t7r:%.1f, t7b:%.1f\n",t7Left,t7Right,t7Both);
 	}
-	for (int i = 0; i<NSLICET; i++){ // x samples in t slices
+	for (int i = 0; i<NSLICET/2; i++){ // x samples in t slices, left
 		if (mDebugLevel>=2) printf("  LR T slice[%d]: x=%.2f, t=%.1f, n=%.0f, sig=%.2f\n",i,v_x_slicet[i],v_t_slicet[i],v_n_slicet[i],v_sig_slicet[i]);
 		if (v_n_slicet[i]<mEntriesMin||v_sig_slicet[i]>mSigXmax||v_sig_slicet[i]<=0) continue;
 		if (mDebugLevel>=2) printf("                  Passed!\n");
-		if (i<NSLICET/2){ // left
-			if (v_t_slicet[i]>t8Left){ // left end
-				if (mDebugLevel>=2) printf("                  t>=%.1f, push to left_end!\n",t8Left);
-				v_left_end_x.push_back(v_x_slicet[i]);
-				v_leftR_end_x.push_back(-v_x_slicet[i]);
-				v_left_end_t.push_back(v_t_slicet[i]);
-			}
-			else if (v_x_slicet[i]<=-xStart2Turn){ // turning part
-				if (mDebugLevel>=2) printf("                  x<=%.2f, push to left_mid!\n",-xStart2Turn);
-				v_left_mid_x.push_back(v_x_slicet[i]);
-				v_leftR_mid_x.push_back(-v_x_slicet[i]);
-				v_left_mid_t.push_back(v_t_slicet[i]);
-			}
-			v_t_slicetls.push_back(v_t_slicet[i]);
-			v_sig_slicetls.push_back(v_sig_slicet[i]);
+		if (v_t_slicet[i]>t8Left){ // left end
+			if (mDebugLevel>=2) printf("                  t>=%.1f, push to left_end!\n",t8Left);
+			v_left_end_x.push_back(v_x_slicet[i]);
+			v_leftR_end_x.push_back(-v_x_slicet[i]);
+			v_left_end_t.push_back(v_t_slicet[i]);
 		}
-		else{ // right
-			if (v_t_slicet[i]>t8Right){ // right end
-				if (mDebugLevel>=2) printf("                  t>=%.1f, push to right_end!\n",t8Right);
-				v_right_end_x.push_back(v_x_slicet[i]);
-				v_right_end_t.push_back(v_t_slicet[i]);
-			}
-			else if (v_x_slicet[i]>=xStart2Turn){ // turning part
-				if (mDebugLevel>=2) printf("                  x>=%.2f, push to right_mid!\n",xStart2Turn);
-				v_right_mid_x.push_back(v_x_slicet[i]);
-				v_right_mid_t.push_back(v_t_slicet[i]);
-			}
-			v_t_slicetrs.push_back(v_t_slicet[i]);
-			v_sig_slicetrs.push_back(v_sig_slicet[i]);
+		else if (v_x_slicet[i]<=-xStart2Turn){ // turning part
+			if (mDebugLevel>=2) printf("                  x<=%.2f, push to left_mid!\n",-xStart2Turn);
+			v_left_mid_x.push_back(v_x_slicet[i]);
+			v_leftR_mid_x.push_back(-v_x_slicet[i]);
+			v_left_mid_t.push_back(v_t_slicet[i]);
 		}
+		v_t_slicetls.push_back(v_t_slicet[i]);
+		v_sig_slicetls.push_back(v_sig_slicet[i]);
 	}
 	for (int i = 0; i<NSLICEX; i++){ // t samples in x slices
 		if (mDebugLevel>=2) printf("  LR X slice[%d]: x=%.2f, t=%.1f, n=%.0f, sig=%.1f\n",i,v_x_slicex[i],v_t_slicex[i],v_n_slicex[i],v_sig_slicex[i]);
@@ -413,6 +404,20 @@ void XTAnalyzer::Process(void){
 				v_right_mid_t.push_back(v_t_slicex[i]);
 			}
 		}
+	}
+	for (int i = NSLICET/2; i<NSLICET; i++){ // x samples in t slices, right 
+		if (v_t_slicet[i]>t8Right){ // right end
+			if (mDebugLevel>=2) printf("                  t>=%.1f, push to right_end!\n",t8Right);
+			v_right_end_x.push_back(v_x_slicet[i]);
+			v_right_end_t.push_back(v_t_slicet[i]);
+		}
+		else if (v_x_slicet[i]>=xStart2Turn){ // turning part
+			if (mDebugLevel>=2) printf("                  x>=%.2f, push to right_mid!\n",xStart2Turn);
+			v_right_mid_x.push_back(v_x_slicet[i]);
+			v_right_mid_t.push_back(v_t_slicet[i]);
+		}
+		v_t_slicetrs.push_back(v_t_slicet[i]);
+		v_sig_slicetrs.push_back(v_sig_slicet[i]);
 	}
 	for (int i = NSLICEX/2; i<NSLICEX; i++){ // t samples in x slices, both-side
 		if (mDebugLevel>=2) printf("  BS X slice[%d]: x=%.2f, t=%.1f, n=%.0f, sig=%.1f\n",i,v_x_slicexn[i],v_t_slicexn[i],v_n_slicexn[i],v_sig_slicexn[i]);
@@ -574,14 +579,6 @@ void XTAnalyzer::Process(void){
 			v_RmB_func_end_dx.push_back((xr-xb)*1000);
 		}
 	}
-	gr_LmB_func_mid= myNewTGraph(Form("gr_LmB_func_mid_%d",mLayerID),v_LmB_func_mid_x.size(),&(v_LmB_func_mid_dt[0]),&(v_LmB_func_mid_x[0]),
-			"XT Differences with Both-side Combined Case","#Delta_{T} [ns]","X [mm]",20,0.5,kMagenta,0.5,kMagenta);
-	gr_LmB_func_end= myNewTGraph(Form("gr_LmB_func_end_%d",mLayerID),v_LmB_func_end_t.size(),&(v_LmB_func_end_t[0]),&(v_LmB_func_end_dx[0]),
-			"XT Differences with Both-side Combined Case","T [ns]","#Delta_{X} [um]",20,0.5,kMagenta,0.5,kMagenta);
-	gr_RmB_func_mid= myNewTGraph(Form("gr_RmB_func_mid_%d",mLayerID),v_RmB_func_mid_x.size(),&(v_RmB_func_mid_dt[0]),&(v_RmB_func_mid_x[0]),
-			"XT Differences with Both-side Combined Case","#Delta_{T} [ns]","X [mm]",20,0.5,kRed,0.5,kRed);
-	gr_RmB_func_end= myNewTGraph(Form("gr_RmB_func_end_%d",mLayerID),v_RmB_func_end_t.size(),&(v_RmB_func_end_t[0]),&(v_RmB_func_end_dx[0]),
-			"XT Differences with Both-side Combined Case","T [ns]","#Delta_{X} [um]",20,0.5,kRed,0.5,kRed);
 	// get this/last xt difference by functions
 	double tEndLeftPre = fo_left->GetXmax();
 	double tEndRightPre = fo_right->GetXmax();
@@ -613,12 +610,70 @@ void XTAnalyzer::Process(void){
 			if (fabs(dx)>m_TmL_B_max) m_TmL_B_max = fabs(dx);
 		}
 	}
+	// get Sample/Function differences
+	for (int i = 0; i<v_left_end_t.size(); i++){
+		double t = v_left_end_t[i];
+		double x = v_left_end_x[i];
+		double xf = f_left_com->Eval(t);
+		v_SmF_left_t.push_back(t);
+		v_SmF_left_dx.push_back((x-xf)*1000);
+	}
+	for (int i = 0; i<v_left_mid_t.size(); i++){
+		double t = v_left_mid_t[i];
+		double x = v_left_mid_x[i];
+		double xf = f_left_com->Eval(t);
+		v_SmF_left_t.push_back(t);
+		v_SmF_left_dx.push_back((x-xf)*1000);
+	}
+	for (int i = 0; i<v_right_mid_t.size(); i++){
+		double t = v_right_mid_t[i];
+		double x = v_right_mid_x[i];
+		double xf = f_right_com->Eval(t);
+		v_SmF_right_t.push_back(t);
+		v_SmF_right_dx.push_back((x-xf)*1000);
+	}
+	for (int i = 0; i<v_right_end_t.size(); i++){
+		double t = v_right_end_t[i];
+		double x = v_right_end_x[i];
+		double xf = f_right_com->Eval(t);
+		v_SmF_right_t.push_back(t);
+		v_SmF_right_dx.push_back((x-xf)*1000);
+	}
+	for (int i = 0; i<v_both_mid_t.size(); i++){
+		double t = v_both_mid_t[i];
+		double x = v_both_mid_x[i];
+		double xf = f_both_com->Eval(t);
+		v_SmF_both_t.push_back(t);
+		v_SmF_both_dx.push_back((x-xf)*1000);
+	}
+	for (int i = 0; i<v_both_end_t.size(); i++){
+		double t = v_both_end_t[i];
+		double x = v_both_end_x[i];
+		double xf = f_both_com->Eval(t);
+		v_SmF_both_t.push_back(t);
+		v_SmF_both_dx.push_back((x-xf)*1000);
+	}
+
+	gr_LmB_func_mid= myNewTGraph(Form("gr_LmB_func_mid_%d",mLayerID),v_LmB_func_mid_x.size(),&(v_LmB_func_mid_dt[0]),&(v_LmB_func_mid_x[0]),
+			"XT Differences with Both-side Combined Case","#Delta_{T} [ns]","X [mm]",20,0.5,kMagenta,0.5,kMagenta);
+	gr_LmB_func_end= myNewTGraph(Form("gr_LmB_func_end_%d",mLayerID),v_LmB_func_end_t.size(),&(v_LmB_func_end_t[0]),&(v_LmB_func_end_dx[0]),
+			"XT Differences with Both-side Combined Case","T [ns]","#Delta_{X} [um]",20,0.5,kMagenta,0.5,kMagenta);
+	gr_RmB_func_mid= myNewTGraph(Form("gr_RmB_func_mid_%d",mLayerID),v_RmB_func_mid_x.size(),&(v_RmB_func_mid_dt[0]),&(v_RmB_func_mid_x[0]),
+			"XT Differences with Both-side Combined Case","#Delta_{T} [ns]","X [mm]",20,0.5,kRed,0.5,kRed);
+	gr_RmB_func_end= myNewTGraph(Form("gr_RmB_func_end_%d",mLayerID),v_RmB_func_end_t.size(),&(v_RmB_func_end_t[0]),&(v_RmB_func_end_dx[0]),
+			"XT Differences with Both-side Combined Case","T [ns]","#Delta_{X} [um]",20,0.5,kRed,0.5,kRed);
 	gr_TmL_left = myNewTGraph(Form("gr_TmL_left_%d",mLayerID),v_TmL_left_t.size(),&(v_TmL_left_t[0]),&(v_TmL_left_dx[0]),
 			"XT Differences Comparing with Last Time","T [ns]","#Delta_X [um]",20,0.5,kMagenta,0.5,kMagenta);
 	gr_TmL_right = myNewTGraph(Form("gr_TmL_right_%d",mLayerID),v_TmL_right_t.size(),&(v_TmL_right_t[0]),&(v_TmL_right_dx[0]),
 			"XT Differences Comparing with Last Time","T [ns]","#Delta_X [um]",20,0.5,kRed,0.5,kRed);
 	gr_TmL_both = myNewTGraph(Form("gr_TmL_both_%d",mLayerID),v_TmL_both_t.size(),&(v_TmL_both_t[0]),&(v_TmL_both_dx[0]),
 			"XT Differences Comparing with Last Time","T [ns]","#Delta_X [um]",20,0.5,kBlack,0.5,kBlack);
+	gr_SmF_left = myNewTGraph(Form("gr_SmF_left_%d",mLayerID),v_SmF_left_t.size(),&(v_SmF_left_t[0]),&(v_SmF_left_dx[0]),
+			"XT Sampling Points Subtracted by fitted function","T [ns]","#Delta_X [um]",20,0.5,kMagenta,0.5,kMagenta);
+	gr_SmF_right = myNewTGraph(Form("gr_SmF_right_%d",mLayerID),v_SmF_right_t.size(),&(v_SmF_right_t[0]),&(v_SmF_right_dx[0]),
+			"XT Sampling Points Subtracted by fitted function","T [ns]","#Delta_X [um]",20,0.5,kRed,0.5,kRed);
+	gr_SmF_both = myNewTGraph(Form("gr_SmF_both_%d",mLayerID),v_SmF_both_t.size(),&(v_SmF_both_t[0]),&(v_SmF_both_dx[0]),
+			"XT Sampling Points Subtracted by fitted function","T [ns]","#Delta_X [um]",20,0.5,kBlack,0.5,kBlack);
 
 	//==========================Draw Plots==============================
 	// Draw the XT histogram and plots
@@ -987,13 +1042,22 @@ void XTAnalyzer::drawFitting(TH1D* h,TF1 * f,TCanvas * c,TString title, TString 
 }
 
 void XTAnalyzer::drawSamplingsLR(){
-	TCanvas * canv_xtsamples = new TCanvas("canv_xtsamples","canv_xtsamples",1024,768);
-	gStyle->SetPalette(1);
-	gStyle->SetOptStat(0);
-	gStyle->SetPadTickX(1);
-	gStyle->SetPadTickY(1);
-	gPad->SetGridx(1);
-	gPad->SetGridy(1);
+	TCanvas * canv_xtsamples = new TCanvas("canv_xtsamples","canv_xtsamples",1600,800);
+	TPad * pad_xtsamples[2];
+	for (int il = 0; il<2; il++){
+		for (int ir = 0; ir<1; ir++){
+			int index = ir*2+il;
+			pad_xtsamples[index] = new TPad(Form("pad_xtsamples%d",index),"pad",il/2.,(1-ir)/1,(il+1)/2.,(0-ir)/1.);
+			pad_xtsamples[index]->Draw();
+			gStyle->SetPalette(1);
+			gStyle->SetOptStat(0);
+			gStyle->SetPadTickX(1);
+			gStyle->SetPadTickY(1);
+			pad_xtsamples[index]->SetGridx(1);
+			pad_xtsamples[index]->SetGridy(1);
+		}
+	}
+	pad_xtsamples[0]->cd();
 	h2_xt->Draw("COLZ");
 	gr_xt_slicet->Draw("PSAME");
 	gr_xt_slicex->Draw("PSAME");
@@ -1003,6 +1067,10 @@ void XTAnalyzer::drawSamplingsLR(){
 	gr_right_end->Draw("PSAME");
 	f_left_com->Draw("SAME");
 	f_right_com->Draw("SAME");
+	pad_xtsamples[1]->cd();
+	gr_SmF_left->GetYaxis()->SetRangeUser(-200,200);
+	gr_SmF_left->Draw("APL");
+	gr_SmF_right->Draw("PLSAME");
 	canv_xtsamples->SaveAs("xtsamples_"+mRunName+".png");
 	canv_xtsamples->SaveAs("xtsamples_"+mRunName+".pdf");
 	TCanvas * canv_xtslices = new TCanvas("canv_xtslices","canv_xtslices",1364,768);
@@ -1023,6 +1091,7 @@ void XTAnalyzer::drawSamplingsLR(){
 	pad_xtslices[0]->cd();
 	gr_xn_slicex->Draw("AP");
 	pad_xtslices[1]->cd();
+	gr_xsig_slicex->GetYaxis()->SetRangeUser(0,20); // fix at 20 ns for iteration comparisons
 	gr_xsig_slicex->Draw("AP");
 	pad_xtslices[2]->cd();
 	gr_xchi2_slicex->Draw("AP");
@@ -1031,6 +1100,7 @@ void XTAnalyzer::drawSamplingsLR(){
 	gr_nt_slicetl->Draw("AP");
 	gr_nt_slicetr->Draw("PSAME");
 	pad_xtslices[4]->cd();
+	gr_sigt_slicetl->GetYaxis()->SetRangeUser(0,0.5); // fix at 0.5 mm for iteration comparisons
 	gr_sigt_slicetl->Draw("AP");
 	gr_sigt_slicetr->Draw("PSAME");
 	pad_xtslices[5]->cd();
@@ -1041,19 +1111,31 @@ void XTAnalyzer::drawSamplingsLR(){
 }
 
 void XTAnalyzer::drawSamplingsB(){
-	TCanvas * canv_xtsamplesn = new TCanvas("canv_xtsamplesn","canv_xtsamplesn",1024,768);
-	gStyle->SetPalette(1);
-	gStyle->SetOptStat(0);
-	gStyle->SetPadTickX(1);
-	gStyle->SetPadTickY(1);
-	gPad->SetGridx(1);
-	gPad->SetGridy(1);
+	TCanvas * canv_xtsamplesn = new TCanvas("canv_xtsamplesn","canv_xtsamplesn",1600,800);
+	TPad * pad_xtsamplesn[2];
+	for (int il = 0; il<2; il++){
+		for (int ir = 0; ir<1; ir++){
+			int index = ir*2+il;
+			pad_xtsamplesn[index] = new TPad(Form("pad_xtsamplesn%d",index),"pad",il/2.,(1-ir)/1,(il+1)/2.,(0-ir)/1.);
+			pad_xtsamplesn[index]->Draw();
+			gStyle->SetPalette(1);
+			gStyle->SetOptStat(0);
+			gStyle->SetPadTickX(1);
+			gStyle->SetPadTickY(1);
+			pad_xtsamplesn[index]->SetGridx(1);
+			pad_xtsamplesn[index]->SetGridy(1);
+		}
+	}
+	pad_xtsamplesn[0]->cd();
 	h2_xtn->Draw("COLZ");
 	gr_xt_slicetn->Draw("PSAME");
 	gr_xt_slicexn->Draw("PSAME");
 	gr_both_mid->Draw("PSAME");
 	gr_both_end->Draw("PSAME");
 	f_both_com->Draw("SAME");
+	pad_xtsamplesn[1]->cd();
+	gr_SmF_both->GetYaxis()->SetRangeUser(-200,200);
+	gr_SmF_both->Draw("APL");
 	canv_xtsamplesn->SaveAs("xtsamplesn_"+mRunName+".png");
 	canv_xtsamplesn->SaveAs("xtsamplesn_"+mRunName+".pdf");
 	TCanvas * canv_xtslicesn = new TCanvas("canv_xtslicesn","canv_xtslicesn",1364,768);
@@ -1074,6 +1156,7 @@ void XTAnalyzer::drawSamplingsB(){
 	pad_xtslicesn[0]->cd();
 	gr_xn_slicexn->Draw("AP");
 	pad_xtslicesn[1]->cd();
+	gr_xsig_slicexn->GetYaxis()->SetRangeUser(0,20); // fix at 20 ns for iteration comparisons
 	gr_xsig_slicexn->Draw("AP");
 	pad_xtslicesn[2]->cd();
 	gr_xchi2_slicexn->Draw("AP");
@@ -1081,6 +1164,7 @@ void XTAnalyzer::drawSamplingsB(){
 	pad_xtslicesn[3]->SetLogy(1);
 	gr_nt_slicetn->Draw("AP");
 	pad_xtslicesn[4]->cd();
+	gr_sigt_slicetn->GetYaxis()->SetRangeUser(0,0.5); // fix at 0.5 mm for iteration comparisons
 	gr_sigt_slicetn->Draw("AP");
 	pad_xtslicesn[5]->cd();
 	gr_chi2t_slicetn->Draw("AP");
@@ -1116,6 +1200,7 @@ void XTAnalyzer::drawLRB(){
 	f_right_com->Draw("SAME");
 	f_both_com->Draw("SAME");
 	pad_LRB[1]->cd();
+	if (m_RLmB_dt_max<5) m_RLmB_dt_max = 5; // set constant range as 5 ns for later iteration phases.
 	TH2D * h2_LRmB_dt = new TH2D("h2_LRmB_dt","XT Differences with Both-side Combined Case",512,-m_RLmB_dt_max*1.05,m_RLmB_dt_max*1.05,mNbinx,0,mXmax);
 	h2_LRmB_dt->GetXaxis()->SetTitle("#Delta_{T} [ns]");
 	h2_LRmB_dt->GetYaxis()->SetTitle("X [mm]");
@@ -1125,6 +1210,7 @@ void XTAnalyzer::drawLRB(){
 	gr_RmB_mid->Draw("PSAME");
 	gr_LmB_mid->Draw("PSAME");
 	pad_LRB[2]->cd();
+	if (m_RLmB_dx_max<200) m_RLmB_dx_max = 200; // set constant range as +-200 um for later iteration phases.
 	TH2D * h2_LRmB_dx = new TH2D("h2_LRmB_dx","XT Differences with Both-side Combined Case",mNbint,mTmin,mTmax,512,-m_RLmB_dx_max*1.05,m_RLmB_dx_max*1.05);
 	h2_LRmB_dx->GetXaxis()->SetTitle("T [ns]");
 	h2_LRmB_dx->GetYaxis()->SetTitle("#Delta_{X} [um]");
@@ -1138,7 +1224,7 @@ void XTAnalyzer::drawLRB(){
 }
 
 void XTAnalyzer::drawIteration(){
-	TCanvas * canv_xtiterationn = new TCanvas("canv_xtiterationn","canv_xtiterationn",1024,768);
+	TCanvas * canv_xtiterationn = new TCanvas("canv_xtiterationn","canv_xtiterationn",1600,800);
 	TPad * pad_IterN[2];
 	for (int il = 0; il<2; il++){
 		for (int ir = 0; ir<1; ir++){
@@ -1161,6 +1247,7 @@ void XTAnalyzer::drawIteration(){
 	fo_both->SetLineWidth(0.3);
 	fo_both->Draw("SAME");
 	pad_IterN[1]->cd();
+	if (m_TmL_B_max<100) m_TmL_B_max = 100; // set constant range as +-100 um for later iteration phases.
 	TH2D * h2_IterN = new TH2D("h2_IterN","XT Differences Comparing with Last Time",mNbint,mTmin,mTmax,1024,-m_TmL_B_max*1.05,m_TmL_B_max*1.05);
 	h2_IterN->GetXaxis()->SetTitle("T [ns]");
 	h2_IterN->GetYaxis()->SetTitle("#Delta_{X} [um]");
@@ -1168,7 +1255,7 @@ void XTAnalyzer::drawIteration(){
 	gr_TmL_both->Draw("LSAME");
 	canv_xtiterationn->SaveAs("IterN_"+mRunName+".png");
 	canv_xtiterationn->SaveAs("IterN_"+mRunName+".pdf");
-	TCanvas * canv_xtiteration = new TCanvas("canv_xtiteration","canv_xtiteration",1024,768);
+	TCanvas * canv_xtiteration = new TCanvas("canv_xtiteration","canv_xtiteration",1600,800);
 	TPad * pad_Iter[2];
 	for (int il = 0; il<2; il++){
 		for (int ir = 0; ir<1; ir++){
@@ -1196,6 +1283,7 @@ void XTAnalyzer::drawIteration(){
 	fo_left->Draw("SAME");
 	fo_right->Draw("SAME");
 	pad_Iter[1]->cd();
+	if (m_TmL_LR_max<100) m_TmL_LR_max = 100; // set constant range as +-100 um for later iteration phases.
 	TH2D * h2_Iter = new TH2D("h2_Iter","XT Differences Comparing with Last Time",mNbint,mTmin,mTmax,1024,-m_TmL_LR_max*1.05,m_TmL_LR_max*1.05);
 	h2_Iter->GetXaxis()->SetTitle("T [ns]");
 	h2_Iter->GetYaxis()->SetTitle("#Delta_{X} [um]");
