@@ -78,8 +78,10 @@ int main(int argc, char** argv){
     std::vector<int> *    i_mpn = 0;
     std::vector<int> *    i_mpi = 0;
     std::vector<int> *    i_rank = 0;
+    bool has_rank = false;
     std::vector<double> * i_aa = 0;
     std::vector<double> * i_ped = 0;
+    bool has_ped = false;
     std::vector<double> * i_sum = 0;
     std::vector<double> * i_driftD[NCAND] = {0};
     std::vector<double> * i_calD[NCAND] = {0};
@@ -126,9 +128,9 @@ int main(int argc, char** argv){
         ichain->SetBranchAddress("height",&i_height);
         ichain->SetBranchAddress("mpn",&i_mpn);
         ichain->SetBranchAddress("mpi",&i_mpi);
-        ichain->SetBranchAddress("rank",&i_rank);
+        has_rank = (ichain->SetBranchAddress("rank",&i_rank)==0);
         ichain->SetBranchAddress("aa",&i_aa);
-        ichain->SetBranchAddress("ped",&i_ped);
+        has_ped = (ichain->SetBranchAddress("ped",&i_ped)==0);
 		ichain->SetBranchAddress("sum",&i_sum);
 		for (int iCand = 0; iCand<NCAND; iCand++){
 			ichain->SetBranchAddress(Form("driftD%d",iCand),&(i_driftD[iCand]));
@@ -291,9 +293,9 @@ int main(int argc, char** argv){
         otree->Branch("height",&i_height);
         otree->Branch("mpn",&i_mpn);
         otree->Branch("mpi",&i_mpi);
-        otree->Branch("rank",&i_rank);
+        if (has_rank) otree->Branch("rank",&i_rank);
         otree->Branch("aa",&i_aa);
-        otree->Branch("ped",&i_ped);
+        if (has_ped) otree->Branch("ped",&i_ped);
         otree->Branch("sum",&i_sum);
         otree->Branch("driftD",&o_driftD);
         otree->Branch("driftDs",&o_driftDs);
@@ -407,7 +409,7 @@ int main(int argc, char** argv){
 						nLateHits++;
 					if((*i_mpi)[ihit]!=0)
 						nShadowedHits++;
-					if((*i_rank)[ihit]!=0)
+					if(has_rank&&(*i_rank)[ihit]!=0)
 						nSmallSumHits++;
 				}
             	double dd;
@@ -423,8 +425,10 @@ int main(int argc, char** argv){
                     theDT = dt;
                     theWid = (*i_wireID)[ihit];
                     theSum = (*i_sum)[ihit];
-                    thePeak = (*i_peak)[ihit]-(*i_ped)[ihit];
-                    theHeight = (*i_height)[ihit]-(*i_ped)[ihit];
+                    double ped = 220;
+                    if (has_ped) ped = (*i_ped)[ihit];
+                    thePeak = (*i_peak)[ihit]-ped;
+                    theHeight = (*i_height)[ihit]-ped;
                     theIp = ip;
                     theMpi = (*i_mpi)[ihit];
                     has = 1;
