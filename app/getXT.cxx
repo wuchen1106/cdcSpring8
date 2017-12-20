@@ -189,7 +189,7 @@ int main(int argc, char** argv){
 						for (int jhit = ihit-1; jhit>0; jhit--){
 							if ((*i_layerID)[jhit]!=(*i_layerID)[ihit]) break;
 							int type = getHitType((*i_type)[jhit],(*i_fitD[iCand])[jhit]>=0);
-							if (type<=3) ip++;
+							if (type<100) ip++;
 						}
 						if ((*i_sel[iCand])[ihit]==1){
 							if(ip!=0)
@@ -229,7 +229,7 @@ int main(int argc, char** argv){
                 int tlayerID = (*i_layerID)[ihit];
                 if (tlayerID!=lid) continue;
 				int ttype = getHitType((*i_type)[ihit],(*i_fitD[theCand])[ihit]>=0);
-                if (ttype<=3&&fabs(tfitD-tdriftD)<fabs(minres)){
+                if (ttype<100&&fabs(tfitD-tdriftD)<fabs(minres)){
                     minres = tfitD-tdriftD;
                     wireID = (*i_wireID)[ihit];
                     fitD = (*i_fitD[theCand])[ihit];
@@ -339,7 +339,7 @@ int main(int argc, char** argv){
 						for (int jhit = ihit-1; jhit>0; jhit--){
 							if ((*i_layerID)[jhit]!=(*i_layerID)[ihit]) break;
 							int type = getHitType((*i_type)[jhit],(*i_fitD[iCand])[jhit]>=0);
-							if (type<=3) ip++;
+							if (type<100) ip++;
 						}
 						if ((*i_sel[iCand])[ihit]==1){
 							if(ip!=0)
