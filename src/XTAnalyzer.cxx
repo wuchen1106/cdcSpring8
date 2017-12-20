@@ -1110,7 +1110,7 @@ void XTAnalyzer::drawSamplingsLR(){
 	for (int il = 0; il<1; il++){
 		for (int ir = 0; ir<2; ir++){
 			int index = ir*1+il;
-			pad_xtsamples[index] = new TPad(Form("pad_xtsamples%d",index),"pad",il/1.,(2-ir)/2,(il+1)/1.,(1-ir)/2.);
+			pad_xtsamples[index] = new TPad(Form("pad_xtsamples%d",index),"pad",il/1.,(2-ir)/2.,(il+1)/1.,(1-ir)/2.);
 			pad_xtsamples[index]->Draw();
 			gStyle->SetPalette(1);
 			gStyle->SetOptStat(0);
@@ -1179,7 +1179,7 @@ void XTAnalyzer::drawSamplingsB(){
 	for (int il = 0; il<1; il++){
 		for (int ir = 0; ir<2; ir++){
 			int index = ir*1+il;
-			pad_xtsamplesn[index] = new TPad(Form("pad_xtsamplesn%d",index),"pad",il/1.,(2-ir)/2,(il+1)/1.,(1-ir)/2.);
+			pad_xtsamplesn[index] = new TPad(Form("pad_xtsamplesn%d",index),"pad",il/1.,(2-ir)/2.,(il+1)/1.,(1-ir)/2.);
 			pad_xtsamplesn[index]->Draw();
 			gStyle->SetPalette(1);
 			gStyle->SetOptStat(0);
@@ -1292,7 +1292,7 @@ void XTAnalyzer::drawIteration(){
 	for (int il = 0; il<1; il++){
 		for (int ir = 0; ir<2; ir++){
 			int index = ir*1+il;
-			pad_IterN[index] = new TPad(Form("pad_IterN%d",index),"pad",il/1.,(2-ir)/2,(il+1)/1.,(1-ir)/2.);
+			pad_IterN[index] = new TPad(Form("pad_IterN%d",index),"pad",il/1.,(2-ir)/2.,(il+1)/1.,(1-ir)/2.);
 			pad_IterN[index]->Draw();
 			gStyle->SetPalette(1);
 			gStyle->SetOptStat(0);
@@ -1323,7 +1323,7 @@ void XTAnalyzer::drawIteration(){
 	for (int il = 0; il<1; il++){
 		for (int ir = 0; ir<2; ir++){
 			int index = ir*1+il;
-			pad_Iter[index] = new TPad(Form("pad_Iter%d",index),"pad",il/1.,(2-ir)/2,(il+1)/1.,(1-ir)/2.);
+			pad_Iter[index] = new TPad(Form("pad_Iter%d",index),"pad",il/1.,(2-ir)/2.,(il+1)/1.,(1-ir)/2.);
 			pad_Iter[index]->Draw();
 			gStyle->SetPalette(1);
 			gStyle->SetOptStat(0);
