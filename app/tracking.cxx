@@ -533,8 +533,8 @@ int main(int argc, char** argv){
         if (debug>10) printf("#####################################\n");
         if (debug>10) printf("Entry %d\n",iEntry);
         if (memdebug>10) std::cout<<"Memory size @"<<__LINE__<<": "<<pMyProcessManager->GetMemorySize()<<std::endl;
-        else if (iEntry%1000==0&&memdebug>1) std::cout<<"Memory size @"<<__LINE__<<": "<<pMyProcessManager->GetMemorySize()<<std::endl;
-        if (iEntry%1000==0) std::cout<<iEntry<<std::endl;
+        else if (iEntry%100==0&&memdebug>1) std::cout<<"Memory size @"<<__LINE__<<": "<<pMyProcessManager->GetMemorySize()<<std::endl;
+        if (iEntry%100==0) std::cout<<iEntry<<std::endl;
         c->GetEntry(iEntry);
         N_trigger++; // triggered event
 

@@ -398,7 +398,7 @@ int main(int argc, char** argv){
 				for (int jhit = ihit-1; jhit>0; jhit--){
 					if ((*i_layerID)[jhit]!=(*i_layerID)[ihit]) break;
 					int type = getHitType((*i_type)[jhit],(*i_fitD[theCand])[jhit]>=0);
-					if (type<=3) ip++;
+					if (type<100) ip++;
 				}
             	if ((*i_sel[theCand])[ihit]==1){
             		if((fabs(dd0)<0.5||fabs(dd0)>7.5))
