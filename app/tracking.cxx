@@ -85,6 +85,8 @@ double o_iinz[NCAND];
 double o_chi2x[NCAND];
 double o_chi2z[NCAND];
 double o_chi2i[NCAND];
+double o_chi2pi[NCAND];
+double o_chi2ai[NCAND];
 std::vector<double> * o_calD[NCAND] = {0};
 // for fitting
 std::vector<int> * o_sel[NCAND] = {0};
@@ -112,6 +114,8 @@ double chi2x = 0;
 double iinx = 0;
 double islx = 0;
 double chi2i = 0;
+double chi2pi = 0;
+double chi2ai = 0;
 std::vector<double> * t_calD = new std::vector<double>;
 std::vector<double> * t_fitD = new std::vector<double>;
 std::vector<double> * t_driftD = new std::vector<double>;
@@ -485,6 +489,8 @@ int main(int argc, char** argv){
         ot->Branch(Form("chi2x%d",iCand),&(o_chi2x[iCand]));
         ot->Branch(Form("chi2z%d",iCand),&(o_chi2z[iCand]));
         ot->Branch(Form("chi2i%d",iCand),&(o_chi2i[iCand]));
+        ot->Branch(Form("chi2pi%d",iCand),&(o_chi2pi[iCand]));
+        ot->Branch(Form("chi2ai%d",iCand),&(o_chi2ai[iCand]));
         ot->Branch(Form("sel%d",iCand),&(o_sel[iCand]));
         ot->Branch(Form("calD%d",iCand),&(o_calD[iCand]));
         ot->Branch(Form("slx%d",iCand),&(o_slx[iCand]));
@@ -551,6 +557,8 @@ int main(int argc, char** argv){
             o_chi2x[iCand] = 1e9;
             o_chi2z[iCand] = 1e9;
             o_chi2i[iCand] = 1e9;
+            o_chi2pi[iCand] = 1e9;
+            o_chi2ai[iCand] = 1e9;
             o_npairs[iCand] = 0;
             o_icombi[iCand] = 0;
             o_iselec[iCand] = 0;
@@ -563,7 +571,6 @@ int main(int argc, char** argv){
             o_inx[iCand] = 0;
             o_slz[iCand] = 0;
             o_inz[iCand] = 0;
-            o_chi2i[iCand] = 1e9;
             o_chi2[iCand] = 1e9;
             o_chi2p[iCand] = 1e9;
             o_chi2a[iCand] = 1e9;
@@ -827,8 +834,7 @@ int doFitting(int nPicks,int iEntry,int iselection){
                     fromSource = slx>-beamSlxMax&&slx<beamSlxMax&&slz>-beamSlzMax&&slz<beamSlzMax;
                     if (inScint&&fromSource){
                         // update chi2
-                        double chi2pi,chi2ai;
-                        getchi2(chi2i,chi2pi,chi2ai,islx,iinx,islz,iinz,false);
+                        getchi2(chi2i,chi2pi,chi2ai,islx,iinx,islz,iinz,true);
                         getchi2(chi2,chi2p,chi2a,slx,inx,slz,inz,true);
                         // check chi2 and see where the result fits
                         if (debug>11) printf("         final RESULT: x=%.3e*(y-%.3e)+%.3e, z=%.3e*(y-%.3e)+%.3e, chi2i = %.3e chi2 = %.3e\n",slx,sciYup,inx,slz,sciYup,inz,chi2i,chi2);
@@ -1068,6 +1074,8 @@ bool checkChi2(int nHitsSel, int nPairs, int icombi, int iselection){
 				o_chi2z[i] = chi2z;
 				o_chi2x[i] = chi2x;
 				o_chi2i[i] = chi2i;
+				o_chi2pi[i] = chi2pi;
+				o_chi2ai[i] = chi2ai;
 				o_nHitsS[i] = nHitsSel;
 				o_slx[i] = slx;
 				o_inx[i] = inx;
@@ -1102,6 +1110,8 @@ bool checkChi2(int nHitsSel, int nPairs, int icombi, int iselection){
 					o_chi2x[j] = o_chi2x[j-1];
 					o_chi2z[j] = o_chi2z[j-1];
 					o_chi2i[j] = o_chi2i[j-1];
+					o_chi2pi[j] = o_chi2pi[j-1];
+					o_chi2ai[j] = o_chi2ai[j-1];
 					o_nHitsS[j] = o_nHitsS[j-1];
 					o_slx[j] = o_slx[j-1];
 					o_inx[j] = o_inx[j-1];
@@ -1127,6 +1137,8 @@ bool checkChi2(int nHitsSel, int nPairs, int icombi, int iselection){
 				o_chi2z[i] = chi2z;
 				o_chi2x[i] = chi2x;
 				o_chi2i[i] = chi2i;
+				o_chi2ai[i] = chi2ai;
+				o_chi2pi[i] = chi2pi;
 				o_nHitsS[i] = nHitsSel;
 				o_slx[i] = slx;
 				o_inx[i] = inx;
