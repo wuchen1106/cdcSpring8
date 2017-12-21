@@ -779,8 +779,7 @@ void XTAnalyzer::getOneThirdLines(TH1D* h, double & left, double & right){
 double XTAnalyzer::findFirstZero(TF1 * f, double xmin, double xmax, double delta){
 	double theX = 0;
 	for (double x = xmin; x<xmax; x+=delta){ // At least two solutions. Scan to find the smallest one
-		f->SetRange(xmin,x);
-		theX = f->GetX(0);
+		theX = f->GetX(0,xmin,x);
 		if (abs(theX-x)>0.5){
 			break;
 		}
@@ -1139,8 +1138,9 @@ void XTAnalyzer::drawSamplingsLR(){
 	f_left_com->Draw("SAME");
 	f_right_com->Draw("SAME");
 	pad_xtsamples[1]->cd();
-	gr_SmF_left->GetYaxis()->SetRangeUser(-200,200);
-	gr_SmF_left->Draw("APL");
+	TH2D * h2_samplings = new TH2D("h2_samplings",gr_SmF_left->GetTitle(),mNbint,mTmin,mTmax,512,-200,200);
+	h2_samplings->Draw();
+	gr_SmF_left->Draw("PLSAME");
 	gr_SmF_right->Draw("PLSAME");
 	canv_xtsamples->SaveAs("xtsamples_"+mRunName+".png");
 	canv_xtsamples->SaveAs("xtsamples_"+mRunName+".pdf");
@@ -1205,8 +1205,9 @@ void XTAnalyzer::drawSamplingsB(){
 	gr_both_end->Draw("PSAME");
 	f_both_com->Draw("SAME");
 	pad_xtsamplesn[1]->cd();
-	gr_SmF_both->GetYaxis()->SetRangeUser(-200,200);
-	gr_SmF_both->Draw("APL");
+	TH2D * h2_samplingsn = new TH2D("h2_samplingsn",gr_SmF_both->GetTitle(),mNbint,mTmin,mTmax,512,-200,200);
+	h2_samplingsn->Draw();
+	gr_SmF_both->Draw("PLSAME");
 	canv_xtsamplesn->SaveAs("xtsamplesn_"+mRunName+".png");
 	canv_xtsamplesn->SaveAs("xtsamplesn_"+mRunName+".pdf");
 	TCanvas * canv_xtslicesn = new TCanvas("canv_xtslicesn","canv_xtslicesn",1364,768);
@@ -1261,14 +1262,14 @@ void XTAnalyzer::drawLRB(){
 	}
 	pad_LRB[0]->cd();
 	h2_xt->Draw("COLZ");
-	gr_left_end->Draw("PSAME");
-	gr_left_mid->Draw("PSAME");
-	gr_right_mid->Draw("PSAME");
-	gr_right_end->Draw("PSAME");
 	gr_both_mid->Draw("PSAME");
 	gr_both_end->Draw("PSAME");
 	gr_bothL_mid->Draw("PSAME");
 	gr_bothL_end->Draw("PSAME");
+	gr_left_end->Draw("PSAME");
+	gr_left_mid->Draw("PSAME");
+	gr_right_mid->Draw("PSAME");
+	gr_right_end->Draw("PSAME");
 	f_left_com->Draw("SAME");
 	f_right_com->Draw("SAME");
 	f_both_com->Draw("SAME");
