@@ -229,7 +229,8 @@ int main(int argc, char** argv){
                 int tlayerID = (*i_layerID)[ihit];
                 if (tlayerID!=lid) continue;
 				int ttype = getHitType((*i_type)[ihit],(*i_fitD[theCand])[ihit]>=0);
-                if (ttype<100&&fabs(tfitD-tdriftD)<fabs(minres)){
+                //if (ttype<100&&fabs(tfitD-tdriftD)<fabs(minres)){
+                if (fabs(tfitD-tdriftD)<fabs(minres)){ // no cut for test layer!
                     minres = tfitD-tdriftD;
                     wireID = (*i_wireID)[ihit];
                     fitD = (*i_fitD[theCand])[ihit];
@@ -419,7 +420,8 @@ int main(int argc, char** argv){
                 double tfitD = (*i_fitD[theCand])[ihit];
 				int ttype = getHitType((*i_type)[ihit],(*i_fitD[theCand])[ihit]>=0);
                 int tlid = (*i_layerID)[ihit];
-                if (tlid==lid&&ttype<100&&status==0&&fabs(tfitD-dd)<fabs(minres)){
+                //if (tlid==lid&&ttype<100&&status==0&&fabs(tfitD-dd)<fabs(minres)){
+                if (tlid==lid&&status==0&&fabs(tfitD-dd)<fabs(minres)){ // no cut for test layer
                     minres = tfitD-dd;
                     theDD = dd;
                     theDT = dt;
