@@ -169,12 +169,10 @@ class XTAnalyzer{
 
 		// vectors selected for XT graphs
 		std::vector<double> v_left_mid_x;
-		std::vector<double> v_leftR_mid_x;
 		std::vector<double> v_left_mid_t;
 		std::vector<double> v_right_mid_x;
 		std::vector<double> v_right_mid_t;
 		std::vector<double> v_left_end_x;
-		std::vector<double> v_leftR_end_x;
 		std::vector<double> v_left_end_t;
 		std::vector<double> v_right_end_x;
 		std::vector<double> v_right_end_t;
@@ -182,25 +180,19 @@ class XTAnalyzer{
 		std::vector<double> v_both_mid_t;
 		std::vector<double> v_both_end_x;
 		std::vector<double> v_both_end_t;
+		std::vector<double> v_bothL_end_x;
+		std::vector<double> v_bothL_mid_x;
 
 		// for comparing left/right/both-side
-		std::vector<double> v_LmB_mid_dt;
-		std::vector<double> v_LmB_mid_x;
-		std::vector<double> v_RmB_mid_dt;
-		std::vector<double> v_RmB_mid_x;
-		std::vector<double> v_LmB_end_dx;
-		std::vector<double> v_LmB_end_t;
-		std::vector<double> v_RmB_end_dx;
-		std::vector<double> v_RmB_end_t;
+		std::vector<double> v_LmB_dx;
+		std::vector<double> v_LmB_t;
+		std::vector<double> v_RmB_dx;
+		std::vector<double> v_RmB_t;
 
-		std::vector<double> v_LmB_func_mid_dt;
-		std::vector<double> v_LmB_func_mid_x;
-		std::vector<double> v_RmB_func_mid_dt;
-		std::vector<double> v_RmB_func_mid_x;
-		std::vector<double> v_LmB_func_end_dx;
-		std::vector<double> v_LmB_func_end_t;
-		std::vector<double> v_RmB_func_end_dx;
-		std::vector<double> v_RmB_func_end_t;
+		std::vector<double> v_LmB_func_dx;
+		std::vector<double> v_LmB_func_t;
+		std::vector<double> v_RmB_func_dx;
+		std::vector<double> v_RmB_func_t;
 
 		std::vector<double> v_t_slicetls;
 		std::vector<double> v_t_slicetrs;
@@ -215,7 +207,6 @@ class XTAnalyzer{
 		int m_i_sel;
 
 		double m_RLmB_dx_max;
-		double m_RLmB_dt_max;
 
 		// for comparing this/last xt
 		std::vector<double> v_TmL_left_dx;
@@ -239,23 +230,19 @@ class XTAnalyzer{
 		// Graphs for XT fitting
 		TGraph * gr_right_mid;
 		TGraph * gr_left_mid;
-		TGraph * gr_leftR_mid;
 		TGraph * gr_right_end;
 		TGraph * gr_left_end;
-		TGraph * gr_leftR_end;
 		TGraph * gr_both_mid; // for neutral driftD
 		TGraph * gr_both_end; // for neutral driftD
+		TGraph * gr_bothL_mid; // for neutral driftD
+		TGraph * gr_bothL_end; // for neutral driftD
 
 		// for comparing left/right/both-side
-		TGraph * gr_RmB_mid;
-		TGraph * gr_LmB_mid;
-		TGraph * gr_RmB_end;
-		TGraph * gr_LmB_end;
+		TGraph * gr_RmB;
+		TGraph * gr_LmB;
 
-		TGraph * gr_RmB_func_mid;
-		TGraph * gr_LmB_func_mid;
-		TGraph * gr_RmB_func_end;
-		TGraph * gr_LmB_func_end;
+		TGraph * gr_RmB_func;
+		TGraph * gr_LmB_func;
 
 		// for comparing this/last xt
 		TGraph * gr_TmL_left;
@@ -279,12 +266,9 @@ class XTAnalyzer{
 		TF1 * f_right_delta;
 		TF1 * f_both_delta;
 		TF1 * f_left_com;
-		TF1 * f_leftR_com;
 		TF1 * f_right_com;
 		TF1 * f_both_com;
-
-		TF1 * f_RmB;
-		TF1 * f_LmB;
+		TF1 * f_bothL_com;
 
 		TF1 * fo_right; // previous XT curve
 		TF1 * fo_left; // previous XT curve

@@ -141,12 +141,10 @@ int XTAnalyzer::Initialize(TString runname, int lid, TFile * infile, TFile * out
 
 	// clear vectors for chosen XT sample points
 	v_left_mid_x.clear();
-	v_leftR_mid_x.clear();
 	v_left_mid_t.clear();
 	v_right_mid_x.clear();
 	v_right_mid_t.clear();
 	v_left_end_x.clear();
-	v_leftR_end_x.clear();
 	v_left_end_t.clear();
 	v_right_end_x.clear();
 	v_right_end_t.clear();
@@ -154,22 +152,16 @@ int XTAnalyzer::Initialize(TString runname, int lid, TFile * infile, TFile * out
 	v_both_mid_t.clear();
 	v_both_end_x.clear();
 	v_both_end_t.clear();
-	v_LmB_mid_dt.clear();
-	v_LmB_mid_x.clear();
-	v_RmB_mid_dt.clear();
-	v_RmB_mid_x.clear();
-	v_LmB_end_dx.clear();
-	v_LmB_end_t.clear();
-	v_RmB_end_dx.clear();
-	v_RmB_end_t.clear();
-	v_LmB_func_mid_dt.clear();
-	v_LmB_func_mid_x.clear();
-	v_RmB_func_mid_dt.clear();
-	v_RmB_func_mid_x.clear();
-	v_LmB_func_end_dx.clear();
-	v_LmB_func_end_t.clear();
-	v_RmB_func_end_dx.clear();
-	v_RmB_func_end_t.clear();
+	v_bothL_mid_x.clear();
+	v_bothL_end_x.clear();
+	v_LmB_dx.clear();
+	v_LmB_t.clear();
+	v_RmB_dx.clear();
+	v_RmB_t.clear();
+	v_LmB_func_dx.clear();
+	v_LmB_func_t.clear();
+	v_RmB_func_dx.clear();
+	v_RmB_func_t.clear();
 	v_TmL_left_dx.clear();
 	v_TmL_left_t.clear();
 	v_TmL_right_dx.clear();
@@ -191,7 +183,6 @@ int XTAnalyzer::Initialize(TString runname, int lid, TFile * infile, TFile * out
 	v_SmF_both_t.clear();
 	v_SmF_both_dx.clear();
 
-	m_RLmB_dt_max = 0;
 	m_RLmB_dx_max = 0;
 
 	m_TmL_LR_max = 0;
@@ -217,11 +208,11 @@ void XTAnalyzer::Push(double t, double x){
 	int ix = x2i(x);
 	if (ix>=0&&ix<NSLICEX) h_t[ix]->Fill(t);
 	int it = t2i(t,x>0);
-	if (it>=0&&it<NSLICET)h_x[it]->Fill(x);
+	if (it>=0&&it<NSLICET) h_x[it]->Fill(x);
 	ix = x2i(absx);
 	if (ix>=0&&ix<NSLICEX) h_tn[ix]->Fill(t);
 	it = t2i(t,true);
-	if (it>=0&&it<NSLICET)h_xn[it]->Fill(absx);
+	if (it>=0&&it<NSLICET) h_xn[it]->Fill(absx);
 	if (mDebugLevel>=10) printf("            pushed\n",t,x);
 }
 
@@ -374,13 +365,11 @@ void XTAnalyzer::Process(void){
 		if (v_t_slicet[i]>t8Left){ // left end
 			if (mDebugLevel>=2) printf("                  t>=%.1f, push to left_end!\n",t8Left);
 			v_left_end_x.push_back(v_x_slicet[i]);
-			v_leftR_end_x.push_back(-v_x_slicet[i]);
 			v_left_end_t.push_back(v_t_slicet[i]);
 		}
 		else if (v_x_slicet[i]<=-xStart2Turn){ // turning part
 			if (mDebugLevel>=2) printf("                  x<=%.2f, push to left_mid!\n",-xStart2Turn);
 			v_left_mid_x.push_back(v_x_slicet[i]);
-			v_leftR_mid_x.push_back(-v_x_slicet[i]);
 			v_left_mid_t.push_back(v_t_slicet[i]);
 		}
 		sigmaXIncrement(v_t_slicet[i],v_sig_slicet[i],v_n_slicet[i],v_t_slicetls,v_sig_slicetls);
@@ -394,7 +383,6 @@ void XTAnalyzer::Process(void){
 			if (v_x_slicex[i]>-xStart2Turn){ // middle part
 				if (mDebugLevel>=2) printf("                  x>%.2f, push to left_mid!\n",-xStart2Turn);
 				v_left_mid_x.push_back(v_x_slicex[i]);
-				v_leftR_mid_x.push_back(-v_x_slicex[i]);
 				v_left_mid_t.push_back(v_t_slicex[i]);
 			}
 		}
@@ -430,6 +418,7 @@ void XTAnalyzer::Process(void){
 		if (v_x_slicexn[i]<xStart2Turn){ // middle part
 			if (mDebugLevel>=2) printf("                  x<%.2f, push to both_mid!\n",xStart2Turn);
 			v_both_mid_x.push_back(v_x_slicexn[i]);
+			v_bothL_mid_x.push_back(-v_x_slicexn[i]);
 			v_both_mid_t.push_back(v_t_slicexn[i]);
 		}
 	}
@@ -441,11 +430,13 @@ void XTAnalyzer::Process(void){
 		if (v_t_slicetn[i]>t8Both){ // both-side end
 			if (mDebugLevel>=2) printf("                  t>=%.1f, push to both_end!\n",t8Both);
 			v_both_end_x.push_back(v_x_slicetn[i]);
+			v_bothL_end_x.push_back(-v_x_slicetn[i]);
 			v_both_end_t.push_back(v_t_slicetn[i]);
 		}
 		else if (v_x_slicetn[i]>=xStart2Turn){ // turning part
 			if (mDebugLevel>=2) printf("                  x>=%.2f, push to both_mid!\n",xStart2Turn);
 			v_both_mid_x.push_back(v_x_slicetn[i]);
+			v_bothL_mid_x.push_back(-v_x_slicetn[i]);
 			v_both_mid_t.push_back(v_t_slicetn[i]);
 		}
 		sigmaXIncrement(v_t_slicetn[i],v_sig_slicetn[i],v_n_slicetn[i],v_t_slicetns,v_sig_slicetns);
@@ -456,9 +447,28 @@ void XTAnalyzer::Process(void){
 	for (int i = 0; i<v_left_mid_x.size(); i++){
 		for (int j = 0; j<v_both_mid_x.size(); j++){
 			if (fabs(-v_left_mid_x[i]-v_both_mid_x[j])<1e-7){
-				v_LmB_mid_dt.push_back(v_left_mid_t[i]-v_both_mid_t[j]);
-				v_LmB_mid_x.push_back(-v_left_mid_x[i]);
-				if (m_RLmB_dt_max<fabs(v_left_mid_t[i]-v_both_mid_t[j])) m_RLmB_dt_max = fabs(v_left_mid_t[i]-v_both_mid_t[j]);
+				double dt = v_left_mid_t[i]-v_both_mid_t[j];
+				int n = 0;
+				double vel = 0;
+				if (j!=0){
+					vel += (v_both_mid_x[j]-v_both_mid_x[j-1])/(v_both_mid_t[j]-v_both_mid_t[j-1]);
+					n++;
+				}
+				if (j!=v_both_mid_x.size()-1){
+					vel += (v_both_mid_x[j]-v_both_mid_x[j+1])/(v_both_mid_t[j]-v_both_mid_t[j+1]);
+					n++;
+				}
+				if (n) vel/=n;
+				double dx = -dt*vel*1000;
+				v_LmB_dx.push_back(dx);
+				v_LmB_t.push_back((v_left_mid_t[i]+v_both_mid_t[j])/2);
+				if (m_RLmB_dx_max<fabs(dx)) m_RLmB_dx_max = fabs(dx);
+				break;
+			}
+			else if (fabs(v_left_mid_t[i]-v_both_mid_t[j])<1e-7){
+				v_LmB_dx.push_back((-v_left_mid_x[i]-v_both_mid_x[j])*1000); // turn to use um
+				v_LmB_t.push_back(v_left_mid_t[i]);
+				if (m_RLmB_dx_max<fabs(-v_left_mid_x[i]-v_both_mid_x[j])*1000) m_RLmB_dx_max = fabs(-v_left_mid_x[i]-v_both_mid_x[j])*1000;
 				break;
 			}
 		}
@@ -466,8 +476,8 @@ void XTAnalyzer::Process(void){
 	for (int i = 0; i<v_left_end_t.size(); i++){
 		for (int j = 0; j<v_both_end_t.size(); j++){
 			if (fabs(v_left_end_t[i]-v_both_end_t[j])<1e-7){
-				v_LmB_end_dx.push_back((-v_left_end_x[i]-v_both_end_x[j])*1000); // turn to use um
-				v_LmB_end_t.push_back(v_left_end_t[i]);
+				v_LmB_dx.push_back((-v_left_end_x[i]-v_both_end_x[j])*1000); // turn to use um
+				v_LmB_t.push_back(v_left_end_t[i]);
 				if (m_RLmB_dx_max<fabs(-v_left_end_x[i]-v_both_end_x[j])*1000) m_RLmB_dx_max = fabs(-v_left_end_x[i]-v_both_end_x[j])*1000;
 				break;
 			}
@@ -476,9 +486,28 @@ void XTAnalyzer::Process(void){
 	for (int i = 0; i<v_right_mid_x.size(); i++){
 		for (int j = 0; j<v_both_mid_x.size(); j++){
 			if (fabs(v_right_mid_x[i]-v_both_mid_x[j])<1e-7){
-				v_RmB_mid_dt.push_back(v_right_mid_t[i]-v_both_mid_t[j]);
-				v_RmB_mid_x.push_back(v_right_mid_x[i]);
-				if (m_RLmB_dt_max<fabs(v_right_mid_t[i]-v_both_mid_t[j])) m_RLmB_dt_max = fabs(v_right_mid_t[i]-v_both_mid_t[j]);
+				double dt = v_right_mid_t[i]-v_both_mid_t[j];
+				int n = 0;
+				double vel = 0;
+				if (j!=0){
+					vel += (v_both_mid_x[j]-v_both_mid_x[j-1])/(v_both_mid_t[j]-v_both_mid_t[j-1]);
+					n++;
+				}
+				if (j!=v_both_mid_x.size()-1){
+					vel += (v_both_mid_x[j]-v_both_mid_x[j+1])/(v_both_mid_t[j]-v_both_mid_t[j+1]);
+					n++;
+				}
+				if (n) vel/=n;
+				double dx = -dt*vel*1000;
+				v_RmB_dx.push_back(dx);
+				v_RmB_t.push_back((v_right_mid_t[i]+v_both_mid_t[j])/2);
+				if (m_RLmB_dx_max<fabs(dx)) m_RLmB_dx_max = fabs(dx);
+				break;
+			}
+			else if (fabs(v_right_mid_t[i]-v_both_mid_t[j])<1e-7){
+				v_RmB_dx.push_back((v_right_mid_x[i]-v_both_mid_x[j])*1000); // turn to use um
+				v_RmB_t.push_back(v_right_mid_t[i]);
+				if (m_RLmB_dx_max<fabs(v_right_mid_x[i]-v_both_mid_x[j])*1000) m_RLmB_dx_max = fabs(v_right_mid_x[i]-v_both_mid_x[j])*1000;
 				break;
 			}
 		}
@@ -486,8 +515,8 @@ void XTAnalyzer::Process(void){
 	for (int i = 0; i<v_right_end_t.size(); i++){
 		for (int j = 0; j<v_both_end_t.size(); j++){
 			if (fabs(v_right_end_t[i]-v_both_end_t[j])<1e-7){
-				v_RmB_end_dx.push_back((v_right_end_x[i]-v_both_end_x[j])*1000); // turn to use um
-				v_RmB_end_t.push_back(v_right_end_t[i]);
+				v_RmB_dx.push_back((v_right_end_x[i]-v_both_end_x[j])*1000); // turn to use um
+				v_RmB_t.push_back(v_right_end_t[i]);
 				if (m_RLmB_dx_max<fabs(v_right_end_x[i]-v_both_end_x[j])*1000) m_RLmB_dx_max = fabs(v_right_end_x[i]-v_both_end_x[j])*1000;
 				break;
 			}
@@ -530,11 +559,12 @@ void XTAnalyzer::Process(void){
 
 	// combine functions
 	f_left_com = combinePolN(Form("flc_%d",mLayerID),f_left_mid,f_left_end,tZeroLeft,tTurnLeft,tEndLeft,mTmin,tEndLeft);
-	f_leftR_com = combinePolN(Form("flrc_%d",mLayerID),scalePolN(f_left_mid,-1),scalePolN(f_left_end,-1),tZeroLeft,tTurnLeft,tEndLeft,mTmin,tEndLeft);
 	f_right_com = combinePolN(Form("frc_%d",mLayerID),f_right_mid,f_right_end,tZeroRight,tTurnRight,tEndRight,mTmin,tEndRight);
 	f_both_com = combinePolN(Form("fbc_%d",mLayerID),f_both_mid,f_both_end,tZeroBoth,tTurnBoth,tEndBoth,mTmin,tEndBoth);
-	f_leftR_com->SetLineColor(kMagenta);
+	f_bothL_com = combinePolN(Form("fblc_%d",mLayerID),scalePolN(f_both_mid,-1),scalePolN(f_both_end,-1),tZeroBoth,tTurnBoth,tEndBoth,mTmin,tEndBoth);
+	f_left_com->SetLineColor(kMagenta);
 	f_both_com->SetLineColor(kBlack);
+	f_bothL_com->SetLineColor(kBlack);
 
 	// get the final xt functions
 	if (mXTType==0){ // use Left/Right case
@@ -557,31 +587,17 @@ void XTAnalyzer::Process(void){
 	//==========================Prepare more graphs==============================
 	// get Left/Right/Both-sides differences by functions
 	for (int i = 0; i<1024; i++){
-		double x = mXmax*(i+0.5)/1024;
-		double tl = f_left_com->GetX(-x);
-		double tr = f_right_com->GetX(x);
-		double tb = f_both_com->GetX(x);
-		if (tl<=tTurnLeft&&tb<=tTurnBoth){
-			v_LmB_func_mid_x.push_back(x);
-			v_LmB_func_mid_dt.push_back(tl-tb);
-		}
-		if (tr<=tTurnRight&&tb<=tTurnBoth){
-			v_RmB_func_mid_x.push_back(x);
-			v_RmB_func_mid_dt.push_back(tr-tb);
-		}
-	}
-	for (int i = 0; i<1024; i++){
 		double t = mTmax*(i+0.5)/1024;
 		double xl = f_left_com->Eval(t);
 		double xr = f_right_com->Eval(t);
 		double xb = f_both_com->Eval(t);
 		if (t<=tEndLeft&&t<=tEndBoth){
-			v_LmB_func_end_t.push_back(t);
-			v_LmB_func_end_dx.push_back((-xl-xb)*1000);
+			v_LmB_func_t.push_back(t);
+			v_LmB_func_dx.push_back((-xl-xb)*1000);
 		}
 		if (t<=tEndRight&&t<=tEndBoth){
-			v_RmB_func_end_t.push_back(t);
-			v_RmB_func_end_dx.push_back((xr-xb)*1000);
+			v_RmB_func_t.push_back(t);
+			v_RmB_func_dx.push_back((xr-xb)*1000);
 		}
 	}
 	// get this/last xt difference by functions
@@ -659,13 +675,9 @@ void XTAnalyzer::Process(void){
 		v_SmF_both_dx.push_back((x-xf)*1000);
 	}
 
-	gr_LmB_func_mid= myNewTGraph(Form("gr_LmB_func_mid_%d",mLayerID),v_LmB_func_mid_x.size(),&(v_LmB_func_mid_dt[0]),&(v_LmB_func_mid_x[0]),
-			"XT Differences with Both-side Combined Case","#Delta_{T} [ns]","X [mm]",20,0.5,kMagenta,0.5,kMagenta);
-	gr_LmB_func_end= myNewTGraph(Form("gr_LmB_func_end_%d",mLayerID),v_LmB_func_end_t.size(),&(v_LmB_func_end_t[0]),&(v_LmB_func_end_dx[0]),
+	gr_LmB_func= myNewTGraph(Form("gr_LmB_func_%d",mLayerID),v_LmB_func_t.size(),&(v_LmB_func_t[0]),&(v_LmB_func_dx[0]),
 			"XT Differences with Both-side Combined Case","T [ns]","#Delta_{X} [um]",20,0.5,kMagenta,0.5,kMagenta);
-	gr_RmB_func_mid= myNewTGraph(Form("gr_RmB_func_mid_%d",mLayerID),v_RmB_func_mid_x.size(),&(v_RmB_func_mid_dt[0]),&(v_RmB_func_mid_x[0]),
-			"XT Differences with Both-side Combined Case","#Delta_{T} [ns]","X [mm]",20,0.5,kRed,0.5,kRed);
-	gr_RmB_func_end= myNewTGraph(Form("gr_RmB_func_end_%d",mLayerID),v_RmB_func_end_t.size(),&(v_RmB_func_end_t[0]),&(v_RmB_func_end_dx[0]),
+	gr_RmB_func= myNewTGraph(Form("gr_RmB_func_%d",mLayerID),v_RmB_func_t.size(),&(v_RmB_func_t[0]),&(v_RmB_func_dx[0]),
 			"XT Differences with Both-side Combined Case","T [ns]","#Delta_{X} [um]",20,0.5,kRed,0.5,kRed);
 	gr_TmL_left = myNewTGraph(Form("gr_TmL_left_%d",mLayerID),v_TmL_left_t.size(),&(v_TmL_left_t[0]),&(v_TmL_left_dx[0]),
 			"XT Differences Comparing with Last Time","T [ns]","#Delta_X [um]",20,0.5,kMagenta,0.5,kMagenta);
@@ -1027,12 +1039,8 @@ void XTAnalyzer::createGraphs(){
 			20,0.5,kBlack,0.5,kBlack);
 	// selected graphs for XT fitting (and showing)
 	gr_left_end = myNewTGraph(Form("gr_xt_le_%d",mLayerID),v_left_end_x.size(),&(v_left_end_t[0]),&(v_left_end_x[0]),
-			"XT Relation","T [ns]","X [mm]",20,0.3,kRed,0.3,kRed);
-	gr_left_mid = myNewTGraph(Form("gr_xt_lm_%d",mLayerID),v_left_mid_x.size(),&(v_left_mid_t[0]),&(v_left_mid_x[0]),
-			"XT Relation","T [ns]","X [mm]",20,0.3,kRed,0.3,kRed);
-	gr_leftR_end = myNewTGraph(Form("gr_xt_lre_%d",mLayerID),v_leftR_end_x.size(),&(v_left_end_t[0]),&(v_leftR_end_x[0]),
 			"XT Relation","T [ns]","X [mm]",20,0.3,kMagenta,0.3,kMagenta);
-	gr_leftR_mid = myNewTGraph(Form("gr_xt_lrm_%d",mLayerID),v_leftR_mid_x.size(),&(v_left_mid_t[0]),&(v_leftR_mid_x[0]),
+	gr_left_mid = myNewTGraph(Form("gr_xt_lm_%d",mLayerID),v_left_mid_x.size(),&(v_left_mid_t[0]),&(v_left_mid_x[0]),
 			"XT Relation","T [ns]","X [mm]",20,0.3,kMagenta,0.3,kMagenta);
 	gr_right_mid = myNewTGraph(Form("gr_xt_rm_%d",mLayerID),v_right_mid_x.size(),&(v_right_mid_t[0]),&(v_right_mid_x[0]),
 			"XT Relation","T [ns]","X [mm]",20,0.3,kRed,0.3,kRed);
@@ -1042,13 +1050,13 @@ void XTAnalyzer::createGraphs(){
 			"XT Relation","T [ns]","X [mm]",20,0.3,kBlack,0.3,kBlack);
 	gr_both_end = myNewTGraph(Form("gr_xt_be_%d",mLayerID),v_both_end_x.size(),&(v_both_end_t[0]),&(v_both_end_x[0]),
 			"XT Relation","T [ns]","X [mm]",20,0.3,kBlack,0.3,kBlack);
-	gr_LmB_mid= myNewTGraph(Form("gr_LmB_mid_%d",mLayerID),v_LmB_mid_x.size(),&(v_LmB_mid_dt[0]),&(v_LmB_mid_x[0]),
-			"XT Differences with Both-side Combined Case","#Delta_{T} [ns]","X [mm]",20,0.5,kMagenta,0.5,kMagenta);
-	gr_LmB_end= myNewTGraph(Form("gr_LmB_end_%d",mLayerID),v_LmB_end_t.size(),&(v_LmB_end_t[0]),&(v_LmB_end_dx[0]),
+	gr_bothL_mid = myNewTGraph(Form("gr_xt_blm_%d",mLayerID),v_bothL_mid_x.size(),&(v_both_mid_t[0]),&(v_bothL_mid_x[0]),
+			"XT Relation","T [ns]","X [mm]",20,0.3,kBlack,0.3,kBlack);
+	gr_bothL_end = myNewTGraph(Form("gr_xt_ble_%d",mLayerID),v_bothL_end_x.size(),&(v_both_end_t[0]),&(v_bothL_end_x[0]),
+			"XT Relation","T [ns]","X [mm]",20,0.3,kBlack,0.3,kBlack);
+	gr_LmB = myNewTGraph(Form("gr_LmB_%d",mLayerID),v_LmB_t.size(),&(v_LmB_t[0]),&(v_LmB_dx[0]),
 			"XT Differences with Both-side Combined Case","T [ns]","#Delta_{X} [um]",20,0.5,kMagenta,0.5,kMagenta);
-	gr_RmB_mid= myNewTGraph(Form("gr_RmB_mid_%d",mLayerID),v_RmB_mid_x.size(),&(v_RmB_mid_dt[0]),&(v_RmB_mid_x[0]),
-			"XT Differences with Both-side Combined Case","#Delta_{T} [ns]","X [mm]",20,0.5,kRed,0.5,kRed);
-	gr_RmB_end= myNewTGraph(Form("gr_RmB_end_%d",mLayerID),v_RmB_end_t.size(),&(v_RmB_end_t[0]),&(v_RmB_end_dx[0]),
+	gr_RmB = myNewTGraph(Form("gr_RmB_%d",mLayerID),v_RmB_t.size(),&(v_RmB_t[0]),&(v_RmB_dx[0]),
 			"XT Differences with Both-side Combined Case","T [ns]","#Delta_{X} [um]",20,0.5,kRed,0.5,kRed);
 	// selected graphs for error reference
 	if (mXTType==0){
@@ -1236,12 +1244,12 @@ void XTAnalyzer::drawSamplingsB(){
 }
 
 void XTAnalyzer::drawLRB(){
-	TCanvas * canv_LRB = new TCanvas("canv_LRB","canv_LRB",1024,768);
-	TPad * pad_LRB[4];
-	for (int il = 0; il<2; il++){
+	TCanvas * canv_LRB = new TCanvas("canv_LRB","canv_LRB",800,1000);
+	TPad * pad_LRB[2];
+	for (int il = 0; il<1; il++){
 		for (int ir = 0; ir<2; ir++){
-			int index = ir*2+il;
-			pad_LRB[index] = new TPad(Form("pad_LRB%d",index),"pad",il/2.,(2-ir)/2.,(il+1)/2.,(1-ir)/2.);
+			int index = ir*1+il;
+			pad_LRB[index] = new TPad(Form("pad_LRB%d",index),"pad",il/1.,(2-ir)/2.,(il+1)/1.,(1-ir)/2.);
 			pad_LRB[index]->Draw();
 			gStyle->SetPalette(1);
 			gStyle->SetOptStat(0);
@@ -1252,36 +1260,29 @@ void XTAnalyzer::drawLRB(){
 		}
 	}
 	pad_LRB[0]->cd();
-	h2_xtn->Draw("COLZ");
-	gr_leftR_end->Draw("PSAME");
-	gr_leftR_mid->Draw("PSAME");
+	h2_xt->Draw("COLZ");
+	gr_left_end->Draw("PSAME");
+	gr_left_mid->Draw("PSAME");
 	gr_right_mid->Draw("PSAME");
 	gr_right_end->Draw("PSAME");
 	gr_both_mid->Draw("PSAME");
 	gr_both_end->Draw("PSAME");
-	f_leftR_com->Draw("SAME");
+	gr_bothL_mid->Draw("PSAME");
+	gr_bothL_end->Draw("PSAME");
+	f_left_com->Draw("SAME");
 	f_right_com->Draw("SAME");
 	f_both_com->Draw("SAME");
+	f_bothL_com->Draw("SAME");
 	pad_LRB[1]->cd();
-	if (m_RLmB_dt_max<5) m_RLmB_dt_max = 5; // set constant range as 5 ns for later iteration phases.
-	TH2D * h2_LRmB_dt = new TH2D("h2_LRmB_dt","XT Differences with Both-side Combined Case",512,-m_RLmB_dt_max*1.05,m_RLmB_dt_max*1.05,mNbinx,0,mXmax);
-	h2_LRmB_dt->GetXaxis()->SetTitle("#Delta_{T} [ns]");
-	h2_LRmB_dt->GetYaxis()->SetTitle("X [mm]");
-	h2_LRmB_dt->Draw();
-	gr_RmB_func_mid->Draw("LSAME");
-	gr_LmB_func_mid->Draw("LSAME");
-	gr_RmB_mid->Draw("PSAME");
-	gr_LmB_mid->Draw("PSAME");
-	pad_LRB[2]->cd();
 	if (m_RLmB_dx_max<200) m_RLmB_dx_max = 200; // set constant range as +-200 um for later iteration phases.
 	TH2D * h2_LRmB_dx = new TH2D("h2_LRmB_dx","XT Differences with Both-side Combined Case",mNbint,mTmin,mTmax,512,-m_RLmB_dx_max*1.05,m_RLmB_dx_max*1.05);
 	h2_LRmB_dx->GetXaxis()->SetTitle("T [ns]");
 	h2_LRmB_dx->GetYaxis()->SetTitle("#Delta_{X} [um]");
 	h2_LRmB_dx->Draw();
-	gr_RmB_func_end->Draw("LSAME");
-	gr_LmB_func_end->Draw("LSAME");
-	gr_RmB_end->Draw("PSAME");
-	gr_LmB_end->Draw("PSAME");
+	gr_RmB_func->Draw("LSAME");
+	gr_LmB_func->Draw("LSAME");
+	gr_RmB->Draw("PSAME");
+	gr_LmB->Draw("PSAME");
 	canv_LRB->SaveAs("LRB_"+mRunName+".png");
 	canv_LRB->SaveAs("LRB_"+mRunName+".pdf");
 }
@@ -1392,20 +1393,16 @@ void XTAnalyzer::writeObjects(){
 	gr_xchi2_slicexn->Write();
 	gr_left_end->Write();
 	gr_left_mid->Write();
-	gr_leftR_end->Write();
-	gr_leftR_mid->Write();
 	gr_right_mid->Write();
 	gr_right_end->Write();
 	gr_both_mid->Write();
 	gr_both_end->Write();
-	gr_LmB_mid->Write();
-	gr_LmB_end->Write();
-	gr_RmB_mid->Write();
-	gr_RmB_end->Write();
-	gr_LmB_func_mid->Write();
-	gr_LmB_func_end->Write();
-	gr_RmB_func_mid->Write();
-	gr_RmB_func_end->Write();
+	gr_bothL_mid->Write();
+	gr_bothL_end->Write();
+	gr_LmB->Write();
+	gr_RmB->Write();
+	gr_LmB_func->Write();
+	gr_RmB_func->Write();
 	gr_TmL_left->Write();
 	gr_TmL_right->Write();
 	gr_TmL_both->Write();
@@ -1416,9 +1413,9 @@ void XTAnalyzer::writeObjects(){
 	f_right_end->Write();
 	f_both_end->Write();
 	f_left_com->Write();
-	f_leftR_com->Write();
 	f_right_com->Write();
 	f_both_com->Write();
+	f_bothL_com->Write();
 	f_left_delta->Write();
 	f_right_delta->Write();
 	f_both_delta->Write();
