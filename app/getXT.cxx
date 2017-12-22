@@ -260,6 +260,7 @@ int main(int argc, char** argv){
 		double theSum = 0;
 		double thePeak = 0;
 		double theHeight = 0;
+		double sum1st = 0;
 		int theIp = 0;
 		int theMpi = 0;
 		int theCand = 0;
@@ -269,6 +270,7 @@ int main(int argc, char** argv){
         otree->Branch("theDT",&theDT);
         otree->Branch("theWid",&theWid);
         otree->Branch("theSum",&theSum);
+        otree->Branch("sum1st",&sum1st);
         otree->Branch("has",&has);
         otree->Branch("thePeak",&thePeak);
         otree->Branch("theHeight",&theHeight);
@@ -383,6 +385,7 @@ int main(int argc, char** argv){
             has = 0;
             theWid = -1;
 			theSum = 0;
+			sum1st = 0;
 			thePeak = 0;
 			theHeight = 0;
 			theIp = 0;
@@ -397,17 +400,25 @@ int main(int argc, char** argv){
             	double dd0 = (*i_driftD[theCand])[ihit];
 				int ip = 0;
 				for (int jhit = ihit-1; jhit>0; jhit--){
-					if ((*i_layerID)[jhit]!=(*i_layerID)[ihit]) break;
-					int type = getHitType((*i_type)[jhit],(*i_fitD[theCand])[jhit]>=0);
-					if (type<100) ip++;
+					if ((*i_layerID)[jhit]!=(*i_layerID)[ihit]||(*i_wireID)[jhit]!=(*i_wireID)[ihit]) break;
+					//int type = getHitType((*i_type)[jhit],(*i_fitD[theCand])[jhit]>=0);
+					//if (type<100) ip++;
+					ip++; // FIXME: ignore type for this moment
 				}
             	if ((*i_sel[theCand])[ihit]==1){
             		if((fabs(dd0)<0.5||fabs(dd0)>7.5))
 						nBoundaryHits++;
             		if((fabs(dd0)<0.25||fabs(dd0)>7.75))
 						nSmallBoundaryHits++;
-					if(ip!=0)
+					if(ip!=0){
 						nLateHits++;
+						for (int jhit = ihit-1; jhit>0; jhit--){
+							if ((*i_ip)[jhit]==0){
+								if (sum1st<(*i_sum)[jhit]) sum1st = (*i_sum)[jhit];
+								break;
+							}
+						}
+					}
 					if((*i_mpi)[ihit]!=0)
 						nShadowedHits++;
 					if(has_rank&&(*i_rank)[ihit]!=0)
