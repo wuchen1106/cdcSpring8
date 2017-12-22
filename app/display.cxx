@@ -834,13 +834,11 @@ int main(int argc, char** argv){
             int ip = (*i_ip)[ihit];
             int clk = (*i_clk)[ihit];
             int height = (*i_height)[ihit];
-            double sum = (*i_sum)[ihit];
-            double dd = (*i_driftD[0])[ihit];
             ca_WF[bid]->cd();
             pad_WF[bid][ch]->cd();
             markerTDC[bid][ch][ip]->SetX(clk);
             markerTDC[bid][ch][ip]->SetY(height);
-            textTDC[bid][ch][ip]->SetText(clk,height+(0.5-ip%2)*50,Form("%d,%.0f,%.1f mm",(int)(tdc[chg][ip]),sum,dd));
+            textTDC[bid][ch][ip]->SetText(clk,height+(0.5-ip%2)*50,Form("%d",(int)(tdc[chg][ip])));
             if (type<=3){ // good hit
                 markerTDC[bid][ch][ip]->SetMarkerColor(kRed);
                 textTDC[bid][ch][ip]->SetTextColor(kRed);
@@ -867,6 +865,12 @@ int main(int argc, char** argv){
 		gr_waveForm[the_bid][the_ch]->Draw("APL");
 		int the_chg = the_bid*NCHS+the_ch;
 		for (int ip=0; ip<tdcNhit[the_chg]; ip++) {
+            double sum = (*i_sum)[the_ihit+ip];
+            double dd = (*i_driftD[0])[the_ihit+ip];
+            double dt = (*i_driftT)[the_ihit+ip];
+            int clk = (*i_clk)[the_ihit+ip];
+            int height = (*i_height)[the_ihit+ip];
+            textTDC[the_bid][the_ch][ip]->SetText(clk,height+(0.5-ip%2)*50,Form("%.0f,%.0f,%.1f mm",dt,sum,dd));
 			textTDC[the_bid][the_ch][ip]->Draw();
 			markerTDC[the_bid][the_ch][ip]->Draw();
 		}

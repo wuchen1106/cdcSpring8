@@ -261,6 +261,7 @@ int main(int argc, char** argv){
 		double thePeak = 0;
 		double theHeight = 0;
 		double sum1st = 0;
+		double dt1st = 0;
 		int theIp = 0;
 		int theMpi = 0;
 		int theCand = 0;
@@ -271,6 +272,7 @@ int main(int argc, char** argv){
         otree->Branch("theWid",&theWid);
         otree->Branch("theSum",&theSum);
         otree->Branch("sum1st",&sum1st);
+        otree->Branch("dt1st",&dt1st);
         otree->Branch("has",&has);
         otree->Branch("thePeak",&thePeak);
         otree->Branch("theHeight",&theHeight);
@@ -386,6 +388,7 @@ int main(int argc, char** argv){
             theWid = -1;
 			theSum = 0;
 			sum1st = 0;
+			dt1st = 1e9;
 			thePeak = 0;
 			theHeight = 0;
 			theIp = 0;
@@ -414,7 +417,10 @@ int main(int argc, char** argv){
 						nLateHits++;
 						for (int jhit = ihit-1; jhit>0; jhit--){
 							if ((*i_ip)[jhit]==0){
-								if (sum1st<(*i_sum)[jhit]) sum1st = (*i_sum)[jhit];
+								if (dt1st>(*i_driftT)[jhit]){
+									sum1st = (*i_sum)[jhit];
+									dt1st = (*i_driftT)[jhit];
+								}
 								break;
 							}
 						}
