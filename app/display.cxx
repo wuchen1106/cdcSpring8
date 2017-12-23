@@ -693,6 +693,10 @@ int main(int argc, char** argv){
 
 	//===================Loop in Events============================
 	TString prefix = "";
+	int the_bid = -1;
+	int the_ch = -1;
+	int the_ihit = -1;
+	printf("the_ihit @ %p\n",(void*)(&the_ihit));
 	printf("Looping in events %d~%d\n",iEntryStart,iEntryStop);
 	for ( int iEntry = iEntryStart; iEntry<=iEntryStop; iEntry++){
 		iChain->GetEntry(iEntry);
@@ -702,16 +706,17 @@ int main(int argc, char** argv){
 		}
 
         // Find the target channel
-		int the_ihit = 0;
-		int the_bid = -1;
-		int the_ch = -1;
+		the_bid = -1;
+		the_ch = -1;
+		the_ihit = -1;
         if (thelayer>=0&&thewire>=0){
-            for (; the_ihit<i_driftT->size(); the_ihit++){
-                int lid = (*i_layerID)[the_ihit];
-                int wid = (*i_wireID)[the_ihit];
+            for (int ihit; ihit<i_driftT->size(); ihit++){
+                int lid = (*i_layerID)[ihit];
+                int wid = (*i_wireID)[ihit];
                 if (lid==thelayer&&wid==thewire){
                     the_ch = map_ch[lid][wid];
                     the_bid = map_bid[lid][wid];
+                    the_ihit = ihit;
                     break;
                 }
             }
@@ -722,6 +727,7 @@ int main(int argc, char** argv){
             int wid = (*i_wireID)[0];
             the_bid = map_bid[lid][wid];
             the_ch = map_ch[lid][wid];
+            the_ihit = 0;
 		}
 
         iChain_ADC->GetEntry(iEntry);
@@ -870,7 +876,7 @@ int main(int argc, char** argv){
             double dt = (*i_driftT)[the_ihit+ip];
             int clk = (*i_clk)[the_ihit+ip];
             int height = (*i_height)[the_ihit+ip];
-            textTDC[the_bid][the_ch][ip]->SetText(clk,height+(0.5-ip%2)*50,Form("%.0f,%.0f,%.1f mm",dt,sum,dd));
+            textTDC[the_bid][the_ch][ip]->SetText(clk,height+(0.5-ip%2)*50,Form("s%.0f,%.0fns,%.1fmm",sum,dt,dd));
 			textTDC[the_bid][the_ch][ip]->Draw();
 			markerTDC[the_bid][the_ch][ip]->Draw();
 		}
