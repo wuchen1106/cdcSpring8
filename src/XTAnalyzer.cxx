@@ -206,13 +206,25 @@ void XTAnalyzer::Push(double t, double x){
 	h2_xt->Fill(t,x);
 	h2_xtn->Fill(t,absx);
 	int ix = x2i(x);
-	if (ix>=0&&ix<NSLICEX) h_t[ix]->Fill(t);
+	if (ix>=0&&ix<NSLICEX){
+		h_t[ix]->Fill(t);
+		c_t[ix]+=x;
+	}
 	int it = t2i(t,x>0);
-	if (it>=0&&it<NSLICET) h_x[it]->Fill(x);
+	if (it>=0&&it<NSLICET){
+		h_x[it]->Fill(x);
+		c_x[it]+=t;
+	}
 	ix = x2i(absx);
-	if (ix>=0&&ix<NSLICEX) h_tn[ix]->Fill(t);
+	if (ix>=0&&ix<NSLICEX){
+		h_tn[ix]->Fill(t);
+		c_tn[ix]+=absx;
+	}
 	it = t2i(t,true);
-	if (it>=0&&it<NSLICET) h_xn[it]->Fill(absx);
+	if (it>=0&&it<NSLICET){
+		h_xn[it]->Fill(absx);
+		c_xn[it]+=t;
+	}
 	if (mDebugLevel>=10) printf("            pushed\n",t,x);
 }
 
@@ -227,6 +239,7 @@ void XTAnalyzer::Process(void){
 		double divleft,divright;
 		i2t(i,divleft,mT,divright);
 		mEntries = h_x[i]->Integral();
+		mT = c_x[i]/mEntries;
 		mX = 0;
 		mSig = 0;
 		mChi2 = 0;
@@ -236,6 +249,7 @@ void XTAnalyzer::Process(void){
 			mX = f_x->GetParameter(1);
 			mSig = f_x->GetParameter(2);
 			mChi2 = f_x->GetChisquare();
+			h_x[i]->GetXaxis()->SetRangeUser(mX-1,mX+1); // keep only 2 mm window
 			if (mSaveHists) drawFitting(h_x[i],f_x,canv_fitting,Form("%.0f-%.0f ns, N=%d, x=%.2f mm, #sigma=%.0f um, #chi^{2}=%.1f",divleft,divright,mEntries,mX,mSig*1000,mChi2),Form("h_x%d_%s.png",i,mRunName.Data()),left,right);
 		}
 		if (mEntries<midEntries){
@@ -257,6 +271,7 @@ void XTAnalyzer::Process(void){
 		double divleft,divright;
 		i2x(i,divleft,mX,divright);
 		mEntries = h_t[i]->Integral();
+		mX = c_t[i]/mEntries;
 		mT = 0;
 		mSig = 0;
 		mChi2 = 0;
@@ -266,6 +281,7 @@ void XTAnalyzer::Process(void){
 			mT = f_t->GetParameter(1);
 			mSig = f_t->GetParameter(2);
 			mChi2 = f_t->GetChisquare();
+			h_t[i]->GetXaxis()->SetRangeUser(mT-50,mT+50); // keep only 100 ns window
 			if (mSaveHists) drawFitting(h_t[i],f_t,canv_fitting,Form("%.2f-%.2f mm, N=%d, t=%.1f ns, #sigma=%.1f ns, #chi^{2}=%.1f",divleft,divright,mEntries,mT,mSig,mChi2),Form("h_t%d_%s.png",i,mRunName.Data()),left,right);
 		}
 		if (mEntries<midEntries){
@@ -287,6 +303,7 @@ void XTAnalyzer::Process(void){
 		double divleft,divright;
 		i2t(i,divleft,mT,divright);
 		mEntries = h_xn[i]->Integral();
+		mT = c_xn[i]/mEntries;
 		mX = 0;
 		mSig = 0;
 		mChi2 = 0;
@@ -296,6 +313,7 @@ void XTAnalyzer::Process(void){
 			mX = f_x->GetParameter(1);
 			mSig = f_x->GetParameter(2);
 			mChi2 = f_x->GetChisquare();
+			h_xn[i]->GetXaxis()->SetRangeUser(mX-1,mX+1); // keep only 2 mm window
 			if (mSaveHists) drawFitting(h_xn[i],f_x,canv_fitting,Form("%.0f-%.0f ns, N=%d, x=%.2f mm, #sigma=%.0f um, #chi^{2}=%.1f",divleft,divright,mEntries,mX,mSig*1000,mChi2),Form("h_xn%d_%s.png",i,mRunName.Data()),left,right);
 		}
 		if (mEntries<midEntries){
@@ -317,6 +335,7 @@ void XTAnalyzer::Process(void){
 		double divleft,divright;
 		i2x(i,divleft,mX,divright);
 		mEntries = h_tn[i]->Integral();
+		mX = c_tn[i]/mEntries;
 		mT = 0;
 		mSig = 0;
 		mChi2 = 0;
@@ -326,6 +345,7 @@ void XTAnalyzer::Process(void){
 			mT = f_t->GetParameter(1);
 			mSig = f_t->GetParameter(2);
 			mChi2 = f_t->GetChisquare();
+			h_tn[i]->GetXaxis()->SetRangeUser(mT-50,mT+50); // keep only 100 ns window
 			if (mSaveHists) drawFitting(h_tn[i],f_t,canv_fitting,Form("%.2f-%.2f mm, N=%d, t=%.1f ns, #sigma=%.1f ns, #chi^{2}=%.1f",divleft,divright,mEntries,mT,mSig,mChi2),Form("h_tn%d_%s.png",i,mRunName.Data()),left,right);
 		}
 		if (mEntries<midEntries){

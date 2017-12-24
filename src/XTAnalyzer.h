@@ -109,6 +109,11 @@ class XTAnalyzer{
 		TH1D * h_x[NSLICET];
 		TH1D * h_tn[NSLICEX]; // for neutral driftD
 		TH1D * h_xn[NSLICET]; // for neutral driftD
+		// to record bin centers
+		double c_t[NSLICEX];
+		double c_x[NSLICET];
+		double c_tn[NSLICEX]; // for neutral driftD
+		double c_xn[NSLICET]; // for neutral driftD
 
 		// functions to fit x/t slices
 		TF1 * f_x;
