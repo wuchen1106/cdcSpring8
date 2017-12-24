@@ -456,7 +456,7 @@ int main(int argc, char** argv){
     ot->Branch("nHits",&i_nHits);
     ot->Branch("layerID",&i_layerID);
     ot->Branch("wireID",&i_wireID);
-    ot->Branch("type",&i_type); // in dec, [MASTR]. M: peak index in a packet; A: smaller than aa cut? S: smaller than sum cut? T: -1 <tmin, 0 good, 1 >tmax; R: 0 center, 1 left, 2 right, 3 guard, 4 dummy
+    ot->Branch("type",&i_type); // in dec, [IMASTR]. I: peak index (FIXME: not good for noisy data); M: peak index in a packet; A: smaller than aa cut? S: smaller than sum cut? T: -1 <tmin, 0 good, 1 >tmax; R: 0 center, 1 left, 2 right, 3 guard, 4 dummy
     ot->Branch("np",&i_np);
     ot->Branch("ip",&i_ip);
     ot->Branch("clk",&i_clk);
@@ -595,7 +595,7 @@ int main(int argc, char** argv){
             int statusl,statusr; // 1:  large t; -1: small t; 0: good t
             (*o_dxl)[ihit] = t2x(dt,lid,wid,-1,statusl);
             (*o_dxr)[ihit] = t2x(dt,lid,wid,1,statusr);
-            int type = (*i_type)[ihit]; // MASTR
+            int type = (*i_type)[ihit]; // IMASTR
             // R: region
             // keep the original defination
             // T: time
@@ -615,8 +615,10 @@ int main(int argc, char** argv){
             if ((*i_sum)[ihit]<sumCut) type+=1*100;
             // A: sum of full waveform
             if ((*i_aa)[ihit]<aaCut) type+=1*1000;
-            // M: index of peak in a wave packet
+            // M: index of peak in a multi-peak wave packet
             type+=(*i_mpi)[ihit]*10000;
+            // I: index of peak in the hole waveform
+            type+=(*i_ip)[ihit]*100000; // FIXME: this is shadowing all the late arriving peaks! Should modify when we have serious noise problem
             (*i_type)[ihit] = type;
             if (lid != testlayer&&type<=3){ // good hit
                 if (debug>11) printf("  Entry %d: dxl[%d][%d] = dxl[%d] = t2x(%.3e) = %.3e\n",iEntry,lid,wid,ihit,dt,(*o_dxl)[ihit]);
