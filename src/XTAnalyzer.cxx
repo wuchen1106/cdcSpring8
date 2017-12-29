@@ -44,11 +44,10 @@ void XTAnalyzer::SetXTType(int type){
 }
 
 void XTAnalyzer::SetSaveHists(int save){
-	if (save) mSaveHists = true;
-	else mSaveHists = false;
+	mSaveHists = save;
 }
 
-int XTAnalyzer::Initialize(TString runname, int lid, TFile * infile, TFile * outfile, TTree * otree, int xttype, bool savehists, bool saveXT0){
+int XTAnalyzer::Initialize(TString runname, int lid, TFile * infile, TFile * outfile, TTree * otree, int xttype, int savehists, bool saveXT0){
 	// Set options
 	mRunName = runname;
 	mLayerID = lid;
@@ -60,7 +59,7 @@ int XTAnalyzer::Initialize(TString runname, int lid, TFile * infile, TFile * out
 	mSaveXT0 = saveXT0;
 
 	mEntriesMin = 30;
-	mSigTmax = 15;
+	mSigTmax = 20;
 	mSigXmax = 0.5;
 
 	// load previous xt curves
@@ -98,24 +97,24 @@ int XTAnalyzer::Initialize(TString runname, int lid, TFile * infile, TFile * out
 	mOutTree->SetBranchAddress("type",&mType);
 
 	// set for slicing
-	mBWX = 0.1;
+	mBWX = 0.08;
 	mXLEFT = -mBWX*NSLICEX/2;
 	mXRIGHT = mBWX*NSLICEX/2;
 	mBWT = 3/0.96;
 	mTLEFT = -mBWT*NSLICET/2;
 	mTRIGHT = mBWT*NSLICET/2;
 	// set for binning
-	mTmin = -24.5; // t range for one x bin
-	mTmax = 800.5;
-	mNbint = 264;
+	mTmin = -25-1/0.96/2; // t range for one x bin
+	mTmax = 800+1/0.96/2;
+	mNbint = 792+1;
 	mXmax = 10; // x range for one t bin
-	mNbinx = 256;
+	mNbinx = 500;
 
 	// prepare 2D histograms
-	h2_xt = new TH2D(Form("h2_xt_%d",mLayerID),"XT Relation",mNbint,mTmin,mTmax,mNbinx*2,-mXmax,mXmax);
+	h2_xt = new TH2D(Form("h2_xt_%d",mLayerID),"XT Relation",mNbint,mTmin,mTmax,mNbinx,-mXmax,mXmax);
 	h2_xt->GetXaxis()->SetTitle("T [ns]");
 	h2_xt->GetYaxis()->SetTitle("X [mm]");
-	h2_xtn = new TH2D(Form("h2_xtn_%d",mLayerID),"XT Relation",mNbint,mTmin,mTmax,mNbinx,0,mXmax);
+	h2_xtn = new TH2D(Form("h2_xtn_%d",mLayerID),"XT Relation",mNbint,mTmin,mTmax,mNbinx/2,0,mXmax);
 	h2_xtn->GetXaxis()->SetTitle("T [ns]");
 	h2_xtn->GetYaxis()->SetTitle("X [mm]");
 
@@ -124,20 +123,30 @@ int XTAnalyzer::Initialize(TString runname, int lid, TFile * infile, TFile * out
         double fdmin,fdmid,fdmax;
         i2x(ix,fdmin,fdmid,fdmax);
 		h_t[ix] = new TH1D(Form("h_t_%d_%d",mLayerID,ix),Form("T_{drift} distribution with DOCA [%.2f~%.2f] mm",fdmin,fdmax),mNbint,mTmin,mTmax);
+		h_t_xsum[ix] = new TH1D(Form("h_t_xsum_%d_%d",mLayerID,ix),Form("Average DOCA in slice [%.2f~%.2f] mm",fdmin,fdmax),mNbint,mTmin,mTmax);
 		h_tn[ix] = new TH1D(Form("h_tn_%d_%d",mLayerID,ix),Form("T_{drift} distribution with DOCA [%.2f~%.2f] mm",fdmin,fdmax),mNbint,mTmin,mTmax);
+		h_tn_xsum[ix] = new TH1D(Form("h_tn_xsum_%d_%d",mLayerID,ix),Form("Average DOCA in slice [%.2f~%.2f] mm",fdmin,fdmax),mNbint,mTmin,mTmax);
 	}
 	for (int it = 0; it<NSLICET; it++){
         double dtmin,dtmid,dtmax;
         i2t(it,dtmin,dtmid,dtmax);
 		h_x[it] = new TH1D(Form("h_x_%d_%d",mLayerID,it),Form("DOCA (left) distribution with T_{drift} [%.0f~%.0f] ns",dtmin,dtmax),mNbinx,-mXmax,mXmax);
+		h_mx[it] = new TH1D(Form("h_mx_%d_%d",mLayerID,it),Form("-DOCA (left) distribution with T_{drift} [%.0f~%.0f] ns",dtmin,dtmax),mNbinx,-mXmax,mXmax);
+		h_x_tsum[it] = new TH1D(Form("h_x_tsum_%d_%d",mLayerID,it),Form("Average T_{drift} in slice [%.0f~%.0f] ns",dtmin,dtmax),mNbinx,-mXmax,mXmax);
 		h_xn[it] = new TH1D(Form("h_xn_%d_%d",mLayerID,it),Form("DOCA (left) distribution with T_{drift} [%.0f~%.0f] ns",dtmin,dtmax),mNbinx,-mXmax,mXmax);
+		h_mxn[it] = new TH1D(Form("h_mxn_%d_%d",mLayerID,it),Form("-DOCA (left) distribution with T_{drift} [%.0f~%.0f] ns",dtmin,dtmax),mNbinx,-mXmax,mXmax);
+		h_xn_tsum[it] = new TH1D(Form("h_xn_tsum_%d_%d",mLayerID,it),Form("Average T_{drift} in slice [%.0f~%.0f] ns",dtmin,dtmax),mNbinx,-mXmax,mXmax);
 	}
 
 	// prepare functions for slice analysis
-	f_x = myNewTF1("f_x","gaus",-mXmax,mXmax);
-	f_t = myNewTF1("f_t","gaus",mTmin,mTmax);
-	l_right = new TLine(0,0,1,1);
+	f_gaus = myNewTF1("fgaus","gaus",-mTmax,mTmax);
+	f_land = myNewTF1("fland","landau",-mTmax,mTmax);
+	f_2gaus = myNewTF1("f2gaus","(x>[1])*[0]*exp(-0.5*((x-[1])/[2])**2)+(x<=[1])*[0]*exp(-0.5*((x-[1])/[3])**2)",-mTmax,mTmax);
 	l_left = new TLine(0,0,1,1);
+	l_right = new TLine(0,0,1,1);
+	l_center = new TLine(0,0,1,1);
+	l_center->SetLineColor(kRed);
+	l_center->SetLineStyle(2);
 
 	// clear vectors for chosen XT sample points
 	v_left_mid_x.clear();
@@ -196,7 +205,7 @@ int XTAnalyzer::Initialize(TString runname, int lid, TFile * infile, TFile * out
 	f_right_end = myNewTF1(Form("fre_%d",mLayerID),"pol5",mTmin,mTmax);
 	f_both_end = myNewTF1(Form("fbe_%d",mLayerID),"pol5",mTmin,mTmax);
 
-	if (mDebugLevel>=1) printf("XTAnalyzer successfully initialized!\n");
+	if (mDebugLevel>=1) {printf("XTAnalyzer successfully initialized!\n");fflush(stdout);}
 	return 0;
 }
 
@@ -208,55 +217,80 @@ void XTAnalyzer::Push(double t, double x){
 	int ix = x2i(x);
 	if (ix>=0&&ix<NSLICEX){
 		h_t[ix]->Fill(t);
-		c_t[ix]+=x;
+		int ibin = h_t_xsum[ix]->FindBin(t);
+		h_t_xsum[ix]->AddBinContent(ibin,x);
 	}
 	int it = t2i(t,x>0);
 	if (it>=0&&it<NSLICET){
 		h_x[it]->Fill(x);
-		c_x[it]+=t;
+		h_mx[it]->Fill(-absx);
+		int ibin = h_x_tsum[it]->FindBin(x);
+		h_x_tsum[it]->AddBinContent(ibin,t);
 	}
 	ix = x2i(absx);
 	if (ix>=0&&ix<NSLICEX){
 		h_tn[ix]->Fill(t);
-		c_tn[ix]+=absx;
+		int ibin = h_tn_xsum[ix]->FindBin(t);
+		h_tn_xsum[ix]->AddBinContent(ibin,absx);
 	}
 	it = t2i(t,true);
 	if (it>=0&&it<NSLICET){
 		h_xn[it]->Fill(absx);
-		c_xn[it]+=t;
+		h_mxn[it]->Fill(-absx);
+		int ibin = h_xn_tsum[it]->FindBin(absx);
+		h_xn_tsum[it]->AddBinContent(ibin,t);
 	}
 	if (mDebugLevel>=10) printf("            pushed\n",t,x);
 }
 
 void XTAnalyzer::Process(void){
+	if (mDebugLevel>0) {printf("In XTAnalyzer::Process\n");fflush(stdout);}
 	//==========================Taking Samples from Slices==============================
 	// fit x histograms, and push to vectors & tree
     TCanvas * canv_fitting = new TCanvas("cfit","cfit",1024,768);
 	int midEntries = 100;
 	for (int i = 0; i<NSLICET; i++){
+		if (mDebugLevel>0) {printf("=>h_x[%d\]\n",i);fflush(stdout);}
 		mType = 0;
 		double left, right; // find the range: 1/3 of the highest bin
 		double divleft,divright;
 		i2t(i,divleft,mT,divright);
 		mEntries = h_x[i]->Integral();
-		mT = c_x[i]/mEntries;
-		mX = 0;
-		mSig = 0;
-		mChi2 = 0;
-		if (mEntries>0){
-			getOneThirdLines(h_x[i],left,right);
-			h_x[i]->Fit("f_x","qN0","",left,right);
-			mX = f_x->GetParameter(1);
-			mSig = f_x->GetParameter(2);
-			mChi2 = f_x->GetChisquare();
-			h_x[i]->GetXaxis()->SetRangeUser(mX-1,mX+1); // keep only 2 mm window
-			if (mSaveHists) drawFitting(h_x[i],f_x,canv_fitting,Form("%.0f-%.0f ns, N=%d, x=%.2f mm, #sigma=%.0f um, #chi^{2}=%.1f",divleft,divright,mEntries,mX,mSig*1000,mChi2),Form("h_x%d_%s.png",i,mRunName.Data()),left,right);
+		fitSliceHistFloat(h_x[i],0.5,mX,mSig,mChi2,left,right);
+		if (mDebugLevel>0) {printf("h_x[%d] (%d) after fitSliceHistFloat: x=%.2f, sig=%.2f, chi2=%.2f, left = %.2f, right = %.2f\n",i,(int)mEntries,mX,mSig,mChi2,left,right);fflush(stdout);}
+		if (mEntries>midEntries){
+			TF1 * f = 0;
+			bool flipped = false;
+			if (fabs(mX)>7&&fabs(mX)<7.8){ // FIXME: boundary up to tuning
+				if (mX>0){
+					flipped = true;
+					fitSliceHistFloat(h_mx[i],0.3,mX,mSig,mChi2,left,right);
+					f = fitSliceLand(h_mx[i],mX,mSig,mChi2,left,right);
+					double temp = left;
+					left = -right;
+					right = -temp;
+					mX*=-1;
+				}
+				else{
+					fitSliceHistFloat(h_x[i],0.3,mX,mSig,mChi2,left,right);
+					f = fitSliceLand(h_x[i],mX,mSig,mChi2,left,right);
+				}
+			}
+			else{
+				f = fitSliceGaus(h_x[i],mX,mSig,mChi2,left,right);
+			}
+			if (mDebugLevel>0) {printf("h_x[%d] after fitSlice: x=%.2f, sig=%.2f, chi2=%.2f, left = %.2f, right = %.2f\n",i,mX,mSig,mChi2,left,right);fflush(stdout);}
+			mT = getMean(h_x[i],h_x_tsum[i],left,right);
+			if (flipped){
+				h_mx[i]->GetXaxis()->SetRangeUser(-mX-mSigXmax*3,-mX+mSigXmax*3);
+				if (mSaveHists>=2) drawFitting(h_mx[i],f,canv_fitting,Form("%.1f-%.1f-%.1f ns, N=%d, x=%.2f mm, #sigma=%.0f um, #chi^{2}=%.1f",divleft,mT,divright,mEntries,mX,mSig*1000,mChi2),Form("h_x%d_%s.png",i,mRunName.Data()),-right,-mX,-left);
+			}
+			else{
+				h_x[i]->GetXaxis()->SetRangeUser(mX-mSigXmax*3,mX+mSigXmax*3);
+				if (mSaveHists>=2) drawFitting(h_x[i],f,canv_fitting,Form("%.1f-%.1f-%.1f ns, N=%d, x=%.2f mm, #sigma=%.0f um, #chi^{2}=%.1f",divleft,mT,divright,mEntries,mX,mSig*1000,mChi2),Form("h_x%d_%s.png",i,mRunName.Data()),left,mX,right);
+			}
 		}
-		if (mEntries<midEntries){
-			mX = h_x[i]->GetMean();
-			mSig = h_x[i]->GetRMS();
-			mChi2 = 0;
-		}
+		else mT = getMean(h_x[i],h_x_tsum[i],left,right);
 		v_n_slicet[i] = mEntries;
 		v_sig_slicet[i] = mSig;
 		v_chi2_slicet[i] = mChi2;
@@ -271,24 +305,21 @@ void XTAnalyzer::Process(void){
 		double divleft,divright;
 		i2x(i,divleft,mX,divright);
 		mEntries = h_t[i]->Integral();
-		mX = c_t[i]/mEntries;
-		mT = 0;
-		mSig = 0;
-		mChi2 = 0;
-		if (mEntries>0){
-			getOneThirdLines(h_t[i],left,right);
-			h_t[i]->Fit("f_t","qN0","",left,right);
-			mT = f_t->GetParameter(1);
-			mSig = f_t->GetParameter(2);
-			mChi2 = f_t->GetChisquare();
-			h_t[i]->GetXaxis()->SetRangeUser(mT-50,mT+50); // keep only 100 ns window
-			if (mSaveHists) drawFitting(h_t[i],f_t,canv_fitting,Form("%.2f-%.2f mm, N=%d, t=%.1f ns, #sigma=%.1f ns, #chi^{2}=%.1f",divleft,divright,mEntries,mT,mSig,mChi2),Form("h_t%d_%s.png",i,mRunName.Data()),left,right);
+		fitSliceHistFloat(h_t[i],0.5,mT,mSig,mChi2,left,right);
+		if (mEntries>midEntries){
+			TF1 * f = 0;
+			if (fabs(mX)<1){
+				fitSliceHistFloat(h_t[i],0.3,mT,mSig,mChi2,left,right);
+				f = fitSliceLand(h_t[i],mT,mSig,mChi2,left,right);
+			}
+			else{
+				f = fitSliceGaus(h_t[i],mT,mSig,mChi2,left,right);
+			}
+			mX = getMean(h_t[i],h_t_xsum[i],left,right);
+			h_t[i]->GetXaxis()->SetRangeUser(mT-mSigTmax*3,mT+mSigTmax*3);
+			if (mSaveHists>=2) drawFitting(h_t[i],f,canv_fitting,Form("%.2f-%.2f-%.2f mm, N=%d, t=%.1f ns, #sigma=%.1f ns, #chi^{2}=%.1f",divleft,mX,divright,mEntries,mT,mSig,mChi2),Form("h_t%d_%s.png",i,mRunName.Data()),left,mT,right);
 		}
-		if (mEntries<midEntries){
-			mT = h_t[i]->GetMean();
-			mSig = h_t[i]->GetRMS();
-			mChi2 = 0;
-		}
+		else mX = getMean(h_t[i],h_t_xsum[i],left,right);
 		v_n_slicex[i] = mEntries;
 		v_sig_slicex[i] = mSig;
 		v_chi2_slicex[i] = mChi2;
@@ -298,29 +329,37 @@ void XTAnalyzer::Process(void){
 	}
 	// fit x histograms for both-side case, and push to vectors & tree
 	for (int i = NSLICET/2; i<NSLICET; i++){
+		if (mDebugLevel>0) {printf("=>h_xn[%d\]\n",i);fflush(stdout);}
 		mType = 2;
 		double left, right; // find the range: 1/3 of the highest bin
 		double divleft,divright;
 		i2t(i,divleft,mT,divright);
 		mEntries = h_xn[i]->Integral();
-		mT = c_xn[i]/mEntries;
-		mX = 0;
-		mSig = 0;
-		mChi2 = 0;
-		if (mEntries>0){
-			getOneThirdLines(h_xn[i],left,right);
-			h_xn[i]->Fit("f_x","qN0","",left,right);
-			mX = f_x->GetParameter(1);
-			mSig = f_x->GetParameter(2);
-			mChi2 = f_x->GetChisquare();
-			h_xn[i]->GetXaxis()->SetRangeUser(mX-1,mX+1); // keep only 2 mm window
-			if (mSaveHists) drawFitting(h_xn[i],f_x,canv_fitting,Form("%.0f-%.0f ns, N=%d, x=%.2f mm, #sigma=%.0f um, #chi^{2}=%.1f",divleft,divright,mEntries,mX,mSig*1000,mChi2),Form("h_xn%d_%s.png",i,mRunName.Data()),left,right);
+		fitSliceHistFloat(h_xn[i],0.5,mX,mSig,mChi2,left,right);
+		if (mDebugLevel>0) {printf("h_xn[%d] (%d) after fitSliceHistFloat: x=%.2f, sig=%.2f, chi2=%.2f, left = %.2f, right = %.2f\n",i,(int)mEntries,mX,mSig,mChi2,left,right);fflush(stdout);}
+		if (mEntries>midEntries){
+			TF1 * f = 0;
+			if (fabs(mX)>7&&fabs(mX)<7.8){ // FIXME: boundary up to tuning
+				fitSliceHistFloat(h_mxn[i],0.3,mX,mSig,mChi2,left,right);
+				f = fitSliceLand(h_mxn[i],mX,mSig,mChi2,left,right);
+				mX*=-1;
+				double temp = left;
+				left = -right;
+				right = -temp;
+				mT = getMean(h_xn[i],h_xn_tsum[i],left,right);
+				if (mDebugLevel>0) {printf("h_xn[%d] after fitSlice: x=%.2f, sig=%.2f, chi2=%.2f, left = %.2f, right = %.2f\n",i,mX,mSig,mChi2,left,right);fflush(stdout);}
+				h_mxn[i]->GetXaxis()->SetRangeUser(-mX-mSigXmax*3,-mX+mSigXmax*3);
+				if (mSaveHists>=1) drawFitting(h_mxn[i],f,canv_fitting,Form("%.1f-%.1f-%.1f ns, N=%d, x=%.2f mm, #sigma=%.0f um, #chi^{2}=%.1f",divleft,mT,divright,mEntries,mX,mSig*1000,mChi2),Form("h_xn%d_%s.png",i,mRunName.Data()),-right,-mX,-left);
+			}
+			else{
+				f = fitSliceGaus(h_xn[i],mX,mSig,mChi2,left,right);
+				mT = getMean(h_xn[i],h_xn_tsum[i],left,right);
+				if (mDebugLevel>0) {printf("h_xn[%d] after fitSlice: x=%.2f, sig=%.2f, chi2=%.2f, left = %.2f, right = %.2f\n",i,mX,mSig,mChi2,left,right);fflush(stdout);}
+				h_xn[i]->GetXaxis()->SetRangeUser(mX-mSigXmax*3,mX+mSigXmax*3);
+				if (mSaveHists>=1) drawFitting(h_xn[i],f,canv_fitting,Form("%.1f-%.1f-%.1f ns, N=%d, x=%.2f mm, #sigma=%.0f um, #chi^{2}=%.1f",divleft,mT,divright,mEntries,mX,mSig*1000,mChi2),Form("h_xn%d_%s.png",i,mRunName.Data()),left,mX,right);
+			}
 		}
-		if (mEntries<midEntries){
-			mX = h_xn[i]->GetMean();
-			mSig = h_xn[i]->GetRMS();
-			mChi2 = 0;
-		}
+		else mT = getMean(h_xn[i],h_xn_tsum[i],left,right);
 		v_n_slicetn[i] = mEntries;
 		v_sig_slicetn[i] = mSig;
 		v_chi2_slicetn[i] = mChi2;
@@ -335,24 +374,21 @@ void XTAnalyzer::Process(void){
 		double divleft,divright;
 		i2x(i,divleft,mX,divright);
 		mEntries = h_tn[i]->Integral();
-		mX = c_tn[i]/mEntries;
-		mT = 0;
-		mSig = 0;
-		mChi2 = 0;
-		if (mEntries>0){
-			getOneThirdLines(h_tn[i],left,right);
-			h_tn[i]->Fit("f_t","qN0","",left,right);
-			mT = f_t->GetParameter(1);
-			mSig = f_t->GetParameter(2);
-			mChi2 = f_t->GetChisquare();
-			h_tn[i]->GetXaxis()->SetRangeUser(mT-50,mT+50); // keep only 100 ns window
-			if (mSaveHists) drawFitting(h_tn[i],f_t,canv_fitting,Form("%.2f-%.2f mm, N=%d, t=%.1f ns, #sigma=%.1f ns, #chi^{2}=%.1f",divleft,divright,mEntries,mT,mSig,mChi2),Form("h_tn%d_%s.png",i,mRunName.Data()),left,right);
+		fitSliceHistFloat(h_tn[i],0.5,mT,mSig,mChi2,left,right);
+		if (mEntries>midEntries){
+			TF1 * f = 0;
+			if (fabs(mX)<1){
+				fitSliceHistFloat(h_tn[i],0.3,mT,mSig,mChi2,left,right);
+				f = fitSliceLand(h_tn[i],mT,mSig,mChi2,left,right);
+			}
+			else{
+				f = fitSliceGaus(h_tn[i],mT,mSig,mChi2,left,right);
+			}
+			mX = getMean(h_tn[i],h_tn_xsum[i],left,right);
+			h_tn[i]->GetXaxis()->SetRangeUser(mT-mSigTmax*3,mT+mSigTmax*3);
+			if (mSaveHists>=1) drawFitting(h_tn[i],f,canv_fitting,Form("%.2f-%.2f-%.2f mm, N=%d, t=%.1f ns, #sigma=%.1f ns, #chi^{2}=%.1f",divleft,mX,divright,mEntries,mT,mSig,mChi2),Form("h_tn%d_%s.png",i,mRunName.Data()),left,mT,right);
 		}
-		if (mEntries<midEntries){
-			mT = h_tn[i]->GetMean();
-			mSig = h_tn[i]->GetRMS();
-			mChi2 = 0;
-		}
+		else mX = getMean(h_tn[i],h_tn_xsum[i],left,right);
 		v_n_slicexn[i] = mEntries;
 		v_sig_slicexn[i] = mSig;
 		v_chi2_slicexn[i] = mChi2;
@@ -713,12 +749,12 @@ void XTAnalyzer::Process(void){
 			"XT Sampling Points Subtracted by fitted function","T [ns]","#Delta_X [um]",20,0.5,kBlack,0.5,kBlack);
 
 	//==========================Draw Plots==============================
+	// draw plots to compare left/right/both-side
+	drawLRB();
 	// Draw the XT histogram and plots
 	drawSamplingsLR();
 	// Draw the XT histogram and plots for both-side case
 	drawSamplingsB();
-	// draw plots to compare left/right/both-side
-	drawLRB();
 	// draw pltos to check iterations
 	drawIteration();
 
@@ -756,7 +792,7 @@ void XTAnalyzer::i2x(int i, double & fdmin, double & fdmid, double & fdmax){
 
 void XTAnalyzer::i2t(int i, double & dtmin, double & dtmid, double & dtmax){
     dtmin = i*mBWT+mTLEFT;
-    if (dtmin<0){
+    if (dtmin<-mBWT/2){ // 
     	dtmin = fabs((i+1)*mBWT+mTLEFT);
     }
 	else{
@@ -773,27 +809,127 @@ int XTAnalyzer::x2i(double fitD){
 }
 
 int XTAnalyzer::t2i(double driftT,bool positive){
-	if (driftT<0) return -999; // ignore negative time
 	if (!positive) driftT = -driftT;
     int i=(driftT-mTLEFT)/mBWT;
-    if (i>=NSLICET) i=-999;
+    if (fabs(driftT)<mBWT/2) i = NSLICET/2;
+    if (i>=NSLICET||i<0) i=-999;
     return i;
 }
 
-void XTAnalyzer::getOneThirdLines(TH1D* h, double & left, double & right){
-    int bmax = h->GetMaximumBin();
-    double max = h->GetBinContent(bmax);
-    int binl = bmax;
-    for (;binl>0; binl--){
-        if (h->GetBinContent(binl)<max/3) break;
+double XTAnalyzer::getMean(TH1D * h, TH1D * hy, double left, double right){
+	int bleft = h->FindBin(left);
+	int bright = h->FindBin(right);
+	double ysum = hy->Integral(bleft,bright);
+	int entries = h->Integral(bleft,bright);
+	double y = ysum;
+	if (entries) y/=entries;
+	return y;
+}
+
+void XTAnalyzer::fitSliceHistFloat(TH1D * h, double ratio, double & mean, double & sigma, double & chi2, double & left, double & right){
+	int bmax = h->GetMaximumBin();
+    double max = h->GetBinContent(bmax)*ratio;
+    int binl = bmax-1;
+    for (;binl>=3; binl--){
+    	double height3bins = h->GetBinContent(binl);
+    	height3bins+=h->GetBinContent(binl-1);
+    	height3bins+=h->GetBinContent(binl-2);
+        if (height3bins/3<max) break;
     }
-    int binr = bmax;
+    int binr = bmax+1;
     int nbins = h->GetNbinsX();
-    for (;binr<=nbins; binr++){
-        if (h->GetBinContent(binr)<max/3) break;
+    for (;binr<=nbins-2; binr++){
+    	double height3bins = h->GetBinContent(binr);
+    	height3bins+=h->GetBinContent(binr+1);
+    	height3bins+=h->GetBinContent(binr+2);
+        if (height3bins/3<max) break;
     }
-    left = h->GetBinLowEdge(binl);
-    right = h->GetBinLowEdge(binr+1);
+    left = h->GetBinCenter(binl);
+    right = h->GetBinCenter(binr);
+	h->GetXaxis()->SetRangeUser(left,right);
+	mean = h->GetMean();
+	sigma = h->GetRMS();
+	chi2 = 0;
+}
+
+TF1 * XTAnalyzer::fitSliceGaus(TH1D * h, double & mean, double & sigma, double & chi2, double & left, double & right){
+	if (mDebugLevel>0) printf("in fitSliceGaus: \"%s\" has %d(%d) entries\n",h->GetName(),h->GetEntries(),h->Integral());
+	TF1 * f = f_gaus;
+	int bmax = h->GetMaximumBin();
+	mean = h->GetBinCenter(bmax);
+    double lrange = mean-left;
+    double rrange = right-mean;
+	if (mDebugLevel>0) printf("  %.2f - %.2f - %.2f, lrange = %.2f, rrange = %.2f\n",left,mean,right,lrange,rrange);
+	h->Fit("fgaus","qN0","",left,right);
+	for (int i = 0; i<10; i++){
+		mean = f->GetParameter(1);
+		sigma = fabs(f->GetParameter(2));
+		if (mDebugLevel>0) printf("      sigma: %.2f mean: %.2f\n",i,sigma,mean);
+		if (sigma<rrange*5&&sigma>rrange/5&&mean>left&&mean<right) break;
+		left-=lrange/10;
+		right+=rrange/10;
+		if (mDebugLevel>0) printf("   -> %d: %.2f -- %.2f\n",i,left,right);
+		h->Fit("fgaus","qN0","",left,right);
+		mean = f->GetParameter(1);
+		sigma = fabs(f->GetParameter(2));
+	}
+	chi2 = f->GetChisquare();
+	return f;
+}
+
+TF1 * XTAnalyzer::fitSliceLand(TH1D * h, double & mean, double & sigma, double & chi2, double & left, double & right){
+	if (mDebugLevel>0) printf("in fitSliceLand: \"%s\" has %d(%d) entries\n",h->GetName(),h->GetEntries(),h->Integral());
+	TF1 * f = f_land;
+	int bmax = h->GetMaximumBin();
+	mean = h->GetBinCenter(bmax);
+    double lrange = mean-left;
+    double rrange = right-mean;
+	if (mDebugLevel>0) printf("  %.2f - %.2f - %.2f, lrange = %.2f, rrange = %.2f\n",left,mean,right,lrange,rrange);
+	h->Fit("fland","qN0","",left,right);
+	for (int i = 0; i<10; i++){
+		mean = f->GetParameter(1);
+		sigma = fabs(f->GetParameter(2));
+		if (mDebugLevel>0) printf("      sigma: %.2f mean: %.2f\n",i,sigma,mean);
+		if (sigma<rrange*5&&sigma>rrange/5&&mean>left&&mean<right) break;
+		left-=lrange/10;
+		right+=rrange/10;
+		if (mDebugLevel>0) printf("   -> %d: %.2f -- %.2f\n",i,left,right);
+		h->Fit("fland","qN0","",left,right);
+		mean = f->GetParameter(1);
+		sigma = fabs(f->GetParameter(2));
+	}
+	chi2 = f->GetChisquare();
+	return f;
+}
+
+TF1 * XTAnalyzer::fitSlice2Gaus(TH1D * h, double & mean, double & sigma, double & chi2, double & left, double & right){
+	TF1* f = f_2gaus;
+	int bmax = h->GetMaximumBin();
+	mean = h->GetBinCenter(bmax);
+	double height = h->GetBinContent(bmax);
+    double lrange = mean-left;
+    double rrange = right-mean;
+	sigma = h->GetRMS();
+	f->SetParameters(height,mean,sigma,sigma);
+	h->Fit("f2gaus","qN0","",left,right);
+	double sigma1;
+	double sigma2;
+	for (int i = 0; i<10; i++){
+		mean = f->GetParameter(1);
+		sigma1 = fabs(f->GetParameter(2));
+		sigma2 = fabs(f->GetParameter(3));
+		if (sigma1<rrange*5&&sigma2<lrange*5&&sigma1>rrange/5&&sigma2>lrange/5&&mean>left&&mean<right) break;
+		left-=lrange/10;
+		right+=rrange/10;
+		h->Fit("f2gaus","qN0","",left,right);
+		mean = f->GetParameter(1);
+		sigma1 = fabs(f->GetParameter(2));
+		sigma2 = fabs(f->GetParameter(3));
+	}
+	// set results
+	sigma = sqrt((sigma1*sigma1+sigma2*sigma2)/2);
+	chi2 = f->GetChisquare();
+	return f;
 }
 
 double XTAnalyzer::findFirstZero(TF1 * f, double xmin, double xmax, double delta){
@@ -1112,7 +1248,12 @@ void XTAnalyzer::createGraphs(){
 	}
 }
 
-void XTAnalyzer::drawFitting(TH1D* h,TF1 * f,TCanvas * c,TString title, TString filename,double left, double right){
+void XTAnalyzer::drawFitting(TH1D* h,TF1 * f, TCanvas * c,TString title, TString filename,double left, double center, double right){
+	if (!h) fprintf(stderr,"ERROR: in drawFitting, input histogram does not exist!\n");
+	if (!f) fprintf(stderr,"ERROR: in drawFitting, input function does not exist!\n");
+	if (!c) fprintf(stderr,"ERROR: in drawFitting, input canvas does not exist!\n");
+	if (!h||!f||!c) return;
+	if (mDebugLevel>1) printf("drawFitting %s",h->GetName());
 	c->cd();
 	h->SetTitle(title);
 	h->Draw();
@@ -1121,11 +1262,16 @@ void XTAnalyzer::drawFitting(TH1D* h,TF1 * f,TCanvas * c,TString title, TString 
 	l_left->SetX2(left);
 	l_left->SetY1(0);
 	l_left->SetY2(max);
+	l_center->SetX1(center);
+	l_center->SetX2(center);
+	l_center->SetY1(0);
+	l_center->SetY2(max);
 	l_right->SetX1(right);
 	l_right->SetX2(right);
 	l_right->SetY1(0);
 	l_right->SetY2(max);
 	l_left->Draw();
+	l_center->Draw();
 	l_right->Draw();
 	f->Draw("SAME");
 	c->SaveAs(filename);
@@ -1164,6 +1310,59 @@ void XTAnalyzer::drawSamplingsLR(){
 	gr_SmF_right->Draw("PLSAME");
 	canv_xtsamples->SaveAs("xtsamples_"+mRunName+".png");
 	canv_xtsamples->SaveAs("xtsamples_"+mRunName+".pdf");
+	// Add zoom-in plots
+	TCanvas * canv_xtsamplesz = new TCanvas("canv_xtsamplesz","canv_xtsamplesz",800,1000);
+	gStyle->SetPalette(1);
+	gStyle->SetOptStat(0);
+	gStyle->SetPadTickX(1);
+	gStyle->SetPadTickY(1);
+	gPad->SetGridx(1);
+	gPad->SetGridy(1);
+	gr_xt_slicet->SetMarkerSize(1);
+	gr_xt_slicex->SetMarkerSize(1);
+	gr_left_end->SetMarkerSize(1);
+	gr_left_mid->SetMarkerSize(1);
+	gr_right_mid->SetMarkerSize(1);
+	gr_right_end->SetMarkerSize(1);
+	gr_xt_slicet->Draw("PSAME");
+	gr_xt_slicex->Draw("PSAME");
+	gr_left_mid->Draw("PSAME");
+	gr_right_mid->Draw("PSAME");
+	gr_right_end->Draw("PSAME");
+	h2_xt->GetXaxis()->SetRangeUser(-25,25);
+	h2_xt->GetYaxis()->SetRangeUser(-1,1);
+	h2_xt->Draw("COLZ");
+	gr_xt_slicet->Draw("PSAME");
+	gr_xt_slicex->Draw("PSAME");
+	gr_left_mid->Draw("PSAME");
+	gr_right_mid->Draw("PSAME");
+	f_left_com->Draw("SAME");
+	f_right_com->Draw("SAME");
+	canv_xtsamplesz->SaveAs("xtsamples_center_"+mRunName+".png");
+	canv_xtsamplesz->SaveAs("xtsamples_center_"+mRunName+".pdf");
+	h2_xt->GetXaxis()->SetRangeUser(250,400);
+	h2_xt->GetYaxis()->SetRangeUser(6.5,8);
+	h2_xt->Draw("COLZ");
+	gr_xt_slicet->Draw("PSAME");
+	gr_xt_slicex->Draw("PSAME");
+	gr_right_mid->Draw("PSAME");
+	gr_right_end->Draw("PSAME");
+	f_right_com->Draw("SAME");
+	canv_xtsamplesz->SaveAs("xtsamples_endR_"+mRunName+".png");
+	canv_xtsamplesz->SaveAs("xtsamples_endR_"+mRunName+".pdf");
+	h2_xt->GetXaxis()->SetRangeUser(250,400);
+	h2_xt->GetYaxis()->SetRangeUser(-8,-6.5);
+	h2_xt->Draw("COLZ");
+	gr_xt_slicet->Draw("PSAME");
+	gr_xt_slicex->Draw("PSAME");
+	gr_left_mid->Draw("PSAME");
+	gr_left_end->Draw("PSAME");
+	f_left_com->Draw("SAME");
+	canv_xtsamplesz->SaveAs("xtsamples_endL_"+mRunName+".png");
+	canv_xtsamplesz->SaveAs("xtsamples_endL_"+mRunName+".pdf");
+	h2_xt->GetXaxis()->UnZoom();
+	h2_xt->GetYaxis()->UnZoom();
+	// fitting status of slices 
 	TCanvas * canv_xtslices = new TCanvas("canv_xtslices","canv_xtslices",1364,768);
 	TPad * pad_xtslices[6];
 	for (int il = 0; il<3; il++){
@@ -1182,7 +1381,7 @@ void XTAnalyzer::drawSamplingsLR(){
 	pad_xtslices[0]->cd();
 	gr_xn_slicex->Draw("AP");
 	pad_xtslices[1]->cd();
-	gr_xsig_slicex->GetYaxis()->SetRangeUser(0,20); // fix at 20 ns for iteration comparisons
+	gr_xsig_slicex->GetYaxis()->SetRangeUser(0,mSigTmax);
 	gr_xsig_slicex->Draw("AP");
 	pad_xtslices[2]->cd();
 	gr_xchi2_slicex->Draw("AP");
@@ -1191,7 +1390,7 @@ void XTAnalyzer::drawSamplingsLR(){
 	gr_nt_slicetl->Draw("AP");
 	gr_nt_slicetr->Draw("PSAME");
 	pad_xtslices[4]->cd();
-	gr_sigt_slicetl->GetYaxis()->SetRangeUser(0,0.5); // fix at 0.5 mm for iteration comparisons
+	gr_sigt_slicetl->GetYaxis()->SetRangeUser(0,mSigXmax);
 	gr_sigt_slicetl->Draw("AP");
 	gr_sigt_slicetr->Draw("PSAME");
 	pad_xtslices[5]->cd();
@@ -1230,6 +1429,40 @@ void XTAnalyzer::drawSamplingsB(){
 	gr_SmF_both->Draw("PLSAME");
 	canv_xtsamplesn->SaveAs("xtsamplesn_"+mRunName+".png");
 	canv_xtsamplesn->SaveAs("xtsamplesn_"+mRunName+".pdf");
+	// Add zoom-in plots
+	TCanvas * canv_xtsamplesnz = new TCanvas("canv_xtsamplesnz","canv_xtsamplesnz",800,1000);
+	gStyle->SetPalette(1);
+	gStyle->SetOptStat(0);
+	gStyle->SetPadTickX(1);
+	gStyle->SetPadTickY(1);
+	gPad->SetGridx(1);
+	gPad->SetGridy(1);
+	gr_xt_slicetn->SetMarkerSize(1);
+	gr_xt_slicexn->SetMarkerSize(1);
+	gr_both_mid->SetMarkerSize(1);
+	gr_both_end->SetMarkerSize(1);
+	h2_xtn->GetXaxis()->SetRangeUser(-25,25);
+	h2_xtn->GetYaxis()->SetRangeUser(0,1);
+	h2_xtn->Draw("COLZ");
+	gr_xt_slicetn->Draw("PSAME");
+	gr_xt_slicexn->Draw("PSAME");
+	gr_both_mid->Draw("PSAME");
+	f_both_com->Draw("SAME");
+	canv_xtsamplesnz->SaveAs("xtsamplesn_center_"+mRunName+".png");
+	canv_xtsamplesnz->SaveAs("xtsamplesn_center_"+mRunName+".pdf");
+	h2_xtn->GetXaxis()->SetRangeUser(250,400);
+	h2_xtn->GetYaxis()->SetRangeUser(6.5,8);
+	h2_xtn->Draw("COLZ");
+	gr_xt_slicetn->Draw("PSAME");
+	gr_xt_slicexn->Draw("PSAME");
+	gr_both_mid->Draw("PSAME");
+	gr_both_end->Draw("PSAME");
+	f_both_com->Draw("SAME");
+	canv_xtsamplesnz->SaveAs("xtsamplesn_end_"+mRunName+".png");
+	canv_xtsamplesnz->SaveAs("xtsamplesn_end_"+mRunName+".pdf");
+	h2_xtn->GetXaxis()->UnZoom();
+	h2_xtn->GetYaxis()->UnZoom();
+	// fitting status of slices 
 	TCanvas * canv_xtslicesn = new TCanvas("canv_xtslicesn","canv_xtslicesn",1364,768);
 	TPad * pad_xtslicesn[6];
 	for (int il = 0; il<3; il++){
@@ -1248,7 +1481,7 @@ void XTAnalyzer::drawSamplingsB(){
 	pad_xtslicesn[0]->cd();
 	gr_xn_slicexn->Draw("AP");
 	pad_xtslicesn[1]->cd();
-	gr_xsig_slicexn->GetYaxis()->SetRangeUser(0,20); // fix at 20 ns for iteration comparisons
+	gr_xsig_slicexn->GetYaxis()->SetRangeUser(0,mSigTmax);
 	gr_xsig_slicexn->Draw("AP");
 	pad_xtslicesn[2]->cd();
 	gr_xchi2_slicexn->Draw("AP");
@@ -1256,7 +1489,7 @@ void XTAnalyzer::drawSamplingsB(){
 	pad_xtslicesn[3]->SetLogy(1);
 	gr_nt_slicetn->Draw("AP");
 	pad_xtslicesn[4]->cd();
-	gr_sigt_slicetn->GetYaxis()->SetRangeUser(0,0.5); // fix at 0.5 mm for iteration comparisons
+	gr_sigt_slicetn->GetYaxis()->SetRangeUser(0,mSigXmax);
 	gr_sigt_slicetn->Draw("AP");
 	pad_xtslicesn[5]->cd();
 	gr_chi2t_slicetn->Draw("AP");
@@ -1383,11 +1616,15 @@ void XTAnalyzer::writeObjects(){
 	mOutFile->cd();
 	for (int ix = 0; ix<NSLICEX; ix++){
 		h_t[ix]->Write();
+		h_t_xsum[ix]->Write();
 		h_tn[ix]->Write();
+		h_tn_xsum[ix]->Write();
 	}
 	for (int it = 0; it<NSLICET; it++){
 		h_x[it]->Write();
+		h_x_tsum[it]->Write();
 		h_xn[it]->Write();
+		h_xn_tsum[it]->Write();
 	}
 	h2_xt->Write();
 	h2_xtn->Write();

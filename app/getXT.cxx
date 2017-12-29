@@ -34,6 +34,15 @@ int main(int argc, char** argv){
     int debugLevel = 0;
     if (argc>=8)
         debugLevel = (int)strtol(argv[7],NULL,10);
+    printf("##############Input %d Parameters##################\n",argc);
+    printf("runNo       = %d\n",runNo);
+    printf("prerunname  = \"%s\"\n",prerunname.Data());
+    printf("runname     = \"%s\"\n",runname.Data());
+    printf("geoSetup:     %s\n",geoSetup==0?"normal scintillator":"finger scintillator");
+    printf("xtType:       %s\n",xtType==0?"asymmetric":(xtType==1?"symmetric":(xtType==2?"symmetric, thru 0":(xtType==3?"symmetric with nLHits==0":"others?"))));
+    printf("save slice fittings? \"%s\"\n",saveHists?"yes":"no");
+    printf("debug       = %d\n",debugLevel);
+    fflush(stdout);
 
     TString HOME=getenv("CDCS8WORKING_DIR");
 
@@ -110,7 +119,7 @@ int main(int argc, char** argv){
 
     // Loop in layers
 	for (int lid = 1; lid<=8; lid++){
-        if (debugLevel>0) printf("In Layer %d: preparing input TChain\n",lid);
+        if (debugLevel>0) {printf("In Layer %d: preparing input TChain\n",lid);fflush(stdout);}
 		TChain * ichain = new TChain("t","t");
 		ichain->Add(Form("%s/root/t_%d.%s.layer%d.root",HOME.Data(),runNo,runname.Data(),lid));
         ichain->SetBranchAddress("triggerNumber",&triggerNumber);
@@ -172,7 +181,7 @@ int main(int argc, char** argv){
 		int nLateHits = 0;
 		int nBoundaryHits = 0;
 		int nSmallBoundaryHits = 0;
-        if (debugLevel>0) printf("Processing %d events\n",N);
+        if (debugLevel>0) {printf("Processing %d events\n",N);fflush(stdout);}
         for ( int iEntry = 0 ; iEntry<N; iEntry++){
             if (N%1000==0) printf("%d\n",N);
             if (debugLevel>=10) printf("Entry%d: \n",iEntry);

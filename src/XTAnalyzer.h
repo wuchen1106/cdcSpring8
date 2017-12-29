@@ -5,8 +5,8 @@
 
 #include "TString.h"
 
-#define NSLICEX 161 // 161 bins from -8.05 mm to 8.05 mm, binning every 100 um
-#define NSLICET 512 // 256 bins from 0 ns to 800 ns including left and right side, bining every 3.125 ns (3 TDC)
+#define NSLICEX 201 // 201 bins from -8.04 mm to 8.04 mm, binning every 80 um
+#define NSLICET 513 // 257 bins from -1.5625 ns to 801.5625 ns including left and right side, bining every 3.125 ns (3 TDC)
 
 class TFile;
 class TF1;
@@ -25,7 +25,7 @@ class XTAnalyzer{
 		void SetXTType(int type);
 		void SetSaveHists(int save);
 
-		int  Initialize(TString runname, int lid, TFile * infile, TFile * outfile, TTree * otree, int xttype, bool savehists,bool saveXT0 = false);
+		int  Initialize(TString runname, int lid, TFile * infile, TFile * outfile, TTree * otree, int xttype, int savehists,bool saveXT0 = false);
 		void Process(void);
 
 		void Push(double t, double x);
@@ -38,7 +38,11 @@ class XTAnalyzer{
 		int x2i(double x);
 		void i2x(int i,double & fdmin, double & fdmid, double & fdmax);
 		void i2t(int i,double & dtmin, double & dtmid, double & dtmax);
-		void getOneThirdLines(TH1D* h, double & left, double & right);
+		double getMean(TH1D * h, TH1D * hy, double left, double right);
+		void fitSliceHistFloat(TH1D * h, double ratio, double & mean, double & sigma, double & chi2, double & left, double & right);
+		TF1 * fitSliceGaus(TH1D * h, double & mean, double & sigma, double & chi2, double & left, double & right);
+		TF1 * fitSliceLand(TH1D * h, double & mean, double & sigma, double & chi2, double & left, double & right);
+		TF1 * fitSlice2Gaus(TH1D * h, double & mean, double & sigma, double & chi2, double & left, double & right);
 		double findFirstZero(TF1 * f, double xmin, double xmax, double delta);
 		void getT8(double & t8left, double & t8right, double & t8both);
 		TF1 * myNewTF1(TString name, TString form, double left, double right);
@@ -48,7 +52,7 @@ class XTAnalyzer{
 		TF1 * combinePolN(TString name, TF1 * f1, TF1 * f2, double x0, double x1, double x2, double xmin, double xmax);
 		TString formPolN(TF1 * f);
 		void createGraphs();
-		void drawFitting(TH1D* h,TF1 * f,TCanvas * c,TString title, TString filename,double left, double right);
+		void drawFitting(TH1D* h,TF1 * f,TCanvas * c,TString title, TString filename,double left, double center, double right);
 		void drawSamplingsLR();
 		void drawSamplingsB();
 		void drawLRB();
@@ -61,7 +65,7 @@ class XTAnalyzer{
 	private:
 		// options
 		int mDebugLevel;
-		bool mSaveHists;
+		int mSaveHists;
 		bool mSaveXT0;
 		int mXTType;
 		TString mRunName;
@@ -107,20 +111,24 @@ class XTAnalyzer{
 		// Histograms for bin analysis
 		TH1D * h_t[NSLICEX];
 		TH1D * h_x[NSLICET];
+		TH1D * h_mx[NSLICET]; // to record pure negative x for landau fitting;
 		TH1D * h_tn[NSLICEX]; // for neutral driftD
 		TH1D * h_xn[NSLICET]; // for neutral driftD
+		TH1D * h_mxn[NSLICET]; // to record pure negative x for landau fitting;
 		// to record bin centers
-		double c_t[NSLICEX];
-		double c_x[NSLICET];
-		double c_tn[NSLICEX]; // for neutral driftD
-		double c_xn[NSLICET]; // for neutral driftD
+		TH1D * h_t_xsum[NSLICEX];
+		TH1D * h_x_tsum[NSLICET];
+		TH1D * h_tn_xsum[NSLICEX]; // for neutral driftD
+		TH1D * h_xn_tsum[NSLICET]; // for neutral driftD
 
 		// functions to fit x/t slices
-		TF1 * f_x;
-		TF1 * f_t;
+		TF1 * f_gaus;
+		TF1 * f_land;
+		TF1 * f_2gaus;
 
 		// about drawing the histograms
 		TLine * l_left;
+		TLine * l_center;
 		TLine * l_right;
 
 		// vectors to cantain sample points
