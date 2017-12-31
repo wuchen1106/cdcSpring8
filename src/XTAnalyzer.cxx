@@ -100,7 +100,10 @@ int XTAnalyzer::Initialize(TString runname, int lid, TFile * infile, TFile * out
 	mBWX = 0.08;
 	mXLEFT = -mBWX*NSLICEX/2;
 	mXRIGHT = mBWX*NSLICEX/2;
-	mBWT = 3/0.96;
+//	mBWT = 3/0.96;
+//	mBWT = 5/0.96;
+//	mBWT = 7/0.96;
+	mBWT = 9/0.96;
 	mTLEFT = -mBWT*NSLICET/2;
 	mTRIGHT = mBWT*NSLICET/2;
 	// set for binning
@@ -339,7 +342,7 @@ void XTAnalyzer::Process(void){
 		if (mDebugLevel>0) {printf("h_xn[%d] (%d) after fitSliceHistFloat: x=%.2f, sig=%.2f, chi2=%.2f, left = %.2f, right = %.2f\n",i,(int)mEntries,mX,mSig,mChi2,left,right);fflush(stdout);}
 		if (mEntries>midEntries){
 			TF1 * f = 0;
-			if (fabs(mX)>7&&fabs(mX)<7.8){ // FIXME: boundary up to tuning
+			if (fabs(mX)>7.15&&fabs(mX)<7.8){ // FIXME: boundary up to tuning
 				fitSliceHistFloat(h_mxn[i],0.3,mX,mSig,mChi2,left,right);
 				f = fitSliceLand(h_mxn[i],mX,mSig,mChi2,left,right);
 				mX*=-1;
@@ -1329,8 +1332,8 @@ void XTAnalyzer::drawSamplingsLR(){
 	gr_left_mid->Draw("PSAME");
 	gr_right_mid->Draw("PSAME");
 	gr_right_end->Draw("PSAME");
-	h2_xt->GetXaxis()->SetRangeUser(-25,25);
-	h2_xt->GetYaxis()->SetRangeUser(-1,1);
+	h2_xt->GetXaxis()->SetRangeUser(-10,60);
+	h2_xt->GetYaxis()->SetRangeUser(-2,2);
 	h2_xt->Draw("COLZ");
 	gr_xt_slicet->Draw("PSAME");
 	gr_xt_slicex->Draw("PSAME");
@@ -1340,7 +1343,7 @@ void XTAnalyzer::drawSamplingsLR(){
 	f_right_com->Draw("SAME");
 	canv_xtsamplesz->SaveAs("xtsamples_center_"+mRunName+".png");
 	canv_xtsamplesz->SaveAs("xtsamples_center_"+mRunName+".pdf");
-	h2_xt->GetXaxis()->SetRangeUser(250,400);
+	h2_xt->GetXaxis()->SetRangeUser(250,450);
 	h2_xt->GetYaxis()->SetRangeUser(6.5,8);
 	h2_xt->Draw("COLZ");
 	gr_xt_slicet->Draw("PSAME");
@@ -1350,7 +1353,7 @@ void XTAnalyzer::drawSamplingsLR(){
 	f_right_com->Draw("SAME");
 	canv_xtsamplesz->SaveAs("xtsamples_endR_"+mRunName+".png");
 	canv_xtsamplesz->SaveAs("xtsamples_endR_"+mRunName+".pdf");
-	h2_xt->GetXaxis()->SetRangeUser(250,400);
+	h2_xt->GetXaxis()->SetRangeUser(250,450);
 	h2_xt->GetYaxis()->SetRangeUser(-8,-6.5);
 	h2_xt->Draw("COLZ");
 	gr_xt_slicet->Draw("PSAME");
@@ -1441,8 +1444,8 @@ void XTAnalyzer::drawSamplingsB(){
 	gr_xt_slicexn->SetMarkerSize(1);
 	gr_both_mid->SetMarkerSize(1);
 	gr_both_end->SetMarkerSize(1);
-	h2_xtn->GetXaxis()->SetRangeUser(-25,25);
-	h2_xtn->GetYaxis()->SetRangeUser(0,1);
+	h2_xtn->GetXaxis()->SetRangeUser(-10,60);
+	h2_xtn->GetYaxis()->SetRangeUser(0,2);
 	h2_xtn->Draw("COLZ");
 	gr_xt_slicetn->Draw("PSAME");
 	gr_xt_slicexn->Draw("PSAME");
@@ -1450,7 +1453,7 @@ void XTAnalyzer::drawSamplingsB(){
 	f_both_com->Draw("SAME");
 	canv_xtsamplesnz->SaveAs("xtsamplesn_center_"+mRunName+".png");
 	canv_xtsamplesnz->SaveAs("xtsamplesn_center_"+mRunName+".pdf");
-	h2_xtn->GetXaxis()->SetRangeUser(250,400);
+	h2_xtn->GetXaxis()->SetRangeUser(250,450);
 	h2_xtn->GetYaxis()->SetRangeUser(6.5,8);
 	h2_xtn->Draw("COLZ");
 	gr_xt_slicetn->Draw("PSAME");
