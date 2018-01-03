@@ -159,6 +159,18 @@ class XTAnalyzer{
 		std::vector<double> v_n_slicetn;
 		std::vector<double> v_chi2_slicetn;
 
+		std::vector<double> v_t_slicetls;
+		std::vector<double> v_t_slicetrs;
+		std::vector<double> v_t_slicetns;
+		std::vector<double> v_sig_slicetls;
+		std::vector<double> v_sig_slicetrs;
+		std::vector<double> v_sig_slicetns;
+
+		double m_sig_sel;
+		double m_t_sel;
+		double m_n_sel;
+		int m_i_sel;
+
 		// graphs for slice analysis
 		TGraph * gr_xt_slicet;
 		TGraph * gr_xt_slicex;
@@ -186,43 +198,33 @@ class XTAnalyzer{
 		TGraph * gr_sigts_slicetr0;
 
 		// vectors selected for XT graphs
+		std::vector<double> v_left_cen_x;
+		std::vector<double> v_left_cen_t;
+		std::vector<double> v_right_cen_x;
+		std::vector<double> v_right_cen_t;
+		std::vector<double> v_both_cen_x;
+		std::vector<double> v_both_cen_t;
+		std::vector<double> v_bothL_cen_x;
 		std::vector<double> v_left_mid_x;
 		std::vector<double> v_left_mid_t;
 		std::vector<double> v_right_mid_x;
 		std::vector<double> v_right_mid_t;
+		std::vector<double> v_both_mid_x;
+		std::vector<double> v_both_mid_t;
+		std::vector<double> v_bothL_mid_x;
 		std::vector<double> v_left_end_x;
 		std::vector<double> v_left_end_t;
 		std::vector<double> v_right_end_x;
 		std::vector<double> v_right_end_t;
-		std::vector<double> v_both_mid_x;
-		std::vector<double> v_both_mid_t;
 		std::vector<double> v_both_end_x;
 		std::vector<double> v_both_end_t;
 		std::vector<double> v_bothL_end_x;
-		std::vector<double> v_bothL_mid_x;
 
 		// for comparing left/right/both-side
-		std::vector<double> v_LmB_dx;
-		std::vector<double> v_LmB_t;
-		std::vector<double> v_RmB_dx;
-		std::vector<double> v_RmB_t;
-
 		std::vector<double> v_LmB_func_dx;
 		std::vector<double> v_LmB_func_t;
 		std::vector<double> v_RmB_func_dx;
 		std::vector<double> v_RmB_func_t;
-
-		std::vector<double> v_t_slicetls;
-		std::vector<double> v_t_slicetrs;
-		std::vector<double> v_t_slicetns;
-		std::vector<double> v_sig_slicetls;
-		std::vector<double> v_sig_slicetrs;
-		std::vector<double> v_sig_slicetns;
-
-		double m_sig_sel;
-		double m_t_sel;
-		double m_n_sel;
-		int m_i_sel;
 
 		double m_RLmB_dx_max;
 

@@ -168,10 +168,6 @@ int XTAnalyzer::Initialize(TString runname, int lid, TFile * infile, TFile * out
 	v_both_end_t.clear();
 	v_bothL_mid_x.clear();
 	v_bothL_end_x.clear();
-	v_LmB_dx.clear();
-	v_LmB_t.clear();
-	v_RmB_dx.clear();
-	v_RmB_t.clear();
 	v_LmB_func_dx.clear();
 	v_LmB_func_t.clear();
 	v_RmB_func_dx.clear();
@@ -503,86 +499,6 @@ void XTAnalyzer::Process(void){
 		sigmaXIncrement(v_t_slicetn[i],v_sig_slicetn[i],v_n_slicetn[i],v_t_slicetns,v_sig_slicetns);
 	}
 	sigmaXFinalcheck(v_t_slicetns,v_sig_slicetns);
-
-	// get Left/Right/Both-sides differences by samples
-	for (int i = 0; i<v_left_mid_x.size(); i++){
-		for (int j = 0; j<v_both_mid_x.size(); j++){
-			if (fabs(-v_left_mid_x[i]-v_both_mid_x[j])<1e-7){
-				double dt = v_left_mid_t[i]-v_both_mid_t[j];
-				int n = 0;
-				double vel = 0;
-				if (j!=0){
-					vel += (v_both_mid_x[j]-v_both_mid_x[j-1])/(v_both_mid_t[j]-v_both_mid_t[j-1]);
-					n++;
-				}
-				if (j!=v_both_mid_x.size()-1){
-					vel += (v_both_mid_x[j]-v_both_mid_x[j+1])/(v_both_mid_t[j]-v_both_mid_t[j+1]);
-					n++;
-				}
-				if (n) vel/=n;
-				double dx = -dt*vel*1000;
-				v_LmB_dx.push_back(dx);
-				v_LmB_t.push_back((v_left_mid_t[i]+v_both_mid_t[j])/2);
-				if (m_RLmB_dx_max<fabs(dx)) m_RLmB_dx_max = fabs(dx);
-				break;
-			}
-			else if (fabs(v_left_mid_t[i]-v_both_mid_t[j])<1e-7){
-				v_LmB_dx.push_back((-v_left_mid_x[i]-v_both_mid_x[j])*1000); // turn to use um
-				v_LmB_t.push_back(v_left_mid_t[i]);
-				if (m_RLmB_dx_max<fabs(-v_left_mid_x[i]-v_both_mid_x[j])*1000) m_RLmB_dx_max = fabs(-v_left_mid_x[i]-v_both_mid_x[j])*1000;
-				break;
-			}
-		}
-	}
-	for (int i = 0; i<v_left_end_t.size(); i++){
-		for (int j = 0; j<v_both_end_t.size(); j++){
-			if (fabs(v_left_end_t[i]-v_both_end_t[j])<1e-7){
-				v_LmB_dx.push_back((-v_left_end_x[i]-v_both_end_x[j])*1000); // turn to use um
-				v_LmB_t.push_back(v_left_end_t[i]);
-				if (m_RLmB_dx_max<fabs(-v_left_end_x[i]-v_both_end_x[j])*1000) m_RLmB_dx_max = fabs(-v_left_end_x[i]-v_both_end_x[j])*1000;
-				break;
-			}
-		}
-	}
-	for (int i = 0; i<v_right_mid_x.size(); i++){
-		for (int j = 0; j<v_both_mid_x.size(); j++){
-			if (fabs(v_right_mid_x[i]-v_both_mid_x[j])<1e-7){
-				double dt = v_right_mid_t[i]-v_both_mid_t[j];
-				int n = 0;
-				double vel = 0;
-				if (j!=0){
-					vel += (v_both_mid_x[j]-v_both_mid_x[j-1])/(v_both_mid_t[j]-v_both_mid_t[j-1]);
-					n++;
-				}
-				if (j!=v_both_mid_x.size()-1){
-					vel += (v_both_mid_x[j]-v_both_mid_x[j+1])/(v_both_mid_t[j]-v_both_mid_t[j+1]);
-					n++;
-				}
-				if (n) vel/=n;
-				double dx = -dt*vel*1000;
-				v_RmB_dx.push_back(dx);
-				v_RmB_t.push_back((v_right_mid_t[i]+v_both_mid_t[j])/2);
-				if (m_RLmB_dx_max<fabs(dx)) m_RLmB_dx_max = fabs(dx);
-				break;
-			}
-			else if (fabs(v_right_mid_t[i]-v_both_mid_t[j])<1e-7){
-				v_RmB_dx.push_back((v_right_mid_x[i]-v_both_mid_x[j])*1000); // turn to use um
-				v_RmB_t.push_back(v_right_mid_t[i]);
-				if (m_RLmB_dx_max<fabs(v_right_mid_x[i]-v_both_mid_x[j])*1000) m_RLmB_dx_max = fabs(v_right_mid_x[i]-v_both_mid_x[j])*1000;
-				break;
-			}
-		}
-	}
-	for (int i = 0; i<v_right_end_t.size(); i++){
-		for (int j = 0; j<v_both_end_t.size(); j++){
-			if (fabs(v_right_end_t[i]-v_both_end_t[j])<1e-7){
-				v_RmB_dx.push_back((v_right_end_x[i]-v_both_end_x[j])*1000); // turn to use um
-				v_RmB_t.push_back(v_right_end_t[i]);
-				if (m_RLmB_dx_max<fabs(v_right_end_x[i]-v_both_end_x[j])*1000) m_RLmB_dx_max = fabs(v_right_end_x[i]-v_both_end_x[j])*1000;
-				break;
-			}
-		}
-	}
 
 	//==========================Prepare graphs==============================
 	createGraphs();
@@ -1218,10 +1134,6 @@ void XTAnalyzer::createGraphs(){
 			"XT Relation","T [ns]","X [mm]",20,0.3,kBlack,0.3,kBlack);
 	gr_bothL_end = myNewTGraph(Form("gr_xt_ble_%d",mLayerID),v_bothL_end_x.size(),&(v_both_end_t[0]),&(v_bothL_end_x[0]),
 			"XT Relation","T [ns]","X [mm]",20,0.3,kBlack,0.3,kBlack);
-	gr_LmB = myNewTGraph(Form("gr_LmB_%d",mLayerID),v_LmB_t.size(),&(v_LmB_t[0]),&(v_LmB_dx[0]),
-			"XT Differences with Both-side Combined Case","T [ns]","#Delta_{X} [um]",20,0.5,kMagenta,0.5,kMagenta);
-	gr_RmB = myNewTGraph(Form("gr_RmB_%d",mLayerID),v_RmB_t.size(),&(v_RmB_t[0]),&(v_RmB_dx[0]),
-			"XT Differences with Both-side Combined Case","T [ns]","#Delta_{X} [um]",20,0.5,kRed,0.5,kRed);
 	// selected graphs for error reference
 	if (mXTType==0){
 		gr_sigts_slicetl = myNewTGraph(Form("gr_sigts_slicetl_%d",mLayerID),v_t_slicetls.size(),&(v_t_slicetls[0]),&(v_sig_slicetls[0]),
@@ -1544,8 +1456,6 @@ void XTAnalyzer::drawLRB(){
 	h2_LRmB_dx->Draw();
 	gr_RmB_func->Draw("LSAME");
 	gr_LmB_func->Draw("LSAME");
-	gr_RmB->Draw("PSAME");
-	gr_LmB->Draw("PSAME");
 	canv_LRB->SaveAs("LRB_"+mRunName+".png");
 	canv_LRB->SaveAs("LRB_"+mRunName+".pdf");
 }
@@ -1666,8 +1576,6 @@ void XTAnalyzer::writeObjects(){
 	gr_both_end->Write();
 	gr_bothL_mid->Write();
 	gr_bothL_end->Write();
-	gr_LmB->Write();
-	gr_RmB->Write();
 	gr_LmB_func->Write();
 	gr_RmB_func->Write();
 	gr_TmL_left->Write();
