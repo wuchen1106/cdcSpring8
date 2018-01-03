@@ -154,19 +154,26 @@ int XTAnalyzer::Initialize(TString runname, int lid, TFile * infile, TFile * out
 	l_center->SetLineStyle(2);
 
 	// clear vectors for chosen XT sample points
+	v_left_cen_x.clear();
+	v_left_cen_t.clear();
+	v_right_cen_x.clear();
+	v_right_cen_t.clear();
+	v_both_cen_x.clear();
+	v_both_cen_t.clear();
+	v_bothL_cen_x.clear();
 	v_left_mid_x.clear();
 	v_left_mid_t.clear();
 	v_right_mid_x.clear();
 	v_right_mid_t.clear();
+	v_both_mid_x.clear();
+	v_both_mid_t.clear();
+	v_bothL_mid_x.clear();
 	v_left_end_x.clear();
 	v_left_end_t.clear();
 	v_right_end_x.clear();
 	v_right_end_t.clear();
-	v_both_mid_x.clear();
-	v_both_mid_t.clear();
 	v_both_end_x.clear();
 	v_both_end_t.clear();
-	v_bothL_mid_x.clear();
 	v_bothL_end_x.clear();
 	v_LmB_func_dx.clear();
 	v_LmB_func_t.clear();
@@ -199,6 +206,9 @@ int XTAnalyzer::Initialize(TString runname, int lid, TFile * infile, TFile * out
 	m_TmL_B_max = 0;
 
 	// prepare new XT functions
+	f_left_cen = myNewTF1(Form("flc_%d",mLayerID),"pol9",mTmin,mTmax);
+	f_right_cen = myNewTF1(Form("frc_%d",mLayerID),"pol9",mTmin,mTmax);
+	f_both_cen = myNewTF1(Form("fbc_%d",mLayerID),"pol9",mTmin,mTmax);
 	f_left_mid = myNewTF1(Form("flm_%d",mLayerID),"pol9",mTmin,mTmax);
 	f_right_mid = myNewTF1(Form("frm_%d",mLayerID),"pol9",mTmin,mTmax);
 	f_both_mid = myNewTF1(Form("fbm_%d",mLayerID),"pol9",mTmin,mTmax);
@@ -249,7 +259,7 @@ void XTAnalyzer::Process(void){
 	//==========================Taking Samples from Slices==============================
 	// fit x histograms, and push to vectors & tree
     TCanvas * canv_fitting = new TCanvas("cfit","cfit",1024,768);
-	int midEntries = 100;
+	int minEntries = 100;
 	for (int i = 0; i<NSLICET; i++){
 		if (mDebugLevel>0) {printf("=>h_x[%d\]\n",i);fflush(stdout);}
 		mType = 0;
@@ -259,7 +269,7 @@ void XTAnalyzer::Process(void){
 		mEntries = h_x[i]->Integral();
 		fitSliceHistFloat(h_x[i],0.5,mX,mSig,mChi2,left,right);
 		if (mDebugLevel>0) {printf("h_x[%d] (%d) after fitSliceHistFloat: x=%.2f, sig=%.2f, chi2=%.2f, left = %.2f, right = %.2f\n",i,(int)mEntries,mX,mSig,mChi2,left,right);fflush(stdout);}
-		if (mEntries>midEntries){
+		if (mEntries>minEntries){
 			TF1 * f = 0;
 			bool flipped = false;
 			if (fabs(mX)>7&&fabs(mX)<7.8){ // FIXME: boundary up to tuning
@@ -307,7 +317,7 @@ void XTAnalyzer::Process(void){
 		i2x(i,divleft,mX,divright);
 		mEntries = h_t[i]->Integral();
 		fitSliceHistFloat(h_t[i],0.5,mT,mSig,mChi2,left,right);
-		if (mEntries>midEntries){
+		if (mEntries>minEntries){
 			TF1 * f = 0;
 			if (fabs(mX)<1){
 				fitSliceHistFloat(h_t[i],0.3,mT,mSig,mChi2,left,right);
@@ -338,7 +348,7 @@ void XTAnalyzer::Process(void){
 		mEntries = h_xn[i]->Integral();
 		fitSliceHistFloat(h_xn[i],0.5,mX,mSig,mChi2,left,right);
 		if (mDebugLevel>0) {printf("h_xn[%d] (%d) after fitSliceHistFloat: x=%.2f, sig=%.2f, chi2=%.2f, left = %.2f, right = %.2f\n",i,(int)mEntries,mX,mSig,mChi2,left,right);fflush(stdout);}
-		if (mEntries>midEntries){
+		if (mEntries>minEntries){
 			TF1 * f = 0;
 			if (fabs(mX)>7.15&&fabs(mX)<7.8){ // FIXME: boundary up to tuning
 				fitSliceHistFloat(h_mxn[i],0.3,mX,mSig,mChi2,left,right);
@@ -376,7 +386,7 @@ void XTAnalyzer::Process(void){
 		i2x(i,divleft,mX,divright);
 		mEntries = h_tn[i]->Integral();
 		fitSliceHistFloat(h_tn[i],0.5,mT,mSig,mChi2,left,right);
-		if (mEntries>midEntries){
+		if (mEntries>minEntries){
 			TF1 * f = 0;
 			if (fabs(mX)<1){
 				fitSliceHistFloat(h_tn[i],0.3,mT,mSig,mChi2,left,right);
@@ -400,7 +410,9 @@ void XTAnalyzer::Process(void){
 
 	//==========================Select Samples==============================
 	// select sample points and make graphs
-	// FIXME: Currently seperate the mid/end graphs by 7.8 mm line, and search for the real one from 7.5 line.
+	// FIXME: Currently seperate the mid/end graphs by 8 mm line, and search for the real one from 7 mm line.
+	// FIXME: Currently seperate the cen/mid graphs by 1 mm line, and search for the real one from mTmin.
+	double xCenter2Mid = 1;
 	double xStart2Turn = 7;
 	double t8Left = v_t_slicex[0];
 	double t8Right = v_t_slicex[NSLICEX-1];
@@ -424,7 +436,7 @@ void XTAnalyzer::Process(void){
 			v_left_end_x.push_back(v_x_slicet[i]);
 			v_left_end_t.push_back(v_t_slicet[i]);
 		}
-		else if (v_x_slicet[i]<=-xStart2Turn){ // turning part
+		else if (v_x_slicet[i]<=-xStart2Turn){ // turning part // FIXME: should keep one point overlapped
 			if (mDebugLevel>=2) printf("                  x<=%.2f, push to left_mid!\n",-xStart2Turn);
 			v_left_mid_x.push_back(v_x_slicet[i]);
 			v_left_mid_t.push_back(v_t_slicet[i]);
@@ -432,22 +444,61 @@ void XTAnalyzer::Process(void){
 		sigmaXIncrement(v_t_slicet[i],v_sig_slicet[i],v_n_slicet[i],v_t_slicetls,v_sig_slicetls);
 	}
 	sigmaXFinalcheck(v_t_slicetls,v_sig_slicetls);
-	for (int i = 0; i<NSLICEX; i++){ // t samples in x slices
-		if (mDebugLevel>=2) printf("  LR X slice[%d]: x=%.2f, t=%.1f, n=%.0f, sig=%.1f\n",i,v_x_slicex[i],v_t_slicex[i],v_n_slicex[i],v_sig_slicex[i]);
-		if (v_n_slicex[i]<mEntriesMin||v_sig_slicex[i]>mSigTmax||v_sig_slicex[i]<=0) continue;
-		if (mDebugLevel>=2) printf("                  Passed!\n");
+	// t samples in x slices, find out the minimum t first
+	double mint_t_slicex_l = mTmax;
+	double mint_x_slicex_l = 0;
+	double mint_t_slicex_r = mTmax;
+	double mint_x_slicex_r = 0;
+	for (int i = 0; i<NSLICEX; i++){
+		double t = v_t_slicex[i];
+		double x = v_x_slicex[i];
 		if (i<=NSLICEX/2){ // left
-			if (v_x_slicex[i]>-xStart2Turn){ // middle part
-				if (mDebugLevel>=2) printf("                  x>%.2f, push to left_mid!\n",-xStart2Turn);
-				v_left_mid_x.push_back(v_x_slicex[i]);
-				v_left_mid_t.push_back(v_t_slicex[i]);
+			if (mint_t_slicex_l>t){
+				mint_t_slicex_l = t;
+				mint_x_slicex_l = x;
 			}
 		}
 		if (i>=NSLICEX/2){ // right
-			if (v_x_slicex[i]<xStart2Turn){ // middle part
-				if (mDebugLevel>=2) printf("                  x<%.2f, push to right_mid!\n",xStart2Turn);
-				v_right_mid_x.push_back(v_x_slicex[i]);
-				v_right_mid_t.push_back(v_t_slicex[i]);
+			if (mint_t_slicex_r>t){
+				mint_t_slicex_r = t;
+				mint_x_slicex_r = x;
+			}
+		}
+	}
+	for (int i = 0; i<NSLICEX; i++){ // t samples in x slices
+		double t = v_t_slicex[i];
+		double x = v_x_slicex[i];
+		if (mDebugLevel>=2) printf("  LR X slice[%d]: x=%.2f, t=%.1f, n=%.0f, sig=%.1f\n",i,x,t,v_n_slicex[i],v_sig_slicex[i]);
+		if (v_n_slicex[i]<mEntriesMin||v_sig_slicex[i]>mSigTmax||v_sig_slicex[i]<=0) continue;
+		if (mDebugLevel>=2) printf("                  Passed!\n");
+		if (i<=NSLICEX/2){ // left
+			if (x>mint_x_slicex_l) t = mint_t_slicex_l;
+			if (x>-xStart2Turn){ // middle part
+				if (x<-xCenter2Mid){
+					if (mDebugLevel>=2) printf("                  %.2f<x, push to left_cen!\n",-xCenter2Mid);
+					v_left_cen_x.push_back(x);
+					v_left_cen_t.push_back(t);
+				}
+				else{
+					if (mDebugLevel>=2) printf("                  %.2f<x<%.2f, push to left_mid!\n",-xStart2Turn,-xCenter2Mid);
+					v_left_mid_x.push_back(x);
+					v_left_mid_t.push_back(t);
+				}
+			}
+		}
+		if (i>=NSLICEX/2){ // right
+			if (x<mint_x_slicex_r) t = mint_t_slicex_r;
+			if (x<xStart2Turn){ // middle part
+				if (x<xCenter2Mid){
+					if (mDebugLevel>=2) printf("                  x<%.2f, push to right_cen!\n",xCenter2Mid);
+					v_right_cen_x.push_back(x);
+					v_right_cen_t.push_back(t);
+				}
+				else{
+					if (mDebugLevel>=2) printf("                  %.2f<x<%.2f, push to right_mid!\n",xCenter2Mid,xStart2Turn);
+					v_right_mid_x.push_back(x);
+					v_right_mid_t.push_back(t);
+				}
 			}
 		}
 	}
@@ -468,15 +519,37 @@ void XTAnalyzer::Process(void){
 		sigmaXIncrement(v_t_slicet[i],v_sig_slicet[i],v_n_slicet[i],v_t_slicetrs,v_sig_slicetrs);
 	}
 	sigmaXFinalcheck(v_t_slicetrs,v_sig_slicetrs);
+	// t samples in x slices, both, find out the minimum t first
+	double mint_t_slicex_b = mTmax;
+	double mint_x_slicex_b = 0;
+	for (int i = NSLICEX/2; i<NSLICEX; i++){
+		double t = v_t_slicexn[i];
+		double x = v_x_slicexn[i];
+		if (mint_t_slicex_b>t){
+			mint_t_slicex_b = t;
+			mint_x_slicex_b = x;
+		}
+	}
 	for (int i = NSLICEX/2; i<NSLICEX; i++){ // t samples in x slices, both-side
-		if (mDebugLevel>=2) printf("  BS X slice[%d]: x=%.2f, t=%.1f, n=%.0f, sig=%.1f\n",i,v_x_slicexn[i],v_t_slicexn[i],v_n_slicexn[i],v_sig_slicexn[i]);
+		double t = v_t_slicexn[i];
+		double x = v_x_slicexn[i];
+		if (x<mint_x_slicex_b) t = mint_t_slicex_b;
+		if (mDebugLevel>=2) printf("  BS X slice[%d]: x=%.2f, t=%.1f, n=%.0f, sig=%.1f\n",i,x,t,v_n_slicexn[i],v_sig_slicexn[i]);
 		if (v_n_slicexn[i]<mEntriesMin||v_sig_slicexn[i]>mSigTmax||v_sig_slicexn[i]<=0) continue;
 		if (mDebugLevel>=2) printf("                  Passed!\n");
-		if (v_x_slicexn[i]<xStart2Turn){ // middle part
-			if (mDebugLevel>=2) printf("                  x<%.2f, push to both_mid!\n",xStart2Turn);
-			v_both_mid_x.push_back(v_x_slicexn[i]);
-			v_bothL_mid_x.push_back(-v_x_slicexn[i]);
-			v_both_mid_t.push_back(v_t_slicexn[i]);
+		if (x<xStart2Turn){ // middle part
+			if (x<xCenter2Mid){
+				if (mDebugLevel>=2) printf("                  %.2f<x, push to both_cen!\n",xCenter2Mid);
+				v_both_cen_x.push_back(x);
+				v_bothL_cen_x.push_back(-x);
+				v_both_cen_t.push_back(t);
+			}
+			else{
+				if (mDebugLevel>=2) printf("                  %.2f<x<%.2f, push to both_mid!\n",xCenter2Mid,xStart2Turn);
+				v_both_mid_x.push_back(x);
+				v_bothL_mid_x.push_back(-x);
+				v_both_mid_t.push_back(t);
+			}
 		}
 	}
 	sigmaXReset();
@@ -507,23 +580,32 @@ void XTAnalyzer::Process(void){
 	// fit xt functions
 	// FIXME: should think about fixing some parameters to let left/right sides XTs go through the same 0 point
 	//        now we have poor shape of XT near 0 point, and we'd better rely on both-side XT
-	if (!gr_left_end->GetN()) fprintf(stderr,"WARNING: gr_left_end is empty!\n"); else gr_left_end->Fit(Form("fle_%d",mLayerID),"qN0","");;
+	if (!gr_left_cen->GetN()) fprintf(stderr,"WARNING: gr_left_cen is empty!\n"); else gr_left_cen->Fit(Form("flc_%d",mLayerID),"qN0","");;
+	if (!gr_right_cen->GetN()) fprintf(stderr,"WARNING: gr_right_cen is empty!\n"); else gr_right_cen->Fit(Form("frc_%d",mLayerID),"qN0","");;
+	if (!gr_both_cen->GetN()) fprintf(stderr,"WARNING: gr_both_cen is empty!\n"); else gr_both_cen->Fit(Form("fbc_%d",mLayerID),"qN0","");;
 	if (!gr_left_mid->GetN()) fprintf(stderr,"WARNING: gr_left_mid is empty!\n"); else gr_left_mid->Fit(Form("flm_%d",mLayerID),"qN0","");;
 	if (!gr_right_mid->GetN()) fprintf(stderr,"WARNING: gr_right_mid is empty!\n"); else gr_right_mid->Fit(Form("frm_%d",mLayerID),"qN0","");;
-	if (!gr_right_end->GetN()) fprintf(stderr,"WARNING: gr_right_end is empty!\n"); else gr_right_end->Fit(Form("fre_%d",mLayerID),"qN0","");;
 	if (!gr_both_mid->GetN()) fprintf(stderr,"WARNING: gr_both_mid is empty!\n"); else gr_both_mid->Fit(Form("fbm_%d",mLayerID),"qN0","");;
+	if (!gr_left_end->GetN()) fprintf(stderr,"WARNING: gr_left_end is empty!\n"); else gr_left_end->Fit(Form("fle_%d",mLayerID),"qN0","");;
+	if (!gr_right_end->GetN()) fprintf(stderr,"WARNING: gr_right_end is empty!\n"); else gr_right_end->Fit(Form("fre_%d",mLayerID),"qN0","");;
 	if (!gr_both_end->GetN()) fprintf(stderr,"WARNING: gr_both_end is empty!\n"); else gr_both_end->Fit(Form("fbe_%d",mLayerID),"qN0","");;
 
 	// get ranges for XT functions
+	f_left_deltac = minusPolN(Form("fldc_%d",mLayerID),f_left_cen,f_left_mid,mTmin,mTmax);
+	f_right_deltac = minusPolN(Form("frdc_%d",mLayerID),f_right_cen,f_right_mid,mTmin,mTmax);
+	f_both_deltac = minusPolN(Form("fbdc_%d",mLayerID),f_both_cen,f_both_mid,mTmin,mTmax);
 	f_left_delta = minusPolN(Form("fld_%d",mLayerID),f_left_mid,f_left_end,0,mTmax);
 	f_right_delta = minusPolN(Form("frd_%d",mLayerID),f_right_mid,f_right_end,0,mTmax);
-	f_both_delta= minusPolN(Form("fbd_%d",mLayerID),f_both_mid,f_both_end,0,mTmax);
+	f_both_delta = minusPolN(Form("fbd_%d",mLayerID),f_both_mid,f_both_end,0,mTmax);
+	double tZeroLeft = findFirstZero(f_left_cen,mTmin,mTmax,1);
+	double tZeroRight = findFirstZero(f_right_cen,mTmin,mTmax,1);
+	double tZeroBoth = findFirstZero(f_both_cen,mTmin,mTmax,1);
+	double tCentLeft = findFirstZero(f_left_deltac,mTmin,mTmax,1);
+	double tCentRight = findFirstZero(f_right_deltac,mTmin,mTmax,1);
+	double tCentBoth = findFirstZero(f_both_deltac,mTmin,mTmax,1);
 	double tTurnLeft = findFirstZero(f_left_delta,t7Left,mTmax,1);
 	double tTurnRight = findFirstZero(f_right_delta,t7Right,mTmax,1);
 	double tTurnBoth = findFirstZero(f_both_delta,t7Both,mTmax,1);
-	double tZeroLeft = findFirstZero(f_left_mid,mTmin,mTmax,1);
-	double tZeroRight = findFirstZero(f_right_mid,mTmin,mTmax,1);
-	double tZeroBoth = findFirstZero(f_both_mid,mTmin,mTmax,1);
 	double tEndLeft = v_left_end_t.size()>0?v_left_end_t[0]:0;
 	double tEndRight = v_right_end_t.size()>0?v_right_end_t[v_right_end_t.size()-1]:0;
 	double tEndBoth = v_both_end_t.size()>0?v_both_end_t[v_both_end_t.size()-1]:0;
@@ -535,29 +617,29 @@ void XTAnalyzer::Process(void){
 	}
 
 	// combine functions
-	f_left_com = combinePolN(Form("flc_%d",mLayerID),f_left_mid,f_left_end,tZeroLeft,tTurnLeft,tEndLeft,mTmin,tEndLeft);
-	f_right_com = combinePolN(Form("frc_%d",mLayerID),f_right_mid,f_right_end,tZeroRight,tTurnRight,tEndRight,mTmin,tEndRight);
-	f_both_com = combinePolN(Form("fbc_%d",mLayerID),f_both_mid,f_both_end,tZeroBoth,tTurnBoth,tEndBoth,mTmin,tEndBoth);
-	f_bothL_com = combinePolN(Form("fblc_%d",mLayerID),scalePolN(f_both_mid,-1),scalePolN(f_both_end,-1),tZeroBoth,tTurnBoth,tEndBoth,mTmin,tEndBoth);
+	f_left_com = combinePolN(Form("flc_%d",mLayerID),f_left_cen,f_left_mid,f_left_end,tZeroLeft,tCentLeft,tTurnLeft,tEndLeft,mTmin,tEndLeft);
+	f_right_com = combinePolN(Form("frc_%d",mLayerID),f_right_cen,f_right_mid,f_right_end,tZeroRight,tCentRight,tTurnRight,tEndRight,mTmin,tEndRight);
+	f_both_com = combinePolN(Form("fbc_%d",mLayerID),f_both_cen,f_both_mid,f_both_end,tZeroBoth,tCentBoth,tTurnBoth,tEndBoth,mTmin,tEndBoth);
+	f_bothL_com = combinePolN(Form("fblc_%d",mLayerID),scalePolN(f_both_cen,-1),scalePolN(f_both_mid,-1),scalePolN(f_both_end,-1),tZeroBoth,tCentBoth,tTurnBoth,tEndBoth,mTmin,tEndBoth);
 	f_left_com->SetLineColor(kMagenta);
 	f_both_com->SetLineColor(kBlack);
 	f_bothL_com->SetLineColor(kBlack);
 
 	// get the final xt functions
 	if (mXTType==0){ // use Left/Right case
-		f_left = combinePolN(Form("fl_%d",mLayerID),f_left_mid,f_left_end,tZeroLeft,tTurnLeft,tEndLeft,mTmin,tEndLeft);
-		f_right = combinePolN(Form("fr_%d",mLayerID),f_right_mid,f_right_end,tZeroRight,tTurnRight,tEndRight,mTmin,tEndRight);
+		f_left = combinePolN(Form("fl_%d",mLayerID),f_left_cen,f_left_mid,f_left_end,tZeroLeft,tCentLeft,tTurnLeft,tEndLeft,mTmin,tEndLeft);
+		f_right = combinePolN(Form("fr_%d",mLayerID),f_right_cen,f_right_mid,f_right_end,tZeroRight,tCentRight,tTurnRight,tEndRight,mTmin,tEndRight);
 		if (mSaveXT0){
-			f_left0 = combinePolN(Form("fl_%d",0),f_left_mid,f_left_end,tZeroLeft,tTurnLeft,tEndLeft,mTmin,tEndLeft);
-			f_right0 = combinePolN(Form("fr_%d",0),f_right_mid,f_right_end,tZeroRight,tTurnRight,tEndRight,mTmin,tEndRight);
+			f_left0 = combinePolN(Form("fl_%d",0),f_left_cen,f_left_mid,f_left_end,tZeroLeft,tCentLeft,tTurnLeft,tEndLeft,mTmin,tEndLeft);
+			f_right0 = combinePolN(Form("fr_%d",0),f_right_cen,f_right_mid,f_right_end,tZeroRight,tCentRight,tTurnRight,tEndRight,mTmin,tEndRight);
 		}
 	}
 	else{ // use Both-Side case
-		f_left = combinePolN(Form("fl_%d",mLayerID),scalePolN(f_both_mid,-1),scalePolN(f_both_end,-1),tZeroBoth,tTurnBoth,tEndBoth,mTmin,tEndBoth);
-		f_right = combinePolN(Form("fr_%d",mLayerID),f_both_mid,f_both_end,tZeroBoth,tTurnBoth,tEndBoth,mTmin,tEndBoth);
+		f_left = combinePolN(Form("fl_%d",mLayerID),scalePolN(f_both_cen,-1),scalePolN(f_both_mid,-1),scalePolN(f_both_end,-1),tZeroBoth,tCentBoth,tTurnBoth,tEndBoth,mTmin,tEndBoth);
+		f_right = combinePolN(Form("fr_%d",mLayerID),f_both_cen,f_both_mid,f_both_end,tZeroBoth,tCentBoth,tTurnBoth,tEndBoth,mTmin,tEndBoth);
 		if (mSaveXT0){
-			f_left0 = combinePolN(Form("fl_%d",0),scalePolN(f_both_mid,-1),scalePolN(f_both_end,-1),tZeroBoth,tTurnBoth,tEndBoth,mTmin,tEndBoth);
-			f_right0 = combinePolN(Form("fr_%d",0),f_both_mid,f_both_end,tZeroBoth,tTurnBoth,tEndBoth,mTmin,tEndBoth);
+			f_left0 = combinePolN(Form("fl_%d",0),scalePolN(f_both_cen,-1),scalePolN(f_both_mid,-1),scalePolN(f_both_end,-1),tZeroBoth,tCentBoth,tTurnBoth,tEndBoth,mTmin,tEndBoth);
+			f_right0 = combinePolN(Form("fr_%d",0),f_both_cen,f_both_mid,f_both_end,tZeroBoth,tCentBoth,tTurnBoth,tEndBoth,mTmin,tEndBoth);
 		}
 	}
 
@@ -609,7 +691,7 @@ void XTAnalyzer::Process(void){
 		}
 	}
 	// get Sample/Function differences
-	for (int i = 0; i<v_left_end_t.size(); i++){
+	for (int i = 0; i<v_left_end_t.size(); i++){ // FIXME: in case of overlapping, should avoid some same points
 		double t = v_left_end_t[i];
 		double x = v_left_end_x[i];
 		double xf = f_left_com->Eval(t);
@@ -622,6 +704,20 @@ void XTAnalyzer::Process(void){
 		double xf = f_left_com->Eval(t);
 		v_SmF_left_t.push_back(t);
 		v_SmF_left_dx.push_back((x-xf)*1000);
+	}
+	for (int i = 0; i<v_left_cen_t.size(); i++){
+		double t = v_left_cen_t[i];
+		double x = v_left_cen_x[i];
+		double xf = f_left_com->Eval(t);
+		v_SmF_left_t.push_back(t);
+		v_SmF_left_dx.push_back((x-xf)*1000);
+	}
+	for (int i = 0; i<v_right_cen_t.size(); i++){
+		double t = v_right_cen_t[i];
+		double x = v_right_cen_x[i];
+		double xf = f_right_com->Eval(t);
+		v_SmF_right_t.push_back(t);
+		v_SmF_right_dx.push_back((x-xf)*1000);
 	}
 	for (int i = 0; i<v_right_mid_t.size(); i++){
 		double t = v_right_mid_t[i];
@@ -636,6 +732,13 @@ void XTAnalyzer::Process(void){
 		double xf = f_right_com->Eval(t);
 		v_SmF_right_t.push_back(t);
 		v_SmF_right_dx.push_back((x-xf)*1000);
+	}
+	for (int i = 0; i<v_both_cen_t.size(); i++){
+		double t = v_both_cen_t[i];
+		double x = v_both_cen_x[i];
+		double xf = f_both_com->Eval(t);
+		v_SmF_both_t.push_back(t);
+		v_SmF_both_dx.push_back((x-xf)*1000);
 	}
 	for (int i = 0; i<v_both_mid_t.size(); i++){
 		double t = v_both_mid_t[i];
@@ -1033,11 +1136,12 @@ TF1 * XTAnalyzer::minusPolN(TString name, TF1 * f1, TF1 * f2, double xmin, doubl
 	return f;
 }
 
-TF1 * XTAnalyzer::combinePolN(TString name, TF1 * f1, TF1 * f2, double x0, double x1, double x2, double xmin, double xmax){
+TF1 * XTAnalyzer::combinePolN(TString name, TF1 * f1, TF1 * f2, TF1 * f3, double x0, double x1, double x2, double x3, double xmin, double xmax){
 	TString form1 = formPolN(f1);
 	TString form2 = formPolN(f2);
-	double ymax = f2->Eval(x2);
-	TF1 * f = new TF1(name,Form("(x>=%.14f&&x<%.14f)*(%s)+(x>=%.14f&&x<%.14f)*(%s)+(x>=%.14f)*%.14e",x0,x1,form1.Data(),x1,x2,form2.Data(),x2,ymax),xmin,xmax);
+	TString form3 = formPolN(f3);
+	double ymax = f3->Eval(x3);
+	TF1 * f = new TF1(name,Form("(x>=%.14f&&x<%.14f)*(%s)+(x>=%.14f&&x<%.14f)*(%s)+(x>=%.14f&&x<%.14f)*(%s)+(x>=%.14f)*%.14e",x0,x1,form1.Data(),x1,x2,form2.Data(),x2,x3,form3.Data(),x3,ymax),xmin,xmax);
 	f->SetNpx(1024);
 	f->SetNumberFitPoints(1024);
 	f->SetLineWidth(0.3);
@@ -1118,19 +1222,27 @@ void XTAnalyzer::createGraphs(){
 			"#chi^{2} of X in each T slice","T [ns]","#chi^{2}_{X}",
 			20,0.5,kBlack,0.5,kBlack);
 	// selected graphs for XT fitting (and showing)
-	gr_left_end = myNewTGraph(Form("gr_xt_le_%d",mLayerID),v_left_end_x.size(),&(v_left_end_t[0]),&(v_left_end_x[0]),
+	gr_left_cen = myNewTGraph(Form("gr_xt_lm_%d",mLayerID),v_left_cen_x.size(),&(v_left_cen_t[0]),&(v_left_cen_x[0]),
 			"XT Relation","T [ns]","X [mm]",20,0.3,kMagenta,0.3,kMagenta);
+	gr_right_cen = myNewTGraph(Form("gr_xt_rm_%d",mLayerID),v_right_cen_x.size(),&(v_right_cen_t[0]),&(v_right_cen_x[0]),
+			"XT Relation","T [ns]","X [mm]",20,0.3,kRed,0.3,kRed);
+	gr_both_cen = myNewTGraph(Form("gr_xt_bm_%d",mLayerID),v_both_cen_x.size(),&(v_both_cen_t[0]),&(v_both_cen_x[0]),
+			"XT Relation","T [ns]","X [mm]",20,0.3,kBlack,0.3,kBlack);
+	gr_bothL_cen = myNewTGraph(Form("gr_xt_blm_%d",mLayerID),v_bothL_cen_x.size(),&(v_both_cen_t[0]),&(v_bothL_cen_x[0]),
+			"XT Relation","T [ns]","X [mm]",20,0.3,kBlack,0.3,kBlack);
 	gr_left_mid = myNewTGraph(Form("gr_xt_lm_%d",mLayerID),v_left_mid_x.size(),&(v_left_mid_t[0]),&(v_left_mid_x[0]),
 			"XT Relation","T [ns]","X [mm]",20,0.3,kMagenta,0.3,kMagenta);
 	gr_right_mid = myNewTGraph(Form("gr_xt_rm_%d",mLayerID),v_right_mid_x.size(),&(v_right_mid_t[0]),&(v_right_mid_x[0]),
 			"XT Relation","T [ns]","X [mm]",20,0.3,kRed,0.3,kRed);
-	gr_right_end = myNewTGraph(Form("gr_xt_re_%d",mLayerID),v_right_end_x.size(),&(v_right_end_t[0]),&(v_right_end_x[0]),
-			"XT Relation","T [ns]","X [mm]",20,0.3,kRed,0.3,kRed);
 	gr_both_mid = myNewTGraph(Form("gr_xt_bm_%d",mLayerID),v_both_mid_x.size(),&(v_both_mid_t[0]),&(v_both_mid_x[0]),
 			"XT Relation","T [ns]","X [mm]",20,0.3,kBlack,0.3,kBlack);
-	gr_both_end = myNewTGraph(Form("gr_xt_be_%d",mLayerID),v_both_end_x.size(),&(v_both_end_t[0]),&(v_both_end_x[0]),
-			"XT Relation","T [ns]","X [mm]",20,0.3,kBlack,0.3,kBlack);
 	gr_bothL_mid = myNewTGraph(Form("gr_xt_blm_%d",mLayerID),v_bothL_mid_x.size(),&(v_both_mid_t[0]),&(v_bothL_mid_x[0]),
+			"XT Relation","T [ns]","X [mm]",20,0.3,kBlack,0.3,kBlack);
+	gr_left_end = myNewTGraph(Form("gr_xt_le_%d",mLayerID),v_left_end_x.size(),&(v_left_end_t[0]),&(v_left_end_x[0]),
+			"XT Relation","T [ns]","X [mm]",20,0.3,kMagenta,0.3,kMagenta);
+	gr_right_end = myNewTGraph(Form("gr_xt_re_%d",mLayerID),v_right_end_x.size(),&(v_right_end_t[0]),&(v_right_end_x[0]),
+			"XT Relation","T [ns]","X [mm]",20,0.3,kRed,0.3,kRed);
+	gr_both_end = myNewTGraph(Form("gr_xt_be_%d",mLayerID),v_both_end_x.size(),&(v_both_end_t[0]),&(v_both_end_x[0]),
 			"XT Relation","T [ns]","X [mm]",20,0.3,kBlack,0.3,kBlack);
 	gr_bothL_end = myNewTGraph(Form("gr_xt_ble_%d",mLayerID),v_bothL_end_x.size(),&(v_both_end_t[0]),&(v_bothL_end_x[0]),
 			"XT Relation","T [ns]","X [mm]",20,0.3,kBlack,0.3,kBlack);
@@ -1218,9 +1330,11 @@ void XTAnalyzer::drawSamplingsLR(){
 	h2_xt->Draw("COLZ");
 	gr_xt_slicet->Draw("PSAME");
 	gr_xt_slicex->Draw("PSAME");
-	gr_left_end->Draw("PSAME");
+	gr_left_cen->Draw("PSAME");
+	gr_right_cen->Draw("PSAME");
 	gr_left_mid->Draw("PSAME");
 	gr_right_mid->Draw("PSAME");
+	gr_left_end->Draw("PSAME");
 	gr_right_end->Draw("PSAME");
 	f_left_com->Draw("SAME");
 	f_right_com->Draw("SAME");
@@ -1242,11 +1356,15 @@ void XTAnalyzer::drawSamplingsLR(){
 	gr_xt_slicet->SetMarkerSize(1);
 	gr_xt_slicex->SetMarkerSize(1);
 	gr_left_end->SetMarkerSize(1);
+	gr_left_cen->SetMarkerSize(1);
+	gr_right_cen->SetMarkerSize(1);
 	gr_left_mid->SetMarkerSize(1);
 	gr_right_mid->SetMarkerSize(1);
 	gr_right_end->SetMarkerSize(1);
 	gr_xt_slicet->Draw("PSAME");
 	gr_xt_slicex->Draw("PSAME");
+	gr_left_cen->Draw("PSAME");
+	gr_right_cen->Draw("PSAME");
 	gr_left_mid->Draw("PSAME");
 	gr_right_mid->Draw("PSAME");
 	gr_right_end->Draw("PSAME");
@@ -1255,6 +1373,8 @@ void XTAnalyzer::drawSamplingsLR(){
 	h2_xt->Draw("COLZ");
 	gr_xt_slicet->Draw("PSAME");
 	gr_xt_slicex->Draw("PSAME");
+	gr_left_cen->Draw("PSAME");
+	gr_right_cen->Draw("PSAME");
 	gr_left_mid->Draw("PSAME");
 	gr_right_mid->Draw("PSAME");
 	f_left_com->Draw("SAME");
@@ -1341,6 +1461,7 @@ void XTAnalyzer::drawSamplingsB(){
 	h2_xtn->Draw("COLZ");
 	gr_xt_slicetn->Draw("PSAME");
 	gr_xt_slicexn->Draw("PSAME");
+	gr_both_cen->Draw("PSAME");
 	gr_both_mid->Draw("PSAME");
 	gr_both_end->Draw("PSAME");
 	f_both_com->Draw("SAME");
@@ -1360,6 +1481,7 @@ void XTAnalyzer::drawSamplingsB(){
 	gPad->SetGridy(1);
 	gr_xt_slicetn->SetMarkerSize(1);
 	gr_xt_slicexn->SetMarkerSize(1);
+	gr_both_cen->SetMarkerSize(1);
 	gr_both_mid->SetMarkerSize(1);
 	gr_both_end->SetMarkerSize(1);
 	h2_xtn->GetXaxis()->SetRangeUser(-10,60);
@@ -1367,6 +1489,7 @@ void XTAnalyzer::drawSamplingsB(){
 	h2_xtn->Draw("COLZ");
 	gr_xt_slicetn->Draw("PSAME");
 	gr_xt_slicexn->Draw("PSAME");
+	gr_both_cen->Draw("PSAME");
 	gr_both_mid->Draw("PSAME");
 	f_both_com->Draw("SAME");
 	canv_xtsamplesnz->SaveAs("xtsamplesn_center_"+mRunName+".png");
@@ -1436,12 +1559,16 @@ void XTAnalyzer::drawLRB(){
 	}
 	pad_LRB[0]->cd();
 	h2_xt->Draw("COLZ");
+	gr_both_cen->Draw("PSAME");
+	gr_bothL_cen->Draw("PSAME");
 	gr_both_mid->Draw("PSAME");
-	gr_both_end->Draw("PSAME");
 	gr_bothL_mid->Draw("PSAME");
+	gr_both_end->Draw("PSAME");
 	gr_bothL_end->Draw("PSAME");
 	gr_left_end->Draw("PSAME");
 	gr_left_mid->Draw("PSAME");
+	gr_left_cen->Draw("PSAME");
+	gr_right_cen->Draw("PSAME");
 	gr_right_mid->Draw("PSAME");
 	gr_right_end->Draw("PSAME");
 	f_left_com->Draw("SAME");
@@ -1570,10 +1697,14 @@ void XTAnalyzer::writeObjects(){
 	gr_xchi2_slicexn->Write();
 	gr_left_end->Write();
 	gr_left_mid->Write();
+	gr_left_cen->Write();
+	gr_right_cen->Write();
 	gr_right_mid->Write();
 	gr_right_end->Write();
+	gr_both_cen->Write();
 	gr_both_mid->Write();
 	gr_both_end->Write();
+	gr_bothL_cen->Write();
 	gr_bothL_mid->Write();
 	gr_bothL_end->Write();
 	gr_LmB_func->Write();
@@ -1581,6 +1712,9 @@ void XTAnalyzer::writeObjects(){
 	gr_TmL_left->Write();
 	gr_TmL_right->Write();
 	gr_TmL_both->Write();
+	f_left_cen->Write();
+	f_right_cen->Write();
+	f_both_cen->Write();
 	f_left_mid->Write();
 	f_right_mid->Write();
 	f_both_mid->Write();

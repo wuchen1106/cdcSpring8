@@ -53,7 +53,7 @@ class XTAnalyzer{
 		TGraph * myNewTGraph(TString name, int n, const double * x, const double * y, TString title, TString Xtitle, TString Ytitle, int mType, double mSize, int mColor, double lSize, int lColor);
 		TF1 * scalePolN(TF1 * f, double factor, TString name = "f_test");
 		TF1 * minusPolN(TString name, TF1 * f1, TF1 * f2, double xmin, double xmax);
-		TF1 * combinePolN(TString name, TF1 * f1, TF1 * f2, double x0, double x1, double x2, double xmin, double xmax);
+		TF1 * combinePolN(TString name, TF1 * f1, TF1 * f2, TF1 * f3, double x0, double x1, double x2, double x3, double xmin, double xmax);
 		TString formPolN(TF1 * f);
 		void createGraphs();
 		void drawFitting(TH1D* h,TF1 * f,TCanvas * c,TString title, TString filename,double left, double center, double right);
@@ -248,19 +248,20 @@ class XTAnalyzer{
 		std::vector<double> v_SmF_both_dx;
 
 		// Graphs for XT fitting
+		TGraph * gr_right_cen;
+		TGraph * gr_left_cen;
+		TGraph * gr_both_cen; // for neutral driftD
+		TGraph * gr_bothL_cen; // for neutral driftD
 		TGraph * gr_right_mid;
 		TGraph * gr_left_mid;
+		TGraph * gr_both_mid; // for neutral driftD
+		TGraph * gr_bothL_mid; // for neutral driftD
 		TGraph * gr_right_end;
 		TGraph * gr_left_end;
-		TGraph * gr_both_mid; // for neutral driftD
 		TGraph * gr_both_end; // for neutral driftD
-		TGraph * gr_bothL_mid; // for neutral driftD
 		TGraph * gr_bothL_end; // for neutral driftD
 
 		// for comparing left/right/both-side
-		TGraph * gr_RmB;
-		TGraph * gr_LmB;
-
 		TGraph * gr_RmB_func;
 		TGraph * gr_LmB_func;
 
@@ -275,16 +276,23 @@ class XTAnalyzer{
 		TGraph * gr_SmF_both;
 
 		// Functions for XT fitting
+		TF1 * f_right_cen;
+		TF1 * f_left_cen;
+		TF1 * f_both_cen; // for neutral driftD
 		TF1 * f_right_mid;
 		TF1 * f_left_mid;
+		TF1 * f_both_mid; // for neutral driftD
 		TF1 * f_right_end;
 		TF1 * f_left_end;
-		TF1 * f_both_mid; // for neutral driftD
 		TF1 * f_both_end; // for neutral driftD
 
+		TF1 * f_left_deltac;
+		TF1 * f_right_deltac;
+		TF1 * f_both_deltac;
 		TF1 * f_left_delta;
 		TF1 * f_right_delta;
 		TF1 * f_both_delta;
+
 		TF1 * f_left_com;
 		TF1 * f_right_com;
 		TF1 * f_both_com;
