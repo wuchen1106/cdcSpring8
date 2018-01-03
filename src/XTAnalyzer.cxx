@@ -206,9 +206,9 @@ int XTAnalyzer::Initialize(TString runname, int lid, TFile * infile, TFile * out
 	m_TmL_B_max = 0;
 
 	// prepare new XT functions
-	f_left_cen = myNewTF1(Form("flc_%d",mLayerID),"pol9",mTmin,mTmax);
-	f_right_cen = myNewTF1(Form("frc_%d",mLayerID),"pol9",mTmin,mTmax);
-	f_both_cen = myNewTF1(Form("fbc_%d",mLayerID),"pol9",mTmin,mTmax);
+	f_left_cen = myNewTF1(Form("flce_%d",mLayerID),"pol9",mTmin,mTmax);
+	f_right_cen = myNewTF1(Form("frce_%d",mLayerID),"pol9",mTmin,mTmax);
+	f_both_cen = myNewTF1(Form("fbce_%d",mLayerID),"pol9",mTmin,mTmax);
 	f_left_mid = myNewTF1(Form("flm_%d",mLayerID),"pol9",mTmin,mTmax);
 	f_right_mid = myNewTF1(Form("frm_%d",mLayerID),"pol9",mTmin,mTmax);
 	f_both_mid = myNewTF1(Form("fbm_%d",mLayerID),"pol9",mTmin,mTmax);
@@ -580,9 +580,9 @@ void XTAnalyzer::Process(void){
 	// fit xt functions
 	// FIXME: should think about fixing some parameters to let left/right sides XTs go through the same 0 point
 	//        now we have poor shape of XT near 0 point, and we'd better rely on both-side XT
-	if (!gr_left_cen->GetN()) fprintf(stderr,"WARNING: gr_left_cen is empty!\n"); else gr_left_cen->Fit(Form("flc_%d",mLayerID),"qN0","");;
-	if (!gr_right_cen->GetN()) fprintf(stderr,"WARNING: gr_right_cen is empty!\n"); else gr_right_cen->Fit(Form("frc_%d",mLayerID),"qN0","");;
-	if (!gr_both_cen->GetN()) fprintf(stderr,"WARNING: gr_both_cen is empty!\n"); else gr_both_cen->Fit(Form("fbc_%d",mLayerID),"qN0","");;
+	if (!gr_left_cen->GetN()) fprintf(stderr,"WARNING: gr_left_cen is empty!\n"); else gr_left_cen->Fit(Form("flce_%d",mLayerID),"qN0","");;
+	if (!gr_right_cen->GetN()) fprintf(stderr,"WARNING: gr_right_cen is empty!\n"); else gr_right_cen->Fit(Form("frce_%d",mLayerID),"qN0","");;
+	if (!gr_both_cen->GetN()) fprintf(stderr,"WARNING: gr_both_cen is empty!\n"); else gr_both_cen->Fit(Form("fbce_%d",mLayerID),"qN0","");;
 	if (!gr_left_mid->GetN()) fprintf(stderr,"WARNING: gr_left_mid is empty!\n"); else gr_left_mid->Fit(Form("flm_%d",mLayerID),"qN0","");;
 	if (!gr_right_mid->GetN()) fprintf(stderr,"WARNING: gr_right_mid is empty!\n"); else gr_right_mid->Fit(Form("frm_%d",mLayerID),"qN0","");;
 	if (!gr_both_mid->GetN()) fprintf(stderr,"WARNING: gr_both_mid is empty!\n"); else gr_both_mid->Fit(Form("fbm_%d",mLayerID),"qN0","");;
@@ -612,6 +612,7 @@ void XTAnalyzer::Process(void){
 	if (mDebugLevel>=1){
 		printf("After selecting samples:\n");
 		printf(" t0l:%.1f, t0r:%.1f, t0b:%.1f\n",tZeroLeft,tZeroRight,tZeroBoth);
+		printf(" tcl:%.1f, tcr:%.1f, tcb:%.1f\n",tCentLeft,tCentRight,tCentBoth);
 		printf(" ttl:%.1f, ttr:%.1f, ttb:%.1f\n",tTurnLeft,tTurnRight,tTurnBoth);
 		printf(" tel:%.1f, ter:%.1f, teb:%.1f\n",tEndLeft,tEndRight,tEndBoth);
 	}
