@@ -97,27 +97,29 @@ int XTAnalyzer::Initialize(TString runname, int lid, TFile * infile, TFile * out
 	mOutTree->SetBranchAddress("type",&mType);
 
 	// set for slicing
-	mBWX = 0.08;
+//	mBWX = 0.08;
+	mBWX = 0.04;
 	mXLEFT = -mBWX*NSLICEX/2;
 	mXRIGHT = mBWX*NSLICEX/2;
-//	mBWT = 3/0.96;
+	mBWT = 3/0.96;
 //	mBWT = 5/0.96;
 //	mBWT = 7/0.96;
-	mBWT = 9/0.96;
+//	mBWT = 9/0.96;
 	mTLEFT = -mBWT*NSLICET/2;
 	mTRIGHT = mBWT*NSLICET/2;
 	// set for binning
 	mTmin = -25-1/0.96/2; // t range for one x bin
 	mTmax = 800+1/0.96/2;
 	mNbint = 792+1;
-	mXmax = 10; // x range for one t bin
-	mNbinx = 500;
+	mXmin = -0.02;
+	mXmax = 10.02; // x range for one t bin
+	mNbinx = 501;
 
 	// prepare 2D histograms
 	h2_xt = new TH2D(Form("h2_xt_%d",mLayerID),"XT Relation",mNbint,mTmin,mTmax,mNbinx,-mXmax,mXmax);
 	h2_xt->GetXaxis()->SetTitle("T [ns]");
 	h2_xt->GetYaxis()->SetTitle("X [mm]");
-	h2_xtn = new TH2D(Form("h2_xtn_%d",mLayerID),"XT Relation",mNbint,mTmin,mTmax,mNbinx/2,0,mXmax);
+	h2_xtn = new TH2D(Form("h2_xtn_%d",mLayerID),"XT Relation",mNbint,mTmin,mTmax,mNbinx/2,-mXmin,mXmax);
 	h2_xtn->GetXaxis()->SetTitle("T [ns]");
 	h2_xtn->GetYaxis()->SetTitle("X [mm]");
 
@@ -218,30 +220,30 @@ void XTAnalyzer::Push(double t, double x){
 	h2_xt->Fill(t,x);
 	h2_xtn->Fill(t,absx);
 	int ix = x2i(x);
-	if (ix>=0&&ix<NSLICEX){
-		h_t[ix]->Fill(t);
-		int ibin = h_t_xsum[ix]->FindBin(t);
-		h_t_xsum[ix]->AddBinContent(ibin,x);
+	for (int i = (ix>0?ix-1:0); i<=(ix+1>=NSLICEX?NSLICEX-1:ix+1); i++){
+		h_t[i]->Fill(t);
+		int ibin = h_t_xsum[i]->FindBin(t);
+		h_t_xsum[i]->AddBinContent(ibin,x);
 	}
 	int it = t2i(t,x>0);
-	if (it>=0&&it<NSLICET){
-		h_x[it]->Fill(x);
-		h_mx[it]->Fill(-absx);
-		int ibin = h_x_tsum[it]->FindBin(x);
-		h_x_tsum[it]->AddBinContent(ibin,t);
+	for (int i = (it>0?it-1:0); i<=(it+1>=NSLICET?NSLICET-1:it+1); i++){
+		h_x[i]->Fill(x);
+		h_mx[i]->Fill(-absx);
+		int ibin = h_x_tsum[i]->FindBin(x);
+		h_x_tsum[i]->AddBinContent(ibin,t);
 	}
 	ix = x2i(absx);
-	if (ix>=0&&ix<NSLICEX){
-		h_tn[ix]->Fill(t);
-		int ibin = h_tn_xsum[ix]->FindBin(t);
-		h_tn_xsum[ix]->AddBinContent(ibin,absx);
+	for (int i = (ix>NSLICEX/2?ix-1:NSLICEX/2); i<=(ix+1>=NSLICEX?NSLICEX-1:ix+1); i++){
+		h_tn[i]->Fill(t);
+		int ibin = h_tn_xsum[i]->FindBin(t);
+		h_tn_xsum[i]->AddBinContent(ibin,absx);
 	}
 	it = t2i(t,true);
-	if (it>=0&&it<NSLICET){
-		h_xn[it]->Fill(absx);
-		h_mxn[it]->Fill(-absx);
-		int ibin = h_xn_tsum[it]->FindBin(absx);
-		h_xn_tsum[it]->AddBinContent(ibin,t);
+	for (int i = (it>NSLICET/2?it-1:NSLICET/2); i<=(it+1>=NSLICET?NSLICET-1:it+1); i++){
+		h_xn[i]->Fill(absx);
+		h_mxn[i]->Fill(-absx);
+		int ibin = h_xn_tsum[i]->FindBin(absx);
+		h_xn_tsum[i]->AddBinContent(ibin,t);
 	}
 	if (mDebugLevel>=10) printf("            pushed\n",t,x);
 }
@@ -791,6 +793,8 @@ void XTAnalyzer::i2x(int i, double & fdmin, double & fdmid, double & fdmax){
     fdmin = i*mBWX+mXLEFT;
     fdmid = fdmin+mBWX/2.;
     fdmax = fdmid+mBWX/2.;
+    fdmin-=mBWX; // take adjacent two slices into account
+    fdmax+=mBWX;
 }
 
 void XTAnalyzer::i2t(int i, double & dtmin, double & dtmid, double & dtmax){
@@ -803,6 +807,8 @@ void XTAnalyzer::i2t(int i, double & dtmin, double & dtmid, double & dtmax){
 	}
     dtmid = dtmin+mBWT/2.;
     dtmax = dtmid+mBWT/2.;
+    dtmin-=mBWT; // take adjacent two slices into account
+    dtmax+=mBWT;
 }
 
 int XTAnalyzer::x2i(double fitD){

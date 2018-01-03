@@ -5,11 +5,12 @@
 
 #include "TString.h"
 
-#define NSLICEX 201 // 201 bins from -8.04 mm to 8.04 mm, binning every 80 um
-//#define NSLICET 513 // 257 bins from -1.5625 ns to 801.5625 ns including left and right side, bining every 3.125 ns (3 TDC)
+#define NSLICEX 401 // 401 bins from -8.02 mm to 8.02 mm, binning every 40 um
+//#define NSLICEX 201 // 201 bins from -8.04 mm to 8.04 mm, binning every 80 um
+#define NSLICET 513 // 257 bins from -1.5625 ns to 801.5625 ns including left and right side, bining every 3.125 ns (3 TDC)
 //#define NSLICET 309 // 155 bins from -2.60416 ns to 802.60416 ns including left and right side, bining every 5.2083 ns (5 TDC)
 //#define NSLICET 221 // 110 bins from -3.64583 ns to 803.64583 ns including left and right side, bining every 7.2916 ns (7 TDC)
-#define NSLICET 171 // 86 bins from -4.6875 ns to 804.6875 ns including left and right side, bining every 9.375 ns (9 TDC)
+//#define NSLICET 171 // 86 bins from -4.6875 ns to 804.6875 ns including left and right side, bining every 9.375 ns (9 TDC)
 
 class TFile;
 class TF1;
@@ -104,6 +105,7 @@ class XTAnalyzer{
 		double mTmax;
 		double mNbint;
 
+		double mXmin;
 		double mXmax;
 		double mNbinx;
 
