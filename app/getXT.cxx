@@ -39,7 +39,7 @@ int main(int argc, char** argv){
     printf("prerunname  = \"%s\"\n",prerunname.Data());
     printf("runname     = \"%s\"\n",runname.Data());
     printf("geoSetup:     %s\n",geoSetup==0?"normal scintillator":"finger scintillator");
-    printf("xtType:       %s\n",xtType==0?"asymmetric":(xtType==1?"symmetric":(xtType==2?"symmetric, thru 0":(xtType==3?"symmetric with nLHits==0":"others?"))));
+    printf("xtType:       %s\n",xtType==0?"asymmetric":(xtType==1?"symmetric":(xtType==2?"symmetric, thru 0":(xtType==3?"symmetric with nLHits==0":(xtType==4?"symmetric with smallest chi2a":(xtType==5?"symmetric with smallest chi2":"others?"))))));
     printf("save slice fittings? \"%s\"\n",saveHists?"yes":"no");
     printf("debug       = %d\n",debugLevel);
     fflush(stdout);
@@ -110,6 +110,8 @@ int main(int argc, char** argv){
     double inz[NCAND];
     double slz[NCAND];
     double chi2[NCAND];
+    double chi2p[NCAND];
+    double chi2a[NCAND];
     std::vector<double> * i_fitD[NCAND] = {0};
     std::vector<int> * i_sel[NCAND] = {0};
 
@@ -160,6 +162,8 @@ int main(int argc, char** argv){
 			ichain->SetBranchAddress(Form("inx%d",iCand),&(inx[iCand]));
 			ichain->SetBranchAddress(Form("inz%d",iCand),&(inz[iCand]));
 			ichain->SetBranchAddress(Form("chi2%d",iCand),&(chi2[iCand]));
+			ichain->SetBranchAddress(Form("chi2p%d",iCand),&(chi2p[iCand]));
+			ichain->SetBranchAddress(Form("chi2a%d",iCand),&(chi2a[iCand]));
 			ichain->SetBranchAddress(Form("fitD%d",iCand),&(i_fitD[iCand]));
 			ichain->SetBranchAddress(Form("sel%d",iCand),&(i_sel[iCand]));
 		}
@@ -211,6 +215,26 @@ int main(int argc, char** argv){
 					}
 				}
 			}
+            else if (xtType==4||xtType==5){
+                double minchi2 = 1e9;
+                int minNhitsS = 0;
+				for (int iCand = 0; iCand<NCAND; iCand++){
+                    if (xtType==4){
+                        if ((minchi2>chi2a[iCand]&&minNhitsS==nHitsS[iCand])||minNhitsS<nHitsS[iCand]){
+                            theCand = iCand;
+                            minchi2 = chi2a[iCand];
+                            minNhitsS = nHitsS[iCand];
+                        }
+                    }
+                    else if (xtType==5){
+                        if ((minchi2>chi2[iCand]&&minNhitsS==nHitsS[iCand])||minNhitsS<nHitsS[iCand]){
+                            theCand = iCand;
+                            minchi2 = chi2[iCand];
+                            minNhitsS = nHitsS[iCand];
+                        }
+                    }
+                }
+            }
 
             // ignore events with bad fitting
             if (nHitsS[theCand]<7) continue;
@@ -331,6 +355,8 @@ int main(int argc, char** argv){
         otree->Branch("inx",&(inx[0]));
         otree->Branch("inz",&(inz[0]));
         otree->Branch("chi2",&(chi2[0]));
+        otree->Branch("chi2p",&(chi2p[0]));
+        otree->Branch("chi2a",&(chi2a[0]));
         otree->Branch("fitD",&(i_fitD[0]));
         otree->Branch("sel",&(i_sel[0]));
         o_driftD = new std::vector<double>;
@@ -365,27 +391,51 @@ int main(int argc, char** argv){
 						theCand = iCand;
 					}
 				}
-				otree->SetBranchAddress("driftD",&(i_driftD[theCand]));
-				otree->SetBranchAddress("npairs",&(npairs[theCand]));
-				otree->SetBranchAddress("isel",&(isel[theCand]));
-				otree->SetBranchAddress("icom",&(icom[theCand]));
-				otree->SetBranchAddress("islx",&(islx[theCand]));
-				otree->SetBranchAddress("islz",&(islz[theCand]));
-				otree->SetBranchAddress("iinx",&(iinx[theCand]));
-				otree->SetBranchAddress("iinz",&(iinz[theCand]));
-				otree->SetBranchAddress("chi2x",&(chi2x[theCand]));
-				otree->SetBranchAddress("chi2z",&(chi2z[theCand]));
-				otree->SetBranchAddress("chi2i",&(chi2i[theCand]));
-				otree->SetBranchAddress("calD",&(i_calD[theCand]));
-				otree->SetBranchAddress("nHitsS",&(nHitsS[theCand]));
-				otree->SetBranchAddress("slx",&(slx[theCand]));
-				otree->SetBranchAddress("slz",&(slz[theCand]));
-				otree->SetBranchAddress("inx",&(inx[theCand]));
-				otree->SetBranchAddress("inz",&(inz[theCand]));
-				otree->SetBranchAddress("chi2",&(chi2[theCand]));
-				otree->SetBranchAddress("fitD",&(i_fitD[theCand]));
-				otree->SetBranchAddress("sel",&(i_sel[theCand]));
 			}
+            else if (xtType==4||xtType==5){
+                double minchi2 = 1e9;
+                int minNhitsS = 0;
+				for (int iCand = 0; iCand<NCAND; iCand++){
+                    if (xtType==4){
+                        if ((minchi2>chi2a[iCand]&&minNhitsS==nHitsS[iCand])||minNhitsS<nHitsS[iCand]){
+                            theCand = iCand;
+                            minchi2 = chi2a[iCand];
+                            minNhitsS = nHitsS[iCand];
+                        }
+                    }
+                    else if (xtType==5){
+                        if ((minchi2>chi2[iCand]&&minNhitsS==nHitsS[iCand])||minNhitsS<nHitsS[iCand]){
+                            theCand = iCand;
+                            minchi2 = chi2[iCand];
+                            minNhitsS = nHitsS[iCand];
+                        }
+                    }
+                }
+            }
+            if (xtType>=3){
+                otree->SetBranchAddress("driftD",&(i_driftD[theCand]));
+                otree->SetBranchAddress("npairs",&(npairs[theCand]));
+                otree->SetBranchAddress("isel",&(isel[theCand]));
+                otree->SetBranchAddress("icom",&(icom[theCand]));
+                otree->SetBranchAddress("islx",&(islx[theCand]));
+                otree->SetBranchAddress("islz",&(islz[theCand]));
+                otree->SetBranchAddress("iinx",&(iinx[theCand]));
+                otree->SetBranchAddress("iinz",&(iinz[theCand]));
+                otree->SetBranchAddress("chi2x",&(chi2x[theCand]));
+                otree->SetBranchAddress("chi2z",&(chi2z[theCand]));
+                otree->SetBranchAddress("chi2i",&(chi2i[theCand]));
+                otree->SetBranchAddress("calD",&(i_calD[theCand]));
+                otree->SetBranchAddress("nHitsS",&(nHitsS[theCand]));
+                otree->SetBranchAddress("slx",&(slx[theCand]));
+                otree->SetBranchAddress("slz",&(slz[theCand]));
+                otree->SetBranchAddress("inx",&(inx[theCand]));
+                otree->SetBranchAddress("inz",&(inz[theCand]));
+                otree->SetBranchAddress("chi2",&(chi2[theCand]));
+                otree->SetBranchAddress("chi2p",&(chi2p[theCand]));
+                otree->SetBranchAddress("chi2a",&(chi2a[theCand]));
+                otree->SetBranchAddress("fitD",&(i_fitD[theCand]));
+                otree->SetBranchAddress("sel",&(i_sel[theCand]));
+            }
 
             // set driftD
             o_driftD->clear();
