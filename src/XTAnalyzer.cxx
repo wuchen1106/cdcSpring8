@@ -418,16 +418,17 @@ void XTAnalyzer::Process(void){
 	double t8Left = v_t_slicex[0];
 	double t8Right = v_t_slicex[NSLICEX-1];
 	double t8Both = v_t_slicexn[NSLICEX-1];
-	getT8(t8Left,v_x_slicex,v_t_slicex,v_sig_slicex,v_n_slicex,true);
-	getT8(t8Right,v_x_slicex,v_t_slicex,v_sig_slicex,v_n_slicex,false);
-	getT8(t8Both,v_x_slicexn,v_t_slicexn,v_sig_slicexn,v_n_slicexn,false);
+	int iTLeft, iTRight, iTBoth;
+	getTT(iTLeft,v_x_slicet,v_t_slicet,v_sig_slicet,v_n_slicet,true);
+	getTT(iTRight,v_x_slicet,v_t_slicet,v_sig_slicet,v_n_slicet,false);
+	getTT(iTBoth,v_x_slicetn,v_t_slicetn,v_sig_slicetn,v_n_slicetn,false);
 	double tMargin = 10;
 	double t7Left = v_t_slicex[1./mBWX];
 	double t7Right = v_t_slicex[NSLICEX-1./mBWX];
 	double t7Both = v_t_slicexn[NSLICEX-1./mBWX];
 	if (mDebugLevel>=1){
 		printf("Before selecting samples:\n");
-		printf(" t8l:%.1f, t8r:%.1f, t8b:%.1f\n",t8Left,t8Right,t8Both);
+		printf(" tTl: %.1f @%d, tTr: %.1f @%d, tTb: %.1f @%d \n",v_t_slicet[iTLeft],iTLeft,v_t_slicet[iTRight],iTRight,v_t_slicetn[iTBoth],iTBoth);
 		printf(" t7l:%.1f, t7r:%.1f, t7b:%.1f\n",t7Left,t7Right,t7Both);
 	}
 	sigmaXReset();
@@ -435,12 +436,12 @@ void XTAnalyzer::Process(void){
 		if (mDebugLevel>=2) printf("  LR T slice[%d]: x=%.2f, t=%.1f, n=%.0f, sig=%.2f\n",i,v_x_slicet[i],v_t_slicet[i],v_n_slicet[i],v_sig_slicet[i]);
 		if (v_n_slicet[i]<mEntriesMin||v_sig_slicet[i]>mSigXmax||v_sig_slicet[i]<=0) continue;
 		if (mDebugLevel>=2) printf("                  Passed!\n");
-		if (v_t_slicet[i]>t8Left){ // left end
+		if (i<=iTLeft+1){ // left end
 			if (mDebugLevel>=2) printf("                  t>%.1f, push to left_end!\n",t8Left);
 			v_left_end_x.push_back(v_x_slicet[i]);
 			v_left_end_t.push_back(v_t_slicet[i]);
 		}
-		if (v_t_slicet[i]<t8Left+tMargin&&v_x_slicet[i]<=-xStart2Turn){ // turning part
+		if (i>=iTLeft-1&&v_x_slicet[i]<=-xStart2Turn){ // turning part
 			if (mDebugLevel>=2) printf("                  t<%.1f x<%.2f, push to left_mid!\n",t8Left+tMargin,-xStart2Turn);
 			v_left_mid_x.push_back(v_x_slicet[i]);
 			v_left_mid_t.push_back(v_t_slicet[i]);
@@ -510,12 +511,12 @@ void XTAnalyzer::Process(void){
 	for (int i = NSLICET/2; i<NSLICET; i++){ // x samples in t slices, right 
 		if (mDebugLevel>=2) printf("  LR T slice[%d]: x=%.2f, t=%.1f, n=%.0f, sig=%.2f\n",i,v_x_slicet[i],v_t_slicet[i],v_n_slicet[i],v_sig_slicet[i]);
 		if (v_n_slicet[i]<mEntriesMin||v_sig_slicet[i]>mSigXmax||v_sig_slicet[i]<=0) continue;
-		if (v_t_slicet[i]>t8Right){ // right end
+		if (i>=iTRight-1){ // right end
 			if (mDebugLevel>=2) printf("                  t>%.1f, push to right_end!\n",t8Right);
 			v_right_end_x.push_back(v_x_slicet[i]);
 			v_right_end_t.push_back(v_t_slicet[i]);
 		}
-		if (v_t_slicet[i]<t8Right+tMargin&&v_x_slicet[i]>=xStart2Turn){ // turning part
+		if (i<=iTRight+1&&v_x_slicet[i]>=xStart2Turn){ // turning part
 			if (mDebugLevel>=2) printf("                  t<%.1f x>%.2f, push to right_mid!\n",t8Right+tMargin,xStart2Turn);
 			v_right_mid_x.push_back(v_x_slicet[i]);
 			v_right_mid_t.push_back(v_t_slicet[i]);
@@ -561,13 +562,13 @@ void XTAnalyzer::Process(void){
 		if (mDebugLevel>=2) printf("  BS T slice[%d]: x=%.2f, t=%.1f, n=%.0f, sig=%.2f\n",i,v_x_slicetn[i],v_t_slicetn[i],v_n_slicetn[i],v_sig_slicetn[i]);
 		if (v_n_slicetn[i]<mEntriesMin||v_sig_slicetn[i]>mSigXmax||v_sig_slicetn[i]<=0) continue;
 		if (mDebugLevel>=2) printf("                  Passed!\n");
-		if (v_t_slicetn[i]>t8Both){ // both-side end
+		if (i>=iTBoth-1){ // both-side end
 			if (mDebugLevel>=2) printf("                  t>%.1f, push to both_end!\n",t8Both);
 			v_both_end_x.push_back(v_x_slicetn[i]);
 			v_bothL_end_x.push_back(-v_x_slicetn[i]);
 			v_both_end_t.push_back(v_t_slicetn[i]);
 		}
-		if (v_t_slicetn[i]<t8Both+tMargin&&v_x_slicetn[i]>=xStart2Turn){ // turning part
+		if (i<=iTBoth+1&&v_x_slicetn[i]>=xStart2Turn){ // turning part
 			if (mDebugLevel>=2) printf("                  t<%.1f, x>=%.2f, push to both_mid!\n",t8Both+tMargin,xStart2Turn);
 			v_both_mid_x.push_back(v_x_slicetn[i]);
 			v_bothL_mid_x.push_back(-v_x_slicetn[i]);
@@ -703,10 +704,10 @@ void XTAnalyzer::Process(void){
 		v_SmF_left_t.push_back(t);
 		v_SmF_left_dx.push_back((x-xf)*1000);
 	}
-	for (int i = 0; i<v_left_mid_t.size(); i++){
+	for (int i = 3; i<v_left_mid_t.size(); i++){ // 3 points overlaping with end
 		double t = v_left_mid_t[i];
 		double x = v_left_mid_x[i];
-		if (x>-xCenter2Mid||t>t8Left) continue; // marginal region
+		if (x>-xCenter2Mid) continue; // marginal region overlaping with center
 		double xf = f_left_com->Eval(t);
 		v_SmF_left_t.push_back(t);
 		v_SmF_left_dx.push_back((x-xf)*1000);
@@ -725,10 +726,10 @@ void XTAnalyzer::Process(void){
 		v_SmF_right_t.push_back(t);
 		v_SmF_right_dx.push_back((x-xf)*1000);
 	}
-	for (int i = 0; i<v_right_mid_t.size(); i++){
+	for (int i = 0; i<v_right_mid_t.size()-3; i++){ // 3 points overlaping with end
 		double t = v_right_mid_t[i];
 		double x = v_right_mid_x[i];
-		if (x<xCenter2Mid||t>t8Right) continue; // marginal region
+		if (x<xCenter2Mid) continue; // marginal region overlaping with center
 		double xf = f_right_com->Eval(t);
 		v_SmF_right_t.push_back(t);
 		v_SmF_right_dx.push_back((x-xf)*1000);
@@ -747,10 +748,10 @@ void XTAnalyzer::Process(void){
 		v_SmF_both_t.push_back(t);
 		v_SmF_both_dx.push_back((x-xf)*1000);
 	}
-	for (int i = 0; i<v_both_mid_t.size(); i++){
+	for (int i = 0; i<v_both_mid_t.size()-3; i++){ // 3 points overlaping with end
 		double t = v_both_mid_t[i];
 		double x = v_both_mid_x[i];
-		if (x<xCenter2Mid||t>t8Both) continue; // marginal region
+		if (x<xCenter2Mid) continue; // marginal region overlaping with center
 		double xf = f_both_com->Eval(t);
 		v_SmF_both_t.push_back(t);
 		v_SmF_both_dx.push_back((x-xf)*1000);
@@ -909,6 +910,7 @@ TF1 * XTAnalyzer::fitSliceGaus(TH1D * h, double & mean, double & sigma, double &
 		mean = f->GetParameter(1);
 		sigma = fabs(f->GetParameter(2));
 	}
+	if (mean>right||mean<left) sigma = 1e9;
 	chi2 = f->GetChisquare();
 	return f;
 }
@@ -934,6 +936,7 @@ TF1 * XTAnalyzer::fitSliceLand(TH1D * h, double & mean, double & sigma, double &
 		mean = f->GetParameter(1);
 		sigma = fabs(f->GetParameter(2));
 	}
+	if (mean>right||mean<left) sigma = 1e9;
 	chi2 = f->GetChisquare();
 	return f;
 }
@@ -964,6 +967,7 @@ TF1 * XTAnalyzer::fitSlice2Gaus(TH1D * h, double & mean, double & sigma, double 
 	}
 	// set results
 	sigma = sqrt((sigma1*sigma1+sigma2*sigma2)/2);
+	if (mean>right||mean<left) sigma = 1e9;
 	chi2 = f->GetChisquare();
 	return f;
 }
@@ -980,50 +984,38 @@ double XTAnalyzer::findFirstZero(TF1 * f, double xmin, double xmax, double delta
 	return theX;
 }
 
-void XTAnalyzer::getT8(double & t8, std::vector<double> & vx, std::vector<double> & vt, std::vector<double> & vsig, std::vector<double> & vn, bool negtive){
-	double t1,t2,x1,x2;
-	bool find1 = false;
-	bool find2 = false;
-	int i = NSLICEX-1; if (negtive) i = 0;
-	int direction = -1; if (negtive) direction = 1;
-	for (;i>=0&&i<NSLICEX;i+=direction){
-		double x = vx[i];
-		double t = vt[i];
-		bool isgood = true;
-		for (int j = i; j>=0&&j<NSLICEX&&abs(j-i)<=3; j+=direction){ // 3 good points
-			if (vsig[j]>mSigTmax||vn[j]<mEntriesMin){
-				isgood = false;
-				break;
-			}
+void XTAnalyzer::getTT(int & iT, std::vector<double> & vx, std::vector<double> & vt, std::vector<double> & vsig, std::vector<double> & vn, bool negtive){
+	double d7 = 7;
+	double t7 = 250;
+	for (int i = NSLICET/2; i<NSLICET; i++){
+		if (vsig[i]>mSigXmax||vn[i]<mEntriesMin) continue;
+		if (vx[i]>7){
+			d7 = vx[i];
+			t7 = vt[i];
+			break;
 		}
-		if (mDebugLevel>=10) printf("@%d  %.1f %.2f %s\n",i,t,x,isgood?"good":"bad");
-		if (isgood){
-			if (!find1){
-				t1 = t;
-				x1 = x;
-				find1 = true;
-				if (mDebugLevel>=10) printf("find 1st point!\n");
-			}
-			else{
-				t2 = t;
-				x2 = x;
-				find2 = true;
-				if (mDebugLevel>=10) printf("find 2nd point!\n");
-				break;
-			}
+	}
+	double velocity = d7/t7;
+	iT = NSLICET/2;
+	int direction = 1; if (negtive) direction = -1;
+	for (; iT>=0&&iT<NSLICET; iT+=direction){
+		if (vsig[iT]>mSigXmax||vn[iT]<mEntriesMin) continue;
+		if (fabs(vx[iT])>6) break;
+	}
+	for (; iT>=0&&iT<NSLICET; iT+=direction){
+		if (vsig[iT]>mSigXmax||vn[iT]<mEntriesMin) continue;
+		int j = iT+direction;
+		for (;j>=0&&j<NSLICET; j+=direction){
+			if (vsig[j]<=mSigTmax&&vn[j]>=mEntriesMin) break;
 		}
-		i+=direction;
-	}
-	if (find1&&fabs(fabs(x1)-8)<mBWX/2) t8 = t1;
-	else if (find1&&find2){
-		if (negtive)
-			t8 = t1+(t2-t1)*(-8-x1)/(x2-x1);
-		else
-			t8 = t1+(t2-t1)*(8-x1)/(x2-x1);
-	}
-	else{
-		t8 = t1;
-		fprintf(stderr,"WARNING: cannot find the valid point at -8 mm or two valid points in x slices!\n");
+		double vel = 0;
+		if (vt[iT]-vt[j]) vel = (vx[iT]-vx[j])/(vt[iT]-vt[j]);
+		else{
+			fprintf(stderr,"WARNING: in XTAnalyzer::getTT, vt @ %d and %d are the same! Ignoring these two hits\n",iT,j);
+			vel = velocity;
+		}
+		if (negtive) vel*=-1;
+		if (vel<velocity/3) break;
 	}
 }
 
