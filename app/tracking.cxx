@@ -850,7 +850,7 @@ int doFitting(int nPicks,int iEntry,int iselection){
                                 if (fitD>0) (*t_driftD)[ihit] = (*o_dxr)[ihit];
                                 else (*t_driftD)[ihit] = (*o_dxl)[ihit];
                             }
-                            if (debug>11){
+                            if (debug>12){
 								int type = getHitType((*i_type)[ihit],fitD>=0);
                                 if (type<=3)
                                     printf("        %d (%d,%d) dd %.3e fd %.3e res %.3e\n",ihit,lid,wid,(*t_driftD)[ihit],fitD,fitD-(*t_driftD)[ihit]);
@@ -1060,47 +1060,56 @@ bool checkScintillator(double saftyFactor,double inx, double slx, double inz, do
 
 bool checkChi2(int nHitsSel, int nPairs, int icombi, int iselection){
 	bool issame = false;
+	bool covered = false;
     for (int i = 0; i<NCAND; i++){
     	issame = isSame(i);
     	if (issame){ // yes, there is a candidate with the same hits
-//    		if (chi2<o_chi2[i]){// better? then replace it
+            if (debug>11) printf(" same with Cand#%d where chi2=%.3e\n",i,o_chi2[i]);
+    		if (chi2<o_chi2[i]){// better? then remove the old one
 			// FIXME: WARNING, now we rely on total chi2 including test layer hit, a slight bias
-    		if (chi2a<o_chi2a[i]){// better? then replace it
-				o_iselec[i] = iselection;
-				o_icombi[i] = icombi;
-				o_npairs[i] = nPairs;
-				o_islx[i] = islx;
-				o_iinx[i] = iinx;
-				o_islz[i] = islz;
-				o_iinz[i] = iinz;
-				o_chi2z[i] = chi2z;
-				o_chi2x[i] = chi2x;
-				o_chi2i[i] = chi2i;
-				o_chi2pi[i] = chi2pi;
-				o_chi2ai[i] = chi2ai;
-				o_nHitsS[i] = nHitsSel;
-				o_slx[i] = slx;
-				o_inx[i] = inx;
-				o_slz[i] = slz;
-				o_inz[i] = inz;
-				o_chi2[i] = chi2;
-				o_chi2p[i] = chi2p;
-				o_chi2a[i] = chi2a;
-				for (int ihit = 0; ihit<i_nHits; ihit++){
-					(*o_sel[i])[ihit] = (*t_sel)[ihit];
-					(*o_calD[i])[ihit] = (*t_calD)[ihit];
-					(*o_fitD[i])[ihit] = (*t_fitD)[ihit];
-					(*o_driftD[i])[ihit] = (*t_driftD)[ihit];
+    		//if (chi2a<o_chi2a[i]){// better? then remove the old one 
+                if (debug>11) printf("   better than Cand#%d\n",i);
+    		    covered = true;
+				for (int j = i; j<NCAND-1; j++){
+					o_iselec[j] = o_iselec[j+1];
+					o_icombi[j] = o_icombi[j+1];
+					o_npairs[j] = o_npairs[j+1];
+					o_islx[j] = o_islx[j+1];
+					o_iinx[j] = o_iinx[j+1];
+					o_islz[j] = o_islz[j+1];
+					o_iinz[j] = o_iinz[j+1];
+					o_chi2x[j] = o_chi2x[j+1];
+					o_chi2z[j] = o_chi2z[j+1];
+					o_chi2i[j] = o_chi2i[j+1];
+					o_chi2pi[j] = o_chi2pi[j+1];
+					o_chi2ai[j] = o_chi2ai[j+1];
+					o_nHitsS[j] = o_nHitsS[j+1];
+					o_slx[j] = o_slx[j+1];
+					o_inx[j] = o_inx[j+1];
+					o_slz[j] = o_slz[j+1];
+					o_inz[j] = o_inz[j+1];
+					o_chi2[j] = o_chi2[j+1];
+					o_chi2p[j] = o_chi2p[j+1];
+					o_chi2a[j] = o_chi2a[j+1];
+					for (int ihit = 0; ihit<i_nHits; ihit++){
+						(*o_sel[j])[ihit] = (*o_sel[j+1])[ihit];
+						(*o_calD[j])[ihit] = (*o_calD[j+1])[ihit];
+						(*o_fitD[j])[ihit] = (*o_fitD[j+1])[ihit];
+						(*o_driftD[j])[ihit] = (*o_driftD[j+1])[ihit];
+					}
 				}
+				o_chi2[NCAND-1] = 1e9;
+				o_nHitsS[NCAND-1] = 0;
 			}
 			break;
     	}
 	}
-	if (!issame){ // didn't find a candidate with the same hits
+	if (!issame||covered){ // didn't find a candidate with the same hits
 		for (int i = 0; i<NCAND; i++){
-//			if ((chi2<o_chi2[i]&&nHitsSel==o_nHitsS[i])||nHitsSel>o_nHitsS[i]){ // now we only pick up one hit per layer since the XT shape in the corener is very sensitive to position/angle thus less reliable
+			if ((chi2<o_chi2[i]&&nHitsSel==o_nHitsS[i])||nHitsSel>o_nHitsS[i]){ // now we only pick up one hit per layer since the XT shape in the corener is very sensitive to position/angle thus less reliable
 			// FIXME: WARNING, now we rely on total chi2 including test layer hit, a slight bias
-			if ((chi2a<o_chi2a[i]&&nHitsSel==o_nHitsS[i])||nHitsSel>o_nHitsS[i]){ // now we only pick up one hit per layer since the XT shape in the corener is very sensitive to position/angle thus less reliable
+			//if ((chi2a<o_chi2a[i]&&nHitsSel==o_nHitsS[i])||nHitsSel>o_nHitsS[i]){ // now we only pick up one hit per layer since the XT shape in the corener is very sensitive to position/angle thus less reliable
+			    if (debug>11) printf("better than Cand#%d where chi2=%.3e, nHitsS=%d\n",i,o_chi2[i],o_nHitsS[i]);
 				for (int j = NCAND-1; j>i; j--){
 					o_iselec[j] = o_iselec[j-1];
 					o_icombi[j] = o_icombi[j-1];
