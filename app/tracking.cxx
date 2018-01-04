@@ -1065,9 +1065,9 @@ bool checkChi2(int nHitsSel, int nPairs, int icombi, int iselection){
     	issame = isSame(i);
     	if (issame){ // yes, there is a candidate with the same hits
             if (debug>11) printf(" same with Cand#%d where chi2=%.3e\n",i,o_chi2[i]);
-    		if (chi2<o_chi2[i]){// better? then remove the old one
+//    		if (chi2<o_chi2[i]){// better? then remove the old one
 			// FIXME: WARNING, now we rely on total chi2 including test layer hit, a slight bias
-    		//if (chi2a<o_chi2a[i]){// better? then remove the old one 
+    		if (chi2a<o_chi2a[i]){// better? then remove the old one 
                 if (debug>11) printf("   better than Cand#%d\n",i);
     		    covered = true;
 				for (int j = i; j<NCAND-1; j++){
@@ -1106,9 +1106,9 @@ bool checkChi2(int nHitsSel, int nPairs, int icombi, int iselection){
 	}
 	if (!issame||covered){ // didn't find a candidate with the same hits
 		for (int i = 0; i<NCAND; i++){
-			if ((chi2<o_chi2[i]&&nHitsSel==o_nHitsS[i])||nHitsSel>o_nHitsS[i]){ // now we only pick up one hit per layer since the XT shape in the corener is very sensitive to position/angle thus less reliable
+//			if ((chi2<o_chi2[i]&&nHitsSel==o_nHitsS[i])||nHitsSel>o_nHitsS[i]){ // now we only pick up one hit per layer since the XT shape in the corener is very sensitive to position/angle thus less reliable
 			// FIXME: WARNING, now we rely on total chi2 including test layer hit, a slight bias
-			//if ((chi2a<o_chi2a[i]&&nHitsSel==o_nHitsS[i])||nHitsSel>o_nHitsS[i]){ // now we only pick up one hit per layer since the XT shape in the corener is very sensitive to position/angle thus less reliable
+			if ((chi2a<o_chi2a[i]&&nHitsSel==o_nHitsS[i])||nHitsSel>o_nHitsS[i]){ // now we only pick up one hit per layer since the XT shape in the corener is very sensitive to position/angle thus less reliable
 			    if (debug>11) printf("better than Cand#%d where chi2=%.3e, nHitsS=%d\n",i,o_chi2[i],o_nHitsS[i]);
 				for (int j = NCAND-1; j>i; j--){
 					o_iselec[j] = o_iselec[j-1];
