@@ -48,7 +48,7 @@ class XTAnalyzer{
 		TF1 * fitSliceLand(TH1D * h, double & mean, double & sigma, double & chi2, double & left, double & right);
 		TF1 * fitSlice2Gaus(TH1D * h, double & mean, double & sigma, double & chi2, double & left, double & right);
 		double findFirstZero(TF1 * f, double xmin, double xmax, double delta);
-		void getT8(double & t8left, double & t8right, double & t8both);
+		void getT8(double & t8, std::vector<double> & vx, std::vector<double> & vt, std::vector<double> & vsig, std::vector<double> & vn, bool negtive = false);
 		TF1 * myNewTF1(TString name, TString form, double left, double right);
 		TGraph * myNewTGraph(TString name, int n, const double * x, const double * y, TString title, TString Xtitle, TString Ytitle, int mType, double mSize, int mColor, double lSize, int lColor);
 		TF1 * scalePolN(TF1 * f, double factor, TString name = "f_test");

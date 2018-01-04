@@ -418,7 +418,9 @@ void XTAnalyzer::Process(void){
 	double t8Left = v_t_slicex[0];
 	double t8Right = v_t_slicex[NSLICEX-1];
 	double t8Both = v_t_slicexn[NSLICEX-1];
-	getT8(t8Left,t8Right,t8Both);
+	getT8(t8Left,v_x_slicex,v_t_slicex,v_sig_slicex,v_n_slicex,true);
+	getT8(t8Right,v_x_slicex,v_t_slicex,v_sig_slicex,v_n_slicex,false);
+	getT8(t8Both,v_x_slicexn,v_t_slicexn,v_sig_slicexn,v_n_slicexn,false);
 	double tMargin = 10;
 	double t7Left = v_t_slicex[1./mBWX];
 	double t7Right = v_t_slicex[NSLICEX-1./mBWX];
@@ -602,9 +604,9 @@ void XTAnalyzer::Process(void){
 	double tZeroLeft = findFirstZero(f_left_cen,mTmin,mTmax,1);
 	double tZeroRight = findFirstZero(f_right_cen,mTmin,mTmax,1);
 	double tZeroBoth = findFirstZero(f_both_cen,mTmin,mTmax,1);
-	double tCentLeft = findFirstZero(f_left_deltac,mTmin,mTmax,1);
-	double tCentRight = findFirstZero(f_right_deltac,mTmin,mTmax,1);
-	double tCentBoth = findFirstZero(f_both_deltac,mTmin,mTmax,1);
+	double tCentLeft = findFirstZero(f_left_deltac,0,mTmax,1);
+	double tCentRight = findFirstZero(f_right_deltac,0,mTmax,1);
+	double tCentBoth = findFirstZero(f_both_deltac,0,mTmax,1);
 	double tTurnLeft = findFirstZero(f_left_delta,t7Left,mTmax,1);
 	double tTurnRight = findFirstZero(f_right_delta,t7Right,mTmax,1);
 	double tTurnBoth = findFirstZero(f_both_delta,t7Both,mTmax,1);
@@ -968,9 +970,9 @@ TF1 * XTAnalyzer::fitSlice2Gaus(TH1D * h, double & mean, double & sigma, double 
 
 double XTAnalyzer::findFirstZero(TF1 * f, double xmin, double xmax, double delta){
 	double theX = 0;
-	for (double x = xmin; x<xmax; x+=delta){ // At least two solutions. Scan to find the smallest one
+	for (double x = xmin+delta; x<xmax; x+=delta){ // At least two solutions. Scan to find the smallest one
 		theX = f->GetX(0,xmin,x);
-		if (abs(theX-x)>0.5){
+		if (fabs(theX-x)>delta/10.&&fabs(theX-xmin)>delta/10.){
 			break;
 		}
 	}
@@ -978,82 +980,50 @@ double XTAnalyzer::findFirstZero(TF1 * f, double xmin, double xmax, double delta
 	return theX;
 }
 
-void XTAnalyzer::getT8(double & t8left, double & t8right, double & t8both){
+void XTAnalyzer::getT8(double & t8, std::vector<double> & vx, std::vector<double> & vt, std::vector<double> & vsig, std::vector<double> & vn, bool negtive){
 	double t1,t2,x1,x2;
 	bool find1 = false;
 	bool find2 = false;
-	for (int i = 0; i<NSLICEX; i++){
-		if (v_sig_slicex[i]<mSigTmax&&v_n_slicex[i]>mEntriesMin){
-			if (!find1){
-				t1 = v_t_slicex[i];
-				x1 = v_x_slicex[i];
-				find1 = true;
-			}
-			else{
-				t2 = v_t_slicex[i];
-				x2 = v_x_slicex[i];
-				find2 = true;
+	int i = NSLICEX-1; if (negtive) i = 0;
+	int direction = -1; if (negtive) direction = 1;
+	for (;i>=0&&i<NSLICEX;i+=direction){
+		double x = vx[i];
+		double t = vt[i];
+		bool isgood = true;
+		for (int j = i; j>=0&&j<NSLICEX&&abs(j-i)<=3; j+=direction){ // 3 good points
+			if (vsig[j]>mSigTmax||vn[j]<mEntriesMin){
+				isgood = false;
 				break;
 			}
 		}
+		if (mDebugLevel>=10) printf("@%d  %.1f %.2f %s\n",i,t,x,isgood?"good":"bad");
+		if (isgood){
+			if (!find1){
+				t1 = t;
+				x1 = x;
+				find1 = true;
+				if (mDebugLevel>=10) printf("find 1st point!\n");
+			}
+			else{
+				t2 = t;
+				x2 = x;
+				find2 = true;
+				if (mDebugLevel>=10) printf("find 2nd point!\n");
+				break;
+			}
+		}
+		i+=direction;
 	}
-	if (find1&&fabs(x1+8)<1e-4) t8left = t1;
+	if (find1&&fabs(fabs(x1)-8)<mBWX/2) t8 = t1;
 	else if (find1&&find2){
-		t8left = t1+(t2-t1)*(-8-x1)/(x2-x1);
+		if (negtive)
+			t8 = t1+(t2-t1)*(-8-x1)/(x2-x1);
+		else
+			t8 = t1+(t2-t1)*(8-x1)/(x2-x1);
 	}
 	else{
-		t8left = t1;
+		t8 = t1;
 		fprintf(stderr,"WARNING: cannot find the valid point at -8 mm or two valid points in x slices!\n");
-	}
-	find1 = false;
-	find2 = false;
-	for (int i = NSLICEX-1; i>=0; i--){
-		if (v_sig_slicex[i]<mSigTmax&&v_n_slicex[i]>mEntriesMin){
-			if (!find1){
-				t1 = v_t_slicex[i];
-				x1 = v_x_slicex[i];
-				find1 = true;
-			}
-			else{
-				t2 = v_t_slicex[i];
-				x2 = v_x_slicex[i];
-				find2 = true;
-				break;
-			}
-		}
-	}
-	if (find1&&fabs(x1-8)<1e-4) t8right = t1;
-	else if (find1&&find2){
-		t8right = t1+(t2-t1)*(8-x1)/(x2-x1);
-	}
-	else{
-		t8right = t1;
-		fprintf(stderr,"WARNING: cannot find the valid point at 8 mm or two valid points in x slices!\n");
-	}
-	find1 = false;
-	find2 = false;
-	for (int i = NSLICEX-1; i>=0; i--){
-		if (v_sig_slicexn[i]<mSigTmax&&v_n_slicexn[i]>mEntriesMin){
-			if (!find1){
-				t1 = v_t_slicexn[i];
-				x1 = v_x_slicexn[i];
-				find1 = true;
-			}
-			else{
-				t2 = v_t_slicexn[i];
-				x2 = v_x_slicexn[i];
-				find2 = true;
-				break;
-			}
-		}
-	}
-	if (find1&&fabs(x1-8)<1e-4) t8both = t1;
-	else if (find1&&find2){
-		t8both = t1+(t2-t1)*(8-x1)/(x2-x1);
-	}
-	else{
-		t8both = t1;
-		fprintf(stderr,"WARNING: cannot find the valid point at 8 mm or two valid points in x slices (with both sides)!\n");
 	}
 }
 
@@ -1129,7 +1099,7 @@ TF1 * XTAnalyzer::minusPolN(TString name, TF1 * f1, TF1 * f2, double xmin, doubl
 	int n1 = f1->GetNpar();
 	int n2 = f2->GetNpar();
 	int n = n1>n2?n1:n2;
-	TF1 * f = new TF1(name,Form("pol%d",n),xmin,xmax);
+	TF1 * f = new TF1(name,Form("pol%d",n-1),xmin,xmax);
 	for (int i = 0; i<n; i++){
 		double p = 0;
 		if (i<n1) p+=f1->GetParameter(i);
@@ -1731,6 +1701,9 @@ void XTAnalyzer::writeObjects(){
 	f_right_com->Write();
 	f_both_com->Write();
 	f_bothL_com->Write();
+	f_left_deltac->Write();
+	f_right_deltac->Write();
+	f_both_deltac->Write();
 	f_left_delta->Write();
 	f_right_delta->Write();
 	f_both_delta->Write();
