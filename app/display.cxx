@@ -976,7 +976,7 @@ int main(int argc, char** argv){
 						}
                     }
                     if (resmin<1e9){ // found a hit in this wire
-                        text_xyhit[lid][wid]->SetText(wx,wy,Form("%d,%.1lf,%.3lf",wid,thefitd,resmin));// draw the one with the smallest res
+                        text_xyhit[lid][wid]->SetText(wx,wy,Form("%d,%.3f,%.3f",wid,thefitd-resmin,resmin));// draw the one with the smallest res
                         text_xyhit[lid][wid]->Draw();
                     }
                     y_cell[lid][wid] = wy;

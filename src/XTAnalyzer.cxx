@@ -605,9 +605,9 @@ void XTAnalyzer::Process(void){
 	double tZeroLeft = findFirstZero(f_left_cen,mTmin,mTmax,1);
 	double tZeroRight = findFirstZero(f_right_cen,mTmin,mTmax,1);
 	double tZeroBoth = findFirstZero(f_both_cen,mTmin,mTmax,1);
-	double tCentLeft = findFirstZero(f_left_deltac,0,mTmax,1);
-	double tCentRight = findFirstZero(f_right_deltac,0,mTmax,1);
-	double tCentBoth = findFirstZero(f_both_deltac,0,mTmax,1);
+	double tCentLeft = findFirstZero(f_left_deltac,5,mTmax,1); // FIXME: better to use driftT at 0.5 mm to start searching
+	double tCentRight = findFirstZero(f_right_deltac,5,mTmax,1);
+	double tCentBoth = findFirstZero(f_both_deltac,5,mTmax,1);
 	double tTurnLeft = findFirstZero(f_left_delta,t7Left,mTmax,1);
 	double tTurnRight = findFirstZero(f_right_delta,t7Right,mTmax,1);
 	double tTurnBoth = findFirstZero(f_both_delta,t7Both,mTmax,1);
