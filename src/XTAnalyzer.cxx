@@ -263,7 +263,7 @@ void XTAnalyzer::Process(void){
 	for (int i = 0; i<NSLICET; i++){
 		if (mDebugLevel>0) {printf("=>h_x[%d\]\n",i);fflush(stdout);}
 		mType = 0;
-		double left, right; // find the range: 1/3 of the highest bin
+		double left, right;
 		double divleft,divright;
 		i2t(i,divleft,mT,divright);
 		mEntries = h_x[i]->Integral();
@@ -312,7 +312,7 @@ void XTAnalyzer::Process(void){
 	// fit t histograms, and push to vectors & tree
 	for (int i = 0; i<NSLICEX; i++){
 		mType = 1;
-		double left, right; // find the range: 1/3 of the highest bin
+		double left, right;
 		double divleft,divright;
 		i2x(i,divleft,mX,divright);
 		mEntries = h_t[i]->Integral();
@@ -342,7 +342,7 @@ void XTAnalyzer::Process(void){
 	for (int i = NSLICET/2; i<NSLICET; i++){
 		if (mDebugLevel>0) {printf("=>h_xn[%d\]\n",i);fflush(stdout);}
 		mType = 2;
-		double left, right; // find the range: 1/3 of the highest bin
+		double left, right;
 		double divleft,divright;
 		i2t(i,divleft,mT,divright);
 		mEntries = h_xn[i]->Integral();
@@ -381,7 +381,7 @@ void XTAnalyzer::Process(void){
 	// fit t histograms for both-side case, and push to vectors & tree
 	for (int i = NSLICEX/2; i<NSLICEX; i++){
 		mType = 3;
-		double left, right; // find the range: 1/3 of the highest bin
+		double left, right;
 		double divleft,divright;
 		i2x(i,divleft,mX,divright);
 		mEntries = h_tn[i]->Integral();
@@ -412,12 +412,14 @@ void XTAnalyzer::Process(void){
 	// select sample points and make graphs
 	// FIXME: Currently seperate the mid/end graphs by 8 mm line, and search for the real one from 7 mm line.
 	// FIXME: Currently seperate the cen/mid graphs by 1 mm line, and search for the real one from mTmin.
-	double xCenter2Mid = 1;
+	double xCenter2Mid = 1.5;
 	double xStart2Turn = 7;
+	double xMargin = 0.2;
 	double t8Left = v_t_slicex[0];
 	double t8Right = v_t_slicex[NSLICEX-1];
 	double t8Both = v_t_slicexn[NSLICEX-1];
 	getT8(t8Left,t8Right,t8Both);
+	double tMargin = 10;
 	double t7Left = v_t_slicex[1./mBWX];
 	double t7Right = v_t_slicex[NSLICEX-1./mBWX];
 	double t7Both = v_t_slicexn[NSLICEX-1./mBWX];
@@ -432,12 +434,12 @@ void XTAnalyzer::Process(void){
 		if (v_n_slicet[i]<mEntriesMin||v_sig_slicet[i]>mSigXmax||v_sig_slicet[i]<=0) continue;
 		if (mDebugLevel>=2) printf("                  Passed!\n");
 		if (v_t_slicet[i]>t8Left){ // left end
-			if (mDebugLevel>=2) printf("                  t>=%.1f, push to left_end!\n",t8Left);
+			if (mDebugLevel>=2) printf("                  t>%.1f, push to left_end!\n",t8Left);
 			v_left_end_x.push_back(v_x_slicet[i]);
 			v_left_end_t.push_back(v_t_slicet[i]);
 		}
-		else if (v_x_slicet[i]<=-xStart2Turn){ // turning part // FIXME: should keep one point overlapped
-			if (mDebugLevel>=2) printf("                  x<=%.2f, push to left_mid!\n",-xStart2Turn);
+		if (v_t_slicet[i]<t8Left+tMargin&&v_x_slicet[i]<=-xStart2Turn){ // turning part
+			if (mDebugLevel>=2) printf("                  t<%.1f x<%.2f, push to left_mid!\n",t8Left+tMargin,-xStart2Turn);
 			v_left_mid_x.push_back(v_x_slicet[i]);
 			v_left_mid_t.push_back(v_t_slicet[i]);
 		}
@@ -474,13 +476,13 @@ void XTAnalyzer::Process(void){
 		if (i<=NSLICEX/2){ // left
 			if (x>mint_x_slicex_l) t = mint_t_slicex_l;
 			if (x>-xStart2Turn){ // middle part
-				if (x<-xCenter2Mid){
+				if (x>-xCenter2Mid){
 					if (mDebugLevel>=2) printf("                  %.2f<x, push to left_cen!\n",-xCenter2Mid);
 					v_left_cen_x.push_back(x);
 					v_left_cen_t.push_back(t);
 				}
-				else{
-					if (mDebugLevel>=2) printf("                  %.2f<x<%.2f, push to left_mid!\n",-xStart2Turn,-xCenter2Mid);
+				if (x<-xCenter2Mid+xMargin){
+					if (mDebugLevel>=2) printf("                  %.2f<x<%.2f, push to left_mid!\n",-xStart2Turn,-xCenter2Mid+xMargin);
 					v_left_mid_x.push_back(x);
 					v_left_mid_t.push_back(t);
 				}
@@ -494,8 +496,8 @@ void XTAnalyzer::Process(void){
 					v_right_cen_x.push_back(x);
 					v_right_cen_t.push_back(t);
 				}
-				else{
-					if (mDebugLevel>=2) printf("                  %.2f<x<%.2f, push to right_mid!\n",xCenter2Mid,xStart2Turn);
+				if (x>xCenter2Mid-xMargin){
+					if (mDebugLevel>=2) printf("                  %.2f<x<%.2f, push to right_mid!\n",xCenter2Mid-xMargin,xStart2Turn);
 					v_right_mid_x.push_back(x);
 					v_right_mid_t.push_back(t);
 				}
@@ -507,12 +509,12 @@ void XTAnalyzer::Process(void){
 		if (mDebugLevel>=2) printf("  LR T slice[%d]: x=%.2f, t=%.1f, n=%.0f, sig=%.2f\n",i,v_x_slicet[i],v_t_slicet[i],v_n_slicet[i],v_sig_slicet[i]);
 		if (v_n_slicet[i]<mEntriesMin||v_sig_slicet[i]>mSigXmax||v_sig_slicet[i]<=0) continue;
 		if (v_t_slicet[i]>t8Right){ // right end
-			if (mDebugLevel>=2) printf("                  t>=%.1f, push to right_end!\n",t8Right);
+			if (mDebugLevel>=2) printf("                  t>%.1f, push to right_end!\n",t8Right);
 			v_right_end_x.push_back(v_x_slicet[i]);
 			v_right_end_t.push_back(v_t_slicet[i]);
 		}
-		else if (v_x_slicet[i]>=xStart2Turn){ // turning part
-			if (mDebugLevel>=2) printf("                  x>=%.2f, push to right_mid!\n",xStart2Turn);
+		if (v_t_slicet[i]<t8Right+tMargin&&v_x_slicet[i]>=xStart2Turn){ // turning part
+			if (mDebugLevel>=2) printf("                  t<%.1f x>%.2f, push to right_mid!\n",t8Right+tMargin,xStart2Turn);
 			v_right_mid_x.push_back(v_x_slicet[i]);
 			v_right_mid_t.push_back(v_t_slicet[i]);
 		}
@@ -544,8 +546,8 @@ void XTAnalyzer::Process(void){
 				v_bothL_cen_x.push_back(-x);
 				v_both_cen_t.push_back(t);
 			}
-			else{
-				if (mDebugLevel>=2) printf("                  %.2f<x<%.2f, push to both_mid!\n",xCenter2Mid,xStart2Turn);
+			if (x>xCenter2Mid-xMargin){
+				if (mDebugLevel>=2) printf("                  %.2f<x<%.2f, push to both_mid!\n",xCenter2Mid-xMargin,xStart2Turn);
 				v_both_mid_x.push_back(x);
 				v_bothL_mid_x.push_back(-x);
 				v_both_mid_t.push_back(t);
@@ -558,13 +560,13 @@ void XTAnalyzer::Process(void){
 		if (v_n_slicetn[i]<mEntriesMin||v_sig_slicetn[i]>mSigXmax||v_sig_slicetn[i]<=0) continue;
 		if (mDebugLevel>=2) printf("                  Passed!\n");
 		if (v_t_slicetn[i]>t8Both){ // both-side end
-			if (mDebugLevel>=2) printf("                  t>=%.1f, push to both_end!\n",t8Both);
+			if (mDebugLevel>=2) printf("                  t>%.1f, push to both_end!\n",t8Both);
 			v_both_end_x.push_back(v_x_slicetn[i]);
 			v_bothL_end_x.push_back(-v_x_slicetn[i]);
 			v_both_end_t.push_back(v_t_slicetn[i]);
 		}
-		else if (v_x_slicetn[i]>=xStart2Turn){ // turning part
-			if (mDebugLevel>=2) printf("                  x>=%.2f, push to both_mid!\n",xStart2Turn);
+		if (v_t_slicetn[i]<t8Both+tMargin&&v_x_slicetn[i]>=xStart2Turn){ // turning part
+			if (mDebugLevel>=2) printf("                  t<%.1f, x>=%.2f, push to both_mid!\n",t8Both+tMargin,xStart2Turn);
 			v_both_mid_x.push_back(v_x_slicetn[i]);
 			v_bothL_mid_x.push_back(-v_x_slicetn[i]);
 			v_both_mid_t.push_back(v_t_slicetn[i]);
@@ -692,7 +694,7 @@ void XTAnalyzer::Process(void){
 		}
 	}
 	// get Sample/Function differences
-	for (int i = 0; i<v_left_end_t.size(); i++){ // FIXME: in case of overlapping, should avoid some same points
+	for (int i = 0; i<v_left_end_t.size(); i++){
 		double t = v_left_end_t[i];
 		double x = v_left_end_x[i];
 		double xf = f_left_com->Eval(t);
@@ -702,6 +704,7 @@ void XTAnalyzer::Process(void){
 	for (int i = 0; i<v_left_mid_t.size(); i++){
 		double t = v_left_mid_t[i];
 		double x = v_left_mid_x[i];
+		if (x>-xCenter2Mid||t>t8Left) continue; // marginal region
 		double xf = f_left_com->Eval(t);
 		v_SmF_left_t.push_back(t);
 		v_SmF_left_dx.push_back((x-xf)*1000);
@@ -723,6 +726,7 @@ void XTAnalyzer::Process(void){
 	for (int i = 0; i<v_right_mid_t.size(); i++){
 		double t = v_right_mid_t[i];
 		double x = v_right_mid_x[i];
+		if (x<xCenter2Mid||t>t8Right) continue; // marginal region
 		double xf = f_right_com->Eval(t);
 		v_SmF_right_t.push_back(t);
 		v_SmF_right_dx.push_back((x-xf)*1000);
@@ -744,6 +748,7 @@ void XTAnalyzer::Process(void){
 	for (int i = 0; i<v_both_mid_t.size(); i++){
 		double t = v_both_mid_t[i];
 		double x = v_both_mid_x[i];
+		if (x<xCenter2Mid||t>t8Both) continue; // marginal region
 		double xf = f_both_com->Eval(t);
 		v_SmF_both_t.push_back(t);
 		v_SmF_both_dx.push_back((x-xf)*1000);
@@ -1223,11 +1228,11 @@ void XTAnalyzer::createGraphs(){
 			"#chi^{2} of X in each T slice","T [ns]","#chi^{2}_{X}",
 			20,0.5,kBlack,0.5,kBlack);
 	// selected graphs for XT fitting (and showing)
-	gr_left_cen = myNewTGraph(Form("gr_xt_lm_%d",mLayerID),v_left_cen_x.size(),&(v_left_cen_t[0]),&(v_left_cen_x[0]),
+	gr_left_cen = myNewTGraph(Form("gr_xt_lce_%d",mLayerID),v_left_cen_x.size(),&(v_left_cen_t[0]),&(v_left_cen_x[0]),
 			"XT Relation","T [ns]","X [mm]",20,0.3,kMagenta,0.3,kMagenta);
-	gr_right_cen = myNewTGraph(Form("gr_xt_rm_%d",mLayerID),v_right_cen_x.size(),&(v_right_cen_t[0]),&(v_right_cen_x[0]),
+	gr_right_cen = myNewTGraph(Form("gr_xt_rce_%d",mLayerID),v_right_cen_x.size(),&(v_right_cen_t[0]),&(v_right_cen_x[0]),
 			"XT Relation","T [ns]","X [mm]",20,0.3,kRed,0.3,kRed);
-	gr_both_cen = myNewTGraph(Form("gr_xt_bm_%d",mLayerID),v_both_cen_x.size(),&(v_both_cen_t[0]),&(v_both_cen_x[0]),
+	gr_both_cen = myNewTGraph(Form("gr_xt_bce_%d",mLayerID),v_both_cen_x.size(),&(v_both_cen_t[0]),&(v_both_cen_x[0]),
 			"XT Relation","T [ns]","X [mm]",20,0.3,kBlack,0.3,kBlack);
 	gr_bothL_cen = myNewTGraph(Form("gr_xt_blm_%d",mLayerID),v_bothL_cen_x.size(),&(v_both_cen_t[0]),&(v_bothL_cen_x[0]),
 			"XT Relation","T [ns]","X [mm]",20,0.3,kBlack,0.3,kBlack);
