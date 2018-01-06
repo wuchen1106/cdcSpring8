@@ -11,8 +11,8 @@
 #include "TLine.h"
 #include "TStyle.h"
 
-XTAnalyzer::XTAnalyzer(int debug)
-	:mDebugLevel(debug)
+XTAnalyzer::XTAnalyzer(int gasID, int debug)
+	:mGasID(gasID), mDebugLevel(debug)
 {
 	v_x_slicex.resize(NSLICEX);
 	v_t_slicex.resize(NSLICEX);
@@ -221,7 +221,7 @@ int XTAnalyzer::Initialize(TString runname, int lid, TFile * infile, TFile * out
 }
 
 void XTAnalyzer::Push(double t, double x){
-	if (mDebugLevel>=10) printf("XTAnalyzer::push(%.2e,%.2e)\n",t,x);
+	if (mDebugLevel>=20) printf("XTAnalyzer::push(%.2e,%.2e)\n",t,x);
 	double absx = fabs(x);
 	h2_xt->Fill(t,x);
 	h2_xtn->Fill(t,absx);
@@ -251,7 +251,7 @@ void XTAnalyzer::Push(double t, double x){
 		int ibin = h_xn_tsum[i]->FindBin(absx);
 		h_xn_tsum[i]->AddBinContent(ibin,t);
 	}
-	if (mDebugLevel>=10) printf("            pushed\n",t,x);
+	if (mDebugLevel>=20) printf("            pushed\n",t,x);
 }
 
 void XTAnalyzer::Process(void){
@@ -1336,7 +1336,12 @@ void XTAnalyzer::drawSamplingsLR(){
 	gr_left_mid->Draw("PSAME");
 	gr_right_mid->Draw("PSAME");
 	gr_right_end->Draw("PSAME");
-	h2_xt->GetXaxis()->SetRangeUser(-10,60);
+	if (mGasID==1){ // He:iC4H10 (90:10)
+        h2_xt->GetXaxis()->SetRangeUser(-10,60);
+    }
+    else{ // by default, He:C2H6 (50:50)
+        h2_xt->GetXaxis()->SetRangeUser(-10,45);
+    }
 	h2_xt->GetYaxis()->SetRangeUser(-2,2);
 	h2_xt->Draw("COLZ");
 	gr_xt_slicet->Draw("PSAME");
@@ -1349,7 +1354,12 @@ void XTAnalyzer::drawSamplingsLR(){
 	f_right_com->Draw("SAME");
 	canv_xtsamplesz->SaveAs("xtsamples_center_"+mRunName+".png");
 	canv_xtsamplesz->SaveAs("xtsamples_center_"+mRunName+".pdf");
-	h2_xt->GetXaxis()->SetRangeUser(250,450);
+	if (mGasID==1){ // He:iC4H10 (90:10)
+        h2_xt->GetXaxis()->SetRangeUser(250,450);
+    }
+    else{ // by default, He:C2H6 (50:50)
+        h2_xt->GetXaxis()->SetRangeUser(160,260);
+    }
 	h2_xt->GetYaxis()->SetRangeUser(6.5,8);
 	h2_xt->Draw("COLZ");
 	gr_xt_slicet->Draw("PSAME");
@@ -1359,7 +1369,6 @@ void XTAnalyzer::drawSamplingsLR(){
 	f_right_com->Draw("SAME");
 	canv_xtsamplesz->SaveAs("xtsamples_endR_"+mRunName+".png");
 	canv_xtsamplesz->SaveAs("xtsamples_endR_"+mRunName+".pdf");
-	h2_xt->GetXaxis()->SetRangeUser(250,450);
 	h2_xt->GetYaxis()->SetRangeUser(-8,-6.5);
 	h2_xt->Draw("COLZ");
 	gr_xt_slicet->Draw("PSAME");
@@ -1452,7 +1461,12 @@ void XTAnalyzer::drawSamplingsB(){
 	gr_both_cen->SetMarkerSize(1);
 	gr_both_mid->SetMarkerSize(1);
 	gr_both_end->SetMarkerSize(1);
-	h2_xtn->GetXaxis()->SetRangeUser(-10,60);
+	if (mGasID==1){ // He:iC4H10 (90:10)
+        h2_xtn->GetXaxis()->SetRangeUser(-10,60);
+    }
+    else{ // by default, He:C2H6 (50:50)
+        h2_xtn->GetXaxis()->SetRangeUser(-10,45);
+    }
 	h2_xtn->GetYaxis()->SetRangeUser(0,2);
 	h2_xtn->Draw("COLZ");
 	gr_xt_slicetn->Draw("PSAME");
@@ -1462,7 +1476,12 @@ void XTAnalyzer::drawSamplingsB(){
 	f_both_com->Draw("SAME");
 	canv_xtsamplesnz->SaveAs("xtsamplesn_center_"+mRunName+".png");
 	canv_xtsamplesnz->SaveAs("xtsamplesn_center_"+mRunName+".pdf");
-	h2_xtn->GetXaxis()->SetRangeUser(250,450);
+	if (mGasID==1){ // He:iC4H10 (90:10)
+        h2_xtn->GetXaxis()->SetRangeUser(250,450);
+    }
+    else{ // by default, He:C2H6 (50:50)
+        h2_xtn->GetXaxis()->SetRangeUser(160,260);
+    }
 	h2_xtn->GetYaxis()->SetRangeUser(6.5,8);
 	h2_xtn->Draw("COLZ");
 	gr_xt_slicetn->Draw("PSAME");

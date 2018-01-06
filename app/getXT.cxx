@@ -46,6 +46,48 @@ int main(int argc, char** argv){
 
     TString HOME=getenv("CDCS8WORKING_DIR");
 
+	//===================Get run info============================
+	TFile * if_run = new TFile(HOME+"/info/run-info.root");
+	TTree * t_run = (TTree*) if_run->Get("t");
+	int i_runNo, gasID, runGr, HV, THR;
+	char runDu[128];
+	double t00, t01, aacut, sumcut;
+	t_run->SetBranchAddress("run_number",&i_runNo);
+	t_run->SetBranchAddress("gas_mixture_id",&gasID);
+	t_run->SetBranchAddress("hv_ch0",&HV);
+	t_run->SetBranchAddress("recbe_th_input_bd0",&THR);
+	t_run->SetBranchAddress("duration",&runDu);
+	t_run->SetBranchAddress("run_grade",&runGr);
+	t_run->SetBranchAddress("t00",&t00);
+	t_run->SetBranchAddress("t01",&t01);
+	t_run->SetBranchAddress("aa",&aacut);
+	t_run->SetBranchAddress("sum",&sumcut);
+	for(int i = 0; i<t_run->GetEntries(); i++){
+		t_run->GetEntry(i);
+		if (i_runNo == runNo) break;
+	}
+	double npair = 17.96;
+	TString gastype = "He:C_{2}H_{4}(50:50)";
+	if (gasID==1){
+		gastype = "He:iC_{4}H_{10}(90:10)";
+		npair = 27.96;
+	}
+	else if (gasID==2){
+		gastype = "He:CH_{4}(80:20)";
+		npair = 56.10;
+	}
+	TString duration = runDu;
+	const char *sep = ":";
+	char * durationSep = strtok(runDu,sep);
+	double durationTime = 0;
+	double timeunit = 3600;
+	while(durationSep){
+		durationTime += timeunit*strtol(durationSep,NULL,10);
+		timeunit/=60;
+		durationSep = strtok(NULL,sep);
+	}
+	printf("runNo#%d: %s, %d, %s, %d V, %d mV, %.0f sec\n",runNo,gastype.Data(),runGr,duration.Data(),HV,THR,durationTime);
+
     // get XT file of the previous run
     TFile * preXTFile = new TFile(Form("%s/info/xt.%d.%s.root",HOME.Data(),runNo,prerunname.Data()));
 
@@ -68,7 +110,7 @@ int main(int argc, char** argv){
 	newXTTree->Branch("type",&mType);
 
 	// Prepare XTAnalyzer
-	XTAnalyzer * fXTAnalyzer = new XTAnalyzer(debugLevel);
+	XTAnalyzer * fXTAnalyzer = new XTAnalyzer(gasID,debugLevel);
 
     // input file
     int triggerNumber;
@@ -247,7 +289,7 @@ int main(int argc, char** argv){
                 if (fabs(slz[theCand])>0.15) continue;
             }
 
-            if (debugLevel>=11) printf("  Good Event! Looping in %d hits\n",nHits);
+            if (debugLevel>=20) printf("  Good Event! Looping in %d hits\n",nHits);
             // find the closest hit in the test layer
             double minres = 1e9;
             bool has = false;
@@ -274,7 +316,7 @@ int main(int argc, char** argv){
             if (!has) continue; // no hits found in test layer
             //if (hasBadHit) continue;
 
-            if (debugLevel>=11) printf("  Found hit! pushing to XTAnalyzer\n");
+            if (debugLevel>=20) printf("  Found hit! pushing to XTAnalyzer\n");
 			// tell analyzer a new data point
             fXTAnalyzer->Push(driftT,fitD);
         }
@@ -365,7 +407,7 @@ int main(int argc, char** argv){
 		// Get new driftD
         for ( int iEntry = 0 ; iEntry<N; iEntry++){
             if (N%1000==0) printf("%d\n",N);
-            if (debugLevel>=10) printf("Entry%d: \n",iEntry);
+            if (debugLevel>=20) printf("Entry%d: \n",iEntry);
             ichain->GetEntry(iEntry);
 
 			// decide which candidate to use
@@ -517,7 +559,7 @@ int main(int argc, char** argv){
 		otree->Write();
         ofile->Close();
 
-        if (debugLevel>0) printf("Finished!\n");
+        if (debugLevel>=20) printf("Finished!\n");
 	}
 
     return 0;

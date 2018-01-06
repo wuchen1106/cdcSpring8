@@ -388,6 +388,7 @@ int main(int argc, char** argv){
         f_right[i] = (TF1*) i_xt->Get(Form("fr_%d",i));
 		gr_error_left[i] = (TGraph*)i_xt->Get(Form("gr_sigts_slicetl_%d",i));
 		gr_error_right[i] = (TGraph*)i_xt->Get(Form("gr_sigts_slicetr_%d",i));
+		if (!gr_error_left[i]||!gr_error_right[i]) fprintf(stderr,"Cannot find gr_error_l/r[%d]! Would assume default error 0.2 mm\n",i);
         double tmaxl = 0;
         double tmaxr = 0;
         double tminl = 0;
@@ -1313,7 +1314,7 @@ double getError(double dt, bool isR){
 	else
 		gr = gr_error_left[0];
 	if (!gr){
-		fprintf(stderr,"ERROR: cannot find error graph gr_sigts_slicet%s_%d",isR?"r":"l",0);
+	    return error;
 	}
 	int N = gr->GetN();
 	for (int i = 0; i<N-1; i++){

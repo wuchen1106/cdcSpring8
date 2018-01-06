@@ -23,7 +23,7 @@ class TH2D;
 
 class XTAnalyzer{
 	public:
-		XTAnalyzer(int debug = 0);
+		XTAnalyzer(int gasID, int debug = 0);
 		virtual ~XTAnalyzer(void);
 
 		void SetXTType(int type);
@@ -68,6 +68,7 @@ class XTAnalyzer{
 
 	private:
 		// options
+		int mGasID;
 		int mDebugLevel;
 		int mSaveHists;
 		bool mSaveXT0;
