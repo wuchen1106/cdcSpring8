@@ -206,15 +206,15 @@ int XTAnalyzer::Initialize(TString runname, int lid, TFile * infile, TFile * out
 	m_TmL_B_max = 0;
 
 	// prepare new XT functions
-	f_left_cen = myNewTF1(Form("flce_%d",mLayerID),"pol9",mTmin,mTmax);
-	f_right_cen = myNewTF1(Form("frce_%d",mLayerID),"pol9",mTmin,mTmax);
-	f_both_cen = myNewTF1(Form("fbce_%d",mLayerID),"pol9",mTmin,mTmax);
-	f_left_mid = myNewTF1(Form("flm_%d",mLayerID),"pol9",mTmin,mTmax);
-	f_right_mid = myNewTF1(Form("frm_%d",mLayerID),"pol9",mTmin,mTmax);
-	f_both_mid = myNewTF1(Form("fbm_%d",mLayerID),"pol9",mTmin,mTmax);
-	f_left_end = myNewTF1(Form("fle_%d",mLayerID),"pol5",mTmin,mTmax);
-	f_right_end = myNewTF1(Form("fre_%d",mLayerID),"pol5",mTmin,mTmax);
-	f_both_end = myNewTF1(Form("fbe_%d",mLayerID),"pol5",mTmin,mTmax);
+	f_left_cen = myNewTF1(Form("flce_%d",mLayerID),"pol5",mTmin,mTmax);
+	f_right_cen = myNewTF1(Form("frce_%d",mLayerID),"pol5",mTmin,mTmax);
+	f_both_cen = myNewTF1(Form("fbce_%d",mLayerID),"pol5",mTmin,mTmax);
+	f_left_mid = myNewTF1(Form("flm_%d",mLayerID),"pol3",mTmin,mTmax);
+	f_right_mid = myNewTF1(Form("frm_%d",mLayerID),"pol3",mTmin,mTmax);
+	f_both_mid = myNewTF1(Form("fbm_%d",mLayerID),"pol3",mTmin,mTmax);
+	f_left_end = myNewTF1(Form("fle_%d",mLayerID),"pol3",mTmin,mTmax);
+	f_right_end = myNewTF1(Form("fre_%d",mLayerID),"pol3",mTmin,mTmax);
+	f_both_end = myNewTF1(Form("fbe_%d",mLayerID),"pol3",mTmin,mTmax);
 
 	if (mDebugLevel>=1) {printf("XTAnalyzer successfully initialized!\n");fflush(stdout);}
 	return 0;
