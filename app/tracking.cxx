@@ -26,6 +26,7 @@
 
 #define NCAND 4
 
+int workType = 0;
 int debug = 0;
 int memdebug = 0;
 
@@ -139,10 +140,6 @@ TVector3 vTrackU, vTrackD, vTrack;
 TVector3 vWireHV, vWireRO, vWire;
 TVector3 vDist;
 TVector3 vAxis;
-// for error function
-TF1 * funcErr;
-TGraph * gr_error_left[NLAY];
-TGraph * gr_error_right[NLAY];
 
 //===================Hit Handlers============================
 std::vector<std::vector<int> > v_layer_ihit; // vectors of indices of hits in each layer
@@ -174,13 +171,17 @@ void do_fit(double slix, double inix,double sliz, double iniz);
 int getHitIndex(int lid, int nHits);
 int getHitType(int type,bool isRight);
 bool isSame(int iCand);
-double getError(double dt, bool isR);
+double getError(int lid,double dt, bool isR);
 
 MyProcessManager * pMyProcessManager;
 
 //===================About xt============================
-TF1 * f_left[NLAY];
-TF1 * f_right[NLAY];
+TF1 * f_left[NLAY+2];
+TF1 * f_right[NLAY+2];
+// for error function
+TF1 * funcErr;
+TGraph * gr_error_left[NLAY+2];
+TGraph * gr_error_right[NLAY+2];
 
 int main(int argc, char** argv){
 
@@ -224,14 +225,18 @@ int main(int argc, char** argv){
         iEntryStop = (int)strtol(argv[13],NULL,10);
     }
     if (argc>=15){
-        debug = (int)strtol(argv[14],NULL,10);
+        workType = (int)strtol(argv[14],NULL,10);
     }
     if (argc>=16){
-        memdebug = (int)strtol(argv[15],NULL,10);
+        debug = (int)strtol(argv[15],NULL,10);
+    }
+    if (argc>=17){
+        memdebug = (int)strtol(argv[16],NULL,10);
     }
     printf("##############Input Parameters##################\n");
     printf("runNo       = %d\n",runNo);
     printf("test layer  = %d\n",testlayer);
+    printf("prerunname  = \"%s\"\n",prerunname.Data());
     printf("runname     = \"%s\"\n",runname.Data());
     printf("nHitsMax    = %d\n",nHitsMax);
     printf("t0shift     = %d\n",t0shift);
@@ -242,9 +247,9 @@ int main(int argc, char** argv){
     printf("aaCut       = %f\n",aaCut);
     printf("Start Entry = %d\n",iEntryStart);
     printf("Stop Entry  = %d\n",iEntryStop);
+    printf("workType    = %s\n",workType==0?"all as 0":(workType==1?"even/odd":(workType==-1?"even/odd reversed":"all layers")));
     printf("debug       = %d\n",debug);
     printf("memdebug    = %d\n",memdebug);
-    printf("prerunname  = \"%s\"\n",prerunname.Data());
 
     TString HOME=getenv("CDCS8WORKING_DIR");
 
@@ -388,7 +393,6 @@ int main(int argc, char** argv){
         f_right[i] = (TF1*) i_xt->Get(Form("fr_%d",i));
 		gr_error_left[i] = (TGraph*)i_xt->Get(Form("gr_sigts_slicetl_%d",i));
 		gr_error_right[i] = (TGraph*)i_xt->Get(Form("gr_sigts_slicetr_%d",i));
-		if (!gr_error_left[i]||!gr_error_right[i]) fprintf(stderr,"Cannot find gr_error_l/r[%d]! Would assume default error 0.2 mm\n",i);
         double tmaxl = 0;
         double tmaxr = 0;
         double tminl = 0;
@@ -409,8 +413,19 @@ int main(int argc, char** argv){
             xmaxr = f_right[i]->Eval(tmaxr);
             xminr = f_right[i]->Eval(tminr);
         }
-        if (f_left[i]||f_right[i])printf("  XT in layer[%d]: (%.3e,%.3e)-(%.3e,%.3e)-(%.3e,%.3e)-(%.3e,%.3e)\n",i,tmaxl,xmaxl,tminl,xminl,tminr,xminr,tmaxr,xmaxr);
+        if (f_left[i]||f_right[i]){
+        	printf("  XT in layer[%d]: (%.3e,%.3e)-(%.3e,%.3e)-(%.3e,%.3e)-(%.3e,%.3e)\n",i,tmaxl,xmaxl,tminl,xminl,tminr,xminr,tmaxr,xmaxr);
+			if (!gr_error_left[i]||!gr_error_right[i]) fprintf(stderr,"Cannot find gr_error_l/r[%d]! Would assume default error 0.2 mm\n",i);
+		}
     }
+	f_left[NLAY] = (TF1*) i_xt->Get("fl_even");
+	f_right[NLAY] = (TF1*) i_xt->Get("fr_even");
+	gr_error_left[NLAY] = (TGraph*)i_xt->Get("gr_sigts_slicetl_even");
+	gr_error_right[NLAY] = (TGraph*)i_xt->Get("gr_sigts_slicetr_even");
+	f_left[NLAY+1] = (TF1*) i_xt->Get("fl_odd");
+	f_right[NLAY+1] = (TF1*) i_xt->Get("fr_odd");
+	gr_error_left[NLAY+1] = (TGraph*)i_xt->Get("gr_sigts_slicetl_odd");
+	gr_error_right[NLAY+1] = (TGraph*)i_xt->Get("gr_sigts_slicetr_odd");
 
     //===================Get input ROOT file============================
     TChain * c = new TChain("t","t");
@@ -1173,12 +1188,15 @@ bool checkChi2(int nHitsSel, int nPairs, int icombi, int iselection){
 
 double t2x(double time, int lid, int wid, int lr, int & status){ // 1: right; 2: right end; -1: left; -2: left end; 0 out of range
     TF1* f=0;
-    // FIXME: now we only take one xt: layer 0 cell 0 (fake wire as average)
+    int theLayer = lid;
+    if (workType==0) theLayer = 0;
+	else if (workType==1) theLayer = (lid%2==0?NLAY:NLAY+1); // even/odd
+	else if (workType==-1) theLayer = (lid%2==0?NLAY+1:NLAY); // even/odd reversed
     if (lr>=0){
-        f = f_right[0];
+        f = f_right[theLayer];
     }
     else {
-        f = f_left[0];
+        f = f_left[theLayer];
     }
     if (!f){
         fprintf(stderr,"Cannot get f[%d]!\n",0);
@@ -1274,7 +1292,7 @@ void getchi2(double &f, double & cp, double & ca, double slx, double inx, double
 //		double error = errord[(*i_layerID)[ihit]][(*i_wireID)[ihit]]*(fabs(fabs(dfit)-4)+2/1.5)*1.5/4;
 //		double error = errord[(*i_layerID)[ihit]][(*i_wireID)[ihit]];
 //		double error = funcErr->Eval(fabs(dfit));
-		double error = getError((*i_driftT)[ihit],dd>0);
+		double error = getError((*i_layerID)[ihit],(*i_driftT)[ihit],dd>0);
         delta  = (dfit-dd)/error;
 		chisq += delta*delta;
 		N++;
@@ -1305,14 +1323,17 @@ void getchi2(double &f, double & cp, double & ca, double slx, double inx, double
 	}
 }
 
-double getError(double dt, bool isR){
+double getError(int lid,double dt, bool isR){
 	double error = 0.2; // default value 200 um
 	TGraph * gr = 0;
-	// FIXME: now we only take the error from one default layer (0 as fake layer)
+    int theLayer = lid;
+    if (workType==0) theLayer = 0;
+	else if (workType==1) theLayer = (lid%2==0?NLAY:NLAY+1); // even/odd
+	else if (workType==-1) theLayer = (lid%2==0?NLAY+1:NLAY); // even/odd reversed
 	if (isR) // right side
-		gr = gr_error_right[0];
+		gr = gr_error_right[theLayer];
 	else
-		gr = gr_error_left[0];
+		gr = gr_error_left[theLayer];
 	if (!gr){
 	    return error;
 	}
