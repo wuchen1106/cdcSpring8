@@ -210,7 +210,8 @@ int main(int argc, char** argv){
 			ichain->SetBranchAddress(Form("sel%d",iCand),&(i_sel[iCand]));
 		}
 
-		int statusInitialize = fXTAnalyzer->Initialize(Form("%d.%s.layer%d",runNo,runname.Data(),lid),lid,preXTFile,newXTFile,newXTTree,xtType,saveHists, lid==4); // take the XT from layer 4 as default output XT (0)
+		int saveEvenOdd = 0; if (lid==4) saveEvenOdd = 1; else if (lid==5) saveEvenOdd = -1;
+		int statusInitialize = fXTAnalyzer->Initialize(Form("%d.%s.layer%d",runNo,runname.Data(),lid),lid,preXTFile,newXTFile,newXTTree,xtType,saveHists, lid==4, saveEvenOdd); // take the XT from layer 4 as default output XT (0). 4 as default even and 5 as default odd.
 		if (statusInitialize){
 			fprintf(stderr,"WARNING: something wrong with initializing XTAnalyzer for layer[%d], will ignore this layer!\n",lid);
 			continue;

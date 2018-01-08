@@ -29,7 +29,7 @@ class XTAnalyzer{
 		void SetXTType(int type);
 		void SetSaveHists(int save);
 
-		int  Initialize(TString runname, int lid, TFile * infile, TFile * outfile, TTree * otree, int xttype, int savehists,bool saveXT0 = false);
+		int  Initialize(TString runname, int lid, TFile * infile, TFile * outfile, TTree * otree, int xttype, int savehists,bool saveXT0 = false,int saveOddEven = 0);
 		void Process(void);
 
 		void Push(double t, double x);
@@ -72,8 +72,10 @@ class XTAnalyzer{
 		int mDebugLevel;
 		int mSaveHists;
 		bool mSaveXT0;
+		int mSaveXTEO;
 		int mXTType;
 		TString mRunName;
+		TString mEOsuffix;
 
 		int mEntriesMin;
 		double mSigXmax;
@@ -197,6 +199,8 @@ class XTAnalyzer{
 		TGraph * gr_sigts_slicetr;
 		TGraph * gr_sigts_slicetl0;
 		TGraph * gr_sigts_slicetr0;
+		TGraph * gr_sigts_slicetlEO;
+		TGraph * gr_sigts_slicetrEO;
 
 		// vectors selected for XT graphs
 		std::vector<double> v_left_cen_x;
@@ -306,6 +310,8 @@ class XTAnalyzer{
 		TF1 * f_left;
 		TF1 * f_right0;
 		TF1 * f_left0;
+		TF1 * f_rightEO;
+		TF1 * f_leftEO;
 };
 
 #endif

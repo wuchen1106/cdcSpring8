@@ -12,7 +12,7 @@
 #include "TStyle.h"
 
 XTAnalyzer::XTAnalyzer(int gasID, int debug)
-	:mGasID(gasID), mDebugLevel(debug)
+	:mGasID(gasID), mDebugLevel(debug), mSaveXT0(false), mSaveXTEO(0)
 {
 	v_x_slicex.resize(NSLICEX);
 	v_t_slicex.resize(NSLICEX);
@@ -47,7 +47,7 @@ void XTAnalyzer::SetSaveHists(int save){
 	mSaveHists = save;
 }
 
-int XTAnalyzer::Initialize(TString runname, int lid, TFile * infile, TFile * outfile, TTree * otree, int xttype, int savehists, bool saveXT0){
+int XTAnalyzer::Initialize(TString runname, int lid, TFile * infile, TFile * outfile, TTree * otree, int xttype, int savehists, bool saveXT0, int saveOddEven){
 	// Set options
 	mRunName = runname;
 	mLayerID = lid;
@@ -57,6 +57,9 @@ int XTAnalyzer::Initialize(TString runname, int lid, TFile * infile, TFile * out
 	mXTType = xttype;
 	mSaveHists = savehists;
 	mSaveXT0 = saveXT0;
+	mSaveXTEO = saveOddEven;
+	mEOsuffix = "even";
+	if (mSaveXTEO<0) mEOsuffix = "odd";
 
 	mEntriesMin = 30;
 	mSigTmax = 20;
@@ -639,6 +642,10 @@ void XTAnalyzer::Process(void){
 			f_left0 = combinePolN(Form("fl_%d",0),f_left_cen,f_left_mid,f_left_end,tZeroLeft,tCentLeft,tTurnLeft,tEndLeft,mTmin,tEndLeft);
 			f_right0 = combinePolN(Form("fr_%d",0),f_right_cen,f_right_mid,f_right_end,tZeroRight,tCentRight,tTurnRight,tEndRight,mTmin,tEndRight);
 		}
+		if (mSaveXTEO){
+			f_leftEO = combinePolN("fl_"+mEOsuffix,f_left_cen,f_left_mid,f_left_end,tZeroLeft,tCentLeft,tTurnLeft,tEndLeft,mTmin,tEndLeft);
+			f_rightEO = combinePolN("fr_"+mEOsuffix,f_right_cen,f_right_mid,f_right_end,tZeroRight,tCentRight,tTurnRight,tEndRight,mTmin,tEndRight);
+		}
 	}
 	else{ // use Both-Side case
 		f_left = combinePolN(Form("fl_%d",mLayerID),scalePolN(f_both_cen,-1),scalePolN(f_both_mid,-1),scalePolN(f_both_end,-1),tZeroBoth,tCentBoth,tTurnBoth,tEndBoth,mTmin,tEndBoth);
@@ -646,6 +653,10 @@ void XTAnalyzer::Process(void){
 		if (mSaveXT0){
 			f_left0 = combinePolN(Form("fl_%d",0),scalePolN(f_both_cen,-1),scalePolN(f_both_mid,-1),scalePolN(f_both_end,-1),tZeroBoth,tCentBoth,tTurnBoth,tEndBoth,mTmin,tEndBoth);
 			f_right0 = combinePolN(Form("fr_%d",0),f_both_cen,f_both_mid,f_both_end,tZeroBoth,tCentBoth,tTurnBoth,tEndBoth,mTmin,tEndBoth);
+		}
+		if (mSaveXTEO){
+			f_leftEO = combinePolN("fl_"+mEOsuffix,scalePolN(f_both_cen,-1),scalePolN(f_both_mid,-1),scalePolN(f_both_end,-1),tZeroBoth,tCentBoth,tTurnBoth,tEndBoth,mTmin,tEndBoth);
+			f_rightEO = combinePolN("fr_"+mEOsuffix,f_both_cen,f_both_mid,f_both_end,tZeroBoth,tCentBoth,tTurnBoth,tEndBoth,mTmin,tEndBoth);
 		}
 	}
 
@@ -1230,6 +1241,14 @@ void XTAnalyzer::createGraphs(){
 					"Sigma of X in each T slice","T [ns]","#sigma_{X} [mm]",
 					20,0.5,kRed,0.5,kRed);
 		}
+		if (mSaveXTEO){
+			gr_sigts_slicetlEO = myNewTGraph("gr_sigts_slicetl_"+mEOsuffix,v_t_slicetls.size(),&(v_t_slicetls[0]),&(v_sig_slicetls[0]),
+					"Sigma of X in each T slice","T [ns]","#sigma_{X} [mm]",
+					20,0.5,kMagenta,0.5,kMagenta);
+			gr_sigts_slicetrEO = myNewTGraph("gr_sigts_slicetr_"+mEOsuffix,v_t_slicetrs.size(),&(v_t_slicetrs[0]),&(v_sig_slicetrs[0]),
+					"Sigma of X in each T slice","T [ns]","#sigma_{X} [mm]",
+					20,0.5,kRed,0.5,kRed);
+		}
 	}
 	else{
 		gr_sigts_slicetl = myNewTGraph(Form("gr_sigts_slicetl_%d",mLayerID),v_t_slicetns.size(),&(v_t_slicetns[0]),&(v_sig_slicetns[0]),
@@ -1243,6 +1262,14 @@ void XTAnalyzer::createGraphs(){
 					"Sigma of X in each T slice","T [ns]","#sigma_{X} [mm]",
 					20,0.5,kMagenta,0.5,kMagenta);
 			gr_sigts_slicetr0 = myNewTGraph(Form("gr_sigts_slicetr_%d",0),v_t_slicetns.size(),&(v_t_slicetns[0]),&(v_sig_slicetns[0]),
+					"Sigma of X in each T slice","T [ns]","#sigma_{X} [mm]",
+					20,0.5,kRed,0.5,kRed);
+		}
+		if (mSaveXTEO){
+			gr_sigts_slicetlEO = myNewTGraph("gr_sigts_slicetl_"+mEOsuffix,v_t_slicetns.size(),&(v_t_slicetns[0]),&(v_sig_slicetns[0]),
+					"Sigma of X in each T slice","T [ns]","#sigma_{X} [mm]",
+					20,0.5,kMagenta,0.5,kMagenta);
+			gr_sigts_slicetrEO = myNewTGraph("gr_sigts_slicetr_"+mEOsuffix,v_t_slicetns.size(),&(v_t_slicetns[0]),&(v_sig_slicetns[0]),
 					"Sigma of X in each T slice","T [ns]","#sigma_{X} [mm]",
 					20,0.5,kRed,0.5,kRed);
 		}
@@ -1725,5 +1752,11 @@ void XTAnalyzer::writeObjects(){
 		f_left0->Write();
 		gr_sigts_slicetl0->Write();
 		gr_sigts_slicetr0->Write();
+	}
+	if (mSaveXTEO){
+		f_rightEO->Write();
+		f_leftEO->Write();
+		gr_sigts_slicetlEO->Write();
+		gr_sigts_slicetrEO->Write();
 	}
 }
