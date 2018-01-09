@@ -1,14 +1,36 @@
 #include <vector>
+#include <stdlib.h>
+#include <math.h>
 
 #include "TChain.h"
 #include "TFile.h"
 #include "TTree.h"
+#include "TVector3.h"
 #include "TRandom1.h"
 
 #define NLAY 9
+#define	NCEL 11
+
+//===================Chamber Parameter============================
+double chamberHL = 599.17/2; // mm
+double chamberHH = 170.05/2; // mm
+double chamberCY = 572; // mm
+double sciYup = 0;
+double sciYdown = 0;
+
+// map for wire position
+double  map_x[NLAY][NCEL][2];
+double  map_y[NLAY][NCEL][2];
+
+// for get dist
+TVector3 vTrackU, vTrackD, vTrack;
+TVector3 vWireHV, vWireRO, vWire;
+TVector3 vDist;
+TVector3 vAxis;
 
 void printUsage(char* name);
 int getwid(int layerID, int cellID);
+double get_dist(int lid, int wid, double slx, double inx, double slz, double inz);
 
 int main(int argc, char ** argv){
 
@@ -16,6 +38,64 @@ int main(int argc, char ** argv){
         printUsage(argv[0]);
         return -1;
     }
+    int geoSetup = 0;
+    if (argc>=3) geoSetup = atoi(argv[2]);
+
+    TString HOME=getenv("CDCS8WORKING_DIR");
+
+	//===================Geometry Parameter============================
+	if (geoSetup==0){
+		// normal scintillator
+		sciYup = chamberCY+chamberHH+180; // mm
+        sciYdown = chamberCY-chamberHH-180; 
+	}
+	else{
+		// finger scintillator
+		sciYup = chamberCY+chamberHH+250; // mm
+        sciYdown = chamberCY-chamberHH-195; 
+	}
+
+    //===================Prepare Maps============================
+    for(int lid = 0; lid<NLAY; lid++){
+        for (int wid = 0; wid<NCEL; wid++){
+            map_x[lid][wid][0] = 0;
+            map_y[lid][wid][0] = 0;
+            map_x[lid][wid][1] = 0;
+            map_y[lid][wid][1] = 0;
+        }
+    }
+
+    //===================Get Wire Position============================
+    TFile * TFile_wirepos = new TFile(HOME+"/info/wire-position.root");
+    TTree * TTree_wirepos = (TTree*) TFile_wirepos->Get("t");
+    int     wp_bid;
+    int     wp_ch;
+    int     wp_wid;
+    int     wp_lid;
+    double  wp_xro;
+    double  wp_yro;
+    double  wp_xhv;
+    double  wp_yhv;
+    TTree_wirepos->SetBranchAddress("b",&wp_bid);
+    TTree_wirepos->SetBranchAddress("ch",&wp_ch);
+    TTree_wirepos->SetBranchAddress("l",&wp_lid);
+    TTree_wirepos->SetBranchAddress("w",&wp_wid);
+    TTree_wirepos->SetBranchAddress("xhv",&wp_xhv);
+    TTree_wirepos->SetBranchAddress("yhv",&wp_yhv);
+    TTree_wirepos->SetBranchAddress("xro",&wp_xro);
+    TTree_wirepos->SetBranchAddress("yro",&wp_yro);
+    for (int i = 0; i<TTree_wirepos->GetEntries(); i++){
+        TTree_wirepos->GetEntry(i);
+        if (wp_lid>=0&&wp_lid<NLAY&&wp_wid>=0&&wp_wid<NCEL){
+            map_x[wp_lid][wp_wid][0] = wp_xhv;
+            map_y[wp_lid][wp_wid][0] = wp_yhv;
+            map_x[wp_lid][wp_wid][1] = wp_xro;
+            map_y[wp_lid][wp_wid][1] = wp_yro;
+        }
+    }
+    TFile_wirepos->Close();
+
+    //==============================Get input file==============================
     TChain * ichain = new TChain("tree","tree");
     ichain->Add(argv[1]);
 
@@ -71,6 +151,7 @@ int main(int argc, char ** argv){
     ichain->SetBranchAddress("McTruth_py",&McTruth_py);
     ichain->SetBranchAddress("McTruth_pz",&McTruth_pz);
 
+    //==============================Prepare output file==============================
     TFile * ofile = new TFile("output.root","RECREATE");
     TTree * otree = new TTree("t","t");
 
@@ -145,6 +226,7 @@ int main(int argc, char ** argv){
 
 	std::vector<double> t_driftT;
 
+	// Random for resolution
     TRandom1 random1;
     
     // counters
@@ -162,18 +244,17 @@ int main(int argc, char ** argv){
             if ((*M_tid)[i]!=2) continue;
             if ((*M_y)[i]>100) continue;
             if ((*M_vid)[i]==0){
-                m1y = (*M_y)[i]*10;
+                m1y = (*M_y)[i]*10+chamberCY;
                 m1z = (*M_z)[i]*10;
                 m1x = (*M_x)[i]*10;
                 checkup = true;
             }
             else if ((*M_vid)[i]==1){
-                m2y = (*M_y)[i]*10;
+                m2y = (*M_y)[i]*10+chamberCY;
                 m2z = (*M_z)[i]*10;
                 m2x = (*M_x)[i]*10;
                 checkdown = true;
             }
-
         }
         if (!checkdown||!checkup) continue;
 
@@ -192,6 +273,12 @@ int main(int argc, char ** argv){
             }
         }
         if (!found) continue;
+
+        // get initial value
+        double slx = m2y-m1y==0?0:(m2x-m1x)/(m2y-m1y);
+        double slz = m2y-m1y==0?0:(m2z-m1z)/(m2y-m1y);
+        double inx = slx*(sciYup-m1y)+m1x;
+        double inz = slz*(sciYup-m1y)+m1z;
 
         // preset
         triggerNumber = iEntry;
@@ -217,14 +304,24 @@ int main(int argc, char ** argv){
 
         // get cdc hits
         for (int ihit = 0; ihit<CdcCell_tid->size(); ihit++){
-            if ((*CdcCell_tid)[ihit]!=2) continue;
-            double driftD = (*CdcCell_driftDtrue)[ihit]*10;
-            driftD+=random1.Gaus(0,0.2);
-            double driftT=driftD/0.023;
+        	// is this the wanted track?
+            if ((*CdcCell_tid)[ihit]!=2) continue; // looking for e- from gamma conversion, tid==2
+            // get cell ID
             int layerID = (*CdcCell_layerID)[ihit];
             int cellID = (*CdcCell_cellID)[ihit];
             int lid = layerID;
             int wid = getwid(layerID,cellID);
+            // get driftD
+            // FIXME: now we want to ignore scattering and corner effect, so recalculating driftD by DOCA!
+            //double driftD = (*CdcCell_driftDtrue)[ihit]*10;
+            double driftD = get_dist(lid,wid,slx,inx,slz,inz);
+            // get driftT
+            double driftT=fabs(driftD/0.023);
+            // smear driftT
+            // ...
+            //driftD+=random1.Gaus(0,0.2);
+
+			// set output
 			t_driftT.clear();
             t_driftT.push_back(driftT);
             o_driftT->push_back(driftT);
@@ -273,4 +370,20 @@ int getwid(int layerID, int cellID){
     else if (layerID==7) wid = cellID>=228?cellID-228:cellID+6;
     else if (layerID==8) wid = cellID-229;
     return wid;
+}
+
+double get_dist(int lid, int wid, double slx, double inx, double slz, double inz)
+{
+	double xdown = inx-slx*(sciYup-sciYdown);
+	double zdown = inz-slz*(sciYup-sciYdown);
+	vTrackU.SetXYZ(inx,sciYup,inz);
+	vTrackD.SetXYZ(xdown,sciYdown,zdown);
+	vWireHV.SetXYZ(map_x[lid][wid][0],map_y[lid][wid][0],-chamberHL);
+	vWireRO.SetXYZ(map_x[lid][wid][1],map_y[lid][wid][1],chamberHL);
+	vTrack = vTrackD-vTrackU;
+	vWire = vWireRO-vWireHV;
+	vDist = vWireHV-vTrackU;
+	vAxis = vWire.Cross(vTrack);
+	double value = -vDist*(vAxis.Unit());
+	return value;
 }
