@@ -449,7 +449,9 @@ void XTAnalyzer::Process(void){
 			v_left_mid_x.push_back(v_x_slicet[i]);
 			v_left_mid_t.push_back(v_t_slicet[i]);
 		}
-		if (v_t_slicet[i]>t7Left&&v_sig_slicet[i]<v_sig_slicetls[v_sig_slicetls.size()-1]) v_sig_slicet[i]=v_sig_slicetls[v_sig_slicetls.size()-1];
+		double presig = 0;
+		if (v_sig_slicetls.size()) presig = v_sig_slicetls[v_sig_slicetls.size()-1];
+		if (v_t_slicet[i]>t7Left&&v_sig_slicet[i]<presig) v_sig_slicet[i]=presig;
 		sigmaXIncrement(v_t_slicet[i],v_sig_slicet[i],v_n_slicet[i],v_t_slicetls,v_sig_slicetls);
 	}
 	sigmaXFinalcheck(v_t_slicetls,v_sig_slicetls);
@@ -525,7 +527,9 @@ void XTAnalyzer::Process(void){
 			v_right_mid_x.push_back(v_x_slicet[i]);
 			v_right_mid_t.push_back(v_t_slicet[i]);
 		}
-		if (v_t_slicet[i]>t7Right&&v_sig_slicet[i]<v_sig_slicetls[v_sig_slicetls.size()-1]) v_sig_slicet[i]=v_sig_slicetls[v_sig_slicetls.size()-1];
+		double presig = 0;
+		if (v_sig_slicetrs.size()) presig = v_sig_slicetrs[v_sig_slicetrs.size()-1];
+		if (v_t_slicet[i]>t7Right&&v_sig_slicet[i]<presig) v_sig_slicet[i]=presig;
 		sigmaXIncrement(v_t_slicet[i],v_sig_slicet[i],v_n_slicet[i],v_t_slicetrs,v_sig_slicetrs);
 	}
 	sigmaXFinalcheck(v_t_slicetrs,v_sig_slicetrs);
@@ -579,7 +583,9 @@ void XTAnalyzer::Process(void){
 			v_bothL_mid_x.push_back(-v_x_slicetn[i]);
 			v_both_mid_t.push_back(v_t_slicetn[i]);
 		}
-		if (v_t_slicetn[i]>t7Both&&v_sig_slicetn[i]<v_sig_slicetns[v_sig_slicetns.size()-1]) v_sig_slicetn[i]=v_sig_slicetns[v_sig_slicetns.size()-1];
+		double presig = 0;
+		if (v_sig_slicetns.size()) presig = v_sig_slicetns[v_sig_slicetns.size()-1];
+		if (v_t_slicetn[i]>t7Both&&v_sig_slicetn[i]<presig) v_sig_slicetn[i]=presig;
 		sigmaXIncrement(v_t_slicetn[i],v_sig_slicetn[i],v_n_slicetn[i],v_t_slicetns,v_sig_slicetns);
 	}
 	sigmaXFinalcheck(v_t_slicetns,v_sig_slicetns);
@@ -1016,6 +1022,7 @@ void XTAnalyzer::getTT(int & iT, std::vector<double> & vx, std::vector<double> &
 		if (vsig[iT]>mSigXmax||vn[iT]<mEntriesMin) continue;
 		if (fabs(vx[iT])>6) break;
 	}
+	int theIT = 0;
 	for (; iT>=0&&iT<NSLICET; iT+=direction){
 		if (vsig[iT]>mSigXmax||vn[iT]<mEntriesMin) continue;
 		int j = iT+direction;
@@ -1029,8 +1036,10 @@ void XTAnalyzer::getTT(int & iT, std::vector<double> & vx, std::vector<double> &
 			vel = velocity;
 		}
 		if (negtive) vel*=-1;
+		theIT = iT;
 		if (vel<velocity/3) break;
 	}
+	iT = theIT;
 }
 
 void XTAnalyzer::sigmaXReset(){
