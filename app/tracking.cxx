@@ -1199,7 +1199,7 @@ double t2x(double time, int lid, int wid, int lr, int & status){ // 1: right; 2:
         f = f_left[theLayer];
     }
     if (!f){
-        fprintf(stderr,"Cannot get f[%d]!\n",0);
+        fprintf(stderr,"Cannot get f[%d]!\n",theLayer);
         status = -2;
         return 0;
     }
@@ -1353,5 +1353,5 @@ double getError(int lid,double dt, bool isR){
 //______________________________________________________________________________
 void print_usage(char* prog_name)
 {
-    fprintf(stderr,"\t%s [runNo] [testlayer] [prerunname] [runname] <[nHitsMax] [t0shift] [tmin] [tmax] [geoSetup] [sumCut] [aaCut] [iEntryStart] [iEntryStop] [debug] [memdebug]>\n",prog_name);
+    fprintf(stderr,"\t%s [runNo] [testlayer] [prerunname] [runname] <[nHitsMax] [t0shift] [tmin] [tmax] [geoSetup] [sumCut] [aaCut] [iEntryStart] [iEntryStop] [workType] [debug] [memdebug]>\n",prog_name);
 }

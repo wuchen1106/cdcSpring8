@@ -449,6 +449,7 @@ void XTAnalyzer::Process(void){
 			v_left_mid_x.push_back(v_x_slicet[i]);
 			v_left_mid_t.push_back(v_t_slicet[i]);
 		}
+		if (v_t_slicet[i]>t7Left&&v_sig_slicet[i]<v_sig_slicetls[v_sig_slicetls.size()-1]) v_sig_slicet[i]=v_sig_slicetls[v_sig_slicetls.size()-1];
 		sigmaXIncrement(v_t_slicet[i],v_sig_slicet[i],v_n_slicet[i],v_t_slicetls,v_sig_slicetls);
 	}
 	sigmaXFinalcheck(v_t_slicetls,v_sig_slicetls);
@@ -524,6 +525,7 @@ void XTAnalyzer::Process(void){
 			v_right_mid_x.push_back(v_x_slicet[i]);
 			v_right_mid_t.push_back(v_t_slicet[i]);
 		}
+		if (v_t_slicet[i]>t7Right&&v_sig_slicet[i]<v_sig_slicetls[v_sig_slicetls.size()-1]) v_sig_slicet[i]=v_sig_slicetls[v_sig_slicetls.size()-1];
 		sigmaXIncrement(v_t_slicet[i],v_sig_slicet[i],v_n_slicet[i],v_t_slicetrs,v_sig_slicetrs);
 	}
 	sigmaXFinalcheck(v_t_slicetrs,v_sig_slicetrs);
@@ -577,6 +579,7 @@ void XTAnalyzer::Process(void){
 			v_bothL_mid_x.push_back(-v_x_slicetn[i]);
 			v_both_mid_t.push_back(v_t_slicetn[i]);
 		}
+		if (v_t_slicetn[i]>t7Both&&v_sig_slicetn[i]<v_sig_slicetns[v_sig_slicetns.size()-1]) v_sig_slicetn[i]=v_sig_slicetns[v_sig_slicetns.size()-1];
 		sigmaXIncrement(v_t_slicetn[i],v_sig_slicetn[i],v_n_slicetn[i],v_t_slicetns,v_sig_slicetns);
 	}
 	sigmaXFinalcheck(v_t_slicetns,v_sig_slicetns);
