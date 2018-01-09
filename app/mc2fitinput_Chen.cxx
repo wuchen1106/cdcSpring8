@@ -299,7 +299,7 @@ int main(int argc, char ** argv){
             // get driftT
             double driftT=fabs(driftD/0.023);
             // smear driftT
-            // ...
+            driftT += random1.Gaus(0,7);
 
 			// set output
 			o_layerID->push_back(lid);

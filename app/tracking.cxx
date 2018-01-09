@@ -1400,5 +1400,5 @@ double getError(int lid,double dt, bool isR){
 //______________________________________________________________________________
 void print_usage(char* prog_name)
 {
-    fprintf(stderr,"\t%s [runNo] [testlayer] [prerunname] [runname] <[nHitsMax] [t0shift] [tmin] [tmax] [geoSetup] [sumCut] [aaCut] [iEntryStart] [iEntryStop] [workType] [debug] [memdebug]>\n",prog_name);
+    fprintf(stderr,"\t%s [runNo] [testlayer] [prerunname] [runname] <[nHitsMax] [t0shift] [tmin] [tmax] [geoSetup] [sumCut] [aaCut] [iEntryStart] [iEntryStop] [workType: 0, fr/l_0; 1, even/odd; -1, even/odd reversed; others, all layers] [inputType: 0, Data; 1: MC] [debug] [memdebug]>\n",prog_name);
 }
