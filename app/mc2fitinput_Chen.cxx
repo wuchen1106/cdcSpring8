@@ -1,5 +1,6 @@
 #include <vector>
 #include <stdlib.h>
+#include <math.h>
 
 #include "TChain.h"
 #include "TFile.h"
@@ -172,6 +173,7 @@ int main(int argc, char ** argv){
 	std::vector<double> * o_sum = 0;
 	std::vector<double> * o_aa = 0;
 	std::vector<double> * o_driftT = 0;
+	std::vector<double> * o_driftD = 0;
 	double inx,inz;
 	double slx,slz;
 	otree->Branch("triggerNumber",&triggerNumber);
@@ -193,6 +195,7 @@ int main(int argc, char ** argv){
 	otree->Branch("sum",&o_sum);
 	otree->Branch("aa",&o_aa);
 	otree->Branch("driftT",&o_driftT);
+	otree->Branch("driftDmc",&o_driftD);
 	otree->Branch("slxmc",&slx);
 	otree->Branch("slzmc",&slz);
 	otree->Branch("inxmc",&inx);
@@ -275,6 +278,7 @@ int main(int argc, char ** argv){
 		o_sum->clear();
 		o_aa->clear();
 		o_driftT->clear();
+		o_driftD->clear();
         for (int i = 0; i<NLAY; i++){
             nHitLayer[i] = 0;
         }
@@ -293,7 +297,7 @@ int main(int argc, char ** argv){
             //double driftD = (*CdcCell_driftDtrue)[ihit]*10;
             double driftD = get_dist(lid,wid,slx,inx,slz,inz);
             // get driftT
-            double driftT=driftD/0.023;
+            double driftT=fabs(driftD/0.023);
             // smear driftT
             // ...
 
@@ -314,6 +318,7 @@ int main(int argc, char ** argv){
 			o_sum->push_back(100);
 			o_aa->push_back(100);
 			o_driftT->push_back(driftT);
+			o_driftD->push_back(driftD);
 
             // increment counters
             nHitLayer[lid]++;

@@ -27,6 +27,7 @@
 #define NCAND 4
 
 int workType = 0;
+int inputType = 0;
 int debug = 0;
 int memdebug = 0;
 
@@ -100,6 +101,13 @@ double o_slx[NCAND];
 double o_inx[NCAND];
 double o_slz[NCAND];
 double o_inz[NCAND];
+double o_chi2mc[NCAND];
+double o_chi2pmc[NCAND];
+double o_chi2amc[NCAND];
+double i_inxmc;
+double i_inzmc;
+double i_slxmc;
+double i_slzmc;
 
 //===================About tracking============================
 int testlayer = 0;
@@ -117,6 +125,9 @@ double islx = 0;
 double chi2i = 0;
 double chi2pi = 0;
 double chi2ai = 0;
+double chi2mc = 0;
+double chi2pmc = 0;
+double chi2amc = 0;
 std::vector<double> * t_calD = new std::vector<double>;
 std::vector<double> * t_fitD = new std::vector<double>;
 std::vector<double> * t_driftD = new std::vector<double>;
@@ -228,10 +239,13 @@ int main(int argc, char** argv){
         workType = (int)strtol(argv[14],NULL,10);
     }
     if (argc>=16){
-        debug = (int)strtol(argv[15],NULL,10);
+        inputType = (int)strtol(argv[15],NULL,10);
     }
     if (argc>=17){
-        memdebug = (int)strtol(argv[16],NULL,10);
+        debug = (int)strtol(argv[16],NULL,10);
+    }
+    if (argc>=18){
+        memdebug = (int)strtol(argv[17],NULL,10);
     }
     printf("##############Input Parameters##################\n");
     printf("runNo       = %d\n",runNo);
@@ -247,7 +261,8 @@ int main(int argc, char** argv){
     printf("aaCut       = %f\n",aaCut);
     printf("Start Entry = %d\n",iEntryStart);
     printf("Stop Entry  = %d\n",iEntryStop);
-    printf("workType    = %s\n",workType==0?"all as 0":(workType==1?"even/odd":(workType==-1?"even/odd reversed":"all layers")));
+    printf("workType    = %d, %s\n",workType,workType==0?"all as 0":(workType==1?"even/odd":(workType==-1?"even/odd reversed":"all layers")));
+    printf("inputType   = %d, %s\n",inputType,inputType==0?"Real Data":"MC");
     printf("debug       = %d\n",debug);
     printf("memdebug    = %d\n",memdebug);
 
@@ -461,6 +476,12 @@ int main(int argc, char** argv){
     c->SetBranchAddress("ped",&i_ped);
     c->SetBranchAddress("sum",&i_sum);
     c->SetBranchAddress("aa",&i_aa);
+    if (inputType){
+		c->SetBranchAddress("inxmc",&i_inxmc);
+		c->SetBranchAddress("inzmc",&i_inzmc);
+		c->SetBranchAddress("slxmc",&i_slxmc);
+		c->SetBranchAddress("slzmc",&i_slzmc);
+    }
 
     //===================Prepare output ROOT file============================
     printf("Output file: %s/root/t_%d.%s.layer%d.root\n",HOME.Data(),runNo,runname.Data(),testlayer);
@@ -518,7 +539,18 @@ int main(int argc, char** argv){
         ot->Branch(Form("chi2a%d",iCand),&(o_chi2a[iCand]));
         ot->Branch(Form("fitD%d",iCand),&(o_fitD[iCand]));
         ot->Branch(Form("nHitsS%d",iCand),&(o_nHitsS[iCand])); // number of hits selected from finding and fed to fitting
+		if (inputType){
+			ot->Branch(Form("chi2mc%d",iCand), &(o_chi2mc[iCand]));
+			ot->Branch(Form("chi2pmc%d",iCand),&(o_chi2pmc[iCand]));
+			ot->Branch(Form("chi2amc%d",iCand),&(o_chi2amc[iCand]));
+		}
     }
+	if (inputType){
+		ot->Branch("inxmc",&i_inxmc);
+		ot->Branch("inzmc",&i_inzmc);
+		ot->Branch("slxmc",&i_slxmc);
+		ot->Branch("slzmc",&i_slzmc);
+	}
     // initialize vectors
     o_dxl = new std::vector<double>;
     o_dxr = new std::vector<double>;
@@ -852,6 +884,8 @@ int doFitting(int nPicks,int iEntry,int iselection){
                     fromSource = slx>-beamSlxMax&&slx<beamSlxMax&&slz>-beamSlzMax&&slz<beamSlzMax;
                     if (inScint&&fromSource){
                         // update chi2
+                        if (inputType)
+							getchi2(chi2mc,chi2pmc,chi2amc,i_slxmc,i_inxmc,i_slzmc,i_inzmc,true);
                         getchi2(chi2i,chi2pi,chi2ai,islx,iinx,islz,iinz,true);
                         getchi2(chi2,chi2p,chi2a,slx,inx,slz,inz,true);
                         // check chi2 and see where the result fits
@@ -1107,6 +1141,9 @@ bool checkChi2(int nHitsSel, int nPairs, int icombi, int iselection){
 					o_chi2[j] = o_chi2[j+1];
 					o_chi2p[j] = o_chi2p[j+1];
 					o_chi2a[j] = o_chi2a[j+1];
+					o_chi2mc[j]  = o_chi2mc[j+1];
+					o_chi2amc[j] = o_chi2amc[j+1];
+					o_chi2pmc[j] = o_chi2pmc[j+1];
 					for (int ihit = 0; ihit<i_nHits; ihit++){
 						(*o_sel[j])[ihit] = (*o_sel[j+1])[ihit];
 						(*o_calD[j])[ihit] = (*o_calD[j+1])[ihit];
@@ -1174,6 +1211,9 @@ bool checkChi2(int nHitsSel, int nPairs, int icombi, int iselection){
 				o_chi2[i] = chi2;
 				o_chi2p[i] = chi2p;
 				o_chi2a[i] = chi2a;
+				o_chi2mc[i] = chi2mc;
+				o_chi2amc[i] = chi2amc;
+				o_chi2pmc[i] = chi2pmc;
 				for (int ihit = 0; ihit<i_nHits; ihit++){
 					(*o_sel[i])[ihit] = (*t_sel)[ihit];
 					(*o_calD[i])[ihit] = (*t_calD)[ihit];
@@ -1251,6 +1291,13 @@ void do_fit(double sliX, double iniX,double sliZ, double iniZ){
 	arglist[0] = 1;
 	gMinuit->mnexcm("SET ERR", arglist ,1,ierflg);
 
+	//if (inputType){
+	//	iniZ = i_inzmc;
+	//	sliZ = i_slzmc;
+	//	iniX = i_inxmc;
+	//	sliX = i_slxmc;
+	//}
+
 	// Set starting values and step sizes for parameters
 	gMinuit->mnparm(0, "slopeX", sliX, beamSlxMax/1.e4, -beamSlxMax,beamSlxMax,ierflg);
 	gMinuit->mnparm(1, "interceptX", iniX, beamInxMax/1.e4, -beamInxMax,beamInxMax,ierflg);
@@ -1258,7 +1305,7 @@ void do_fit(double sliX, double iniX,double sliZ, double iniZ){
 	gMinuit->mnparm(3, "interceptZ", iniZ, beamInzMax/1.e4, -beamInzMax,beamInzMax,ierflg);
 
 	// Now ready for minimization step
-	arglist[0] = 500.0;
+	arglist[0] = 5000.0;
 	arglist[1] = 1.0;
 	gMinuit->mnexcm("MIGRAD", arglist ,2,ierflg);
 
