@@ -350,7 +350,7 @@ void XTAnalyzer::Process(void){
 		i2t(i,divleft,mT,divright);
 		mEntries = h_xn[i]->Integral();
 		fitSliceHistFloat(h_xn[i],0.5,mX,mSig,mChi2,left,right);
-		if (mDebugLevel>0) {printf("h_xn[%d] (%d) after fitSliceHistFloat: x=%.2f, sig=%.2f, chi2=%.2f, left = %.2f, right = %.2f\n",i,(int)mEntries,mX,mSig,mChi2,left,right);fflush(stdout);}
+		if (mDebugLevel>2) {printf("   h_xn[%d] (%d) after fitSliceHistFloat: x=%.2f, sig=%.2f, chi2=%.2f, left = %.2f, right = %.2f\n",i,(int)mEntries,mX,mSig,mChi2,left,right);fflush(stdout);}
 		if (mEntries>minEntries){
 			TF1 * f = 0;
 			if (fabs(mX)>7.15&&fabs(mX)<7.8){ // FIXME: boundary up to tuning
@@ -361,14 +361,14 @@ void XTAnalyzer::Process(void){
 				left = -right;
 				right = -temp;
 				mT = getMean(h_xn[i],h_xn_tsum[i],left,right);
-				if (mDebugLevel>0) {printf("h_xn[%d] after fitSlice: x=%.2f, sig=%.2f, chi2=%.2f, left = %.2f, right = %.2f\n",i,mX,mSig,mChi2,left,right);fflush(stdout);}
+				if (mDebugLevel>2) {printf("   h_xn[%d] after fitSlice: x=%.2f, sig=%.2f, chi2=%.2f, left = %.2f, right = %.2f\n",i,mX,mSig,mChi2,left,right);fflush(stdout);}
 				h_mxn[i]->GetXaxis()->SetRangeUser(-mX-mSigXmax*3,-mX+mSigXmax*3);
 				if (mSaveHists>=1) drawFitting(h_mxn[i],f,canv_fitting,Form("%.1f-%.1f-%.1f ns, N=%d, x=%.2f mm, #sigma=%.0f um, #chi^{2}=%.1f",divleft,mT,divright,mEntries,mX,mSig*1000,mChi2),Form("h_xn%d_%s.png",i,mRunName.Data()),-right,-mX,-left);
 			}
 			else{
 				f = fitSliceGaus(h_xn[i],mX,mSig,mChi2,left,right);
 				mT = getMean(h_xn[i],h_xn_tsum[i],left,right);
-				if (mDebugLevel>0) {printf("h_xn[%d] after fitSlice: x=%.2f, sig=%.2f, chi2=%.2f, left = %.2f, right = %.2f\n",i,mX,mSig,mChi2,left,right);fflush(stdout);}
+				if (mDebugLevel>2) {printf("   h_xn[%d] after fitSlice: x=%.2f, sig=%.2f, chi2=%.2f, left = %.2f, right = %.2f\n",i,mX,mSig,mChi2,left,right);fflush(stdout);}
 				h_xn[i]->GetXaxis()->SetRangeUser(mX-mSigXmax*3,mX+mSigXmax*3);
 				if (mSaveHists>=1) drawFitting(h_xn[i],f,canv_fitting,Form("%.1f-%.1f-%.1f ns, N=%d, x=%.2f mm, #sigma=%.0f um, #chi^{2}=%.1f",divleft,mT,divright,mEntries,mX,mSig*1000,mChi2),Form("h_xn%d_%s.png",i,mRunName.Data()),left,mX,right);
 			}
@@ -436,16 +436,16 @@ void XTAnalyzer::Process(void){
 	}
 	sigmaXReset();
 	for (int i = 0; i<NSLICET/2; i++){ // x samples in t slices, left
-		if (mDebugLevel>=2) printf("  LR T slice[%d]: x=%.2f, t=%.1f, n=%.0f, sig=%.2f\n",i,v_x_slicet[i],v_t_slicet[i],v_n_slicet[i],v_sig_slicet[i]);
+		if (mDebugLevel>2) printf("  LR T slice[%d]: x=%.2f, t=%.1f, n=%.0f, sig=%.2f\n",i,v_x_slicet[i],v_t_slicet[i],v_n_slicet[i],v_sig_slicet[i]);
 		if (v_n_slicet[i]<mEntriesMin||v_sig_slicet[i]>mSigXmax||v_sig_slicet[i]<=0) continue;
-		if (mDebugLevel>=2) printf("                  Passed!\n");
+		if (mDebugLevel>2) printf("                  Passed!\n");
 		if (i<=iTLeft+1){ // left end
-			if (mDebugLevel>=2) printf("                  t>%.1f, push to left_end!\n",t8Left);
+			if (mDebugLevel>2) printf("                  t>%.1f, push to left_end!\n",t8Left);
 			v_left_end_x.push_back(v_x_slicet[i]);
 			v_left_end_t.push_back(v_t_slicet[i]);
 		}
 		if (i>=iTLeft-1&&v_x_slicet[i]<=-xStart2Turn){ // turning part
-			if (mDebugLevel>=2) printf("                  t<%.1f x<%.2f, push to left_mid!\n",t8Left+tMargin,-xStart2Turn);
+			if (mDebugLevel>2) printf("                  t<%.1f x<%.2f, push to left_mid!\n",t8Left+tMargin,-xStart2Turn);
 			v_left_mid_x.push_back(v_x_slicet[i]);
 			v_left_mid_t.push_back(v_t_slicet[i]);
 		}
@@ -479,19 +479,19 @@ void XTAnalyzer::Process(void){
 	for (int i = 0; i<NSLICEX; i++){ // t samples in x slices
 		double t = v_t_slicex[i];
 		double x = v_x_slicex[i];
-		if (mDebugLevel>=2) printf("  LR X slice[%d]: x=%.2f, t=%.1f, n=%.0f, sig=%.1f\n",i,x,t,v_n_slicex[i],v_sig_slicex[i]);
+		if (mDebugLevel>2) printf("  LR X slice[%d]: x=%.2f, t=%.1f, n=%.0f, sig=%.1f\n",i,x,t,v_n_slicex[i],v_sig_slicex[i]);
 		if (v_n_slicex[i]<mEntriesMin||v_sig_slicex[i]>mSigTmax||v_sig_slicex[i]<=0) continue;
-		if (mDebugLevel>=2) printf("                  Passed!\n");
+		if (mDebugLevel>2) printf("                  Passed!\n");
 		if (i<=NSLICEX/2){ // left
 			if (x>mint_x_slicex_l) t = mint_t_slicex_l;
 			if (x>-xStart2Turn){ // middle part
 				if (x>-xCenter2Mid){
-					if (mDebugLevel>=2) printf("                  %.2f<x, push to left_cen!\n",-xCenter2Mid);
+					if (mDebugLevel>2) printf("                  %.2f<x, push to left_cen!\n",-xCenter2Mid);
 					v_left_cen_x.push_back(x);
 					v_left_cen_t.push_back(t);
 				}
 				if (x<-xCenter2Mid+xMargin){
-					if (mDebugLevel>=2) printf("                  %.2f<x<%.2f, push to left_mid!\n",-xStart2Turn,-xCenter2Mid+xMargin);
+					if (mDebugLevel>2) printf("                  %.2f<x<%.2f, push to left_mid!\n",-xStart2Turn,-xCenter2Mid+xMargin);
 					v_left_mid_x.push_back(x);
 					v_left_mid_t.push_back(t);
 				}
@@ -501,12 +501,12 @@ void XTAnalyzer::Process(void){
 			if (x<mint_x_slicex_r) t = mint_t_slicex_r;
 			if (x<xStart2Turn){ // middle part
 				if (x<xCenter2Mid){
-					if (mDebugLevel>=2) printf("                  x<%.2f, push to right_cen!\n",xCenter2Mid);
+					if (mDebugLevel>2) printf("                  x<%.2f, push to right_cen!\n",xCenter2Mid);
 					v_right_cen_x.push_back(x);
 					v_right_cen_t.push_back(t);
 				}
 				if (x>xCenter2Mid-xMargin){
-					if (mDebugLevel>=2) printf("                  %.2f<x<%.2f, push to right_mid!\n",xCenter2Mid-xMargin,xStart2Turn);
+					if (mDebugLevel>2) printf("                  %.2f<x<%.2f, push to right_mid!\n",xCenter2Mid-xMargin,xStart2Turn);
 					v_right_mid_x.push_back(x);
 					v_right_mid_t.push_back(t);
 				}
@@ -515,15 +515,15 @@ void XTAnalyzer::Process(void){
 	}
 	sigmaXReset();
 	for (int i = NSLICET/2; i<NSLICET; i++){ // x samples in t slices, right 
-		if (mDebugLevel>=2) printf("  LR T slice[%d]: x=%.2f, t=%.1f, n=%.0f, sig=%.2f\n",i,v_x_slicet[i],v_t_slicet[i],v_n_slicet[i],v_sig_slicet[i]);
+		if (mDebugLevel>2) printf("  LR T slice[%d]: x=%.2f, t=%.1f, n=%.0f, sig=%.2f\n",i,v_x_slicet[i],v_t_slicet[i],v_n_slicet[i],v_sig_slicet[i]);
 		if (v_n_slicet[i]<mEntriesMin||v_sig_slicet[i]>mSigXmax||v_sig_slicet[i]<=0) continue;
 		if (i>=iTRight-1){ // right end
-			if (mDebugLevel>=2) printf("                  t>%.1f, push to right_end!\n",t8Right);
+			if (mDebugLevel>2) printf("                  t>%.1f, push to right_end!\n",t8Right);
 			v_right_end_x.push_back(v_x_slicet[i]);
 			v_right_end_t.push_back(v_t_slicet[i]);
 		}
 		if (i<=iTRight+1&&v_x_slicet[i]>=xStart2Turn){ // turning part
-			if (mDebugLevel>=2) printf("                  t<%.1f x>%.2f, push to right_mid!\n",t8Right+tMargin,xStart2Turn);
+			if (mDebugLevel>2) printf("                  t<%.1f x>%.2f, push to right_mid!\n",t8Right+tMargin,xStart2Turn);
 			v_right_mid_x.push_back(v_x_slicet[i]);
 			v_right_mid_t.push_back(v_t_slicet[i]);
 		}
@@ -548,18 +548,18 @@ void XTAnalyzer::Process(void){
 		double t = v_t_slicexn[i];
 		double x = v_x_slicexn[i];
 		if (x<mint_x_slicex_b) t = mint_t_slicex_b;
-		if (mDebugLevel>=2) printf("  BS X slice[%d]: x=%.2f, t=%.1f, n=%.0f, sig=%.1f\n",i,x,t,v_n_slicexn[i],v_sig_slicexn[i]);
+		if (mDebugLevel>2) printf("  BS X slice[%d]: x=%.2f, t=%.1f, n=%.0f, sig=%.1f\n",i,x,t,v_n_slicexn[i],v_sig_slicexn[i]);
 		if (v_n_slicexn[i]<mEntriesMin||v_sig_slicexn[i]>mSigTmax||v_sig_slicexn[i]<=0) continue;
-		if (mDebugLevel>=2) printf("                  Passed!\n");
+		if (mDebugLevel>2) printf("                  Passed!\n");
 		if (x<xStart2Turn){ // middle part
 			if (x<xCenter2Mid){
-				if (mDebugLevel>=2) printf("                  %.2f<x, push to both_cen!\n",xCenter2Mid);
+				if (mDebugLevel>2) printf("                  %.2f<x, push to both_cen!\n",xCenter2Mid);
 				v_both_cen_x.push_back(x);
 				v_bothL_cen_x.push_back(-x);
 				v_both_cen_t.push_back(t);
 			}
 			if (x>xCenter2Mid-xMargin){
-				if (mDebugLevel>=2) printf("                  %.2f<x<%.2f, push to both_mid!\n",xCenter2Mid-xMargin,xStart2Turn);
+				if (mDebugLevel>2) printf("                  %.2f<x<%.2f, push to both_mid!\n",xCenter2Mid-xMargin,xStart2Turn);
 				v_both_mid_x.push_back(x);
 				v_bothL_mid_x.push_back(-x);
 				v_both_mid_t.push_back(t);
@@ -568,17 +568,17 @@ void XTAnalyzer::Process(void){
 	}
 	sigmaXReset();
 	for (int i = NSLICET/2; i<NSLICET; i++){ // x samples in t slices, both-side
-		if (mDebugLevel>=2) printf("  BS T slice[%d]: x=%.2f, t=%.1f, n=%.0f, sig=%.2f\n",i,v_x_slicetn[i],v_t_slicetn[i],v_n_slicetn[i],v_sig_slicetn[i]);
+		if (mDebugLevel>2) printf("  BS T slice[%d]: x=%.2f, t=%.1f, n=%.0f, sig=%.2f\n",i,v_x_slicetn[i],v_t_slicetn[i],v_n_slicetn[i],v_sig_slicetn[i]);
 		if (v_n_slicetn[i]<mEntriesMin||v_sig_slicetn[i]>mSigXmax||v_sig_slicetn[i]<=0) continue;
-		if (mDebugLevel>=2) printf("                  Passed!\n");
+		if (mDebugLevel>2) printf("                  Passed!\n");
 		if (i>=iTBoth-1){ // both-side end
-			if (mDebugLevel>=2) printf("                  t>%.1f, push to both_end!\n",t8Both);
+			if (mDebugLevel>2) printf("                  t>%.1f, push to both_end!\n",t8Both);
 			v_both_end_x.push_back(v_x_slicetn[i]);
 			v_bothL_end_x.push_back(-v_x_slicetn[i]);
 			v_both_end_t.push_back(v_t_slicetn[i]);
 		}
 		if (i<=iTBoth+1&&v_x_slicetn[i]>=xStart2Turn){ // turning part
-			if (mDebugLevel>=2) printf("                  t<%.1f, x>=%.2f, push to both_mid!\n",t8Both+tMargin,xStart2Turn);
+			if (mDebugLevel>2) printf("                  t<%.1f, x>=%.2f, push to both_mid!\n",t8Both+tMargin,xStart2Turn);
 			v_both_mid_x.push_back(v_x_slicetn[i]);
 			v_bothL_mid_x.push_back(-v_x_slicetn[i]);
 			v_both_mid_t.push_back(v_t_slicetn[i]);
@@ -910,22 +910,22 @@ void XTAnalyzer::fitSliceHistFloat(TH1D * h, double ratio, double & mean, double
 }
 
 TF1 * XTAnalyzer::fitSliceGaus(TH1D * h, double & mean, double & sigma, double & chi2, double & left, double & right){
-	if (mDebugLevel>0) printf("in fitSliceGaus: \"%s\" has %d(%d) entries\n",h->GetName(),h->GetEntries(),h->Integral());
+	if (mDebugLevel>3) printf("in fitSliceGaus: \"%s\" has %d(%d) entries\n",h->GetName(),h->GetEntries(),h->Integral());
 	TF1 * f = f_gaus;
 	int bmax = h->GetMaximumBin();
 	mean = h->GetBinCenter(bmax);
     double lrange = mean-left;
     double rrange = right-mean;
-	if (mDebugLevel>0) printf("  %.2f - %.2f - %.2f, lrange = %.2f, rrange = %.2f\n",left,mean,right,lrange,rrange);
+	if (mDebugLevel>3) printf("  %.2f - %.2f - %.2f, lrange = %.2f, rrange = %.2f\n",left,mean,right,lrange,rrange);
 	h->Fit("fgaus","qN0","",left,right);
 	for (int i = 0; i<10; i++){
 		mean = f->GetParameter(1);
 		sigma = fabs(f->GetParameter(2));
-		if (mDebugLevel>0) printf("      sigma: %.2f mean: %.2f\n",i,sigma,mean);
+		if (mDebugLevel>3) printf("      sigma: %.2f mean: %.2f\n",i,sigma,mean);
 		if (sigma<rrange*5&&sigma>rrange/5&&mean>left&&mean<right) break;
 		left-=lrange/10;
 		right+=rrange/10;
-		if (mDebugLevel>0) printf("   -> %d: %.2f -- %.2f\n",i,left,right);
+		if (mDebugLevel>3) printf("   -> %d: %.2f -- %.2f\n",i,left,right);
 		h->Fit("fgaus","qN0","",left,right);
 		mean = f->GetParameter(1);
 		sigma = fabs(f->GetParameter(2));
@@ -936,22 +936,22 @@ TF1 * XTAnalyzer::fitSliceGaus(TH1D * h, double & mean, double & sigma, double &
 }
 
 TF1 * XTAnalyzer::fitSliceLand(TH1D * h, double & mean, double & sigma, double & chi2, double & left, double & right){
-	if (mDebugLevel>0) printf("in fitSliceLand: \"%s\" has %d(%d) entries\n",h->GetName(),h->GetEntries(),h->Integral());
+	if (mDebugLevel>3) printf("in fitSliceLand: \"%s\" has %d(%d) entries\n",h->GetName(),h->GetEntries(),h->Integral());
 	TF1 * f = f_land;
 	int bmax = h->GetMaximumBin();
 	mean = h->GetBinCenter(bmax);
     double lrange = mean-left;
     double rrange = right-mean;
-	if (mDebugLevel>0) printf("  %.2f - %.2f - %.2f, lrange = %.2f, rrange = %.2f\n",left,mean,right,lrange,rrange);
+	if (mDebugLevel>3) printf("  %.2f - %.2f - %.2f, lrange = %.2f, rrange = %.2f\n",left,mean,right,lrange,rrange);
 	h->Fit("fland","qN0","",left,right);
 	for (int i = 0; i<10; i++){
 		mean = f->GetParameter(1);
 		sigma = fabs(f->GetParameter(2));
-		if (mDebugLevel>0) printf("      sigma: %.2f mean: %.2f\n",i,sigma,mean);
+		if (mDebugLevel>3) printf("      sigma: %.2f mean: %.2f\n",i,sigma,mean);
 		if (sigma<rrange*5&&sigma>rrange/5&&mean>left&&mean<right) break;
 		left-=lrange/10;
 		right+=rrange/10;
-		if (mDebugLevel>0) printf("   -> %d: %.2f -- %.2f\n",i,left,right);
+		if (mDebugLevel>3) printf("   -> %d: %.2f -- %.2f\n",i,left,right);
 		h->Fit("fland","qN0","",left,right);
 		mean = f->GetParameter(1);
 		sigma = fabs(f->GetParameter(2));
@@ -1293,7 +1293,7 @@ void XTAnalyzer::drawFitting(TH1D* h,TF1 * f, TCanvas * c,TString title, TString
 	if (!f) fprintf(stderr,"ERROR: in drawFitting, input function does not exist!\n");
 	if (!c) fprintf(stderr,"ERROR: in drawFitting, input canvas does not exist!\n");
 	if (!h||!f||!c) return;
-	if (mDebugLevel>1) printf("drawFitting %s",h->GetName());
+	if (mDebugLevel>2) printf("drawFitting %s",h->GetName());
 	c->cd();
 	h->SetTitle(title);
 	h->Draw();
