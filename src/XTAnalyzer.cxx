@@ -264,14 +264,14 @@ void XTAnalyzer::Process(void){
     TCanvas * canv_fitting = new TCanvas("cfit","cfit",1024,768);
 	int minEntries = 100;
 	for (int i = 0; i<NSLICET; i++){
-		if (mDebugLevel>0) {printf("=>h_x[%d\]\n",i);fflush(stdout);}
+		if (mDebugLevel>2) {printf("=>h_x[%d\]\n",i);fflush(stdout);}
 		mType = 0;
 		double left, right;
 		double divleft,divright;
 		i2t(i,divleft,mT,divright);
 		mEntries = h_x[i]->Integral();
 		fitSliceHistFloat(h_x[i],0.5,mX,mSig,mChi2,left,right);
-		if (mDebugLevel>0) {printf("h_x[%d] (%d) after fitSliceHistFloat: x=%.2f, sig=%.2f, chi2=%.2f, left = %.2f, right = %.2f\n",i,(int)mEntries,mX,mSig,mChi2,left,right);fflush(stdout);}
+		if (mDebugLevel>2) {printf("h_x[%d] (%d) after fitSliceHistFloat: x=%.2f, sig=%.2f, chi2=%.2f, left = %.2f, right = %.2f\n",i,(int)mEntries,mX,mSig,mChi2,left,right);fflush(stdout);}
 		if (mEntries>minEntries){
 			TF1 * f = 0;
 			bool flipped = false;
@@ -293,7 +293,7 @@ void XTAnalyzer::Process(void){
 			else{
 				f = fitSliceGaus(h_x[i],mX,mSig,mChi2,left,right);
 			}
-			if (mDebugLevel>0) {printf("h_x[%d] after fitSlice: x=%.2f, sig=%.2f, chi2=%.2f, left = %.2f, right = %.2f\n",i,mX,mSig,mChi2,left,right);fflush(stdout);}
+			if (mDebugLevel>2) {printf("h_x[%d] after fitSlice: x=%.2f, sig=%.2f, chi2=%.2f, left = %.2f, right = %.2f\n",i,mX,mSig,mChi2,left,right);fflush(stdout);}
 			mT = getMean(h_x[i],h_x_tsum[i],left,right);
 			if (flipped){
 				h_mx[i]->GetXaxis()->SetRangeUser(-mX-mSigXmax*3,-mX+mSigXmax*3);
@@ -343,7 +343,7 @@ void XTAnalyzer::Process(void){
 	}
 	// fit x histograms for both-side case, and push to vectors & tree
 	for (int i = NSLICET/2; i<NSLICET; i++){
-		if (mDebugLevel>0) {printf("=>h_xn[%d\]\n",i);fflush(stdout);}
+		if (mDebugLevel>2) {printf("=>h_xn[%d\]\n",i);fflush(stdout);}
 		mType = 2;
 		double left, right;
 		double divleft,divright;
