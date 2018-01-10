@@ -1038,6 +1038,7 @@ void XTAnalyzer::getTT(int & iT, std::vector<double> & vx, std::vector<double> &
 		if (negtive) vel*=-1;
 		theIT = iT;
 		if (vel<velocity/3) break;
+		if (fabs(vx[iT])>7.8) break;
 	}
 	iT = theIT;
 }
