@@ -7,6 +7,8 @@
 #include "TTree.h"
 #include "TVector3.h"
 #include "TRandom1.h"
+#include "TF1.h"
+#include "TGraph.h"
 
 #define NLAY 9
 #define	NCEL 11
@@ -31,15 +33,22 @@ TVector3 vAxis;
 void printUsage(char* name);
 int getwid(int layerID, int cellID);
 double get_dist(int lid, int wid, double slx, double inx, double slz, double inz);
+double getRes(double x);
+double x2t(double x);
+
+TF1 * f_xt_l;
+TF1 * f_xt_r;
+TF1 * f_sig;
 
 int main(int argc, char ** argv){
 
-    if (argc<2){
+    if (argc<3){
         printUsage(argv[0]);
         return -1;
     }
+    TString xt_filename = argv[2];
     int geoSetup = 0;
-    if (argc>=3) geoSetup = atoi(argv[2]);
+    if (argc>=4) geoSetup = atoi(argv[3]);
 
     TString HOME=getenv("CDCS8WORKING_DIR");
 
@@ -64,6 +73,12 @@ int main(int argc, char ** argv){
             map_y[lid][wid][1] = 0;
         }
     }
+
+    //===================Get XT and error=============================
+	TFile * i_xt_file = new TFile(xt_filename);
+	f_xt_l = (TF1*) i_xt_file->Get("fl_0");
+	f_xt_r = (TF1*) i_xt_file->Get("fr_0");
+	f_sig = (TF1*) i_xt_file->Get("f_sig_0");
 
     //===================Get Wire Position============================
     TFile * TFile_wirepos = new TFile(HOME+"/info/wire-position.root");
@@ -297,9 +312,11 @@ int main(int argc, char ** argv){
             //double driftD = (*CdcCell_driftDtrue)[ihit]*10;
             double driftD = get_dist(lid,wid,slx,inx,slz,inz);
             // get driftT
-            double driftT=fabs(driftD/0.023);
+            //double driftT=fabs(driftD/0.023);
+            double driftT = x2t(driftD);
             // smear driftT
-            driftT += random1.Gaus(0,7);
+            double res = getRes(driftD);
+            driftT += random1.Gaus((res-4)*3,res);
 
 			// set output
 			o_layerID->push_back(lid);
@@ -336,7 +353,7 @@ int main(int argc, char ** argv){
 }
 
 void printUsage(char* name){
-    printf("%s [inputFile]\n",name);
+    printf("%s [inputFile] [xtfile] [geoSetup]\n",name);
 }
 
 int getwid(int layerID, int cellID){
@@ -367,4 +384,18 @@ double get_dist(int lid, int wid, double slx, double inx, double slz, double inz
 	vAxis = vWire.Cross(vTrack);
 	double value = -vDist*(vAxis.Unit());
 	return value;
+}
+
+double x2t(double x){
+	TF1 * f = f_xt_r;
+	if (x<0) f = f_xt_l;
+	double t;
+	if (fabs(x)<1)
+		t = f->GetX(x,-25,100);
+	else
+		t = f->GetX(x,-25,800);
+}
+
+double getRes(double x){
+	return f_sig->Eval(fabs(x));
 }
