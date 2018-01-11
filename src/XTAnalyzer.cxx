@@ -451,8 +451,9 @@ void XTAnalyzer::Process(void){
 		}
 		double presig = 0;
 		if (v_sig_slicetls.size()) presig = v_sig_slicetls[v_sig_slicetls.size()-1];
-		if (v_t_slicet[i]>t7Left&&v_sig_slicet[i]<presig) v_sig_slicet[i]=presig;
-		sigmaXIncrement(v_t_slicet[i],v_sig_slicet[i],v_n_slicet[i],v_t_slicetls,v_sig_slicetls);
+		double sigma = v_sig_slicet[i];
+		if (v_t_slicet[i]>t7Left&&sigma<presig) sigma=presig;
+		sigmaXIncrement(v_t_slicet[i],sigma,v_n_slicet[i],v_t_slicetls,v_sig_slicetls);
 	}
 	sigmaXFinalcheck(v_t_slicetls,v_sig_slicetls);
 	// t samples in x slices, find out the minimum t first
@@ -529,8 +530,9 @@ void XTAnalyzer::Process(void){
 		}
 		double presig = 0;
 		if (v_sig_slicetrs.size()) presig = v_sig_slicetrs[v_sig_slicetrs.size()-1];
-		if (v_t_slicet[i]>t7Right&&v_sig_slicet[i]<presig) v_sig_slicet[i]=presig;
-		sigmaXIncrement(v_t_slicet[i],v_sig_slicet[i],v_n_slicet[i],v_t_slicetrs,v_sig_slicetrs);
+		double sigma = v_sig_slicet[i];
+		if (v_t_slicet[i]>t7Right&&sigma<presig) sigma=presig;
+		sigmaXIncrement(v_t_slicet[i],sigma,v_n_slicet[i],v_t_slicetrs,v_sig_slicetrs);
 	}
 	sigmaXFinalcheck(v_t_slicetrs,v_sig_slicetrs);
 	// t samples in x slices, both, find out the minimum t first
@@ -585,8 +587,9 @@ void XTAnalyzer::Process(void){
 		}
 		double presig = 0;
 		if (v_sig_slicetns.size()) presig = v_sig_slicetns[v_sig_slicetns.size()-1];
-		if (v_t_slicetn[i]>t7Both&&v_sig_slicetn[i]<presig) v_sig_slicetn[i]=presig;
-		sigmaXIncrement(v_t_slicetn[i],v_sig_slicetn[i],v_n_slicetn[i],v_t_slicetns,v_sig_slicetns);
+		double sigma = v_sig_slicetn[i];
+		if (v_t_slicetn[i]>t7Both&&sigma<presig) sigma=presig;
+		sigmaXIncrement(v_t_slicetn[i],sigma,v_n_slicetn[i],v_t_slicetns,v_sig_slicetns);
 	}
 	sigmaXFinalcheck(v_t_slicetns,v_sig_slicetns);
 
