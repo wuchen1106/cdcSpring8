@@ -31,9 +31,12 @@ int main(int argc, char** argv){
     int saveHists = 0;
     if (argc>=7)
         saveHists = (int)strtol(argv[6],NULL,10);
-    int debugLevel = 0;
+    int inputType = 0; // by defualt it's data
     if (argc>=8)
-        debugLevel = (int)strtol(argv[7],NULL,10);
+        inputType = (int)strtol(argv[7],NULL,10);
+    int debugLevel = 0;
+    if (argc>=9)
+        debugLevel = (int)strtol(argv[8],NULL,10);
     printf("##############Input %d Parameters##################\n",argc);
     printf("runNo       = %d\n",runNo);
     printf("prerunname  = \"%s\"\n",prerunname.Data());
@@ -41,6 +44,7 @@ int main(int argc, char** argv){
     printf("geoSetup:     %s\n",geoSetup==0?"normal scintillator":"finger scintillator");
     printf("xtType:       %s\n",xtType==0?"asymmetric":(xtType==1?"symmetric":(xtType==2?"symmetric, thru 0":(xtType==3?"symmetric with nLHits==0":(xtType==4?"symmetric with smallest chi2a":(xtType==5?"symmetric with smallest chi2":"others?"))))));
     printf("save slice fittings? \"%s\"\n",saveHists?"yes":"no");
+    printf("inputType   = %d, %s\n",inputType,inputType==0?"Real Data":"MC");
     printf("debug       = %d\n",debugLevel);
     fflush(stdout);
 
@@ -119,6 +123,7 @@ int main(int argc, char** argv){
     std::vector<int> *    i_layerID = 0;
     std::vector<int> *    i_wireID = 0;
     std::vector<double> * i_driftT = 0;
+    std::vector<double> * i_driftDmc = 0;
     std::vector<int> *    i_type = 0;
     std::vector<int> *    i_np = 0;
     std::vector<int> *    i_ip = 0;
@@ -154,6 +159,13 @@ int main(int argc, char** argv){
     double chi2[NCAND];
     double chi2p[NCAND];
     double chi2a[NCAND];
+    double chi2mc[NCAND];
+    double chi2pmc[NCAND];
+    double chi2amc[NCAND];
+    double inxmc;
+    double inzmc;
+    double slxmc;
+    double slzmc;
     std::vector<double> * i_fitD[NCAND] = {0};
     std::vector<int> * i_sel[NCAND] = {0};
 
@@ -172,6 +184,7 @@ int main(int argc, char** argv){
         ichain->SetBranchAddress("layerID",&i_layerID);
         ichain->SetBranchAddress("wireID",&i_wireID);
         ichain->SetBranchAddress("driftT",&i_driftT);
+        if (inputType) ichain->SetBranchAddress("driftDmc",&i_driftDmc);
         ichain->SetBranchAddress("type",&i_type);
         ichain->SetBranchAddress("np",&i_np);
         ichain->SetBranchAddress("ip",&i_ip);
@@ -206,8 +219,19 @@ int main(int argc, char** argv){
 			ichain->SetBranchAddress(Form("chi2%d",iCand),&(chi2[iCand]));
 			ichain->SetBranchAddress(Form("chi2p%d",iCand),&(chi2p[iCand]));
 			ichain->SetBranchAddress(Form("chi2a%d",iCand),&(chi2a[iCand]));
+			if (inputType){
+                ichain->SetBranchAddress(Form("chi2mc%d",iCand),&(chi2mc[iCand]));
+                ichain->SetBranchAddress(Form("chi2pmc%d",iCand),&(chi2pmc[iCand]));
+                ichain->SetBranchAddress(Form("chi2amc%d",iCand),&(chi2amc[iCand]));
+            }
 			ichain->SetBranchAddress(Form("fitD%d",iCand),&(i_fitD[iCand]));
 			ichain->SetBranchAddress(Form("sel%d",iCand),&(i_sel[iCand]));
+		}
+		if (inputType){
+			ichain->SetBranchAddress("slxmc",&slxmc);
+			ichain->SetBranchAddress("slzmc",&slzmc);
+			ichain->SetBranchAddress("inxmc",&inxmc);
+			ichain->SetBranchAddress("inzmc",&inzmc);
 		}
 
 		int saveEvenOdd = 0; if (lid==4) saveEvenOdd = 1; else if (lid==5) saveEvenOdd = -1;
@@ -365,6 +389,7 @@ int main(int argc, char** argv){
         otree->Branch("layerID",&i_layerID);
         otree->Branch("wireID",&i_wireID);
         otree->Branch("driftT",&i_driftT);
+        if (inputType) otree->Branch("driftDmc",&i_driftDmc);
         otree->Branch("type",&i_type);
         otree->Branch("np",&i_np);
         otree->Branch("ip",&i_ip);
@@ -400,6 +425,15 @@ int main(int argc, char** argv){
         otree->Branch("chi2",&(chi2[0]));
         otree->Branch("chi2p",&(chi2p[0]));
         otree->Branch("chi2a",&(chi2a[0]));
+        if (inputType){
+            otree->Branch("chi2mc",&(chi2mc[0]));
+            otree->Branch("chi2pmc",&(chi2pmc[0]));
+            otree->Branch("chi2amc",&(chi2amc[0]));
+			otree->Branch("slxmc",&slxmc);
+			otree->Branch("slzmc",&slzmc);
+			otree->Branch("inxmc",&inxmc);
+			otree->Branch("inzmc",&inzmc);
+        }
         otree->Branch("fitD",&(i_fitD[0]));
         otree->Branch("sel",&(i_sel[0]));
         o_driftD = new std::vector<double>;
@@ -476,6 +510,15 @@ int main(int argc, char** argv){
                 otree->SetBranchAddress("chi2",&(chi2[theCand]));
                 otree->SetBranchAddress("chi2p",&(chi2p[theCand]));
                 otree->SetBranchAddress("chi2a",&(chi2a[theCand]));
+                if (inputType){
+                    otree->SetBranchAddress("chi2mc",&(chi2mc[theCand]));
+                    otree->SetBranchAddress("chi2pmc",&(chi2pmc[theCand]));
+                    otree->SetBranchAddress("chi2amc",&(chi2amc[theCand]));
+                    otree->SetBranchAddress("slxmc",&slxmc);
+                    otree->SetBranchAddress("slzmc",&slzmc);
+                    otree->SetBranchAddress("inxmc",&inxmc);
+                    otree->SetBranchAddress("inzmc",&inzmc);
+                }
                 otree->SetBranchAddress("fitD",&(i_fitD[theCand]));
                 otree->SetBranchAddress("sel",&(i_sel[theCand]));
             }
@@ -578,5 +621,5 @@ int getHitType(int type,bool isRight){
 }
 
 void printUsage(char * name){
-    fprintf(stderr,"%s [runNo] [prerunname] [runname] <[xtType: 3, sym with min nLHits, 2, sym, thr 0; 1, sym; 0, no req] [geoSetup: 0, normal;1, finger] [saveHists: 0;1] [debug: 0;...]>\n",name);
+    fprintf(stderr,"%s [runNo] [prerunname] [runname] <[xtType: 3, sym with min nLHits, 2, sym, thr 0; 1, sym; 0, no req] [geoSetup: 0, normal;1, finger] [saveHists: 0;1] [inputType: 0, Real data; 1, MC] [debug: 0;...]>\n",name);
 }

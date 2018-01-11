@@ -71,6 +71,7 @@ std::vector<int> * i_layerID = 0;
 std::vector<int> * i_wireID = 0;
 std::vector<int> * i_type = 0;
 std::vector<double> * i_driftT = 0;
+std::vector<double> * i_driftDmc = 0;
 std::vector<double> * o_dxl = 0;
 std::vector<double> * o_dxr = 0;
 int o_nFind = 0;
@@ -461,6 +462,7 @@ int main(int argc, char** argv){
     c->SetBranchAddress("triggerNumber",&triggerNumber);
     c->SetBranchAddress("nHits",&i_nHits);
     c->SetBranchAddress("driftT",&i_driftT);
+    if (inputType) c->SetBranchAddress("driftDmc",&i_driftDmc);
     c->SetBranchAddress("layerID",&i_layerID);
     c->SetBranchAddress("wireID",&i_wireID);
     c->SetBranchAddress("type",&i_type); // 0 center, 1 left, 2 right, 3 guard, 4 dummy
@@ -490,6 +492,7 @@ int main(int argc, char** argv){
     // from h_XXX
     ot->Branch("triggerNumber",&triggerNumber);
     ot->Branch("driftT",&i_driftT);
+    if (inputType) ot->Branch("driftDmc",&i_driftDmc);
     ot->Branch("nHits",&i_nHits);
     ot->Branch("layerID",&i_layerID);
     ot->Branch("wireID",&i_wireID);
