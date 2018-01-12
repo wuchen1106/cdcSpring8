@@ -106,10 +106,6 @@ do
     layers=$layers" "${!i}
 done
 
-echo $runNo $runname $N $prerunname
-echo $layers
-exit 0
-
 for i in $layers;
 do
     testlayer=$i
