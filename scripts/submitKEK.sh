@@ -1,5 +1,6 @@
 #!/bin/bash
 
+QUEUE="h"
 MSGDIR=/dev/null
 #MSGDIR=$PWD/root
 layers=""
@@ -120,12 +121,6 @@ do
         trunname="${runname}.$iEntryStart-$iEntryStop"
         log="$PWD/root/t_${runNo}.${trunname}.layer${testlayer}.log"
         err="$PWD/root/t_${runNo}.${trunname}.layer${testlayer}.err"
-        script=$PWD/root/t_${runNo}.${trunname}.layer${testlayer}.sh
-        echo "#!/bin/bash" > $script
-        echo "cd  /dybfs/comet/common/wuc/MyWorkArea/Experiments/cdcSpring8" >> $script
-        echo "source env.sh;" >> $script
-        echo "tracking $runNo $testlayer $prerunname $trunname $nHitsMax $t0shift $tmin $tmax $geoSetup $sumCut $aaCut $iEntryStart $iEntryStop $workType $inputType $debug > $log 2> $err" >> $script
-        chmod +x $script
-        hep_sub -g comet -o $MSGDIR -e $MSGDIR "$script"
+        bsub -o $MSGDIR -e $MSGDIR -q $QUEUE "tracking $runNo $testlayer $prerunname $trunname $nHitsMax $t0shift $tmin $tmax $geoSetup $sumCut $aaCut $iEntryStart $iEntryStop $workType $inputType $debug > $log 2> $err"
     done
 done
