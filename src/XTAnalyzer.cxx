@@ -215,9 +215,9 @@ int XTAnalyzer::Initialize(TString runname, int lid, TFile * infile, TFile * out
 	f_left_mid = myNewTF1(Form("flm_%d",mLayerID),"pol5",mTmin,mTmax);
 	f_right_mid = myNewTF1(Form("frm_%d",mLayerID),"pol5",mTmin,mTmax);
 	f_both_mid = myNewTF1(Form("fbm_%d",mLayerID),"pol5",mTmin,mTmax);
-	f_left_end = myNewTF1(Form("fle_%d",mLayerID),"pol5",mTmin,mTmax);
-	f_right_end = myNewTF1(Form("fre_%d",mLayerID),"pol5",mTmin,mTmax);
-	f_both_end = myNewTF1(Form("fbe_%d",mLayerID),"pol5",mTmin,mTmax);
+	f_left_end = myNewTF1(Form("fle_%d",mLayerID),"pol3",mTmin,mTmax);
+	f_right_end = myNewTF1(Form("fre_%d",mLayerID),"pol3",mTmin,mTmax);
+	f_both_end = myNewTF1(Form("fbe_%d",mLayerID),"pol3",mTmin,mTmax);
 
 	if (mDebugLevel>=1) {printf("XTAnalyzer successfully initialized!\n");fflush(stdout);}
 	return 0;
