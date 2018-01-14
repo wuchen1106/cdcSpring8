@@ -8,6 +8,8 @@
 
 #include "XTAnalyzer.h"
 
+#define NLAY  9
+#define NCEL  11
 #define NCAND 4
 
 void printUsage(char * name);
@@ -34,18 +36,22 @@ int main(int argc, char** argv){
     int inputType = 0; // by defualt it's data
     if (argc>=8)
         inputType = (int)strtol(argv[7],NULL,10);
-    int debugLevel = 0;
+    TString offsetFile = "";
     if (argc>=9)
-        debugLevel = (int)strtol(argv[8],NULL,10);
+        offsetFile = argv[8];
+    int debugLevel = 0;
+    if (argc>=10)
+        debugLevel = (int)strtol(argv[9],NULL,10);
     printf("##############Input %d Parameters##################\n",argc);
     printf("runNo       = %d\n",runNo);
     printf("prerunname  = \"%s\"\n",prerunname.Data());
     printf("runname     = \"%s\"\n",runname.Data());
     printf("geoSetup:     %s\n",geoSetup==0?"normal scintillator":"finger scintillator");
-    printf("xtType:       %s\n",xtType==0?"asymmetric":(xtType==1?"symmetric":(xtType==2?"symmetric, thru 0":(xtType==3?"symmetric with nLHits==0":(xtType==4?"symmetric with smallest chi2a":(xtType==5?"symmetric with smallest chi2":"others?"))))));
+    printf("xtType:       %s\n",xtType==0?"asymmetric":(xtType==1?"symmetric, with offset":(xtType==2?"symmetric, thru 0":(xtType==3?"symmetric with nLHits==0":(xtType==4?"symmetric with smallest chi2a":(xtType==5?"symmetric with smallest chi2":"others?"))))));
     printf("save slice fittings? \"%s\"\n",saveHists?"yes":"no");
     printf("inputType   = %d, %s\n",inputType,inputType==0?"Real Data":"MC");
     printf("debug       = %d\n",debugLevel);
+    printf("Offset file : \"%s\"\n",offsetFile.Data());
     fflush(stdout);
 
     TString HOME=getenv("CDCS8WORKING_DIR");
@@ -91,6 +97,30 @@ int main(int argc, char** argv){
 		durationSep = strtok(NULL,sep);
 	}
 	printf("runNo#%d: %s, %d, %s, %d V, %d mV, %.0f sec\n",runNo,gastype.Data(),runGr,duration.Data(),HV,THR,durationTime);
+
+	// get offset
+	double off[NLAY][NCEL];
+	for (int lid = 0; lid<NLAY; lid++){
+		for (int wid = 0; wid<NCEL; wid++){
+			off[lid][wid] = 0;
+		}
+	}
+	if (xtType==1){
+		TChain * iChain_off = new TChain("t","t");
+		iChain_off->Add(offsetFile);
+		double i_off_delta;
+		int i_off_lid;
+		int i_off_wid;
+		iChain_off->SetBranchAddress("d",&i_off_delta);
+		iChain_off->SetBranchAddress("wid",&i_off_wid);
+		iChain_off->SetBranchAddress("lid",&i_off_lid);
+		int N = iChain_off->GetEntries();
+		for (int i = 0; i<N; i++){
+			iChain_off->GetEntry(i);
+			if (i_off_lid>=0&&i_off_lid<NLAY&&i_off_wid>=0&&i_off_wid<NCEL)
+				off[i_off_lid][i_off_wid] = i_off_delta;
+		}
+	}
 
     // get XT file of the previous run
     TFile * preXTFile = new TFile(Form("%s/info/xt.%d.%s.root",HOME.Data(),runNo,prerunname.Data()));
@@ -323,17 +353,18 @@ int main(int argc, char** argv){
             // FIXME: test more cut
             bool hasBadHit = false;
             for (int ihit = 0; ihit<nHits; ihit++){
-                double tfitD = (*i_fitD[theCand])[ihit];
+                int tlayerID = (*i_layerID)[ihit];
+                int twireID = (*i_wireID)[ihit];
+                double tfitD = (*i_fitD[theCand])[ihit]-off[tlayerID][twireID];
                 double tdriftD = (*i_driftD[theCand])[ihit];
             	if ((*i_sel[theCand])[ihit]==1&&(fabs(tdriftD)<0.5||fabs(tdriftD)>7.5)) hasBadHit = true;
-                int tlayerID = (*i_layerID)[ihit];
                 if (tlayerID!=lid) continue;
-				int ttype = getHitType((*i_type)[ihit],(*i_fitD[theCand])[ihit]>=0);
+				int ttype = getHitType((*i_type)[ihit],tfitD>=0);
                 //if (ttype<100&&fabs(tfitD-tdriftD)<fabs(minres)){
                 if (fabs(tfitD-tdriftD)<fabs(minres)){ // no cut for test layer!
                     minres = tfitD-tdriftD;
                     wireID = (*i_wireID)[ihit];
-                    fitD = (*i_fitD[theCand])[ihit];
+                    fitD = tfitD;
                     driftT = (*i_driftT)[ihit];
                     has = true;
                 }
@@ -579,9 +610,11 @@ int main(int argc, char** argv){
             	int status = fXTAnalyzer->t2d(dt,dd,dd0>0);
             	o_driftD->push_back(dd);
             	o_driftDs->push_back(status);
-                double tfitD = (*i_fitD[theCand])[ihit];
-				int ttype = getHitType((*i_type)[ihit],(*i_fitD[theCand])[ihit]>=0);
                 int tlid = (*i_layerID)[ihit];
+                int twid = (*i_wireID)[ihit];
+				(*i_fitD[theCand])[ihit]-=off[tlid][twid];
+                double tfitD = (*i_fitD[theCand])[ihit];
+				int ttype = getHitType((*i_type)[ihit],tfitD>=0);
                 //if (tlid==lid&&ttype<100&&status==0&&fabs(tfitD-dd)<fabs(minres)){
                 if (tlid==lid&&status==0&&fabs(tfitD-dd)<fabs(minres)){ // no cut for test layer
                     minres = tfitD-dd;
@@ -621,5 +654,5 @@ int getHitType(int type,bool isRight){
 }
 
 void printUsage(char * name){
-    fprintf(stderr,"%s [runNo] [prerunname] [runname] <[xtType: 3, sym with min nLHits, 2, sym, thr 0; 1, sym; 0, no req] [geoSetup: 0, normal;1, finger] [saveHists: 0;1] [inputType: 0, Real data; 1, MC] [debug: 0;...]>\n",name);
+    fprintf(stderr,"%s [runNo] [prerunname] [runname] <[xtType: 3, sym with min nLHits, 2, sym, thr 0; 1, sym+offset; 0, no req] [geoSetup: 0, normal;1, finger] [saveHists: 0;1] [inputType: 0, Real data; 1, MC] [offset file] [debug: 0;...]>\n",name);
 }
