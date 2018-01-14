@@ -9,11 +9,9 @@ int main(int argc, char ** argv){
     TString runname = argv[2];
     int theLayer = 0;
     if (argc==4) theLayer = atoi(argv[3]);
-    int N = 0;
-    if (runNo == 1012) N = 493190;
-    else if (runNo == 117) N = 605460;
-    else if (runNo == 118) N = 769003;
-    else if (runNo >= 100001&&runNo <= 100009) N = 90457;
+    TChain * iChain_h = new TChain("t","t");
+    iChain_h->Add(Form("h_%d.root",runNo));
+    int N = iChain_h->GetEntries();
 
     int iLayerStart = 1;
     int iLayerStop = 8;
