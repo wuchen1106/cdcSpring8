@@ -303,14 +303,14 @@ int main(int argc, char ** argv){
         	// is this the wanted track?
             if ((*CdcCell_tid)[ihit]!=2) continue; // looking for e- from gamma conversion, tid==2
             // get cell ID
-            int layerID = (*CdcCell_layerID)[ihit];
+            int lid = (*CdcCell_layerID)[ihit];
             int cellID = (*CdcCell_cellID)[ihit];
-            int lid = layerID;
-            int wid = getwid(layerID,cellID);
+            int wid = getwid(lid,cellID);
             // get driftD
             // FIXME: now we want to ignore scattering and corner effect, so recalculating driftD by DOCA!
             //double driftD = (*CdcCell_driftDtrue)[ihit]*10;
             double driftD = get_dist(lid,wid,slx,inx,slz,inz);
+            // if (lid==4&&wid==4) driftD+=0.1; // 100 um offset
             // get driftT
             //double driftT=fabs(driftD/0.023);
             double driftT = x2t(driftD);
