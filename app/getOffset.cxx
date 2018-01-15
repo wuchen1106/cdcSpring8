@@ -18,41 +18,23 @@ int getHitType(int type,bool isRight);
 
 int main(int argc, char** argv){
 
-	if (argc<4){
+	if (argc<5){
 	    printUsage(argv[0]);
 		return 1;
 	}
 	int runNo = (int)strtol(argv[1],NULL,10);
-    TString prerunname  = argv[2];
-    TString runname = argv[3];
-	int xtType = 2;
-    if (argc>=5)
-		xtType = (int)strtol(argv[4],NULL,10);
-	int geoSetup = 0; // 0: normal scintillator; 1: finger scintillator
-    if (argc>=6)
-        geoSetup = (int)strtol(argv[5],NULL,10);
-    int saveHists = 0;
-    if (argc>=7)
-        saveHists = (int)strtol(argv[6],NULL,10);
-    int inputType = 0; // by defualt it's data
-    if (argc>=8)
-        inputType = (int)strtol(argv[7],NULL,10);
-    TString offsetFile = "";
-    if (argc>=9)
-        offsetFile = argv[8];
+    TString runname = argv[2];
+    TString offsetFile = argv[3];
+	int geoSetup = (int)strtol(argv[4],NULL,10); // 0: normal scintillator; 1: finger scintillator
     int debugLevel = 0;
-    if (argc>=10)
-        debugLevel = (int)strtol(argv[9],NULL,10);
+    if (argc>=6)
+        debugLevel = (int)strtol(argv[5],NULL,10);
     printf("##############Input %d Parameters##################\n",argc);
     printf("runNo       = %d\n",runNo);
-    printf("prerunname  = \"%s\"\n",prerunname.Data());
     printf("runname     = \"%s\"\n",runname.Data());
-    printf("geoSetup:     %s\n",geoSetup==0?"normal scintillator":"finger scintillator");
-    printf("xtType:       %s\n",xtType==0?"asymmetric":(xtType==1?"symmetric, with offset":(xtType==2?"symmetric, thru 0":(xtType==3?"symmetric with nLHits==0":(xtType==4?"symmetric with smallest chi2a":(xtType==5?"symmetric with smallest chi2":"others?"))))));
-    printf("save slice fittings? \"%s\"\n",saveHists?"yes":"no");
-    printf("inputType   = %d, %s\n",inputType,inputType==0?"Real Data":"MC");
-    printf("debug       = %d\n",debugLevel);
     printf("Offset file : \"%s\"\n",offsetFile.Data());
+    printf("geoSetup:     %s\n",geoSetup==0?"normal scintillator":"finger scintillator");
+    printf("debug       = %d\n",debugLevel);
     fflush(stdout);
 
     TString HOME=getenv("CDCS8WORKING_DIR");
@@ -129,7 +111,6 @@ int main(int argc, char** argv){
         ichain->SetBranchAddress("layerID",&i_layerID);
         ichain->SetBranchAddress("wireID",&i_wireID);
         ichain->SetBranchAddress("driftT",&i_driftT);
-        if (inputType) ichain->SetBranchAddress("driftDmc",&i_driftDmc);
         ichain->SetBranchAddress("type",&i_type);
         ichain->SetBranchAddress("np",&i_np);
         ichain->SetBranchAddress("ip",&i_ip);
@@ -164,19 +145,8 @@ int main(int argc, char** argv){
 			ichain->SetBranchAddress(Form("chi2%d",iCand),&(chi2[iCand]));
 			ichain->SetBranchAddress(Form("chi2p%d",iCand),&(chi2p[iCand]));
 			ichain->SetBranchAddress(Form("chi2a%d",iCand),&(chi2a[iCand]));
-			if (inputType){
-                ichain->SetBranchAddress(Form("chi2mc%d",iCand),&(chi2mc[iCand]));
-                ichain->SetBranchAddress(Form("chi2pmc%d",iCand),&(chi2pmc[iCand]));
-                ichain->SetBranchAddress(Form("chi2amc%d",iCand),&(chi2amc[iCand]));
-            }
 			ichain->SetBranchAddress(Form("fitD%d",iCand),&(i_fitD[iCand]));
 			ichain->SetBranchAddress(Form("sel%d",iCand),&(i_sel[iCand]));
-		}
-		if (inputType){
-			ichain->SetBranchAddress("slxmc",&slxmc);
-			ichain->SetBranchAddress("slzmc",&slzmc);
-			ichain->SetBranchAddress("inxmc",&inxmc);
-			ichain->SetBranchAddress("inzmc",&inzmc);
 		}
 
         // Loop in events
@@ -185,11 +155,6 @@ int main(int argc, char** argv){
             fprintf(stderr,"WARNING: \"%s/root/t_%d.%s.layer%d.root\" is empty! Will ignore this layer.\n",HOME.Data(),runNo,runname.Data(),lid);
             continue;
         }
-		int nSmallSumHits = 0;
-		int nShadowedHits = 0;
-		int nLateHits = 0;
-		int nBoundaryHits = 0;
-		int nSmallBoundaryHits = 0;
         if (debugLevel>0) {printf("Processing %d events\n",N);fflush(stdout);}
         for ( int iEntry = 0 ; iEntry<N; iEntry++){
             if (N%1000==0) printf("%d\n",N);
@@ -198,48 +163,6 @@ int main(int argc, char** argv){
 
 			// decide which candidate to use
 			int theCand = 0;
-			if (xtType==3){
-				int nLateHitsMin = 1e9;
-				for (int iCand = 0; iCand<NCAND; iCand++){
-					nLateHits = 0;
-					for (int ihit = 0; ihit<nHits; ihit++){
-						int ip = 0;
-						for (int jhit = ihit-1; jhit>0; jhit--){
-							if ((*i_layerID)[jhit]!=(*i_layerID)[ihit]) break;
-							int type = getHitType((*i_type)[jhit],(*i_fitD[iCand])[jhit]>=0);
-							if (type<100) ip++;
-						}
-						if ((*i_sel[iCand])[ihit]==1){
-							if(ip!=0)
-								nLateHits++;
-						}
-					}
-					if (nLateHits<nLateHitsMin){
-						nLateHitsMin = nLateHits;
-						theCand = iCand;
-					}
-				}
-			}
-            else if (xtType==4||xtType==5){
-                double minchi2 = 1e9;
-                int minNhitsS = 0;
-				for (int iCand = 0; iCand<NCAND; iCand++){
-                    if (xtType==4){
-                        if ((minchi2>chi2a[iCand]&&minNhitsS==nHitsS[iCand])||minNhitsS<nHitsS[iCand]){
-                            theCand = iCand;
-                            minchi2 = chi2a[iCand];
-                            minNhitsS = nHitsS[iCand];
-                        }
-                    }
-                    else if (xtType==5){
-                        if ((minchi2>chi2[iCand]&&minNhitsS==nHitsS[iCand])||minNhitsS<nHitsS[iCand]){
-                            theCand = iCand;
-                            minchi2 = chi2[iCand];
-                            minNhitsS = nHitsS[iCand];
-                        }
-                    }
-                }
-            }
 
             // ignore events with bad fitting
             if (nHitsS[theCand]<7) continue;
@@ -322,5 +245,5 @@ int getHitType(int type,bool isRight){
 }
 
 void printUsage(char * name){
-    fprintf(stderr,"%s [runNo] [runname] [geoSetup: 0, normal;1, finger] [offsetfile] [debug: 0;...]>\n",name);
+    fprintf(stderr,"%s [runNo] [runname] [offsetfile] [geoSetup: 0, normal;1, finger] [debug: 0;...]>\n",name);
 }
