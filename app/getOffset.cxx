@@ -197,6 +197,7 @@ int main(int argc, char** argv){
                     minres = tfitD-tdriftD;
                     wireID = (*i_wireID)[ihit];
                     fitD = tfitD;
+                    driftD = tdriftD;
                     driftT = (*i_driftT)[ihit];
                     has = true;
                 }
