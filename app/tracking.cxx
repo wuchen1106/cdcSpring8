@@ -330,7 +330,7 @@ int main(int argc, char** argv){
     }
 
     //===================Get Wire Position============================
-    TFile * TFile_wirepos = new TFile(Form("%s/info/wire-position.%d.%s.root",HOME.Data(),runNo,runname.Data()));
+    TFile * TFile_wirepos = new TFile(Form("%s/info/wire-position.%d.%s.root",HOME.Data(),runNo,prerunname.Data()));
     TTree * TTree_wirepos = (TTree*) TFile_wirepos->Get("t");
     int     wp_bid;
     int     wp_ch;

@@ -18,18 +18,20 @@ int getHitType(int type,bool isRight);
 
 int main(int argc, char** argv){
 
-	if (argc<4){
+	if (argc<5){
 	    printUsage(argv[0]);
 		return 1;
 	}
 	int runNo = (int)strtol(argv[1],NULL,10);
-    TString runname = argv[2];
-	int geoSetup = (int)strtol(argv[3],NULL,10); // 0: normal scintillator; 1: finger scintillator
+    TString prerunname = argv[2];
+    TString runname = argv[3];
+	int geoSetup = (int)strtol(argv[4],NULL,10); // 0: normal scintillator; 1: finger scintillator
     int debugLevel = 0;
-    if (argc>4)
-        debugLevel = (int)strtol(argv[4],NULL,10);
+    if (argc>5)
+        debugLevel = (int)strtol(argv[5],NULL,10);
     printf("##############Input %d Parameters##################\n",argc);
     printf("runNo       = %d\n",runNo);
+    printf("prerunname  = \"%s\"\n",prerunname.Data());
     printf("runname     = \"%s\"\n",runname.Data());
     printf("geoSetup:     %s\n",geoSetup==0?"normal scintillator":"finger scintillator");
     printf("debug       = %d\n",debugLevel);
@@ -232,7 +234,7 @@ int main(int argc, char** argv){
 	ofile->Close();
 
     //===================Get Wire Position============================
-    TFile * TFile_wirepos = new TFile(Form("%s/info/wire-position.%d.%s.root",HOME.Data(),runNo,runname.Data()));
+    TFile * TFile_wirepos = new TFile(Form("%s/info/wire-position.%d.%s.root",HOME.Data(),runNo,prerunname.Data()));
     TTree * TTree_wirepos = (TTree*) TFile_wirepos->Get("t");
     int     wp_bid;
     int     wp_ch;
@@ -277,6 +279,7 @@ int main(int argc, char** argv){
     }
     TFile_wirepos->Close();
 
+    //===================Set Wire Position============================
     TFile_wirepos = new TFile(Form("%s/info/wire-position.%d.%s.root",HOME.Data(),runNo,runname.Data()),"RECREATE");
     TTree_wirepos = new TTree("t","t");
     TTree_wirepos->Branch("b",&wp_bid);
@@ -300,6 +303,8 @@ int main(int argc, char** argv){
 		wp_yhv = vwp_yhv[i];
     	TTree_wirepos->Fill();
     }
+    TTree_wirepos->Write();
+    TFile_wirepos->Close();
 
     return 0;
 }
