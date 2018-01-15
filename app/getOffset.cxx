@@ -40,7 +40,7 @@ int main(int argc, char** argv){
     TString HOME=getenv("CDCS8WORKING_DIR");
 
 	// prepare offset
-	TH1D * h_off[NLAY][NCAND];
+	TH1D * h_off[NLAY][NCEL];
 	for (int lid = 0; lid<NLAY; lid++){
 		for (int wid = 0; wid<NCEL; wid++){
 			h_off[lid][wid] = new TH1D(Form("h_off_%d_%d",lid,wid),Form("Offset of wire [%d,%d]",lid,wid),128,-1,1);
@@ -204,7 +204,7 @@ int main(int argc, char** argv){
 
             if (debugLevel>=20) printf("  Found hit! pushing to XTAnalyzer\n");
 			// tell analyzer a new data point
-            h_off[lid][wireID]->Fill(fitD-driftD);
+            h_off[lid][wireID]->Fill(driftD-fitD);
         }
 	}
 
