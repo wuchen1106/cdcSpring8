@@ -36,12 +36,9 @@ int main(int argc, char** argv){
     int inputType = 0; // by defualt it's data
     if (argc>=8)
         inputType = (int)strtol(argv[7],NULL,10);
-    TString offsetFile = "";
-    if (argc>=9)
-        offsetFile = argv[8];
     int debugLevel = 0;
-    if (argc>=10)
-        debugLevel = (int)strtol(argv[9],NULL,10);
+    if (argc>=9)
+        debugLevel = (int)strtol(argv[8],NULL,10);
     printf("##############Input %d Parameters##################\n",argc);
     printf("runNo       = %d\n",runNo);
     printf("prerunname  = \"%s\"\n",prerunname.Data());
@@ -51,7 +48,6 @@ int main(int argc, char** argv){
     printf("save slice fittings? \"%s\"\n",saveHists?"yes":"no");
     printf("inputType   = %d, %s\n",inputType,inputType==0?"Real Data":"MC");
     printf("debug       = %d\n",debugLevel);
-    printf("Offset file : \"%s\"\n",offsetFile.Data());
     fflush(stdout);
 
     TString HOME=getenv("CDCS8WORKING_DIR");
@@ -107,7 +103,7 @@ int main(int argc, char** argv){
 	}
 	if (xtType==1){
 		TChain * iChain_off = new TChain("t","t");
-		iChain_off->Add(offsetFile);
+		iChain_off->Add(Form("%s/info/offset.%d.%s.root",HOME.Data(),runNo,runname.Data()));
 		double i_off_delta;
 		int i_off_lid;
 		int i_off_wid;
@@ -654,5 +650,5 @@ int getHitType(int type,bool isRight){
 }
 
 void printUsage(char * name){
-    fprintf(stderr,"%s [runNo] [prerunname] [runname] <[xtType: 3, sym with min nLHits, 2, sym, thr 0; 1, sym+offset; 0, no req] [geoSetup: 0, normal;1, finger] [saveHists: 0;1] [inputType: 0, Real data; 1, MC] [offset file] [debug: 0;...]>\n",name);
+    fprintf(stderr,"%s [runNo] [prerunname] [runname] <[xtType: 3, sym with min nLHits, 2, sym, thr 0; 1, sym+offset; 0, no req] [geoSetup: 0, normal;1, finger] [saveHists: 0;1] [inputType: 0, Real data; 1, MC] [debug: 0;...]>\n",name);
 }

@@ -18,21 +18,19 @@ int getHitType(int type,bool isRight);
 
 int main(int argc, char** argv){
 
-	if (argc<5){
+	if (argc<4){
 	    printUsage(argv[0]);
 		return 1;
 	}
 	int runNo = (int)strtol(argv[1],NULL,10);
     TString runname = argv[2];
-    TString offsetFile = argv[3];
-	int geoSetup = (int)strtol(argv[4],NULL,10); // 0: normal scintillator; 1: finger scintillator
+	int geoSetup = (int)strtol(argv[3],NULL,10); // 0: normal scintillator; 1: finger scintillator
     int debugLevel = 0;
-    if (argc>=6)
-        debugLevel = (int)strtol(argv[5],NULL,10);
+    if (argc>4)
+        debugLevel = (int)strtol(argv[4],NULL,10);
     printf("##############Input %d Parameters##################\n",argc);
     printf("runNo       = %d\n",runNo);
     printf("runname     = \"%s\"\n",runname.Data());
-    printf("Offset file : \"%s\"\n",offsetFile.Data());
     printf("geoSetup:     %s\n",geoSetup==0?"normal scintillator":"finger scintillator");
     printf("debug       = %d\n",debugLevel);
     fflush(stdout);
@@ -41,8 +39,10 @@ int main(int argc, char** argv){
 
 	// prepare offset
 	TH1D * h_off[NLAY][NCEL];
+	double off[NLAY][NCEL];
 	for (int lid = 0; lid<NLAY; lid++){
 		for (int wid = 0; wid<NCEL; wid++){
+			off[lid][wid] = 0;
 			h_off[lid][wid] = new TH1D(Form("h_off_%d_%d",lid,wid),Form("Offset of wire [%d,%d]",lid,wid),128,-1,1);
 		}
 	}
@@ -209,7 +209,7 @@ int main(int argc, char** argv){
 	}
 
 	// output
-	TFile * ofile = new TFile(offsetFile,"RECREATE");
+	TFile * ofile = new TFile(Form("%s/info/offset.%d.%s.root",HOME.Data(),runNo,runname.Data()),"RECREATE");
 	TTree * otree = new TTree("t","t");
 	double o_off_delta;
 	int o_off_lid;
@@ -224,11 +224,82 @@ int main(int argc, char** argv){
 			o_off_wid = wid;
 			o_off_lid = lid;
 			o_off_delta = h_off[lid][wid]->GetMean();
+			off[lid][wid] = o_off_delta;
 			otree->Fill();
 		}
 	}
 	otree->Write();
 	ofile->Close();
+
+    //===================Get Wire Position============================
+    TFile * TFile_wirepos = new TFile(Form("%s/info/wire-position.%d.%s.root",HOME.Data(),runNo,runname.Data()));
+    TTree * TTree_wirepos = (TTree*) TFile_wirepos->Get("t");
+    int     wp_bid;
+    int     wp_ch;
+    int     wp_wid;
+    int     wp_lid;
+    double  wp_xro;
+    double  wp_yro;
+    double  wp_xc;
+    double  wp_yc;
+    double  wp_xhv;
+    double  wp_yhv;
+    TTree_wirepos->SetBranchAddress("b",&wp_bid);
+    TTree_wirepos->SetBranchAddress("ch",&wp_ch);
+    TTree_wirepos->SetBranchAddress("l",&wp_lid);
+    TTree_wirepos->SetBranchAddress("w",&wp_wid);
+    TTree_wirepos->SetBranchAddress("xhv",&wp_xhv);
+    TTree_wirepos->SetBranchAddress("yhv",&wp_yhv);
+    TTree_wirepos->SetBranchAddress("xro",&wp_xro);
+    TTree_wirepos->SetBranchAddress("yro",&wp_yro);
+    std::vector<int>     vwp_bid;
+    std::vector<int>     vwp_ch;
+    std::vector<int>     vwp_wid;
+    std::vector<int>     vwp_lid;
+    std::vector<double>  vwp_xro;
+    std::vector<double>  vwp_yro;
+    std::vector<double>  vwp_xc;
+    std::vector<double>  vwp_yc;
+    std::vector<double>  vwp_xhv;
+    std::vector<double>  vwp_yhv;
+    for (int i = 0; i<TTree_wirepos->GetEntries(); i++){
+        TTree_wirepos->GetEntry(i);
+		vwp_bid.push_back(wp_bid);
+		vwp_ch.push_back(wp_ch);
+		vwp_wid.push_back(wp_wid);
+		vwp_lid.push_back(wp_lid);
+		vwp_xro.push_back(wp_xro);
+		vwp_yro.push_back(wp_yro);
+		vwp_xc.push_back(wp_xc);
+		vwp_yc.push_back(wp_yc);
+		vwp_xhv.push_back(wp_xhv);
+		vwp_yhv.push_back(wp_yhv);
+    }
+    TFile_wirepos->Close();
+
+    TFile_wirepos = new TFile(Form("%s/info/wire-position.%d.%s.root",HOME.Data(),runNo,runname.Data()),"RECREATE");
+    TTree_wirepos = new TTree("t","t");
+    TTree_wirepos->Branch("b",&wp_bid);
+    TTree_wirepos->Branch("ch",&wp_ch);
+    TTree_wirepos->Branch("l",&wp_lid);
+    TTree_wirepos->Branch("w",&wp_wid);
+    TTree_wirepos->Branch("xhv",&wp_xhv);
+    TTree_wirepos->Branch("yhv",&wp_yhv);
+    TTree_wirepos->Branch("xro",&wp_xro);
+    TTree_wirepos->Branch("yro",&wp_yro);
+    for (int i = 0; i<vwp_bid.size(); i++){
+		wp_bid = vwp_bid[i];
+		wp_ch = vwp_ch[i];
+		wp_wid = vwp_wid[i];
+		wp_lid = vwp_lid[i];
+		wp_xro = vwp_xro[i]+off[wp_lid][wp_wid];
+		wp_yro = vwp_yro[i];
+		wp_xc = vwp_xc[i]+off[wp_lid][wp_wid];
+		wp_yc = vwp_yc[i];
+		wp_xhv = vwp_xhv[i]+off[wp_lid][wp_wid];
+		wp_yhv = vwp_yhv[i];
+    	TTree_wirepos->Fill();
+    }
 
     return 0;
 }
@@ -245,5 +316,5 @@ int getHitType(int type,bool isRight){
 }
 
 void printUsage(char * name){
-    fprintf(stderr,"%s [runNo] [runname] [offsetfile] [geoSetup: 0, normal;1, finger] [debug: 0;...]>\n",name);
+    fprintf(stderr,"%s [runNo] [runname] [geoSetup: 0, normal;1, finger] [debug: 0;...]>\n",name);
 }
