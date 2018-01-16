@@ -6,7 +6,7 @@ runNo="1012"
 nEvents="493189"
 runName="0115"
 IterStart=1
-IterEnd=10
+IterEnd=20
 layers="4"
 
 geoType=0 # 0 for general; 1 for finger
@@ -20,7 +20,7 @@ sumCut=-20
 aaCut=20
 debug=-1
 
-XTTYPE=0 # 2 for symmetrical; 0 for no constraints
+XTTYPE=2 # 2 for symmetrical; 0 for no constraints
 DEBUG=-1
 SAVEHISTS=0
 
@@ -36,14 +36,32 @@ do
         prename="${runName}.i${im1}"
     fi
 
-    # one layer or more
-    if [ $iter -gt 3 ]
+    # t range
+    if [ $iter -gt 6 ]
     then
-        layers="3 4 5 6"
-    elif [ $iter -gt 6 ]
-        layers="2 3 4 5 6"
-    elif [ $iter -gt 9 ]
+        tmin=-10
+        tmax=800
+    elif [ $iter -gt 4 ]
+        tmin=-10
+        tmax=360
+    elif [ $iter -gt 2 ]
+        tmin=-10
+        tmax=350
+    else
+        tmin=-10
+        tmax=340
+    fi
+
+    # one layer or more
+    if [ $iter -gt 17 ]
+    then
         layers="1 2 3 4 5 6 7"
+    elif [ $iter -gt 14 ]
+        layers="2 3 4 5 6"
+    elif [ $iter -gt 11 ]
+        layers="3 4 5 6"
+    elif [ $iter -gt 8 ]
+        layers="4 5"
     else
         layers="4"
     fi
@@ -83,7 +101,7 @@ do
     cd ..
 
 #   upgrading wireposition?
-    if [ $iter -gt 2 ]
+    if [ $iter -gt 8 ]
     then
         getOffset $runNo $prename $name $geoType $DEBUG
         XTTYPE=1 # 1 for offset loading
