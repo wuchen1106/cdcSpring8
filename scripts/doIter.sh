@@ -40,11 +40,13 @@ do
     if [ $iter -gt 6 ]
     then
         tmin=-10
-        tmax=800
+        tmax=600
     elif [ $iter -gt 4 ]
+    then
         tmin=-10
         tmax=360
     elif [ $iter -gt 2 ]
+    then
         tmin=-10
         tmax=350
     else
@@ -57,10 +59,13 @@ do
     then
         layers="1 2 3 4 5 6 7"
     elif [ $iter -gt 14 ]
+    then
         layers="2 3 4 5 6"
     elif [ $iter -gt 11 ]
+    then
         layers="3 4 5 6"
     elif [ $iter -gt 8 ]
+    then
         layers="4 5"
     else
         layers="4"
