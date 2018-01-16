@@ -296,11 +296,11 @@ int main(int argc, char** argv){
 		wp_ch = vwp_ch[i];
 		wp_wid = vwp_wid[i];
 		wp_lid = vwp_lid[i];
-		wp_xro = vwp_xro[i]+off[wp_lid][wp_wid];
+		wp_xro = vwp_xro[i]-off[wp_lid][wp_wid];
 		wp_yro = vwp_yro[i];
-		wp_xc = vwp_xc[i]+off[wp_lid][wp_wid];
+		wp_xc = vwp_xc[i]-off[wp_lid][wp_wid];
 		wp_yc = vwp_yc[i];
-		wp_xhv = vwp_xhv[i]+off[wp_lid][wp_wid];
+		wp_xhv = vwp_xhv[i]-off[wp_lid][wp_wid];
 		wp_yhv = vwp_yhv[i];
     	TTree_wirepos->Fill();
     }
