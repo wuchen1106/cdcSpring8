@@ -167,8 +167,8 @@ int main(int argc, char** argv){
 			int theCand = 0;
 
             // ignore events with bad fitting
-            if (nHitsS[theCand]<7) continue;
-			if (chi2[theCand]>2) continue;
+            if (nHitsS[theCand]<6) continue;
+			if (chi2[theCand]>0.5) continue;
             //if (nHitsG>nHitsS[theCand]) continue;
             if (geoSetup==1){
                 if (fabs(inz[theCand])>24) continue;
@@ -207,7 +207,7 @@ int main(int argc, char** argv){
 
             if (debugLevel>=20) printf("  Found hit! pushing to XTAnalyzer\n");
 			// tell analyzer a new data point
-            h_off[lid][wireID]->Fill(driftD-fitD);
+            h_off[lid][wireID]->Fill(fitD-driftD);
         }
 	}
 
@@ -296,11 +296,11 @@ int main(int argc, char** argv){
 		wp_ch = vwp_ch[i];
 		wp_wid = vwp_wid[i];
 		wp_lid = vwp_lid[i];
-		wp_xro = vwp_xro[i]-off[wp_lid][wp_wid];
+		wp_xro = vwp_xro[i]+off[wp_lid][wp_wid];
 		wp_yro = vwp_yro[i];
-		wp_xc = vwp_xc[i]-off[wp_lid][wp_wid];
+		wp_xc = vwp_xc[i]+off[wp_lid][wp_wid];
 		wp_yc = vwp_yc[i];
-		wp_xhv = vwp_xhv[i]-off[wp_lid][wp_wid];
+		wp_xhv = vwp_xhv[i]+off[wp_lid][wp_wid];
 		wp_yhv = vwp_yhv[i];
     	TTree_wirepos->Fill();
     }

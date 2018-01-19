@@ -52,6 +52,8 @@ int main(int argc, char ** argv){
 
     TString HOME=getenv("CDCS8WORKING_DIR");
 
+    TRandom1 random1;
+
 	//===================Geometry Parameter============================
 	if (geoSetup==0){
 		// normal scintillator
@@ -81,6 +83,15 @@ int main(int argc, char ** argv){
 	f_sig = (TF1*) i_xt_file->Get("f_sig_0");
 
     //===================Get Wire Position============================
+    // prepare offset
+    double deltaX[NLAY][NCEL];
+    for ( int lid = 0; lid<NLAY; lid++){
+        for ( int wid = 0; wid<NCEL; wid++){
+            deltaX[lid][wid] = random1.Gaus(0,0.1);//
+            printf("%d %d %.3e\n",lid,wid,deltaX[lid][wid]);
+        }
+    }
+
     TFile * TFile_wirepos = new TFile(HOME+"/info/wire-position.root");
     TTree * TTree_wirepos = (TTree*) TFile_wirepos->Get("t");
     int     wp_bid;
@@ -102,9 +113,9 @@ int main(int argc, char ** argv){
     for (int i = 0; i<TTree_wirepos->GetEntries(); i++){
         TTree_wirepos->GetEntry(i);
         if (wp_lid>=0&&wp_lid<NLAY&&wp_wid>=0&&wp_wid<NCEL){
-            map_x[wp_lid][wp_wid][0] = wp_xhv;
+            map_x[wp_lid][wp_wid][0] = wp_xhv+deltaX[wp_lid][wp_wid];
             map_y[wp_lid][wp_wid][0] = wp_yhv;
-            map_x[wp_lid][wp_wid][1] = wp_xro;
+            map_x[wp_lid][wp_wid][1] = wp_xro+deltaX[wp_lid][wp_wid];
             map_y[wp_lid][wp_wid][1] = wp_yro;
         }
     }
@@ -234,9 +245,6 @@ int main(int argc, char ** argv){
 
 	double m1x,m1y,m1z;
 	double m2x,m2y,m2z;
-
-	// Random for resolution
-    TRandom1 random1;
     
     // counters
     bool checkup,checkdown;
@@ -310,7 +318,6 @@ int main(int argc, char ** argv){
             // FIXME: now we want to ignore scattering and corner effect, so recalculating driftD by DOCA!
             //double driftD = (*CdcCell_driftDtrue)[ihit]*10;
             double driftD = get_dist(lid,wid,slx,inx,slz,inz);
-            // if (lid==4&&wid==4) driftD+=0.1; // 100 um offset
             // get driftT
             //double driftT=fabs(driftD/0.023);
             double driftT = x2t(driftD);
