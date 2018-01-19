@@ -223,10 +223,10 @@ int main(int argc, char** argv){
 	for (int lid = 0; lid<NLAY; lid++){
 		for (int wid = 0; wid<NCEL; wid++){
 			h_off[lid][wid]->Write();
-			if (h_off[lid][wid]->GetEntries()<1000) continue;
+			if (h_off[lid][wid]->GetEntries()<100) continue;
 			o_off_wid = wid;
 			o_off_lid = lid;
-			o_off_delta = h_off[lid][wid]->GetMean();
+			o_off_delta = h_off[lid][wid]->GetMean()/2;
 			off[lid][wid] = o_off_delta;
 			otree->Fill();
 		}
