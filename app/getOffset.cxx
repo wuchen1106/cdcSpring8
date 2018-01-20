@@ -359,5 +359,5 @@ int getHitType(int type,bool isRight){
 }
 
 void printUsage(char * name){
-    fprintf(stderr,"%s [runNo] [runname] [geoSetup: 0, normal;1, finger] [wptype: 0, no update; 1, update] <[scale (1)] [debug: 0;...] [wireIDs (all)]>\n",name);
+    fprintf(stderr,"%s [runNo] [prerunname] [runname] [geoSetup: 0, normal;1, finger] [wptype: 0, no update; 1, update] <[scale (1)] [debug: 0;...] [wireIDs (all)]>\n",name);
 }
