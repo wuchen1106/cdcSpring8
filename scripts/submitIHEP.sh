@@ -126,6 +126,7 @@ do
         echo "source env.sh;" >> $script
         echo "tracking $runNo $testlayer $prerunname $trunname $nHitsMax $t0shift $tmin $tmax $geoSetup $sumCut $aaCut $iEntryStart $iEntryStop $workType $inputType $debug > $log 2> $err" >> $script
         chmod +x $script
-        hep_sub -g comet -o $MSGDIR -e $MSGDIR "$script"
+#        hep_sub -g comet -o $MSGDIR -e $MSGDIR "$script"
+        hep_sub -g physics -o $MSGDIR -e $MSGDIR "$script"
     done
 done
