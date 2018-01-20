@@ -8,19 +8,22 @@ runName="0115"
 IterStart=1
 IterEnd=20
 layers="4"
+wires=""
 
 geoType=0 # 0 for general; 1 for finger
 inputType=0 # 1 for MC; 0 for data
 workType=0 # 0, fr/l_0; 1, even/odd; -1, even/odd reversed; others, all layers
 nHitsMax=13
 t0shift=0
-tmin=-20
-tmax=800
+tmin=-10
+tmax=340
 sumCut=-20
 aaCut=20
 debug=-1
 
-XTTYPE=2 # 2 for symmetrical; 0 for no constraints
+scale=1 # move scale*offset on wiremap for fitting in the next round
+XTTYPE=1 # 2 for symmetrical; 1 for offset loading; 0 for no constraints.
+WPTYPE=0 # 0 for changing wiremap; 1 for not changing it;
 DEBUG=-1
 SAVEHISTS=0
 
@@ -36,37 +39,35 @@ do
         prename="${runName}.i${im1}"
     fi
 
-    # t range
-    if [ $iter -gt 6 ]
-    then
-        tmin=-10
-        tmax=600
-    elif [ $iter -gt 4 ]
-    then
-        tmin=-10
-        tmax=360
-    elif [ $iter -gt 2 ]
-    then
-        tmin=-10
-        tmax=350
-    else
-        tmin=-10
-        tmax=340
-    fi
+#    # t range
+#    if [ $iter -gt 6 ]
+#    then
+#        tmin=-10
+#        tmax=600
+#    elif [ $iter -gt 4 ]
+#    then
+#        tmin=-10
+#        tmax=360
+#    elif [ $iter -gt 2 ]
+#    then
+#        tmin=-10
+#        tmax=350
+#    else
+#        tmin=-10
+#        tmax=340
+#    fi
 
     # one layer or more
-    if [ $iter -gt 17 ]
+    if [ $iter -gt 10 ]
     then
-        layers="1 2 3 4 5 6 7"
-    elif [ $iter -gt 14 ]
+        layers="1 2 3 4 5 6 7 8"
+        wires=""
+        scale="0.8"
+    elif [ $iter -gt 6 ]
     then
-        layers="2 3 4 5 6"
-    elif [ $iter -gt 11 ]
-    then
-        layers="3 4 5 6"
-    elif [ $iter -gt 8 ]
-    then
-        layers="4 5"
+        layers="1 2 3 4 5 6 7 8"
+        wires="4 5 6"
+        scale="0.5"
     else
         layers="4"
     fi
@@ -106,13 +107,15 @@ do
     cd ..
 
 #   upgrading wireposition?
-    if [ $iter -gt 8 ]
+    if [ $iter -gt 6 ]
     then
-        getOffset $runNo $prename $name $geoType $DEBUG
-        XTTYPE=1 # 1 for offset loading
+        WPTYPE=1 # 1 for changing wiremap
     else
-        cp info/wire-position.${runNo}.${prename}.root info/wire-position.${runNo}.${name}.root
-        XTTYPE=2 # 2 for symmetric without offset
+        WPTYPE=0 # 0 for not changing wiremap
+        cd info
+        ln -s wire-position.${runNo}.${StartName}.root wire-position.${runNo}.${name}.root
+        cd ..
     fi
+    getOffset $runNo $prename $name $geoType $WPTYPE $scale $DEBUG $wires
     getXT $runNo $prename $name $XTTYPE $geoType $SAVEHISTS $inputType $DEBUG
 done
