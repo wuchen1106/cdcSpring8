@@ -33,6 +33,17 @@ int main(int argc, char** argv){
     int debugLevel = 0;
     if (argc>7)
         debugLevel = (int)strtol(argv[7],NULL,10);
+    std::vector<int> wireIDs;
+    if (argc>8){
+        for (int i = 8; i<argc; i++){
+            wireIDs.push_back((int)strtol(argv[7],NULL,10));
+        }
+    }
+    else{
+        for (int i = 0; i<NCEL; i++){
+            wireIDs.push_back(i);
+        }
+    }
     printf("##############Input %d Parameters##################\n",argc);
     printf("runNo       = %d\n",runNo);
     printf("prerunname  = \"%s\"\n",prerunname.Data());
@@ -41,6 +52,11 @@ int main(int argc, char** argv){
     printf("wptype:       %s\n",wptype==0?"no new wiremap":"new wiremap");
     printf("scale       = %.3e\n",scale);
     printf("debug       = %d\n",debugLevel);
+    printf("wires       : ");
+    for (int i = 0; i<wireIDs.size(); i++){
+        printf("%d ",wireIDs[i]);
+    }
+    printf("\n");
     fflush(stdout);
 
     TString HOME=getenv("CDCS8WORKING_DIR");
@@ -305,12 +321,23 @@ int main(int argc, char** argv){
             wp_ch = vwp_ch[i];
             wp_wid = vwp_wid[i];
             wp_lid = vwp_lid[i];
-            wp_xro = vwp_xro[i]+off[wp_lid][wp_wid]*scale;
+            wp_xro = vwp_xro[i];
             wp_yro = vwp_yro[i];
-            wp_xc = vwp_xc[i]+off[wp_lid][wp_wid]*scale;
+            wp_xc = vwp_xc[i];
             wp_yc = vwp_yc[i];
-            wp_xhv = vwp_xhv[i]+off[wp_lid][wp_wid]*scale;
+            wp_xhv = vwp_xhv[i];
             wp_yhv = vwp_yhv[i];
+            bool doOffset = false;
+            for (int index = 0; index < wireIDs.size(); index++){
+                if (wp_wid==wireIDs[index]){
+                    doOffset = true;
+                }
+            }
+            if (doOffset){
+                wp_xro = vwp_xro[i]+off[wp_lid][wp_wid]*scale;
+                wp_xc = vwp_xc[i]+off[wp_lid][wp_wid]*scale;
+                wp_xhv = vwp_xhv[i]+off[wp_lid][wp_wid]*scale;
+            }
             TTree_wirepos->Fill();
         }
         TTree_wirepos->Write();
@@ -332,5 +359,5 @@ int getHitType(int type,bool isRight){
 }
 
 void printUsage(char * name){
-    fprintf(stderr,"%s [runNo] [runname] [geoSetup: 0, normal;1, finger] [wptype: 0, no update; 1, update] <[scale (1)] [debug: 0;...]>\n",name);
+    fprintf(stderr,"%s [runNo] [runname] [geoSetup: 0, normal;1, finger] [wptype: 0, no update; 1, update] <[scale (1)] [debug: 0;...] [wireIDs (all)]>\n",name);
 }
