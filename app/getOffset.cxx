@@ -36,7 +36,7 @@ int main(int argc, char** argv){
     std::vector<int> wireIDs;
     if (argc>8){
         for (int i = 8; i<argc; i++){
-            wireIDs.push_back((int)strtol(argv[7],NULL,10));
+            wireIDs.push_back((int)strtol(argv[i],NULL,10));
         }
     }
     else{
