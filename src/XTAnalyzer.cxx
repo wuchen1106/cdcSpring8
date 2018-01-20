@@ -462,6 +462,7 @@ void XTAnalyzer::Process(void){
 	double mint_t_slicex_r = mTmax;
 	double mint_x_slicex_r = 0;
 	for (int i = 0; i<NSLICEX; i++){
+		if (v_n_slicex[i]<mEntriesMin||v_sig_slicex[i]>mSigTmax||v_sig_slicex[i]<=0) continue;
 		double t = v_t_slicex[i];
 		double x = v_x_slicex[i];
 		if (i<=NSLICEX/2){ // left
@@ -536,9 +537,10 @@ void XTAnalyzer::Process(void){
 	}
 	sigmaXFinalcheck(v_t_slicetrs,v_sig_slicetrs);
 	// t samples in x slices, both, find out the minimum t first
-	double mint_t_slicex_b = mTmax;
+	double mint_t_slicex_b = mTmax; // minimum t for x slices for both-side
 	double mint_x_slicex_b = 0;
 	for (int i = NSLICEX/2; i<NSLICEX; i++){
+		if (v_n_slicexn[i]<mEntriesMin||v_sig_slicexn[i]>mSigTmax||v_sig_slicexn[i]<=0) continue;
 		double t = v_t_slicexn[i];
 		double x = v_x_slicexn[i];
 		if (mint_t_slicex_b>t){
