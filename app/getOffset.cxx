@@ -341,7 +341,6 @@ int main(int argc, char** argv){
                 double theOff = off[wp_lid][wp_wid]*scale;
                 if (stepSize){
                     if(fabs(theOff)>stepSize) theOff = theOff>0?stepSize:-stepSize;
-                    else theOff = 0;
                 }
                 wp_xro = vwp_xro[i]+theOff;
                 wp_xc = vwp_xc[i]+theOff;
