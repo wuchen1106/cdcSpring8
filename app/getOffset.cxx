@@ -185,7 +185,7 @@ int main(int argc, char** argv){
         }
         if (debugLevel>0) {printf("Processing %d events\n",N);fflush(stdout);}
         for ( int iEntry = 0 ; iEntry<N; iEntry++){
-            if (N%1000==0) printf("%d\n",N);
+            if (iEntry%10000==0) printf("%d\n",iEntry);
             if (debugLevel>=20) printf("Entry%d: \n",iEntry);
             ichain->GetEntry(iEntry);
 

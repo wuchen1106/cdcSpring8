@@ -21,6 +21,7 @@ sumCut=-20
 aaCut=20
 debug=-1
 
+stepSize=0 # maximum step size for each movement in wire position calibration; 0 means no limit
 scale=1 # move scale*offset on wiremap for fitting in the next round
 XTTYPE=1 # 2 for symmetrical; 1 for offset loading; 0 for no constraints.
 WPTYPE=0 # 0 for changing wiremap; 1 for not changing it;
@@ -58,15 +59,17 @@ do
 #    fi
 
     # one layer or more
-    if [ $iter -gt 10 ]
+    if [ $iter -gt 16 ]
     then
         layers="1 2 3 4 5 6 7 8"
         wires=""
+        stepSize="0.02" # move 10 micrometer per iteration at most
         scale="0.8"
     elif [ $iter -gt 6 ]
     then
         layers="1 2 3 4 5 6 7 8"
         wires="4 5 6"
+        stepSize="0.01" # move 10 micrometer per iteration at most
         scale="0.5"
     else
         layers="4"
@@ -101,8 +104,10 @@ do
     cd root/
     for ilayer in $layers
     do
-        combine $runNo $name $ilayer
+        combine $runNo $name $ilayer &
+        pids+=" $!"
     done
+    wait $pids || { echo "there were errors" >&2; exit 1; }
     rm t_${runNo}.${name}.*-*.*
     cd ..
 
@@ -116,6 +121,6 @@ do
         ln -s wire-position.${runNo}.${StartName}.root wire-position.${runNo}.${name}.root
         cd ..
     fi
-    getOffset $runNo $prename $name $geoType $WPTYPE $scale $DEBUG $wires
+    getOffset $runNo $prename $name $geoType $WPTYPE $scale $stepSize $DEBUG $wires
     getXT $runNo $prename $name $XTTYPE $geoType $SAVEHISTS $inputType $DEBUG
 done

@@ -26,6 +26,7 @@ int main(int argc, char ** argv){
         }
         if (c->GetEntries())
             c->Merge(Form("t_%d.%s.layer%d.root",runNo,runname.Data(),iLayer));
+        printf("finished combining t_%d.%s.layer%d.root\n",runNo,runname.Data(),iLayer);
     }
     return 0;
 }
