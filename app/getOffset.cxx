@@ -31,11 +31,14 @@ int main(int argc, char** argv){
     if (argc>6)
         scale = (double)strtod(argv[6],NULL);
     int debugLevel = 0;
+    double stepSize = 0;
     if (argc>7)
-        debugLevel = (int)strtol(argv[7],NULL,10);
+        stepSize = (double)strtod(argv[7],NULL);
+    if (argc>8)
+        debugLevel = (int)strtol(argv[8],NULL,10);
     std::vector<int> wireIDs;
-    if (argc>8){
-        for (int i = 8; i<argc; i++){
+    if (argc>9){
+        for (int i = 9; i<argc; i++){
             wireIDs.push_back((int)strtol(argv[i],NULL,10));
         }
     }
@@ -51,6 +54,7 @@ int main(int argc, char** argv){
     printf("geoSetup:     %s\n",geoSetup==0?"normal scintillator":"finger scintillator");
     printf("wptype:       %s\n",wptype==0?"no new wiremap":"new wiremap");
     printf("scale       = %.3e\n",scale);
+    printf("stepSize    = %.3e\n",stepSize);
     printf("debug       = %d\n",debugLevel);
     printf("wires       : ");
     for (int i = 0; i<wireIDs.size(); i++){
@@ -334,9 +338,14 @@ int main(int argc, char** argv){
                 }
             }
             if (doOffset){
-                wp_xro = vwp_xro[i]+off[wp_lid][wp_wid]*scale;
-                wp_xc = vwp_xc[i]+off[wp_lid][wp_wid]*scale;
-                wp_xhv = vwp_xhv[i]+off[wp_lid][wp_wid]*scale;
+                double theOff = off[wp_lid][wp_wid]*scale;
+                if (stepSize){
+                    if(fabs(theOff)>stepSize) theOff = theOff>0?stepSize:-stepSize;
+                    else theOff = 0;
+                }
+                wp_xro = vwp_xro[i]+theOff;
+                wp_xc = vwp_xc[i]+theOff;
+                wp_xhv = vwp_xhv[i]+theOff;
             }
             TTree_wirepos->Fill();
         }
@@ -359,5 +368,5 @@ int getHitType(int type,bool isRight){
 }
 
 void printUsage(char * name){
-    fprintf(stderr,"%s [runNo] [prerunname] [runname] [geoSetup: 0, normal;1, finger] [wptype: 0, no update; 1, update] <[scale (1)] [debug: 0;...] [wireIDs (all)]>\n",name);
+    fprintf(stderr,"%s [runNo] [prerunname] [runname] [geoSetup: 0, normal;1, finger] [wptype: 0, no update; 1, update] <[scale (1)] [stepSize (0)] [debug: (0)] [wireIDs (all)]>\n",name);
 }
