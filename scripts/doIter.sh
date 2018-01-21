@@ -102,6 +102,7 @@ do
     done
 
     cd root/
+    pids=""
     for ilayer in $layers
     do
         combine $runNo $name $ilayer &
