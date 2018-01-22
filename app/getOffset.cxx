@@ -233,7 +233,8 @@ int main(int argc, char** argv){
 
             if (debugLevel>=20) printf("  Found hit! pushing to XTAnalyzer\n");
 			// tell analyzer a new data point
-            h_off[lid][wireID]->Fill(fitD-driftD);
+			if (fabs(driftD)>2&&fabs(driftD)<6) // only trust the body part
+                h_off[lid][wireID]->Fill(fitD-driftD);
         }
 	}
 
