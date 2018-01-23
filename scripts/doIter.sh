@@ -22,6 +22,8 @@ aaCut=20
 debug=-1
 
 stepSize=0 # maximum step size for each movement in wire position calibration; 0 means no limit
+minslz=0 # min slz cut for mean slz value in each sample of events in wiremap calibration. minslz==maxslz==0 means no cut
+maxslz=0 # min slz cut for mean slz value in each sample of events in wiremap calibration. minslz==maxslz==0 means no cut
 scale=1 # move scale*offset on wiremap for fitting in the next round
 XTTYPE=1 # 2 for symmetrical; 1 for offset loading; 0 for no constraints.
 WPTYPE=0 # 0 for changing wiremap; 1 for not changing it;
@@ -62,17 +64,24 @@ do
     if [ $iter -gt 16 ]
     then
         layers="1 2 3 4 5 6 7 8"
+        WPTYPE=1 # 1 for changing wiremap
         wires=""
-        stepSize="0.02" # move 10 micrometer per iteration at most
+        stepSize="0.02" # move 20 micrometer per iteration at most
         scale="0.8"
+        minslz="-0.01"
+        maxslz="0.01"
     elif [ $iter -gt 6 ]
     then
         layers="1 2 3 4 5 6 7 8"
-        wires="4 5 6"
-        stepSize="0.01" # move 10 micrometer per iteration at most
+        WPTYPE=1 # 1 for changing wiremap
+        wires=""
+        stepSize="0" # no step size limit
         scale="0.5"
+        minslz="-0.01"
+        maxslz="0.01"
     else
         layers="4"
+        WPTYPE=0 # 0 for not changing wiremap
     fi
 
     eval $script -g $geoType -i $inputType -w $workType -n $nHitsMax -t $t0shift -a $tmin -z $tmax -s $sumCut -q $aaCut -d $debug $runNo $nEvents $prename $name $layers
@@ -113,15 +122,12 @@ do
     cd ..
 
 #   upgrading wireposition?
-    if [ $iter -gt 6 ]
+    if [ ! $WPTYPE -eq 1 ] # ! 1 for not changing wiremap
     then
-        WPTYPE=1 # 1 for changing wiremap
-    else
-        WPTYPE=0 # 0 for not changing wiremap
         cd info
         ln -s wire-position.${runNo}.${StartName}.root wire-position.${runNo}.${name}.root
         cd ..
     fi
-    getOffset $runNo $prename $name $geoType $WPTYPE $scale $stepSize $DEBUG $wires
+    getOffset $runNo $prename $name $geoType $WPTYPE $scale $stepSize $minslz $maxslz $DEBUG $wires
     getXT $runNo $prename $name $XTTYPE $geoType $SAVEHISTS $inputType $DEBUG
 done

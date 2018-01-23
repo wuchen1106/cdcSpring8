@@ -358,7 +358,7 @@ int main(int argc, char** argv){
             }
             if (doOffset){
                 double theOff = v_off[wp_lid][wp_wid]*scale;
-                double theSlz = v_slz[wp_lid][wp_wid]*scale;
+                double theSlz = v_slz[wp_lid][wp_wid];
                 if (stepSize){
                     if(fabs(theOff)>stepSize) theOff = theOff>0?stepSize:-stepSize;
                 }
