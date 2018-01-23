@@ -34,11 +34,17 @@ int main(int argc, char** argv){
     double stepSize = 0;
     if (argc>7)
         stepSize = (double)strtod(argv[7],NULL);
-    if (argc>8)
-        debugLevel = (int)strtol(argv[8],NULL,10);
-    std::vector<int> wireIDs;
+    double minslz = 0;
+    double maxslz = 0;
     if (argc>9){
-        for (int i = 9; i<argc; i++){
+        minslz = (double)strtod(argv[8],NULL);
+        maxslz = (double)strtod(argv[9],NULL);
+    }
+    if (argc>10)
+        debugLevel = (int)strtol(argv[10],NULL,10);
+    std::vector<int> wireIDs;
+    if (argc>11){
+        for (int i = 11; i<argc; i++){
             wireIDs.push_back((int)strtol(argv[i],NULL,10));
         }
     }
@@ -55,6 +61,8 @@ int main(int argc, char** argv){
     printf("wptype:       %s\n",wptype==0?"no new wiremap":"new wiremap");
     printf("scale       = %.3e\n",scale);
     printf("stepSize    = %.3e\n",stepSize);
+    printf("minslz      = %.3e\n",minslz);
+    printf("maxslz      = %.3e\n",maxslz);
     printf("debug       = %d\n",debugLevel);
     printf("wires       : ");
     for (int i = 0; i<wireIDs.size(); i++){
@@ -67,11 +75,15 @@ int main(int argc, char** argv){
 
 	// prepare offset
 	TH1D * h_off[NLAY][NCEL];
-	double off[NLAY][NCEL];
+	TH1D * h_slz[NLAY][NCEL];
+	double v_off[NLAY][NCEL];
+	double v_slz[NLAY][NCEL];
 	for (int lid = 0; lid<NLAY; lid++){
 		for (int wid = 0; wid<NCEL; wid++){
-			off[lid][wid] = 0;
+			v_off[lid][wid] = 0;
+			v_slz[lid][wid] = 0;
 			h_off[lid][wid] = new TH1D(Form("h_off_%d_%d",lid,wid),Form("Offset of wire [%d,%d]",lid,wid),128,-1,1);
+			h_slz[lid][wid] = new TH1D(Form("h_slz_%d_%d",lid,wid),Form("slope Z of wire [%d,%d]",lid,wid),128,-0.15,0.15);
 		}
 	}
 
@@ -233,8 +245,10 @@ int main(int argc, char** argv){
 
             if (debugLevel>=20) printf("  Found hit! pushing to XTAnalyzer\n");
 			// tell analyzer a new data point
-			if (fabs(driftD)>2&&fabs(driftD)<6) // only trust the body part
+			if (fabs(driftD)>2&&fabs(driftD)<6){ // only trust the body part
                 h_off[lid][wireID]->Fill(fitD-driftD);
+                h_slz[lid][wireID]->Fill(slz[theCand]);
+            }
         }
 	}
 
@@ -242,9 +256,11 @@ int main(int argc, char** argv){
 	TFile * ofile = new TFile(Form("%s/info/offset.%d.%s.root",HOME.Data(),runNo,runname.Data()),"RECREATE");
 	TTree * otree = new TTree("t","t");
 	double o_off_delta;
+	double o_off_slz;
 	int o_off_lid;
 	int o_off_wid;
 	otree->Branch("d",&o_off_delta);
+	otree->Branch("slz",&o_off_slz);
 	otree->Branch("wid",&o_off_wid);
 	otree->Branch("lid",&o_off_lid);
 	for (int lid = 0; lid<NLAY; lid++){
@@ -254,7 +270,9 @@ int main(int argc, char** argv){
 			o_off_wid = wid;
 			o_off_lid = lid;
 			o_off_delta = h_off[lid][wid]->GetMean();
-			off[lid][wid] = o_off_delta;
+			v_off[lid][wid] = o_off_delta;
+			o_off_slz = h_slz[lid][wid]->GetMean();
+			v_slz[lid][wid] = o_off_slz;
 			otree->Fill();
 		}
 	}
@@ -339,9 +357,13 @@ int main(int argc, char** argv){
                 }
             }
             if (doOffset){
-                double theOff = off[wp_lid][wp_wid]*scale;
+                double theOff = v_off[wp_lid][wp_wid]*scale;
+                double theSlz = v_slz[wp_lid][wp_wid]*scale;
                 if (stepSize){
                     if(fabs(theOff)>stepSize) theOff = theOff>0?stepSize:-stepSize;
+                }
+                if ((minslz||maxslz)&&(theSlz>maxslz||theSlz<minslz)){
+                    theOff = 0;
                 }
                 wp_xro = vwp_xro[i]+theOff;
                 wp_xc = vwp_xc[i]+theOff;
@@ -368,5 +390,5 @@ int getHitType(int type,bool isRight){
 }
 
 void printUsage(char * name){
-    fprintf(stderr,"%s [runNo] [prerunname] [runname] [geoSetup: 0, normal;1, finger] [wptype: 0, no update; 1, update] <[scale (1)] [stepSize (0)] [debug: (0)] [wireIDs (all)]>\n",name);
+    fprintf(stderr,"%s [runNo] [prerunname] [runname] [geoSetup: 0, normal;1, finger] [wptype: 0, no update; 1, update] <[scale (1)] [stepSize (0)] [minslz (0)] [maxslz (0)] [debug: (0)] [wireIDs (all)]>\n",name);
 }
