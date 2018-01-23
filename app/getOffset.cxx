@@ -83,7 +83,7 @@ int main(int argc, char** argv){
 			v_off[lid][wid] = 0;
 			v_slz[lid][wid] = 0;
 			h_off[lid][wid] = new TH1D(Form("h_off_%d_%d",lid,wid),Form("Offset of wire [%d,%d]",lid,wid),128,-1,1);
-			h_slz[lid][wid] = new TH1D(Form("h_slz_%d_%d",lid,wid),Form("slope Z of wire [%d,%d]",lid,wid),128,-0.15,0.15);
+			h_slz[lid][wid] = new TH1D(Form("h_slz_%d_%d",lid,wid),Form("slope Z of wire [%d,%d]",lid,wid),128,-0.16,0.16);
 		}
 	}
 
@@ -271,7 +271,7 @@ int main(int argc, char** argv){
 
             if (debugLevel>=20) printf("  Found hit! pushing to XTAnalyzer\n");
 			// tell analyzer a new data point
-			if (fabs(driftD)>2&&fabs(driftD)<6){ // only trust the body part
+			if (fabs(driftD)>2&&fabs(driftD)<6&&abs(fitD-driftD)<1){ // only trust the body part
                 h_off[lid][wireID]->Fill(fitD-driftD);
                 h_slz[lid][wireID]->Fill(slz[theCand]);
             }
@@ -292,6 +292,7 @@ int main(int argc, char** argv){
 	for (int lid = 0; lid<NLAY; lid++){
 		for (int wid = 0; wid<NCEL; wid++){
 			h_off[lid][wid]->Write();
+			h_slz[lid][wid]->Write();
 			if (h_off[lid][wid]->GetEntries()<100) continue;
 			o_off_wid = wid;
 			o_off_lid = lid;
