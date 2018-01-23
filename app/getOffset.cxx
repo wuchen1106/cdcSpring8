@@ -87,6 +87,32 @@ int main(int argc, char** argv){
 		}
 	}
 
+	// get slzmc of each wire
+    double v_slzmc[NLAY][NCEL];
+    for (int lid = 0; lid<NLAY; lid++){
+        for (int wid = 0; wid<NCEL; wid++){
+            v_slzmc[lid][wid] = 0;
+        }
+    }
+	TChain * ichain_slz = new TChain("t","t");
+	ichain_slz->Add(Form("%s/info/slzmap.%d.root",HOME.Data(),runNo));
+	if (ichain_slz->GetEntries()){
+        double slz_slzmc;
+        int    slz_lid;
+        int    slz_wid;
+        ichain_slz->SetBranchAddress("slzmc",&slz_slzmc);
+        ichain_slz->SetBranchAddress("lid",&slz_lid);
+        ichain_slz->SetBranchAddress("wid",&slz_wid);
+        for (int i = 0; i<ichain_slz->GetEntries(); i++){
+            ichain_slz->GetEntry(i);
+            if (slz_lid<0||slz_lid>=NLAY||slz_wid<0||slz_wid>=NCEL) continue;
+            v_slzmc[slz_lid][slz_wid] = slz_slzmc;
+        }
+    }
+    else{
+        printf("Cannot find%s/info/slzmap.%d.root, will assume slz center at 0\n",HOME.Data(),runNo);
+    }
+
     // input file
     int triggerNumber;
     int nHits;
@@ -358,11 +384,11 @@ int main(int argc, char** argv){
             }
             if (doOffset){
                 double theOff = v_off[wp_lid][wp_wid]*scale;
-                double theSlz = v_slz[wp_lid][wp_wid];
+                double deltaSlz = v_slz[wp_lid][wp_wid]-v_slzmc[wp_lid][wp_wid];
                 if (stepSize){
                     if(fabs(theOff)>stepSize) theOff = theOff>0?stepSize:-stepSize;
                 }
-                if ((minslz||maxslz)&&(theSlz>maxslz||theSlz<minslz)){
+                if ((minslz||maxslz)&&(deltaSlz>maxslz||deltaSlz<minslz)){
                     theOff = 0;
                 }
                 wp_xro = vwp_xro[i]+theOff;
