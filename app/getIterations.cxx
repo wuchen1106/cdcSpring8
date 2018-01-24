@@ -21,6 +21,10 @@ int main(int argc, char** argv){
     int isMC = (int)strtol(argv[6],NULL,10);
 
 	// what do we want
+    double iter_slx[NITERSMAX][NLAY][NCEL]; // mean slx of chosen events of each iteration in each layer run of each wire 
+    double iter_inx[NITERSMAX][NLAY][NCEL]; // mean inx of chosen events of each iteration in each layer run of each wire 
+    double iter_slxmc[NITERSMAX][NLAY][NCEL]; // mean slxmc of chosen events of each iteration in each layer run of each wire 
+    double iter_inxmc[NITERSMAX][NLAY][NCEL]; // mean inxmc of chosen events of each iteration in each layer run of each wire 
     double iter_slz[NITERSMAX][NLAY][NCEL]; // mean slz of chosen events of each iteration in each layer run of each wire 
     double iter_inz[NITERSMAX][NLAY][NCEL]; // mean inz of chosen events of each iteration in each layer run of each wire 
     double iter_slzmc[NITERSMAX][NLAY][NCEL]; // mean slzmc of chosen events of each iteration in each layer run of each wire 
@@ -48,6 +52,10 @@ int main(int argc, char** argv){
     for (int iter = 0; iter<=Niters; iter++){
         for (int lid = 0; lid<NLAY; lid++){
             for (int wid = 0; wid<NCEL; wid++){
+                iter_slx[iter][lid][wid] = 0;
+                iter_inx[iter][lid][wid] = 0;
+                iter_slxmc[iter][lid][wid] = 0;
+                iter_inxmc[iter][lid][wid] = 0;
                 iter_slz[iter][lid][wid] = 0;
                 iter_inz[iter][lid][wid] = 0;
                 iter_slzmc[iter][lid][wid] = 0;
@@ -199,6 +207,10 @@ int main(int argc, char** argv){
             }
             double chi2;
             int nHitsS;
+            double slx;
+            double inx;
+            double slxmc = 0;
+            double inxmc = 0;
             double slz;
             double inz;
             double slzmc = 0;
@@ -215,6 +227,10 @@ int main(int argc, char** argv){
             ichain_ana->SetBranchAddress("inz0",&inz);
             if (isMC) ichain_ana->SetBranchAddress("slzmc",&slzmc);
             if (isMC) ichain_ana->SetBranchAddress("inzmc",&inzmc);
+            ichain_ana->SetBranchAddress("slx0",&slx);
+            ichain_ana->SetBranchAddress("inx0",&inx);
+            if (isMC) ichain_ana->SetBranchAddress("slxmc",&slxmc);
+            if (isMC) ichain_ana->SetBranchAddress("inxmc",&inxmc);
             ichain_ana->SetBranchAddress("layerID",&layerID);
             ichain_ana->SetBranchAddress("wireID",&wireID);
             ichain_ana->SetBranchAddress("sel0",&sel);
@@ -275,6 +291,10 @@ int main(int argc, char** argv){
                 iter_deltaXfit[iter][lid][theWid]+=theFitD-(theDDmc-iter_deltaX[iter-1][lid][theWid])-tdeltaXothers;
                 iter_deltaXothers[iter-1][lid][theWid]+=tdeltaXothers;
                 iter_chi2[iter][lid][theWid]+=chi2;
+                iter_slx[iter][lid][theWid]+=slx;
+                iter_inx[iter][lid][theWid]+=inx;
+                iter_slxmc[iter][lid][theWid]+=slxmc;
+                iter_inxmc[iter][lid][theWid]+=inxmc;
                 iter_slz[iter][lid][theWid]+=slz;
                 iter_inz[iter][lid][theWid]+=inz;
                 iter_slzmc[iter][lid][theWid]+=slzmc;
@@ -282,6 +302,10 @@ int main(int argc, char** argv){
                 iter_nGood[iter][lid][theWid]++;
             }
             for (int wid = 0; wid<NCEL; wid++){
+                iter_slx[iter][lid][wid]/=iter_nGood[iter][lid][wid];
+                iter_inx[iter][lid][wid]/=iter_nGood[iter][lid][wid];
+                iter_slxmc[iter][lid][wid]/=iter_nGood[iter][lid][wid];
+                iter_inxmc[iter][lid][wid]/=iter_nGood[iter][lid][wid];
                 iter_slz[iter][lid][wid]/=iter_nGood[iter][lid][wid];
                 iter_inz[iter][lid][wid]/=iter_nGood[iter][lid][wid];
                 iter_slzmc[iter][lid][wid]/=iter_nGood[iter][lid][wid];
@@ -296,13 +320,13 @@ int main(int argc, char** argv){
     }
 
     // print out the result
-    printf("    iter/I lid/I wid/I dX dXo dXmc dXfit offset chi2 slz inz slzmc inzmc n\n");
+    printf("    iter/I lid/I wid/I dX dXo dXmc dXfit offset chi2 slx inx slxmc inxmc slz inz slzmc inzmc n\n");
     for (int lid = 0; lid<NLAY; lid++){
         for (int wid = 0; wid<NCEL; wid++){
             if (!changed[lid][wid]) continue;
             printf("[%d,%d]:\n",lid,wid);
             for (int iter = 1; iter<=Niters; iter++){
-                printf("  =>%d %d %d %.3e %.3e %.3e %.3e %.3e %.3e %.3e %.3e %.3e %.3e %d\n",
+                printf("  =>%d %d %d %.3e %.3e %.3e %.3e %.3e %.3e %.3e %.3e %.3e %.3e %.3e %.3e %.3e %.3e %d\n",
                         iter,
                         lid,wid,
                         iter_deltaX[iter-1][lid][wid],
@@ -311,6 +335,10 @@ int main(int argc, char** argv){
                         iter_deltaXfit[iter][lid][wid],
                         iter_offset[iter][lid][wid],
                         iter_chi2[iter][lid][wid],
+                        iter_slx[iter][lid][wid],
+                        iter_inx[iter][lid][wid],
+                        iter_slxmc[iter][lid][wid],
+                        iter_inxmc[iter][lid][wid],
                         iter_slz[iter][lid][wid],
                         iter_inz[iter][lid][wid],
                         iter_slzmc[iter][lid][wid],
