@@ -24,6 +24,8 @@ debug=-1
 stepSize=0 # maximum step size for each movement in wire position calibration; 0 means no limit
 minslz=0 # min slz cut for mean slz value in each sample of events in wiremap calibration. minslz==maxslz==0 means no cut
 maxslz=0 # min slz cut for mean slz value in each sample of events in wiremap calibration. minslz==maxslz==0 means no cut
+mininx=0 # min inx cut for mean inx value in each sample of events in wiremap calibration. mininx==maxinx==0 means no cut
+maxinx=0 # min inx cut for mean inx value in each sample of events in wiremap calibration. mininx==maxinx==0 means no cut
 scale=1 # move scale*offset on wiremap for fitting in the next round
 XTTYPE=1 # 2 for symmetrical; 1 for offset loading; 0 for no constraints.
 WPTYPE=0 # 0 for changing wiremap; 1 for not changing it;
@@ -42,23 +44,23 @@ do
         prename="${runName}.i${im1}"
     fi
 
-#    # t range
-#    if [ $iter -gt 6 ]
-#    then
-#        tmin=-10
-#        tmax=600
-#    elif [ $iter -gt 4 ]
-#    then
-#        tmin=-10
-#        tmax=360
-#    elif [ $iter -gt 2 ]
-#    then
-#        tmin=-10
-#        tmax=350
-#    else
-#        tmin=-10
-#        tmax=340
-#    fi
+    # t range
+    if [ $iter -gt 6 ]
+    then
+        tmin=-10
+        tmax=600
+    elif [ $iter -gt 4 ]
+    then
+        tmin=-10
+        tmax=360
+    elif [ $iter -gt 2 ]
+    then
+        tmin=-10
+        tmax=350
+    else
+        tmin=-10
+        tmax=340
+    fi
 
     # one layer or more
     if [ $iter -gt 16 ]
@@ -70,7 +72,9 @@ do
         scale="0.8"
         minslz="-0.01"
         maxslz="0.01"
-    elif [ $iter -gt 6 ]
+        maxinx="0.1"
+        mininx="-0.1"
+    elif [ $iter -gt 8 ]
     then
         layers="1 2 3 4 5 6 7 8"
         WPTYPE=1 # 1 for changing wiremap
@@ -79,12 +83,24 @@ do
         scale="0.5"
         minslz="-0.01"
         maxslz="0.01"
+        maxinx="0"
+        mininx="0"
     else
         layers="4"
         WPTYPE=0 # 0 for not changing wiremap
     fi
 
     eval $script -g $geoType -i $inputType -w $workType -n $nHitsMax -t $t0shift -a $tmin -z $tmax -s $sumCut -q $aaCut -d $debug $runNo $nEvents $prename $name $layers
+    Njobs=0
+    for i in $layers;
+    do
+        testlayer=$i
+        for (( j=0; j<nEvents; j+=5000 ))
+        do
+            ((Njobs++))
+        done
+    done
+    echo "Iteration $iter, $Njobs to be finished!"
 
     for (( i=0; i<3600; i++ )) #3600*10 sec = 10 hours running
     do
@@ -92,19 +108,27 @@ do
         echo -n "$i "
         finished=true
         thefile="temp"
+        NjobsFinished=0
         for file in root/t_${runNo}.${name}.*.log
         do
             if ! tail -n 3 $file | grep -q "Good Events"
             then
                 finished=false
                 thefile=$file
+            else
+                ((NjobsFinished++))
             fi
         done
+        if [ $NjobsFinished -lt $Njobs ]
+        then
+            finished=false
+        fi
         if $finished
         then
             echo "Iteration $iter finished"
             break
         else
+            echo -n "$NjobsFinished/$Njobs jobs finihsed, "
             echo -n $thefile:
             tail -n 1 $thefile
         fi
@@ -128,6 +152,6 @@ do
         ln -s wire-position.${runNo}.${StartName}.root wire-position.${runNo}.${name}.root
         cd ..
     fi
-    getOffset $runNo $prename $name $geoType $WPTYPE $scale $stepSize $minslz $maxslz $DEBUG $wires
+    getOffset $runNo $prename $name $geoType $WPTYPE $scale $stepSize $minslz $maxslz $mininx $maxinx $DEBUG $wires
     getXT $runNo $prename $name $XTTYPE $geoType $SAVEHISTS $inputType $DEBUG
 done

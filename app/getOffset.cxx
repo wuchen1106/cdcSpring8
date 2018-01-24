@@ -40,11 +40,17 @@ int main(int argc, char** argv){
         minslz = (double)strtod(argv[8],NULL);
         maxslz = (double)strtod(argv[9],NULL);
     }
-    if (argc>10)
-        debugLevel = (int)strtol(argv[10],NULL,10);
-    std::vector<int> wireIDs;
+    double mininx = 0;
+    double maxinx = 0;
     if (argc>11){
-        for (int i = 11; i<argc; i++){
+        mininx = (double)strtod(argv[10],NULL);
+        maxinx = (double)strtod(argv[11],NULL);
+    }
+    if (argc>12)
+        debugLevel = (int)strtol(argv[12],NULL,10);
+    std::vector<int> wireIDs;
+    if (argc>13){
+        for (int i = 13; i<argc; i++){
             wireIDs.push_back((int)strtol(argv[i],NULL,10));
         }
     }
@@ -63,6 +69,8 @@ int main(int argc, char** argv){
     printf("stepSize    = %.3e\n",stepSize);
     printf("minslz      = %.3e\n",minslz);
     printf("maxslz      = %.3e\n",maxslz);
+    printf("mininx      = %.3e\n",mininx);
+    printf("maxinx      = %.3e\n",maxinx);
     printf("debug       = %d\n",debugLevel);
     printf("wires       : ");
     for (int i = 0; i<wireIDs.size(); i++){
@@ -76,41 +84,50 @@ int main(int argc, char** argv){
 	// prepare offset
 	TH1D * h_off[NLAY][NCEL];
 	TH1D * h_slz[NLAY][NCEL];
+	TH1D * h_inx[NLAY][NCEL];
 	double v_off[NLAY][NCEL];
 	double v_slz[NLAY][NCEL];
+	double v_inx[NLAY][NCEL];
 	for (int lid = 0; lid<NLAY; lid++){
 		for (int wid = 0; wid<NCEL; wid++){
 			v_off[lid][wid] = 0;
 			v_slz[lid][wid] = 0;
+			v_inx[lid][wid] = 0;
 			h_off[lid][wid] = new TH1D(Form("h_off_%d_%d",lid,wid),Form("Offset of wire [%d,%d]",lid,wid),128,-1,1);
-			h_slz[lid][wid] = new TH1D(Form("h_slz_%d_%d",lid,wid),Form("slope Z of wire [%d,%d]",lid,wid),128,-0.16,0.16);
+			h_slz[lid][wid] = new TH1D(Form("h_slz_%d_%d",lid,wid),Form("slope Z of hits on wire [%d,%d]",lid,wid),128,-0.16,0.16);
+			h_inx[lid][wid] = new TH1D(Form("h_inx_%d_%d",lid,wid),Form("intercetp X of hits on wire [%d,%d]",lid,wid),512,-50,50);
 		}
 	}
 
-	// get slzmc of each wire
+	// get slzmc inxmc of each wire
+    double v_inxmc[NLAY][NCEL];
     double v_slzmc[NLAY][NCEL];
     for (int lid = 0; lid<NLAY; lid++){
         for (int wid = 0; wid<NCEL; wid++){
+            v_inxmc[lid][wid] = 0;
             v_slzmc[lid][wid] = 0;
         }
     }
-	TChain * ichain_slz = new TChain("t","t");
-	ichain_slz->Add(Form("%s/info/slzmap.%d.root",HOME.Data(),runNo));
-	if (ichain_slz->GetEntries()){
-        double slz_slzmc;
-        int    slz_lid;
-        int    slz_wid;
-        ichain_slz->SetBranchAddress("slzmc",&slz_slzmc);
-        ichain_slz->SetBranchAddress("lid",&slz_lid);
-        ichain_slz->SetBranchAddress("wid",&slz_wid);
-        for (int i = 0; i<ichain_slz->GetEntries(); i++){
-            ichain_slz->GetEntry(i);
-            if (slz_lid<0||slz_lid>=NLAY||slz_wid<0||slz_wid>=NCEL) continue;
-            v_slzmc[slz_lid][slz_wid] = slz_slzmc;
+	TChain * ichain_beam = new TChain("t","t");
+	ichain_beam->Add(Form("%s/info/beammap.%d.root",HOME.Data(),runNo));
+	if (ichain_beam->GetEntries()){
+        double beam_inxmc;
+        double beam_slzmc;
+        int    beam_lid;
+        int    beam_wid;
+        ichain_beam->SetBranchAddress("inxmc",&beam_inxmc);
+        ichain_beam->SetBranchAddress("slzmc",&beam_slzmc);
+        ichain_beam->SetBranchAddress("lid",&beam_lid);
+        ichain_beam->SetBranchAddress("wid",&beam_wid);
+        for (int i = 0; i<ichain_beam->GetEntries(); i++){
+            ichain_beam->GetEntry(i);
+            if (beam_lid<0||beam_lid>=NLAY||beam_wid<0||beam_wid>=NCEL) continue;
+            v_inxmc[beam_lid][beam_wid] = beam_inxmc;
+            v_slzmc[beam_lid][beam_wid] = beam_slzmc;
         }
     }
     else{
-        printf("Cannot find%s/info/slzmap.%d.root, will assume slz center at 0\n",HOME.Data(),runNo);
+        printf("Cannot find%s/info/beammap.%d.root, will assume slzmc/inxmc center at 0\n",HOME.Data(),runNo);
     }
 
     // input file
@@ -274,6 +291,7 @@ int main(int argc, char** argv){
 			if (fabs(driftD)>2&&fabs(driftD)<6&&abs(fitD-driftD)<1){ // only trust the body part
                 h_off[lid][wireID]->Fill(fitD-driftD);
                 h_slz[lid][wireID]->Fill(slz[theCand]);
+                h_inx[lid][wireID]->Fill(inx[theCand]);
             }
         }
 	}
@@ -283,16 +301,19 @@ int main(int argc, char** argv){
 	TTree * otree = new TTree("t","t");
 	double o_off_delta;
 	double o_off_slz;
+	double o_off_inx;
 	int o_off_lid;
 	int o_off_wid;
 	otree->Branch("d",&o_off_delta);
 	otree->Branch("slz",&o_off_slz);
+	otree->Branch("inx",&o_off_inx);
 	otree->Branch("wid",&o_off_wid);
 	otree->Branch("lid",&o_off_lid);
 	for (int lid = 0; lid<NLAY; lid++){
 		for (int wid = 0; wid<NCEL; wid++){
 			h_off[lid][wid]->Write();
 			h_slz[lid][wid]->Write();
+			h_inx[lid][wid]->Write();
 			if (h_off[lid][wid]->GetEntries()<100) continue;
 			o_off_wid = wid;
 			o_off_lid = lid;
@@ -300,6 +321,8 @@ int main(int argc, char** argv){
 			v_off[lid][wid] = o_off_delta;
 			o_off_slz = h_slz[lid][wid]->GetMean();
 			v_slz[lid][wid] = o_off_slz;
+			o_off_inx = h_inx[lid][wid]->GetMean();
+			v_inx[lid][wid] = o_off_inx;
 			otree->Fill();
 		}
 	}
@@ -386,10 +409,14 @@ int main(int argc, char** argv){
             if (doOffset){
                 double theOff = v_off[wp_lid][wp_wid]*scale;
                 double deltaSlz = v_slz[wp_lid][wp_wid]-v_slzmc[wp_lid][wp_wid];
+                double deltaInx = v_inx[wp_lid][wp_wid]-v_inxmc[wp_lid][wp_wid];
                 if (stepSize){
                     if(fabs(theOff)>stepSize) theOff = theOff>0?stepSize:-stepSize;
                 }
                 if ((minslz||maxslz)&&(deltaSlz>maxslz||deltaSlz<minslz)){
+                    theOff = 0;
+                }
+                if ((mininx||maxinx)&&(deltaInx>maxinx||deltaInx<mininx)){
                     theOff = 0;
                 }
                 wp_xro = vwp_xro[i]+theOff;
@@ -417,5 +444,5 @@ int getHitType(int type,bool isRight){
 }
 
 void printUsage(char * name){
-    fprintf(stderr,"%s [runNo] [prerunname] [runname] [geoSetup: 0, normal;1, finger] [wptype: 0, no update; 1, update] <[scale (1)] [stepSize (0)] [minslz (0)] [maxslz (0)] [debug: (0)] [wireIDs (all)]>\n",name);
+    fprintf(stderr,"%s [runNo] [prerunname] [runname] [geoSetup: 0, normal;1, finger] [wptype: 0, no update; 1, update] <[scale (1)] [stepSize (0)] [minslz (0)] [maxslz (0)] [mininx (0)] [maxinx (0)] [debug: (0)] [wireIDs (all)]>\n",name);
 }
