@@ -2,9 +2,7 @@
 #include "TChain.h"
 #include <vector>
 
-# define NITERSMAX 100
-# define NLAY 9
-# define NCEL 11
+#include "header.h"
 
 void printUsage(char * name);
 

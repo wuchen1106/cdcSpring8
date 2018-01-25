@@ -14,14 +14,7 @@
 #include "TLine.h"
 #include "TLatex.h"
 
-#define NSAM 32
-#define NCHS 48
-#define NCHT 96
-#define NBD 2
-#define NLY 9
-#define MIN_ADC -50
-#define MAX_ADC 1000
-#define NBINS  256
+#include "header.h"
 
 double tscale = 0.96;
 
@@ -51,8 +44,8 @@ int main(int argc, char** argv){
 	int wp_ch;
 	int map_wid[NCHT];
 	int map_lid[NCHT];
-	int widmax[NLY];
-	for ( int il = 0; il<NLY; il++ ){
+	int widmax[NLAY];
+	for ( int il = 0; il<NLAY; il++ ){
 		widmax[il] = 0;
 	}
 	for ( int ch = 0; ch<NCHT; ch++ ){
@@ -110,7 +103,7 @@ int main(int argc, char** argv){
 		timeunit/=60;
 		durationSep = strtok(NULL,sep);
 	}
-	double t0[NBD];
+	double t0[NBRD];
 	t0[0] = t00;
 	t0[1] = t01;
 	std::cout<<"runNo#"<<runNo<<": "<<gastype<<", "<<runGr<<", "<<duration<<", "<<HV<<" V, "<<THR<<" mV, "<<durationTime<<"sec"<<std::endl;
@@ -255,17 +248,17 @@ int main(int argc, char** argv){
 		}
 		//hst
 		name = Form("hst_%d",i);
-		hst[i] = new TH2D(name,title,NBINS,-1000,0,NBINS,MIN_ADC,MAX_ADC);
+		hst[i] = new TH2D(name,title,NBINS,-1000,0,NBINS,MIN_ADCL,MAX_ADCL);
 		hst[i]->GetXaxis()->SetTitle("TDC");
 		hst[i]->GetYaxis()->SetTitle("ADC (-pedestal) Sum (of Single Peak) [ADC]");
 		//hat
 		name = Form("hat_%d",i);
-		hat[i] = new TH2D(name,title,NBINS,-1000,0,NBINS,MIN_ADC,MAX_ADC);
+		hat[i] = new TH2D(name,title,NBINS,-1000,0,NBINS,MIN_ADCL,MAX_ADCL);
 		hat[i]->GetXaxis()->SetTitle("TDC");
 		hat[i]->GetYaxis()->SetTitle("ADC (-pedestal) Sum (of All Peaks) [ADC]");
 		//wf
 		name = Form("hwf_%d",i);
-		hwf[i] = new TH2D(name,title,NSAM+10,-10,NSAM,MAX_ADC-MIN_ADC,MIN_ADC,MAX_ADC);
+		hwf[i] = new TH2D(name,title,NSAM+10,-10,NSAM,MAX_ADCL-MIN_ADCL,MIN_ADCL,MAX_ADCL);
 		hwf[i]->GetXaxis()->SetTitle("SampleID - SampleID_{first hit}");
 		hwf[i]->GetYaxis()->SetTitle("ADC");
 		//tdc
@@ -274,11 +267,11 @@ int main(int argc, char** argv){
 		htdc[i]->GetXaxis()->SetTitle("TDC");
 		//adc sum
 		name = Form("has_%d",i);
-		ha[i] = new TH1D(name,title,1000,MIN_ADC,MAX_ADC);
+		ha[i] = new TH1D(name,title,1000,MIN_ADCL,MAX_ADCL);
 		ha[i]->GetXaxis()->SetTitle("ADC (-pedestal) Sum (of All Peaks) [ADC]");
 		//adc peak
 		name = Form("hap_%d",i);
-		hs[i] = new TH1D(name,title,(MAX_ADC-MIN_ADC)/2,MIN_ADC,MAX_ADC);
+		hs[i] = new TH1D(name,title,(MAX_ADCL-MIN_ADCL)/2,MIN_ADCL,MAX_ADCL);
 		hs[i]->GetXaxis()->SetTitle("ADC (-pedestal) Sum (of Single Peak) [ADC]");
 
 		if (map_lid[i]==-1){
@@ -351,7 +344,7 @@ int main(int argc, char** argv){
 	std::cout<<"Processing "<<N<<" events..."<<std::endl;
 	int triggerNumberMax = 0;
 	int nPeaks;
-	bool layerhit[NLY];
+	bool layerhit[NLAY];
 	int ip = -1;
 	double avped[NCHT];
 	for ( int ch = 0; ch<NCHT; ch++ ){
@@ -382,7 +375,7 @@ int main(int argc, char** argv){
         o_sum->clear();
         o_aa->clear();
         o_driftT->clear();
-		for (int il = 0; il < NLY; il++){
+		for (int il = 0; il < NLAY; il++){
 			layerhit[il] = false;
 		}
 		for(int ch = 0; ch<NCHT; ch++){
@@ -426,7 +419,7 @@ int main(int argc, char** argv){
                 if (map_lid[ch]<0) continue; // only save the channel which is connected
                 int bid = ch/NCHS;
                 if (map_lid[ch]==0) o_type->push_back(4); // dummy
-                else if (map_lid[ch]==NLY-1) o_type->push_back(3); // guard
+                else if (map_lid[ch]==NLAY-1) o_type->push_back(3); // guard
                 else{
                     if (map_wid[ch]==0)  o_type->push_back(1); // left
                     else if (map_wid[ch]==widmax[ch])  o_type->push_back(2); // right
@@ -453,7 +446,7 @@ int main(int argc, char** argv){
                 o_aa->push_back(i_aa[ch]);
 			}
 		}
-		for (int il = 0; il < NLY; il++ ){
+		for (int il = 0; il < NLAY; il++ ){
 			if (layerhit[il]) o_nLayers++;
 		}
 		t->Fill();

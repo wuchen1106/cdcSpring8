@@ -8,14 +8,7 @@
 #include "TString.h"
 #include "TROOT.h"
 
-#define NSAM 32
-#define NCHS 48
-#define NCHT 96
-#define NBD 2
-#define MIN_ADC 50
-#define MAX_ADC 750
-#define NBINS  256
-#define MAX_WIDTH 10 // about merging. Depending on drift velocity: HV and Gas
+#include "header.h"
 
 int power2_15 = pow(2,15);
 

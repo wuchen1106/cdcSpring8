@@ -8,9 +8,7 @@
 
 #include "XTAnalyzer.h"
 
-#define NLAY  9
-#define NCEL  11
-#define NCAND 4
+#include "header.h"
 
 void printUsage(char * name);
 int getHitType(int type,bool isRight);

@@ -16,15 +16,7 @@
 
 #include "MyProcessManager.h"
 
-#define NZXP 8
-#define NLAY 9
-#define NLAYG 8
-#define NCEL 11
-
-#define NBRD 2
-#define NCHS 48
-
-#define NCAND 4
+#include "header.h"
 
 int workType = 0;
 int inputType = 0;
@@ -363,16 +355,14 @@ int main(int argc, char** argv){
             if(debug>0) printf("map_theta[%d][%d] = atan(-(%.3e-%.3e)/%.3e/2) = %.3e\n",wp_lid,wp_wid,wp_xhv,wp_xro,chamberHL,map_theta[wp_lid][wp_wid]);
         }
         else{
-            fprintf(stderr,"ERROR: Entry %d in wiremap file, lid = %d wid = %d out of range (%d,%d)!\n",i,wp_lid,wp_wid,NLAY,NCEL);
-            return -1;
+            fprintf(stderr,"WARNING: Entry %d in wiremap file, lid = %d wid = %d out of range (%d,%d)!\n",i,wp_lid,wp_wid,NLAY,NCEL);
         }
         if (wp_bid>=0&&wp_bid<NBRD&&wp_ch>=0&&wp_ch<NCHS){
             map_lid[wp_bid][wp_ch] = wp_lid;
             map_wid[wp_bid][wp_ch] = wp_wid;
         }
         else{
-            fprintf(stderr,"ERROR: Entry %d in wiremap file, bid = %d ch = %d out of range (%d,%d)!\n",i,wp_bid,wp_ch,NBRD,NCHS);
-            return -1;
+            fprintf(stderr,"WARNING: Entry %d in wiremap file, bid = %d ch = %d out of range (%d,%d)!\n",i,wp_bid,wp_ch,NBRD,NCHS);
         }
     }
     TFile_wirepos->Close();
@@ -395,8 +385,10 @@ int main(int argc, char** argv){
     int nEntries_crosspoint = TTree_crosspoint->GetEntries();
     for (int iEntry = 0; iEntry<nEntries_crosspoint; iEntry++){
         TTree_crosspoint->GetEntry(iEntry);
-        mcp_xc[cp_l1][cp_w1][cp_w2] = cp_xc;
-        mcp_zc[cp_l1][cp_w1][cp_w2] = cp_zc;
+        if (cp_l1>=0&&cp_l1<NLAY&&cp_w1>=0&&cp_w1<NCEL&&cp_l2>=0&&cp_l2<NLAY&&cp_w2>=0&&cp_w2<NCEL){
+            mcp_xc[cp_l1][cp_w1][cp_w2] = cp_xc;
+            mcp_zc[cp_l1][cp_w1][cp_w2] = cp_zc;
+        }
     }
     TFile_crosspoint->Close();
 
