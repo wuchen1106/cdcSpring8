@@ -10,8 +10,7 @@
 #include "TF1.h"
 #include "TGraph.h"
 
-#define NLAY 11
-#define	NCEL 12
+#include "header.h"
 
 //===================Chamber Parameter============================
 double chamberHL = 599.17/2; // mm
