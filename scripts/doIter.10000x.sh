@@ -28,6 +28,7 @@ minslz=0 # min slz cut for mean slz value in each sample of events in wiremap ca
 maxslz=0 # min slz cut for mean slz value in each sample of events in wiremap calibration. minslz==maxslz==0 means no cut
 mininx=0 # min inx cut for mean inx value in each sample of events in wiremap calibration. mininx==maxinx==0 means no cut
 maxinx=0 # min inx cut for mean inx value in each sample of events in wiremap calibration. mininx==maxinx==0 means no cut
+maxchi2=1
 scale=1 # move scale*offset on wiremap for fitting in the next round
 XTTYPE=1 # 2 for symmetrical; 1 for offset loading; 0 for no constraints.
 WPTYPE=0 # 0 for changing wiremap; 1 for not changing it;
@@ -291,7 +292,7 @@ do
         ln -s wire-position.${runNo}.${StartName}.root wire-position.${runNo}.${currunname}.root
         cd ..
     fi
-    getOffset $runNo $prerunname $currunname $geoSetup $WPTYPE $scale $stepSize $minslz $maxslz $mininx $maxinx $DEBUG $wires
+    getOffset $runNo $prerunname $currunname $geoSetup $WPTYPE $scale $stepSize $minslz $maxslz $mininx $maxinx $maxchi2 $DEBUG $wires
     if [ ! $UPDATEXT -eq 1 ] # ! 1 for not updating xt
     then
         if [ -z $lastxtfile ]
@@ -302,7 +303,7 @@ do
         ln -s $lastxtfile xt.${runNo}.${currunname}.root
         cd ..
     else
-        getXT $runNo $prerunname $currunname $XTTYPE $geoSetup $SAVEHISTS $inputType $DEBUG
+        getXT $runNo $prerunname $currunname $XTTYPE $geoSetup $SAVEHISTS $inputType $maxchi2 $DEBUG
         lastxtfile=xt.${runNo}.${currunname}.root
     fi
 done
