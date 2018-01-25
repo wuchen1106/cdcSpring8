@@ -1,6 +1,5 @@
 #!/bin/bash
 
-script="submitKEK.sh"
 StartName="Garfield"
 runNo="1012"
 nEvents="493189"
@@ -10,7 +9,7 @@ IterEnd=20
 layers="4"
 wires=""
 
-geoType=0 # 0 for general; 1 for finger
+geoSetup=0 # 0 for general; 1 for finger
 inputType=0 # 1 for MC; 0 for data
 workType=0 # 0, fr/l_0; 1, even/odd; -1, even/odd reversed; others, all layers
 nHitsMax=13
@@ -37,11 +36,11 @@ do
     im1=$((iter-1))
     if [ $iter == 1 ]
     then
-        name="${runName}.i${iter}"
-        prename="${StartName}"
+        currunname="${runName}.i${iter}"
+        prerunname="${StartName}"
     else
-        name="${runName}.i${iter}"
-        prename="${runName}.i${im1}"
+        currunname="${runName}.i${iter}"
+        prerunname="${runName}.i${im1}"
     fi
 
     # t range
@@ -90,14 +89,21 @@ do
         WPTYPE=0 # 0 for not changing wiremap
     fi
 
-    eval $script -g $geoType -i $inputType -w $workType -n $nHitsMax -t $t0shift -a $tmin -z $tmax -s $sumCut -q $aaCut -d $debug $runNo $nEvents $prename $name $layers
     Njobs=0
-    for i in $layers;
+    for testlayer in $layers;
     do
-        testlayer=$i
         for (( j=0; j<nEvents; j+=5000 ))
         do
             ((Njobs++))
+            iEntryStart=$j
+            iEntryStop=$((j+4999))
+            if (( iEntryStop>=nEvents ))
+            then
+                iEntryStop=$((nEvents-1))
+            fi
+            temprunname="${currunname}.$iEntryStart-$iEntryStop"
+            theConf="$CDCS8WORKING_DIR/Conf/$runNo.layer${testlayer}.${iEntryStart}-${iEntryStop}.conf"
+            echo "$runNo $testlayer $prerunname $temprunname $nHitsMax $t0shift $tmin $tmax $geoSetup $sumCut $aaCut $iEntryStart $iEntryStop $workType $inputType $debug" > $theConf # send the trigger info to the job
         done
     done
     echo "Iteration $iter, $Njobs to be finished!"
@@ -109,7 +115,7 @@ do
         finished=true
         thefile="temp"
         NjobsFinished=0
-        for file in root/t_${runNo}.${name}.*.log
+        for file in root/t_${runNo}.${currunname}.*.log
         do
             if ! tail -n 3 $file | grep -q "Good Events"
             then
@@ -138,20 +144,20 @@ do
     pids=""
     for ilayer in $layers
     do
-        combine $runNo $name $ilayer &
+        combine $runNo $currunname $ilayer &
         pids+=" $!"
     done
     wait $pids || { echo "there were errors" >&2; exit 1; }
-    rm t_${runNo}.${name}.*-*.*
+    rm t_${runNo}.${currunname}.*-*.*
     cd ..
 
 #   upgrading wireposition?
     if [ ! $WPTYPE -eq 1 ] # ! 1 for not changing wiremap
     then
         cd info
-        ln -s wire-position.${runNo}.${StartName}.root wire-position.${runNo}.${name}.root
+        ln -s wire-position.${runNo}.${StartName}.root wire-position.${runNo}.${currunname}.root
         cd ..
     fi
-    getOffset $runNo $prename $name $geoType $WPTYPE $scale $stepSize $minslz $maxslz $mininx $maxinx $DEBUG $wires
-    getXT $runNo $prename $name $XTTYPE $geoType $SAVEHISTS $inputType $DEBUG
+    getOffset $runNo $prerunname $currunname $geoSetup $WPTYPE $scale $stepSize $minslz $maxslz $mininx $maxinx $DEBUG $wires
+    getXT $runNo $prerunname $currunname $XTTYPE $geoSetup $SAVEHISTS $inputType $DEBUG
 done
