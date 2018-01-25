@@ -1,6 +1,8 @@
 #!/bin/bash
-runNo=100007
-N=90457
+runNo=117
+N=605460
+#runNo=100007
+#N=90457
 layers="1 2 3 4 5 6 7 8"
 
 for i in $layers;
