@@ -1,22 +1,24 @@
 #!/bin/bash
 
 StartName="Garfield"
-runNo="1012"
-runNocon="1012"
-nEvents="493189"
-runName="0115"
-IterStart=1
-IterEnd=20
+runNo="100007"
+runNocon="100007"
+nEvents="90457"
+runName="0125"
+IterStart=7
+IterEnd=50
 layers="4"
 wires=""
 
 geoSetup=0 # 0 for general; 1 for finger
-inputType=0 # 1 for MC; 0 for data
+inputType=1 # 1 for MC; 0 for data
 workType=0 # 0, fr/l_0; 1, even/odd; -1, even/odd reversed; others, all layers
 nHitsMax=13
 t0shift=0
+#tmin=-10
+#tmax=340
 tmin=-10
-tmax=340
+tmax=800
 sumCut=-20
 aaCut=20
 debug=-1
@@ -63,26 +65,136 @@ do
     fi
 
     # one layer or more
-    if [ $iter -gt 16 ]
-    then
-        layers="1 2 3 4 5 6 7 8"
-        WPTYPE=1 # 1 for changing wiremap
-        wires=""
-        stepSize="0.02" # move 20 micrometer per iteration at most
-        scale="0.8"
-        minslz="-0.01"
-        maxslz="0.01"
-        maxinx="0.1"
-        mininx="-0.1"
-    elif [ $iter -gt 8 ]
+    if [ $iter -gt 45 ]
     then
         layers="1 2 3 4 5 6 7 8"
         WPTYPE=1 # 1 for changing wiremap
         wires=""
         stepSize="0" # no step size limit
         scale="0.5"
-        minslz="-0.01"
-        maxslz="0.01"
+        minslz="0"
+        maxslz="0"
+        maxinx="0"
+        mininx="0"
+    elif [ $iter -gt 40 ]
+    then
+        layers="3 4 5 6"
+        WPTYPE=1 # 1 for changing wiremap
+        wires=""
+        stepSize="0" # no step size limit
+        scale="0.5"
+        minslz="0"
+        maxslz="0"
+        maxinx="0"
+        mininx="0"
+    elif [ $iter -gt 35 ]
+    then
+        layers="1 2 7 8"
+        WPTYPE=1 # 1 for changing wiremap
+        wires=""
+        stepSize="0" # no step size limit
+        scale="0.5"
+        minslz="0"
+        maxslz="0"
+        maxinx="0"
+        mininx="0"
+    elif [ $iter -gt 32 ]
+    then
+        layers="8"
+        WPTYPE=1 # 1 for changing wiremap
+        wires=""
+        stepSize="0" # no step size limit
+        scale="0.5"
+        minslz="0"
+        maxslz="0"
+        maxinx="0"
+        mininx="0"
+    elif [ $iter -gt 29 ]
+    then
+        layers="1"
+        WPTYPE=1 # 1 for changing wiremap
+        wires=""
+        stepSize="0" # no step size limit
+        scale="0.5"
+        minslz="0"
+        maxslz="0"
+        maxinx="0"
+        mininx="0"
+    elif [ $iter -gt 26 ]
+    then
+        layers="7"
+        WPTYPE=1 # 1 for changing wiremap
+        wires=""
+        stepSize="0" # no step size limit
+        scale="0.5"
+        minslz="0"
+        maxslz="0"
+        maxinx="0"
+        mininx="0"
+    elif [ $iter -gt 23 ]
+    then
+        layers="2"
+        WPTYPE=1 # 1 for changing wiremap
+        wires=""
+        stepSize="0" # no step size limit
+        scale="0.5"
+        minslz="0"
+        maxslz="0"
+        maxinx="0"
+        mininx="0"
+    elif [ $iter -gt 20 ]
+    then
+        layers="3 4 5 6"
+        WPTYPE=1 # 1 for changing wiremap
+        wires=""
+        stepSize="0" # no step size limit
+        scale="0.5"
+        minslz="0"
+        maxslz="0"
+        maxinx="0"
+        mininx="0"
+    elif [ $iter -gt 17 ]
+    then
+        layers="6"
+        WPTYPE=1 # 1 for changing wiremap
+        wires=""
+        stepSize="0" # no step size limit
+        scale="0.5"
+        minslz="0"
+        maxslz="0"
+        maxinx="0"
+        mininx="0"
+    elif [ $iter -gt 14 ]
+    then
+        layers="3"
+        WPTYPE=1 # 1 for changing wiremap
+        wires=""
+        stepSize="0" # no step size limit
+        scale="0.5"
+        minslz="0"
+        maxslz="0"
+        maxinx="0"
+        mininx="0"
+    elif [ $iter -gt 11 ]
+    then
+        layers="5"
+        WPTYPE=1 # 1 for changing wiremap
+        wires=""
+        stepSize="0" # no step size limit
+        scale="0.5"
+        minslz="0"
+        maxslz="0"
+        maxinx="0"
+        mininx="0"
+    elif [ $iter -gt 8 ]
+    then
+        layers="4"
+        WPTYPE=1 # 1 for changing wiremap
+        wires=""
+        stepSize="0" # no step size limit
+        scale="0.5"
+        minslz="0"
+        maxslz="0"
         maxinx="0"
         mininx="0"
     else

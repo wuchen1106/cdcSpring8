@@ -1,12 +1,12 @@
 #!/bin/bash
 
-StartName="Garfield"
+StartName="original"
 runNo="1012"
 runNocon="1012"
 nEvents="493189"
-runName="0115"
+runName="0125"
 IterStart=1
-IterEnd=20
+IterEnd=10
 layers="4"
 wires=""
 
@@ -16,7 +16,7 @@ workType=0 # 0, fr/l_0; 1, even/odd; -1, even/odd reversed; others, all layers
 nHitsMax=13
 t0shift=0
 tmin=-10
-tmax=340
+tmax=800
 sumCut=-20
 aaCut=20
 debug=-1
@@ -63,31 +63,27 @@ do
     fi
 
     # one layer or more
-    if [ $iter -gt 16 ]
+    if [ $iter -gt 8 ]
     then
-        layers="1 2 3 4 5 6 7 8"
-        WPTYPE=1 # 1 for changing wiremap
-        wires=""
-        stepSize="0.02" # move 20 micrometer per iteration at most
-        scale="0.8"
-        minslz="-0.01"
-        maxslz="0.01"
-        maxinx="0.1"
-        mininx="-0.1"
-    elif [ $iter -gt 8 ]
-    then
-        layers="1 2 3 4 5 6 7 8"
-        WPTYPE=1 # 1 for changing wiremap
+        layers="4"
+        WPTYPE=0 # 0 for not changing wiremap
         wires=""
         stepSize="0" # no step size limit
         scale="0.5"
-        minslz="-0.01"
-        maxslz="0.01"
+        minslz="0"
+        maxslz="0"
         maxinx="0"
         mininx="0"
     else
         layers="4"
         WPTYPE=0 # 0 for not changing wiremap
+        wires=""
+        stepSize="0" # no step size limit
+        scale="0.5"
+        minslz="0"
+        maxslz="0"
+        maxinx="0"
+        mininx="0"
     fi
 
     Njobs=0
