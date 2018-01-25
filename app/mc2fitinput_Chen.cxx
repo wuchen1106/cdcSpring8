@@ -10,8 +10,8 @@
 #include "TF1.h"
 #include "TGraph.h"
 
-#define NLAY 9
-#define	NCEL 11
+#define NLAY 11
+#define	NCEL 12
 
 //===================Chamber Parameter============================
 double chamberHL = 599.17/2; // mm
@@ -49,6 +49,14 @@ int main(int argc, char ** argv){
     TString xt_filename = argv[2];
     int geoSetup = 0;
     if (argc>=4) geoSetup = atoi(argv[3]);
+    int maxLayer = 0;
+    if (argc>=5) maxLayer = atoi(argv[4]);
+    if (maxLayer>NLAY-1){
+    	maxLayer=NLAY-1;
+    	printf("WARNING: maxLayer[%d] is exceeding the range! Totally support %d layers counting from 0\n",maxLayer,NLAY);
+	}
+	printf("geoSetup = %d\n",geoSetup);
+	printf("maxLayer = %d\n",maxLayer);
 
     TString HOME=getenv("CDCS8WORKING_DIR");
 
@@ -87,6 +95,7 @@ int main(int argc, char ** argv){
     double deltaX[NLAY][NCEL];
     for ( int lid = 0; lid<NLAY; lid++){
         for ( int wid = 0; wid<NCEL; wid++){
+			if (lid<=8&&wid>=11) continue; // to be consistant with previous runs
             deltaX[lid][wid] = random1.Gaus(0,0.1);//
             printf("%d %d %.3e\n",lid,wid,deltaX[lid][wid]);
         }
@@ -307,50 +316,95 @@ int main(int argc, char ** argv){
         }
 
         // get cdc hits
-        for (int ihit = 0; ihit<CdcCell_tid->size(); ihit++){
-        	// is this the wanted track?
-            if ((*CdcCell_tid)[ihit]!=2) continue; // looking for e- from gamma conversion, tid==2
-            // get cell ID
-            int lid = (*CdcCell_layerID)[ihit];
-            int cellID = (*CdcCell_cellID)[ihit];
-            int wid = getwid(lid,cellID);
-            // get driftD
-            // FIXME: now we want to ignore scattering and corner effect, so recalculating driftD by DOCA!
-            //double driftD = (*CdcCell_driftDtrue)[ihit]*10;
-            double driftD = get_dist(lid,wid,slx,inx,slz,inz);
-            // get driftT
-            //double driftT=fabs(driftD/0.023);
-            double driftT = x2t(driftD);
-            // smear driftT
-            double res = getRes(driftD);
-            driftT += random1.Gaus((res-4)*3,res);
+        if (!maxLayer){
+			for (int ihit = 0; ihit<CdcCell_tid->size(); ihit++){
+				// is this the wanted track?
+				if ((*CdcCell_tid)[ihit]!=2) continue; // looking for e- from gamma conversion, tid==2
+				// get cell ID
+				int lid = (*CdcCell_layerID)[ihit];
+				int cellID = (*CdcCell_cellID)[ihit];
+				int wid = getwid(lid,cellID);
+				// get driftD
+				// FIXME: now we want to ignore scattering and corner effect, so recalculating driftD by DOCA!
+				//double driftD = (*CdcCell_driftDtrue)[ihit]*10;
+				double driftD = get_dist(lid,wid,slx,inx,slz,inz);
+				// get driftT
+				//double driftT=fabs(driftD/0.023);
+				double driftT = x2t(driftD);
+				// smear driftT
+				double res = getRes(driftD);
+				driftT += random1.Gaus((res-4)*3,res);
 
-			// set output
-			o_layerID->push_back(lid);
-			o_wireID->push_back(wid);
-			o_type->push_back(0);
-			o_ip->push_back(0);
-			o_np->push_back(1);
-			o_clk->push_back(0);
-			o_width->push_back(1);
-			o_peak->push_back(300);
-			o_height->push_back(300);
-			o_mpn->push_back(1);
-			o_mpi->push_back(0);
-			o_rank->push_back(0);
-			o_ped->push_back(200);
-			o_sum->push_back(100);
-			o_aa->push_back(100);
-			o_driftT->push_back(driftT);
-			o_driftD->push_back(driftD);
+				// set output
+				o_layerID->push_back(lid);
+				o_wireID->push_back(wid);
+				o_type->push_back(0);
+				o_ip->push_back(0);
+				o_np->push_back(1);
+				o_clk->push_back(0);
+				o_width->push_back(1);
+				o_peak->push_back(300);
+				o_height->push_back(300);
+				o_mpn->push_back(1);
+				o_mpi->push_back(0);
+				o_rank->push_back(0);
+				o_ped->push_back(200);
+				o_sum->push_back(100);
+				o_aa->push_back(100);
+				o_driftT->push_back(driftT);
+				o_driftD->push_back(driftD);
 
-            // increment counters
-            nHitLayer[lid]++;
-            o_nHits++;
-        }
-		for (int lid = 0; lid < NLAY; lid++ ){
-            if (nHitLayer[lid]) o_nLayers++;
-        }
+				// increment counters
+				nHitLayer[lid]++;
+				o_nHits++;
+			}
+		}
+		else{
+			for (int lid = 1; lid<=maxLayer; lid++){
+				double ddmin = 1e9;
+				int theWid = -1;
+				for (int wid = 1; wid<NCEL; wid++){
+					double driftD = get_dist(lid,wid,slx,inx,slz,inz);
+					if (fabs(driftD)<10&&fabs(driftD)<fabs(ddmin)){
+						ddmin = driftD;
+						theWid = wid;
+					}
+				}
+				if (theWid==-1) continue;
+				// get driftT
+				//double driftT=fabs(driftD/0.023);
+				double driftT = x2t(ddmin);
+				// smear driftT
+				double res = getRes(ddmin);
+				driftT += random1.Gaus((res-4)*3,res);
+
+				// set output
+				o_layerID->push_back(lid);
+				o_wireID->push_back(theWid);
+				o_type->push_back(0);
+				o_ip->push_back(0);
+				o_np->push_back(1);
+				o_clk->push_back(0);
+				o_width->push_back(1);
+				o_peak->push_back(300);
+				o_height->push_back(300);
+				o_mpn->push_back(1);
+				o_mpi->push_back(0);
+				o_rank->push_back(0);
+				o_ped->push_back(200);
+				o_sum->push_back(100);
+				o_aa->push_back(100);
+				o_driftT->push_back(driftT);
+				o_driftD->push_back(ddmin);
+
+				// increment counters
+				nHitLayer[lid]++;
+				o_nHits++;
+			}
+			for (int lid = 0; lid < NLAY; lid++ ){
+				if (nHitLayer[lid]) o_nLayers++;
+			}
+		}
 
         otree->Fill();
     }
@@ -360,7 +414,7 @@ int main(int argc, char ** argv){
 }
 
 void printUsage(char* name){
-    printf("%s [inputFile] [xtfile] [geoSetup]\n",name);
+    printf("%s [inputFile] [xtfile] <[geoSetup (0)] [maxLayer (0)]>\n",name);
 }
 
 int getwid(int layerID, int cellID){
