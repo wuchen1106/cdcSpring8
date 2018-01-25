@@ -34,9 +34,12 @@ int main(int argc, char** argv){
     int inputType = 0; // by defualt it's data
     if (argc>=8)
         inputType = (int)strtol(argv[7],NULL,10);
-    int debugLevel = 0;
+    double maxchi2 = 0;
     if (argc>=9)
-        debugLevel = (int)strtol(argv[8],NULL,10);
+        maxchi2 = (double)strtod(argv[8],NULL);
+    int debugLevel = 0;
+    if (argc>=10)
+        debugLevel = (int)strtol(argv[9],NULL,10);
     printf("##############Input %d Parameters##################\n",argc);
     printf("runNo       = %d\n",runNo);
     printf("prerunname  = \"%s\"\n",prerunname.Data());
@@ -45,6 +48,7 @@ int main(int argc, char** argv){
     printf("xtType:       %s\n",xtType==0?"asymmetric":(xtType==1?"symmetric, with offset":(xtType==2?"symmetric, thru 0":(xtType==3?"symmetric with nLHits==0":(xtType==4?"symmetric with smallest chi2a":(xtType==5?"symmetric with smallest chi2":"others?"))))));
     printf("save slice fittings? \"%s\"\n",saveHists?"yes":"no");
     printf("inputType   = %d, %s\n",inputType,inputType==0?"Real Data":"MC");
+    printf("maxchi2     = %.3e\n",maxchi2);
     printf("debug       = %d\n",debugLevel);
     fflush(stdout);
 
@@ -330,7 +334,7 @@ int main(int argc, char** argv){
 
             // ignore events with bad fitting
             if (nHitsS[theCand]<6) continue;
-			if (chi2[theCand]>0.8) continue;
+			if (chi2[theCand]>maxchi2) continue;
             //if (nHitsG>nHitsS[theCand]) continue;
             if (geoSetup==1){
                 if (fabs(inz[theCand])>24) continue;
@@ -649,5 +653,5 @@ int getHitType(int type,bool isRight){
 }
 
 void printUsage(char * name){
-    fprintf(stderr,"%s [runNo] [prerunname] [runname] <[xtType: 3, sym with min nLHits, 2, sym, thr 0; 1, sym+offset; 0, no req] [geoSetup: 0, normal;1, finger] [saveHists: 0;1] [inputType: 0, Real data; 1, MC] [debug: 0;...]>\n",name);
+    fprintf(stderr,"%s [runNo] [prerunname] [runname] <[xtType: 3, sym with min nLHits, (2), sym, thr 0; 1, sym+offset; 0, no req] [geoSetup: (0), normal;1, finger] [saveHists: (0);1] [inputType: (0), Real data; 1, MC] [maxchi2 (1)] [debug: 0;...]>\n",name);
 }

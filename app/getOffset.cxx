@@ -44,11 +44,14 @@ int main(int argc, char** argv){
         mininx = (double)strtod(argv[10],NULL);
         maxinx = (double)strtod(argv[11],NULL);
     }
+    double maxchi2 = 1;
     if (argc>12)
-        debugLevel = (int)strtol(argv[12],NULL,10);
+        maxchi2= (double)strtod(argv[12],NULL);
+    if (argc>13)
+        debugLevel = (int)strtol(argv[13],NULL,10);
     std::vector<int> wireIDs;
-    if (argc>13){
-        for (int i = 13; i<argc; i++){
+    if (argc>14){
+        for (int i = 14; i<argc; i++){
             wireIDs.push_back((int)strtol(argv[i],NULL,10));
         }
     }
@@ -69,6 +72,7 @@ int main(int argc, char** argv){
     printf("maxslz      = %.3e\n",maxslz);
     printf("mininx      = %.3e\n",mininx);
     printf("maxinx      = %.3e\n",maxinx);
+    printf("maxchi2     = %.3e\n",maxchi2);
     printf("debug       = %d\n",debugLevel);
     printf("wires       : ");
     for (int i = 0; i<wireIDs.size(); i++){
@@ -248,7 +252,7 @@ int main(int argc, char** argv){
 
             // ignore events with bad fitting
             if (nHitsS[theCand]<6) continue;
-			if (chi2[theCand]>0.5) continue;
+			if (chi2[theCand]>maxchi2) continue;
             //if (nHitsG>nHitsS[theCand]) continue;
             if (geoSetup==1){
                 if (fabs(inz[theCand])>24) continue;
@@ -443,5 +447,5 @@ int getHitType(int type,bool isRight){
 }
 
 void printUsage(char * name){
-    fprintf(stderr,"%s [runNo] [prerunname] [runname] [geoSetup: 0, normal;1, finger] [wptype: 0, no update; 1, update] <[scale (1)] [stepSize (0)] [minslz (0)] [maxslz (0)] [mininx (0)] [maxinx (0)] [debug: (0)] [wireIDs (all)]>\n",name);
+    fprintf(stderr,"%s [runNo] [prerunname] [runname] [geoSetup: 0, normal;1, finger] [wptype: 0, no update; 1, update] <[scale (1)] [stepSize (0)] [minslz (0)] [maxslz (0)] [mininx (0)] [maxinx (0)] [maxchi2 (1)] [debug: (0)] [wireIDs (all)]>\n",name);
 }
