@@ -28,7 +28,7 @@ do
             debug=`echo $configure | gawk '{print $16;}'`
             log="$CDCS8WORKING_DIR/root/t_${runNo}.${runname}.layer${testlayer}.log"
             err="$CDCS8WORKING_DIR/root/t_${runNo}.${runname}.layer${testlayer}.err"
-            echo "Scan$iScan: tracking $runNo $testlayer $prerunname $runname $nHitsMax $t0shift $tmin $tmax $geoSetup $sumCut $aaCut $iEntryStart $iEntryStop $w    orkType $inputType $debug > $log 2> $err" >> $theLog
+            echo "Scan$iScan: tracking $runNo $testlayer $prerunname $runname $nHitsMax $t0shift $tmin $tmax $geoSetup $sumCut $aaCut $iEntryStart $iEntryStop $workType $inputType $debug > $log 2> $err" >> $theLog
             nohup tracking $runNo $testlayer $prerunname $runname $nHitsMax $t0shift $tmin $tmax $geoSetup $sumCut $aaCut $iEntryStart $iEntryStop $workType $inputType $debug > $log 2> $err &
             pid=" $!"
             wait $pid || { echo "there were errors" >&2; exit 1; }
