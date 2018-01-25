@@ -266,6 +266,7 @@ int main(int argc, char** argv){
 		}
 
         // Loop in events
+        ichain->GetEntries();
         Long64_t N = ichain->GetEntries();
         if (N==0){
             fprintf(stderr,"WARNING: \"%s/root/t_%d.%s.layer%d.root\" is empty! Will ignore this layer.\n",HOME.Data(),runNo,runname.Data(),lid);

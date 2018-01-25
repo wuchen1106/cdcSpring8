@@ -5,7 +5,7 @@ runNo="100007"
 runNocon="100007"
 nEvents="90457"
 runName="0125"
-IterStart=7
+IterStart=1
 IterEnd=50
 layers="4"
 wires=""
@@ -31,9 +31,11 @@ maxinx=0 # min inx cut for mean inx value in each sample of events in wiremap ca
 scale=1 # move scale*offset on wiremap for fitting in the next round
 XTTYPE=1 # 2 for symmetrical; 1 for offset loading; 0 for no constraints.
 WPTYPE=0 # 0 for changing wiremap; 1 for not changing it;
+UPDATEXT=1
 DEBUG=-1
 SAVEHISTS=0
 
+lastxtfile=""
 for (( iter=IterStart; iter<=IterEnd; iter++ ))
 do
     im1=$((iter-1))
@@ -69,6 +71,7 @@ do
     then
         layers="1 2 3 4 5 6 7 8"
         WPTYPE=1 # 1 for changing wiremap
+        UPDATEXT=1
         wires=""
         stepSize="0" # no step size limit
         scale="0.5"
@@ -80,6 +83,7 @@ do
     then
         layers="3 4 5 6"
         WPTYPE=1 # 1 for changing wiremap
+        UPDATEXT=1
         wires=""
         stepSize="0" # no step size limit
         scale="0.5"
@@ -91,6 +95,7 @@ do
     then
         layers="1 2 7 8"
         WPTYPE=1 # 1 for changing wiremap
+        UPDATEXT=0
         wires=""
         stepSize="0" # no step size limit
         scale="0.5"
@@ -102,6 +107,7 @@ do
     then
         layers="8"
         WPTYPE=1 # 1 for changing wiremap
+        UPDATEXT=0
         wires=""
         stepSize="0" # no step size limit
         scale="0.5"
@@ -113,6 +119,7 @@ do
     then
         layers="1"
         WPTYPE=1 # 1 for changing wiremap
+        UPDATEXT=0
         wires=""
         stepSize="0" # no step size limit
         scale="0.5"
@@ -124,6 +131,7 @@ do
     then
         layers="7"
         WPTYPE=1 # 1 for changing wiremap
+        UPDATEXT=0
         wires=""
         stepSize="0" # no step size limit
         scale="0.5"
@@ -135,6 +143,7 @@ do
     then
         layers="2"
         WPTYPE=1 # 1 for changing wiremap
+        UPDATEXT=0
         wires=""
         stepSize="0" # no step size limit
         scale="0.5"
@@ -146,6 +155,7 @@ do
     then
         layers="3 4 5 6"
         WPTYPE=1 # 1 for changing wiremap
+        UPDATEXT=1
         wires=""
         stepSize="0" # no step size limit
         scale="0.5"
@@ -157,6 +167,7 @@ do
     then
         layers="6"
         WPTYPE=1 # 1 for changing wiremap
+        UPDATEXT=0
         wires=""
         stepSize="0" # no step size limit
         scale="0.5"
@@ -168,6 +179,7 @@ do
     then
         layers="3"
         WPTYPE=1 # 1 for changing wiremap
+        UPDATEXT=0
         wires=""
         stepSize="0" # no step size limit
         scale="0.5"
@@ -179,6 +191,7 @@ do
     then
         layers="5"
         WPTYPE=1 # 1 for changing wiremap
+        UPDATEXT=0
         wires=""
         stepSize="0" # no step size limit
         scale="0.5"
@@ -190,6 +203,7 @@ do
     then
         layers="4"
         WPTYPE=1 # 1 for changing wiremap
+        UPDATEXT=1
         wires=""
         stepSize="0" # no step size limit
         scale="0.5"
@@ -200,6 +214,7 @@ do
     else
         layers="4"
         WPTYPE=0 # 0 for not changing wiremap
+        UPDATEXT=1
     fi
 
     Njobs=0
@@ -226,7 +241,7 @@ do
         sleep 10
         echo -n "$i "
         finished=true
-        thefile="temp"
+        thefile=""
         NjobsFinished=0
         for file in root/t_${runNo}.${currunname}.*.log
         do
@@ -248,8 +263,13 @@ do
             break
         else
             echo -n "$NjobsFinished/$Njobs jobs finihsed, "
-            echo -n $thefile:
-            tail -n 1 $thefile
+            if [ -z $thefile ]
+            then
+                echo ""
+            else
+                echo -n $thefile:
+                tail -n 1 $thefile
+            fi
         fi
     done
 
@@ -261,7 +281,7 @@ do
         pids+=" $!"
     done
     wait $pids || { echo "there were errors" >&2; exit 1; }
-    rm t_${runNo}.${currunname}.*-*.*
+    rm -f t_${runNo}.${currunname}.*-*.*
     cd ..
 
 #   upgrading wireposition?
@@ -272,5 +292,17 @@ do
         cd ..
     fi
     getOffset $runNo $prerunname $currunname $geoSetup $WPTYPE $scale $stepSize $minslz $maxslz $mininx $maxinx $DEBUG $wires
-    getXT $runNo $prerunname $currunname $XTTYPE $geoSetup $SAVEHISTS $inputType $DEBUG
+    if [ ! $UPDATEXT -eq 1 ] # ! 1 for not updating xt
+    then
+        if [ -z $lastxtfile ]
+        then
+            lastxtfile=xt.${runNo}.${prerunname}.root
+        fi
+        cd info
+        ln -s $lastxtfile xt.${runNo}.${currunname}.root
+        cd ..
+    else
+        getXT $runNo $prerunname $currunname $XTTYPE $geoSetup $SAVEHISTS $inputType $DEBUG
+        lastxtfile=xt.${runNo}.${currunname}.root
+    fi
 done
