@@ -23,6 +23,7 @@ double sciYdown = 0;
 // map for wire position
 double  map_x[NLAY][NCEL][2];
 double  map_y[NLAY][NCEL][2];
+bool    map_exist[NLAY][NCEL];
 
 // for get dist
 TVector3 vTrackU, vTrackD, vTrack;
@@ -81,6 +82,7 @@ int main(int argc, char ** argv){
             map_y[lid][wid][0] = 0;
             map_x[lid][wid][1] = 0;
             map_y[lid][wid][1] = 0;
+            map_exist[lid][wid] = false;
         }
     }
 
@@ -126,6 +128,7 @@ int main(int argc, char ** argv){
             map_y[wp_lid][wp_wid][0] = wp_yhv;
             map_x[wp_lid][wp_wid][1] = wp_xro+deltaX[wp_lid][wp_wid];
             map_y[wp_lid][wp_wid][1] = wp_yro;
+            map_exist[wp_lid][wp_wid] = true;
         }
     }
     TFile_wirepos->Close();
@@ -433,6 +436,7 @@ int getwid(int layerID, int cellID){
 
 double get_dist(int lid, int wid, double slx, double inx, double slz, double inz)
 {
+	if (!map_exist[lid][wid]) return 1e9;
 	double xdown = inx-slx*(sciYup-sciYdown);
 	double zdown = inz-slz*(sciYup-sciYdown);
 	vTrackU.SetXYZ(inx,sciYup,inz);
