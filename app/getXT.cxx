@@ -202,7 +202,7 @@ int main(int argc, char** argv){
     std::vector<int>    * o_driftDs = 0;
 
     // Loop in layers
-	for (int lid = 1; lid<=8; lid++){
+	for (int lid = 1; lid<NLAY; lid++){
         if (debugLevel>0) {printf("In Layer %d: preparing input TChain\n",lid);fflush(stdout);}
 		TChain * ichain = new TChain("t","t");
 		ichain->Add(Form("%s/root/t_%d.%s.layer%d.root",HOME.Data(),runNo,runname.Data(),lid));
