@@ -95,7 +95,7 @@ int main(int argc, char** argv){
 		ichain_off->SetBranchAddress("d",&off_delta);
 		for (int i = 0; i<ichain_off->GetEntries(); i++){
 			ichain_off->GetEntry(i);
-            if (off_lid<0||off_lid>+NLAY||off_wid<0||off_wid>=NCEL) continue;
+            if (off_lid<0||off_lid>=NLAY||off_wid<0||off_wid>=NCEL) continue;
 			off[off_lid][off_wid] = off_delta;
 		}
 	}
@@ -115,7 +115,7 @@ int main(int argc, char** argv){
 	ichain_wp->SetBranchAddress("w",&wp_wid);
 	for (int i = 0; i<ichain_wp->GetEntries(); i++){
 		ichain_wp->GetEntry(i);
-        if (wp_lid<0||wp_lid>+NLAY||wp_wid<0||wp_wid>=NCEL) continue;
+        if (wp_lid<0||wp_lid>=NLAY||wp_wid<0||wp_wid>=NCEL) continue;
 		x[wp_lid][wp_wid] = wp_x;
 	}
 	delete ichain_wp;
@@ -137,7 +137,7 @@ int main(int argc, char** argv){
 		ichain_wp->SetBranchAddress("w",&wp_wid);
 		for (int i = 0; i<ichain_wp->GetEntries(); i++){
 			ichain_wp->GetEntry(i);
-            if (wp_lid<0||wp_lid>+NLAY||wp_wid<0||wp_wid>=NCEL) continue;
+            if (wp_lid<0||wp_lid>=NLAY||wp_wid<0||wp_wid>=NCEL) continue;
 			printf("iter %d, [%d,%d], %.6e-%.6e=%.6e==0?%d\n",iter,wp_lid,wp_wid,wp_x,x[wp_lid][wp_wid],wp_x-x[wp_lid][wp_wid],wp_x-x[wp_lid][wp_wid]==0);
 			if (wp_x-x[wp_lid][wp_wid]&&!changed[wp_lid][wp_wid]){
 				changed[wp_lid][wp_wid] = true;
@@ -167,9 +167,10 @@ int main(int argc, char** argv){
 		ichain_wp->SetBranchAddress("w",&wp_wid);
 		for (int i = 0; i<ichain_wp->GetEntries(); i++){
 			ichain_wp->GetEntry(i);
-            if (wp_lid<0||wp_lid>+NLAY||wp_wid<0||wp_wid>=NCEL) continue;
+            if (wp_lid<0||wp_lid>=NLAY||wp_wid<0||wp_wid>=NCEL) continue;
 			if (changed[wp_lid][wp_wid]){
 				iter_deltaX[iter][wp_lid][wp_wid] = wp_x-x[wp_lid][wp_wid]-off[wp_lid][wp_wid];
+				printf("iter_deltaX[%d][%d][%d] = %.7e-%.7e-%.3e = %.3e\n",iter,wp_lid,wp_wid,wp_x,x[wp_lid][wp_wid],off[wp_lid][wp_wid],iter_deltaX[iter][wp_lid][wp_wid]);
 			}
 		}
         delete ichain_wp;
@@ -191,7 +192,7 @@ int main(int argc, char** argv){
 		ichain_off->SetBranchAddress("wid",&off_wid);
 		for (int i = 0; i<ichain_off->GetEntries(); i++){
 			ichain_off->GetEntry(i);
-            if (off_lid<0||off_lid>+NLAY||off_wid<0||off_wid>=NCEL) continue;
+            if (off_lid<0||off_lid>=NLAY||off_wid<0||off_wid>=NCEL) continue;
 			if (changed[off_lid][off_wid]){
 				iter_offset[iter][off_lid][off_wid]= off_d;
 			}
