@@ -6,7 +6,7 @@ runNocon="100007"
 nEvents="90457"
 runName="0125"
 IterStart=1
-IterEnd=50
+IterEnd=70
 layers="4"
 wires=""
 
@@ -68,7 +68,79 @@ do
     fi
 
     # one layer or more
-    if [ $iter -gt 45 ]
+    if [ $iter -gt 67 ]
+    then
+        layers="1 2 3 4 5 6 7 8"
+        WPTYPE=1 # 1 for changing wiremap
+        UPDATEXT=1
+        wires=""
+        stepSize="0" # no step size limit
+        scale="0.5"
+        minslz="0"
+        maxslz="0"
+        maxinx="0"
+        mininx="0"
+    elif [ $iter -gt 62 ]
+    then
+        layers="3 4 5 6"
+        WPTYPE=1 # 1 for changing wiremap
+        UPDATEXT=1
+        wires=""
+        stepSize="0" # no step size limit
+        scale="0.5"
+        minslz="0"
+        maxslz="0"
+        maxinx="0"
+        mininx="0"
+    elif [ $iter -gt 59 ]
+    then
+        layers="7"
+        WPTYPE=1 # 1 for changing wiremap
+        UPDATEXT=0
+        wires=""
+        stepSize="0" # no step size limit
+        scale="0.5"
+        minslz="0"
+        maxslz="0"
+        maxinx="0"
+        mininx="0"
+    elif [ $iter -gt 56 ]
+    then
+        layers="2"
+        WPTYPE=1 # 1 for changing wiremap
+        UPDATEXT=0
+        wires=""
+        stepSize="0" # no step size limit
+        scale="0.5"
+        minslz="0"
+        maxslz="0"
+        maxinx="0"
+        mininx="0"
+    elif [ $iter -gt 53 ]
+    then
+        layers="1"
+        WPTYPE=1 # 1 for changing wiremap
+        UPDATEXT=0
+        wires=""
+        stepSize="0" # no step size limit
+        scale="0.5"
+        minslz="0"
+        maxslz="0"
+        maxinx="0"
+        mininx="0"
+    elif [ $iter -gt 50 ]
+    then
+        layers="8"
+        WPTYPE=1 # 1 for changing wiremap
+        UPDATEXT=0
+        wires=""
+        stepSize="0" # no step size limit
+        scale="0.5"
+        minslz="0"
+        maxslz="0"
+        maxinx="0"
+        mininx="0"
+    elif [ $iter -gt 45 ]
     then
         layers="1 2 3 4 5 6 7 8"
         WPTYPE=1 # 1 for changing wiremap
