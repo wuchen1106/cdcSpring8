@@ -49,13 +49,23 @@ int main(int argc, char ** argv){
     TString xt_filename = argv[2];
     int geoSetup = 0;
     if (argc>=4) geoSetup = atoi(argv[3]);
+    double offset_sigma = 0.05;
+    if (argc>=5) offset_sigma = atof(argv[4]);
+    double offset_max = offset_sigma*2;
+    if (argc>=6) offset_max = atof(argv[5]);
+    if (offset_max<0){
+        printf("offset_max = %.3e < 0! Will set positive\n",offset_max);
+        offset_max *= -1;
+    }
     int maxLayer = 0;
-    if (argc>=5) maxLayer = atoi(argv[4]);
+    if (argc>=7) maxLayer = atoi(argv[6]);
     if (maxLayer>NLAY-1){
     	maxLayer=NLAY-1;
     	printf("WARNING: maxLayer[%d] is exceeding the range! Totally support %d layers counting from 0\n",maxLayer,NLAY);
 	}
 	printf("geoSetup = %d\n",geoSetup);
+	printf("offSig   = %.3e\n",offset_sigma);
+	printf("offMax   = %.3e\n",offset_max);
 	printf("maxLayer = %d\n",maxLayer);
 
     TString HOME=getenv("CDCS8WORKING_DIR");
@@ -97,7 +107,12 @@ int main(int argc, char ** argv){
     for ( int lid = 0; lid<NLAY; lid++){
         for ( int wid = 0; wid<NCEL; wid++){
 			if (lid<=8&&wid>=11) continue; // to be consistant with previous runs
-            deltaX[lid][wid] = random1.Gaus(0,0.1);//
+            //deltaX[lid][wid] = random1.Gaus(0,0.1);//
+            double dx = random1.Gaus(0,offset_sigma);
+            while(fabs(dx)>offset_max){
+                dx = random1.Gaus(0,offset_sigma);
+            }
+            deltaX[lid][wid] = dx;
             printf("%d %d %.3e\n",lid,wid,deltaX[lid][wid]);
         }
     }
@@ -416,7 +431,7 @@ int main(int argc, char ** argv){
 }
 
 void printUsage(char* name){
-    printf("%s [inputFile] [xtfile] <[geoSetup (0)] [maxLayer (0)]>\n",name);
+    printf("%s [inputFile] [xtfile] <[geoSetup (0)] [sigma (0.05 mm)] [maxsigma (2*sigma)] [maxLayer (0)]>\n",name);
 }
 
 int getwid(int layerID, int cellID){
