@@ -82,9 +82,9 @@ int main(int argc, char** argv){
 	}
 	if (isMC){
 		TChain * ichain_off = new TChain("t","t");
-		ichain_off->Add("info/offset.root");
+		ichain_off->Add(Form("info/wire-offset.%d.root",runNo));
 		if (!ichain_off->GetEntries()) {
-		    printf("Cannot find offset.root\n");
+		    printf("Cannot find info/wire-offset.%d.root\n",runNo);
 		    return -1;
         }
 		double off_delta;
