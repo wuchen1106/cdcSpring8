@@ -15,11 +15,15 @@
 #define NCEL  12
 #define NBRD 3
 #define NCHT 144
+//#define NLAY  19
+//#define NCEL  12
+//#define NBRD 5
+//#define NCHT 240
 
 //#define NZXP 8
-//#define NLAYG 8
 #define NZXP 10
-#define NLAYG 10
+//#define NZXP 18
+
 #define NCAND 4
 
 # define NITERSMAX 100

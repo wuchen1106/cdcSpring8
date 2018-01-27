@@ -109,7 +109,7 @@ int main(int argc, char ** argv){
 			if (lid<=8&&wid>=11) continue; // to be consistant with previous runs
             //deltaX[lid][wid] = random1.Gaus(0,0.1);//
             double dx = random1.Gaus(0,offset_sigma);
-            while(fabs(dx)>offset_max){
+            while(offset_max&&fabs(dx)>offset_max){
                 dx = random1.Gaus(0,offset_sigma);
             }
             deltaX[lid][wid] = dx;
