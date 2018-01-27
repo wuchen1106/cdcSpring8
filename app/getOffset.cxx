@@ -407,9 +407,10 @@ int main(int argc, char** argv){
             for (int index = 0; index < wireIDs.size(); index++){
                 if (wp_wid==wireIDs[index]){
                     doOffset = true;
+                    break;
                 }
             }
-            if (doOffset){
+            if (doOffset&&wp_lid>0&&wp_lid<NLAY&&wp_wid>0&&wp_wid<NCEL){
                 double theOff = v_off[wp_lid][wp_wid]*scale;
                 double deltaSlz = v_slz[wp_lid][wp_wid]-v_slzmc[wp_lid][wp_wid];
                 double deltaInx = v_inx[wp_lid][wp_wid]-v_inxmc[wp_lid][wp_wid];
@@ -422,9 +423,9 @@ int main(int argc, char** argv){
                 if ((mininx||maxinx)&&(deltaInx>maxinx||deltaInx<mininx)){
                     theOff = 0;
                 }
-                wp_xro = vwp_xro[i]+theOff;
-                wp_xc = vwp_xc[i]+theOff;
-                wp_xhv = vwp_xhv[i]+theOff;
+                wp_xro += theOff;
+                wp_xc += theOff;
+                wp_xhv += theOff;
             }
             TTree_wirepos->Fill();
         }
