@@ -2,6 +2,7 @@ source env.sh
 
 theConf=$CDCS8WORKING_DIR/Conf/_THEJOB_.conf
 theLog=$CDCS8WORKING_DIR/Conf/_THEJOB_.log
+touch $theLog
 for (( iScan=0; iScan<17280; iScan++ )) #17280*10 sec = 48 hours running
 do
     configure=`cat $theConf`
@@ -28,11 +29,12 @@ do
             debug=`echo $configure | gawk '{print $16;}'`
             log="$CDCS8WORKING_DIR/root/t_${runNo}.${runname}.layer${testlayer}.log"
             err="$CDCS8WORKING_DIR/root/t_${runNo}.${runname}.layer${testlayer}.err"
+            date >> $theLog
             echo "Scan$iScan: tracking $runNo $testlayer $prerunname $runname $nHitsMax $t0shift $tmin $tmax $geoSetup $sumCut $aaCut $iEntryStart $iEntryStop $workType $inputType $debug > $log 2> $err" >> $theLog
             nohup tracking $runNo $testlayer $prerunname $runname $nHitsMax $t0shift $tmin $tmax $geoSetup $sumCut $aaCut $iEntryStart $iEntryStop $workType $inputType $debug > $log 2> $err &
             pid=" $!"
             wait $pid || { echo "there were errors" >&2; exit 1; }
-            echo "Scan$iScan: Finished $theConf" >> $theLog
+            echo "Scan$iScan: Finished!" >> $theLog
         else # wrong number of parameters, do nothing
             echo "Scan$iScan: There are $NPARAS parameters in $theConf but we need 16! Reset this job" >> $theLog
         fi
@@ -40,3 +42,4 @@ do
     fi
     sleep 10 # wait a while and check trigger later
 done
+mv theLog $CDCS8WORKING_DIR/Conf/finished
