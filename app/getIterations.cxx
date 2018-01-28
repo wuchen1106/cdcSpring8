@@ -1,5 +1,7 @@
 #include "TString.h"
 #include "TChain.h"
+#include "TGraph.h"
+#include "TF1.h"
 #include <vector>
 
 #include "header.h"
@@ -21,6 +23,7 @@ int main(int argc, char** argv){
 	// what do we want
     double iter_slx[NITERSMAX][NLAY][NCEL]; // mean slx of chosen events of each iteration in each layer run of each wire 
     double iter_inx[NITERSMAX][NLAY][NCEL]; // mean inx of chosen events of each iteration in each layer run of each wire 
+    double iter_slxoff[NITERSMAX][NLAY][NCEL]; // mean slx offset of chosen events of each iteration in each layer run of each wire 
     double iter_slxmc[NITERSMAX][NLAY][NCEL]; // mean slxmc of chosen events of each iteration in each layer run of each wire 
     double iter_inxmc[NITERSMAX][NLAY][NCEL]; // mean inxmc of chosen events of each iteration in each layer run of each wire 
     double iter_slz[NITERSMAX][NLAY][NCEL]; // mean slz of chosen events of each iteration in each layer run of each wire 
@@ -52,6 +55,7 @@ int main(int argc, char** argv){
             for (int wid = 0; wid<NCEL; wid++){
                 iter_slx[iter][lid][wid] = 0;
                 iter_inx[iter][lid][wid] = 0;
+                iter_slxoff[iter][lid][wid] = 0;
                 iter_slxmc[iter][lid][wid] = 0;
                 iter_inxmc[iter][lid][wid] = 0;
                 iter_slz[iter][lid][wid] = 0;
@@ -200,6 +204,9 @@ int main(int argc, char** argv){
         delete ichain_off;
 	}
 
+    // prepare graph and function to fit deltaX:layerID
+    TGraph * gr_dxLid = new TGraph();
+    TF1    * f_dxLid = new TF1("f_dxLid","pol1",0,NLAY);
     // get chi2, efficiency and Nothers
 	for (int iter = 1; iter<=Niters; iter++){
 	    for (int lid = 1; lid<NLAY; lid++){
@@ -287,16 +294,19 @@ int main(int argc, char** argv){
                     int twid = (*wireID)[ihit];
                     if (tlid<0||tlid>=NLAY||twid<0||twid>=NCEL) continue;
                     iter_Nothers[iter][lid][theWid][tlid][twid]++;
-                    tdeltaXothers+=iter_deltaX[iter-1][tlid][twid];
+                    gr_dxLid->SetPoint(nHitsUsed,tlid,iter_deltaX[iter-1][tlid][twid]);
                     nHitsUsed++;
                 }
-                if (nHitsUsed) tdeltaXothers/=nHitsUsed;
+                gr_dxLid->Set(nHitsUsed);
+                gr_dxLid->Fit("f_dxLid","QN0G","");
+                tdeltaXothers+=f_dxLid->Eval(lid);
                 iter_deltaXmc[iter][lid][theWid]+=theDD-theDDmc;
                 iter_deltaXfit[iter][lid][theWid]+=theFitD-(theDDmc-iter_deltaX[iter-1][lid][theWid])-tdeltaXothers;
                 iter_deltaXothers[iter-1][lid][theWid]+=tdeltaXothers;
                 iter_chi2[iter][lid][theWid]+=chi2;
                 iter_slx[iter][lid][theWid]+=slx;
                 iter_inx[iter][lid][theWid]+=inx;
+                iter_slxoff[iter][lid][theWid]+=f_dxLid->GetParameter(1);
                 iter_slxmc[iter][lid][theWid]+=slxmc;
                 iter_inxmc[iter][lid][theWid]+=inxmc;
                 iter_slz[iter][lid][theWid]+=slz;
@@ -308,6 +318,7 @@ int main(int argc, char** argv){
             for (int wid = 0; wid<NCEL; wid++){
                 iter_slx[iter][lid][wid]/=iter_nGood[iter][lid][wid];
                 iter_inx[iter][lid][wid]/=iter_nGood[iter][lid][wid];
+                iter_slxoff[iter][lid][wid]/=iter_nGood[iter][lid][wid];
                 iter_slxmc[iter][lid][wid]/=iter_nGood[iter][lid][wid];
                 iter_inxmc[iter][lid][wid]/=iter_nGood[iter][lid][wid];
                 iter_slz[iter][lid][wid]/=iter_nGood[iter][lid][wid];
@@ -324,13 +335,13 @@ int main(int argc, char** argv){
     }
 
     // print out the result
-    printf("    iter/I lid/I wid/I dX dXo dXmc dXfit offset chi2 slx inx slxmc inxmc slz inz slzmc inzmc n\n");
+    printf("    iter/I lid/I wid/I dX dXo dXmc dXfit offset chi2 slx inx slxoff slxmc inxmc slz inz slzmc inzmc n\n");
     for (int lid = 0; lid<NLAY; lid++){
         for (int wid = 0; wid<NCEL; wid++){
             if (!changed[lid][wid]) continue;
             printf("[%d,%d]:\n",lid,wid);
             for (int iter = 1; iter<=Niters; iter++){
-                printf("  =>%d %d %d %.3e %.3e %.3e %.3e %.3e %.3e %.3e %.3e %.3e %.3e %.3e %.3e %.3e %.3e %d\n",
+                printf("  =>%d %d %d %.5e %.5e %.5e %.5e %.5e %.5e %.5e %.5e %.5e %.5e %.5e %.5e %.5e %.5e %.5e %d\n",
                         iter,
                         lid,wid,
                         iter_deltaX[iter-1][lid][wid],
@@ -341,6 +352,7 @@ int main(int argc, char** argv){
                         iter_chi2[iter][lid][wid],
                         iter_slx[iter][lid][wid],
                         iter_inx[iter][lid][wid],
+                        iter_slxoff[iter][lid][wid],
                         iter_slxmc[iter][lid][wid],
                         iter_inxmc[iter][lid][wid],
                         iter_slz[iter][lid][wid],

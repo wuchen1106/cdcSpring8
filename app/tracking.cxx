@@ -18,6 +18,8 @@
 
 #include "header.h"
 
+#define MAXPICK 8
+
 int workType = 0;
 int inputType = 0;
 int debug = 0;
@@ -681,6 +683,7 @@ int main(int argc, char** argv){
                 v_pick_lid.push_back(lid+1);
                 prelid = lid;
                 npairs++;
+                if (v_pick_lid.size()>=MAXPICK) break;
             }
         }
         for (int ipick = 0; ipick<v_pick_lid.size(); ipick++){

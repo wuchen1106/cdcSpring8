@@ -338,6 +338,7 @@ do
     do
         for (( j=0; j<nEvents; j+=5000 ))
         do
+            ((Njobs++))
             iEntryStart=$j
             iEntryStop=$((j+4999))
             if (( iEntryStop>=nEvents ))
@@ -345,7 +346,6 @@ do
                 iEntryStop=$((nEvents-1))
             fi
             jobname="${runNo}.${currunname}.$iEntryStart-$iEntryStop.layer${testlayer}"
-            ((Njobs++))
             echo "checking job \"$jobname\""
             file="root/t_${jobname}.log"
             if [ -e $file ]
