@@ -1,22 +1,23 @@
 #!/bin/bash
 
+runNocon="117"
+nEventscon="605460"
+maxLayercon=8
+
 StartName="original"
 runNo="117"
-runNocon="117"
 nEvents="605460"
 runName="0126"
-IterStart=39
+IterStart=1
 IterEnd=50
 layers="4"
 wires=""
 
 geoSetup=0 # 0 for general; 1 for finger
-inputType=1 # 1 for MC; 0 for data
+inputType=0 # 1 for MC; 0 for data
 workType=0 # 0, fr/l_0; 1, even/odd; -1, even/odd reversed; others, all layers
 nHitsMax=13
 t0shift=0
-#tmin=-10
-#tmax=340
 tmin=-10
 tmax=800
 sumCut=-20
@@ -39,7 +40,7 @@ SAVEHISTS=0
 JobLists=""
 joblistfile=joblist.$runName.$runNo
 
-lastxtfile="xt.117.0126.i23"
+lastxtfile=""
 
 updateJobLists(){
     ls Conf/${runNocon}.*.log > $joblistfile
@@ -56,18 +57,20 @@ isReady(){ # make sure this thread is not processing any job (the conf is emtpy)
     fi
 }
 
+prev_tlayer=0
+prev_iEvent=0
 findVacentThread(){
     for (( i=0; i<3600; i++ )) #3600*10 sec = 10 hours running
     do
-        for tlayer in 4 5 3 6 2 7 1 8;
+        for (( tlayer=prev_tlayer; tlayer<=maxLayercon; tlayer++ ))
         do
-            for (( j=0; j<nEvents; j+=5000 ))
+            for (( j=prev_iEvent; j<nEventscon; j+=5000 ))
             do
                 iStart=$j
                 iStop=$((j+4999))
-                if (( iStop>=nEvents ))
+                if (( iStop>=nEventscon ))
                 then
-                    iStop=$((nEvents-1))
+                    iStop=$((nEventscon-1))
                 fi
                 conf="$CDCS8WORKING_DIR/Conf/${runNocon}.layer${tlayer}.${iStart}-${iStop}.conf"
                 log="$CDCS8WORKING_DIR/Conf/${runNocon}.layer${tlayer}.${iStart}-${iStop}.log"
@@ -82,6 +85,8 @@ findVacentThread(){
                     if [ $? -eq 0 ]
                     then
                         echo $conf
+                        prev_tlayer=$tlayer
+                        prev_iEvent=$j
                         return 0 # ready to process
                     else # waiting in line
                         continue
@@ -97,6 +102,8 @@ findVacentThread(){
         then
             return 2 # cannot get hep_q
         fi
+        prev_tlayer=0
+        prev_iEvent=0
     done
     return 1 # cannot find any vacent slots in 10 hours
 }
