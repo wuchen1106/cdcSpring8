@@ -2,6 +2,7 @@
 
 runNocon="117"
 nEventscon="605460"
+minLayercon=1
 maxLayercon=8
 
 StartName="original"
@@ -57,7 +58,7 @@ isReady(){ # make sure this thread is not processing any job (the conf is emtpy)
     fi
 }
 
-prev_tlayer=0
+prev_tlayer=$minLayercon
 prev_iEvent=0
 findVacentThread(){
     for (( i=0; i<3600; i++ )) #3600*10 sec = 10 hours running
@@ -102,7 +103,7 @@ findVacentThread(){
         then
             return 2 # cannot get hep_q
         fi
-        prev_tlayer=0
+        prev_tlayer=$minLayercon
         prev_iEvent=0
     done
     return 1 # cannot find any vacent slots in 10 hours
