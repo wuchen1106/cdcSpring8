@@ -16,24 +16,9 @@
 #include <math.h>
 #include <stdlib.h>
 
+#include "header.h"
+
 //#define PRINT_CROSSPOINTS
-
-#define XMAX 130
-#define ZMAX 350
-
-#define NLAY 9
-#define NZXP 8
-#define NCEL 11
-#define NCELA 99
-
-#define NBRD 2
-#define NCHS 48
-#define NCHT 96
-#define NSMP 32
-#define ADCMIN 125
-#define ADCMAX 700
-
-#define NCAND 4
 
 #define MULTI 5 // maximum peak multiplicity of one cell to be considered in drawing
 
@@ -96,6 +81,9 @@ int main(int argc, char** argv){
     printf("geoSetup:           %s\n",geoSetup==0?"normal scintillator":"finger scintillator");
 
     TString HOME=getenv("CDCS8WORKING_DIR");
+
+	double XMAX = 130; // range of x-z plane
+	double ZMAX = 350; // range of x-z plane
 
     //===================Chamber Parameter============================
     double U = 8; // mm
@@ -303,9 +291,9 @@ int main(int argc, char** argv){
 	//==================Get ADC==========================
 	TChain * iChain_ADC = new TChain("tree","tree");
 	iChain_ADC->Add(HOME+Form("/root/run_%0.6d_built.root",runNo));
-	int adc[NCHT][NSMP];
-	int tdc[NCHT][NSMP];
-	int clockNumberDriftTime[NCHT][NSMP];
+	int adc[NCHT][NSAM];
+	int tdc[NCHT][NSAM];
+	int clockNumberDriftTime[NCHT][NSAM];
 	int tdcNhit[NCHT];
 	iChain_ADC->SetBranchAddress("adc",adc);
 	iChain_ADC->SetBranchAddress("driftTime",tdc);
@@ -498,18 +486,18 @@ int main(int argc, char** argv){
 	//==================Prepare drawing objects==========================
 	//Prepare for ADC
 	TGraph * gr_waveForm[NBRD][NCHS] = {0};
-	int vSample[NSMP];
-	for (int i=0; i<NSMP; i++){
+	int vSample[NSAM];
+	for (int i=0; i<NSAM; i++){
 		vSample[i] = i;
 	}
 	TLatex *textWF[NBRD][NCHS];
-	TLatex *textTDC[NBRD][NCHS][NSMP];
-	TMarker *markerTDC[NBRD][NCHS][NSMP];
+	TLatex *textTDC[NBRD][NCHS][NSAM];
+	TMarker *markerTDC[NBRD][NCHS][NSAM];
     for (int bid = 0; bid<NBRD; bid++){
         for (int ch = 0; ch<NCHS; ch++){
             textWF[bid][ch] = new TLatex(0,0,"");
             textWF[bid][ch]->SetTextSize(0.04);
-            for (int sid=0; sid<NSMP; sid++) {
+            for (int sid=0; sid<NSAM; sid++) {
                 textTDC[bid][ch][sid] = new TLatex(0,0,"");
                 textTDC[bid][ch][sid]->SetTextSize(0.04);
                 markerTDC[bid][ch][sid] = new TMarker(0,0,20);
@@ -812,17 +800,17 @@ int main(int argc, char** argv){
                 // get waveform and draw
                 int chg = bid*NCHS+ch;
                 pad_WF[bid][ch]->cd();
-                gr_waveForm[bid][ch] = new TGraph(NSMP,vSample,adc[chg]);
+                gr_waveForm[bid][ch] = new TGraph(NSAM,vSample,adc[chg]);
                 gr_waveForm[bid][ch]->SetTitle(Form("Channel %d Layer %d Wire %d",ch,map_lid[bid][ch],map_wid[bid][ch]));
-                gr_waveForm[bid][ch]->GetXaxis()->SetRangeUser(0,NSMP-1);
-                gr_waveForm[bid][ch]->GetYaxis()->SetRangeUser(ADCMIN,ADCMAX);
+                gr_waveForm[bid][ch]->GetXaxis()->SetRangeUser(0,NSAM-1);
+                gr_waveForm[bid][ch]->GetYaxis()->SetRangeUser(MIN_ADC,MAX_ADC);
                 gr_waveForm[bid][ch]->GetXaxis()->SetTitle("Sample Index");
                 gr_waveForm[bid][ch]->GetYaxis()->SetTitle("ADC");
                 gr_waveForm[bid][ch]->SetMarkerStyle(20);
                 gr_waveForm[bid][ch]->SetMarkerSize(0.3);
                 gr_waveForm[bid][ch]->Draw("APL");
                 // set title text
-                textWF[bid][ch]->SetText(1,ADCMAX-50,Form("%d peaks area %.0lf",tdcNhit[chg],pk_aa[chg]));
+                textWF[bid][ch]->SetText(1,MAX_ADC-50,Form("%d peaks area %.0lf",tdcNhit[chg],pk_aa[chg]));
                 if (tdcNhit[chg]>0)
                     textWF[bid][ch]->SetTextColor(kBlue); // has hit
                 else
