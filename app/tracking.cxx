@@ -22,8 +22,9 @@
 
 int workType = 0;
 int inputType = 0;
-int debug = 0;
-int memdebug = 0;
+int peakType = 0;
+int debug = -1;
+int memdebug = -1;
 
 //===================Chamber Parameter============================
 double U = 8; // mm
@@ -237,10 +238,13 @@ int main(int argc, char** argv){
         inputType = (int)strtol(argv[15],NULL,10);
     }
     if (argc>=17){
-        debug = (int)strtol(argv[16],NULL,10);
+        peakType = (int)strtol(argv[16],NULL,10);
     }
     if (argc>=18){
-        memdebug = (int)strtol(argv[17],NULL,10);
+        debug = (int)strtol(argv[17],NULL,10);
+    }
+    if (argc>=19){
+        memdebug = (int)strtol(argv[18],NULL,10);
     }
     printf("##############Input Parameters##################\n");
     printf("runNo       = %d\n",runNo);
@@ -258,6 +262,7 @@ int main(int argc, char** argv){
     printf("Stop Entry  = %d\n",iEntryStop);
     printf("workType    = %d, %s\n",workType,workType==0?"all as 0":(workType==1?"even/odd":(workType==-1?"even/odd reversed":"all layers")));
     printf("inputType   = %d, %s\n",inputType,inputType==0?"Real Data":"MC");
+    printf("peakType    = %d, %s\n",peakType,peakType==0?"First peak over threshold":"All peaks over threshold");
     printf("debug       = %d\n",debug);
     printf("memdebug    = %d\n",memdebug);
 
@@ -490,7 +495,7 @@ int main(int argc, char** argv){
     ot->Branch("nHits",&i_nHits);
     ot->Branch("layerID",&i_layerID);
     ot->Branch("wireID",&i_wireID);
-    ot->Branch("type",&i_type); // in dec, [IMASTR]. I: peak index (FIXME: not good for noisy data); M: peak index in a packet; A: smaller than aa cut? S: smaller than sum cut? T: -1 <tmin, 0 good, 1 >tmax; R: 0 center, 1 left, 2 right, 3 guard, 4 dummy
+    ot->Branch("type",&i_type); // in dec, [IMASTR]. I: peak index (only counting peaks over sumCut); M: peak index in a packet; A: smaller than aa cut? S: smaller than sum cut? T: -1 <tmin, 0 good, 1 >tmax; R: 0 center, 1 left, 2 right, 3 guard, 4 dummy
     ot->Branch("np",&i_np);
     ot->Branch("ip",&i_ip);
     ot->Branch("clk",&i_clk);
@@ -662,7 +667,7 @@ int main(int argc, char** argv){
 				else if (statusl==0&&statusr==0) type+=0;
 				else type+=7*10;
 			}
-            type+=npoc*100000; // FIXME: here we are ignoring the second peaks over the sum cut
+            type+=npoc*100000; // number of peaks above threshold before this peak in this channel
             // S: sum of wave packet
             if ((*i_sum)[ihit]<sumCut) type+=1*100;
             else npoc++; // over sum cut, then increment npoc
@@ -672,7 +677,8 @@ int main(int argc, char** argv){
             type+=(*i_mpi)[ihit]*10000;
             // I: index of peak in the hole waveform
             (*i_type)[ihit] = type;
-            if (lid != testlayer&&type<=3){ // good hit
+            int ttype = getHitType(type,true);
+            if (lid != testlayer&&ttype<=3){ // good hit
                 if (debug>11) printf("  Entry %d: dxl[%d][%d] = dxl[%d] = t2x(%.3e) = %.3e\n",iEntry,lid,wid,ihit,dt,(*o_dxl)[ihit]);
                 if (debug>11) printf("  Entry %d: dxr[%d][%d] = dxr[%d] = t2x(%.3e) = %.3e\n",iEntry,lid,wid,ihit,dt,(*o_dxr)[ihit]);
                 v_layer_ihit[lid].push_back(ihit);
@@ -885,7 +891,7 @@ int doFitting(int nPicks,int iEntry,int iselection){
                     gMinuit->GetParameter(1, inx, temp);
                     gMinuit->GetParameter(2, slz, temp);
                     gMinuit->GetParameter(3, inz, temp);
-                    inScint = checkScintillator(1.5,inx,slx,inz,slz); // FIXME
+                    inScint = checkScintillator(1.5,inx,slx,inz,slz); // FIXME: error limit should be tuned
                     fromSource = slx>-beamSlxMax&&slx<beamSlxMax&&slz>-beamSlzMax&&slz<beamSlzMax;
                     if (inScint&&fromSource){
                         // update chi2
@@ -953,6 +959,8 @@ int getHitType(int type,bool isRight){ // see if the driftT is really out of ran
 	else{
 		if (ttype==2||ttype==5) type-=ttype*10; // r- or r+
 	}
+    if (peakType>1) type=type%100000; // ignoring npoc cut, leaving all the peaks over threshold competing
+    else if (peakType) type=type%100000; // ignoring npoc cut, leaving all the peaks over threshold (and mpi==0) competing
 	return type;
 }
 
@@ -1340,10 +1348,6 @@ void getchi2(double &f, double & cp, double & ca, double slx, double inx, double
 		if ((*t_sel)[ihit]==0) continue;
 		dfit = get_dist((*i_layerID)[ihit],(*i_wireID)[ihit],slx,inx,slz,inz);
 		double dd = (*t_driftD)[ihit];
-		// FIXME: we should consider about the error
-//		double error = errord[(*i_layerID)[ihit]][(*i_wireID)[ihit]]*(fabs(fabs(dfit)-4)+2/1.5)*1.5/4;
-//		double error = errord[(*i_layerID)[ihit]][(*i_wireID)[ihit]];
-//		double error = funcErr->Eval(fabs(dfit));
 		double error = getError((*i_layerID)[ihit],(*i_driftT)[ihit],dd>0);
         delta  = (dfit-dd)/error;
 		chisq += delta*delta;
@@ -1368,7 +1372,7 @@ void getchi2(double &f, double & cp, double & ca, double slx, double inx, double
 			}
 		}
 		if (found){
-			double error = 0.2; // FIXME: may consider non-constant error
+			double error = 0.2;
 			ca = f*N+minres*minres/error/error;
 			ca/=(N+1);
 		}

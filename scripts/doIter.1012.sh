@@ -1,14 +1,14 @@
 #!/bin/bash
 
 threadName="job"
-thread_iStart=100
-thread_iStop=200
+thread_iStart=0
+thread_iStop=99
 
 StartName="Garfield"
 runNo="1012"
 nEvents="493189"
-nEvtPerRun="5000"
-runName="0131"
+nEvtPerRun="5200"
+runName="0131.s30a46first"
 IterStart=1
 IterEnd=10
 layers="4"
@@ -17,13 +17,13 @@ wires=""
 geoSetup=0 # 0 for general; 1 for finger
 inputType=0 # 1 for MC; 0 for data
 workType=0 # 0, fr/l_0; 1, even/odd; -1, even/odd reversed; others, all layers
+peakType=0 # 0, only the first peak over threshold; 1, all peaks over threshold; 2, even including shaddowed peaks
 nHitsMax=13
 t0shift=0
 tmin=-10
 tmax=800
-sumCut=10
-aaCut=20
-debug=-1
+sumCut=30
+aaCut=46
 
 stepSize=0 # maximum step size for each movement in wire position calibration; 0 means no limit
 minslz=0 # min slz cut for mean slz value in each sample of events in wiremap calibration. minslz==maxslz==0 means no cut
@@ -122,8 +122,12 @@ do
     if [ $iter -gt 6 ]
     then
         tmin=-10
-        tmax=600
+        tmax=800
     elif [ $iter -gt 4 ]
+    then
+        tmin=-10
+        tmax=600
+    elif [ $iter -gt 2 ]
     then
         tmin=-10
         tmax=360
@@ -163,7 +167,7 @@ do
     echo "  tmax = $tmax"
     echo "  sumCut = $sumCut"
     echo "  aaCut = $aaCut"
-    echo "  debug = $debug"
+    echo "  peakType = $peakType"
     echo "  stepSize = $stepSize"
     echo "  minslz = $minslz"
     echo "  maxslz = $maxslz"
@@ -213,7 +217,7 @@ do
                 echo "  logfile \"$file\" doesn't exist, so generate a new job!"
             fi
             temprunname="${currunname}.$iEntryStart-$iEntryStop"
-            tempconfig="$runNo $testlayer $prerunname $temprunname $nHitsMax $t0shift $tmin $tmax $geoSetup $sumCut $aaCut $iEntryStart $iEntryStop $workType $inputType $debug"
+            tempconfig="$runNo $testlayer $prerunname $temprunname $nHitsMax $t0shift $tmin $tmax $geoSetup $sumCut $aaCut $iEntryStart $iEntryStop $workType $inputType $peakType"
             findVacentThread
             if [ $? -eq 1 ]
             then

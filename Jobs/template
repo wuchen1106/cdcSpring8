@@ -26,12 +26,12 @@ do
             iEntryStop=`echo $configure | gawk '{print $13;}'`
             workType=`echo $configure | gawk '{print $14;}'`
             inputType=`echo $configure | gawk '{print $15;}'`
-            debug=`echo $configure | gawk '{print $16;}'`
+            peakType=`echo $configure | gawk '{print $16;}'`
             log="$CDCS8WORKING_DIR/root/t_${runNo}.${runname}.layer${testlayer}.log"
             err="$CDCS8WORKING_DIR/root/t_${runNo}.${runname}.layer${testlayer}.err"
             date >> $theLog
-            echo "Scan$iScan: tracking $runNo $testlayer $prerunname $runname $nHitsMax $t0shift $tmin $tmax $geoSetup $sumCut $aaCut $iEntryStart $iEntryStop $workType $inputType $debug > $log 2> $err" >> $theLog
-            nohup tracking $runNo $testlayer $prerunname $runname $nHitsMax $t0shift $tmin $tmax $geoSetup $sumCut $aaCut $iEntryStart $iEntryStop $workType $inputType $debug > $log 2> $err &
+            echo "Scan$iScan: tracking $runNo $testlayer $prerunname $runname $nHitsMax $t0shift $tmin $tmax $geoSetup $sumCut $aaCut $iEntryStart $iEntryStop $workType $inputType $peakType > $log 2> $err" >> $theLog
+            nohup tracking $runNo $testlayer $prerunname $runname $nHitsMax $t0shift $tmin $tmax $geoSetup $sumCut $aaCut $iEntryStart $iEntryStop $workType $inputType $peakType > $log 2> $err &
             pid=" $!"
             wait $pid || { echo "there were errors" >&2; exit 1; }
             echo "Scan$iScan: Finished!" >> $theLog
