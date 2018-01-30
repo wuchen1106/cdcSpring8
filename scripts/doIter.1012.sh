@@ -1,14 +1,14 @@
 #!/bin/bash
 
-runNocon="117"
-nEventscon="605460"
-minLayercon=2
-maxLayercon=3
+threadName="job"
+thread_iStart=100
+thread_iStop=200
 
-StartName="original"
+StartName="Garfield"
 runNo="1012"
 nEvents="493189"
-runName="0129"
+nEvtPerRun="5000"
+runName="0131"
 IterStart=1
 IterEnd=10
 layers="4"
@@ -21,7 +21,7 @@ nHitsMax=13
 t0shift=0
 tmin=-10
 tmax=800
-sumCut=-20
+sumCut=10
 aaCut=20
 debug=-1
 
@@ -38,19 +38,19 @@ UPDATEXT=1
 DEBUG=-1
 SAVEHISTS=0
 
-JobLists=""
-joblistfile=joblist.$runName.$runNo
+threadLists=""
+threadlistfile=threadlist.$runName.$runNo
 
 lastxtfile=""
 
-updateJobLists(){
-    ls Conf/${runNocon}.*.log > $joblistfile
-    cat $joblistfile
+updateThreadLists(){
+    ls Conf/${threadName}_*.log > $threadlistfile
+    cat $threadlistfile
 }
 
 isReady(){ # make sure this thread is not processing any job (the conf is emtpy)!
-    name=$1
-    if echo $JobLists | grep -q $name
+    name="$1\.log"
+    if echo $threadLists | grep -q "$name"
     then
         return 0
     else
@@ -58,111 +58,52 @@ isReady(){ # make sure this thread is not processing any job (the conf is emtpy)
     fi
 }
 
-prev_tlayer=$minLayercon
-prev_iEvent=0
+prev_ithread=$thread_iStart
+prev_occupied=false
 findVacentThread(){
     for (( i=0; i<3600; i++ )) #3600*10 sec = 10 hours running
     do
-        for (( tlayer=prev_tlayer; tlayer<=maxLayercon; tlayer++ ))
+        for (( ithread=prev_ithread; ithread<=thread_iStop; ithread++ ))
         do
-            for (( j=prev_iEvent; j<nEventscon; j+=5000 ))
-            do
-                iStart=$j
-                iStop=$((j+4999))
-                if (( iStop>=nEventscon ))
+            if $prev_occupied
+            then
+                prev_occupied=false
+                continue;
+            fi
+            thethread=${threadName}_${ithread}
+            conf="$CDCS8WORKING_DIR/Conf/${thethread}.conf"
+            log="$CDCS8WORKING_DIR/Conf/${thethread}.log"
+            if [ ! -e $conf ]
+            then
+                continue
+            fi
+            configure=`cat $conf`
+            if [ -z "$configure" ] # thread with no configure, probably not processing any job
+            then
+                isReady $thethread
+                if [ $? -eq 0 ]
                 then
-                    iStop=$((nEventscon-1))
-                fi
-                conf="$CDCS8WORKING_DIR/Conf/${runNocon}.layer${tlayer}.${iStart}-${iStop}.conf"
-                log="$CDCS8WORKING_DIR/Conf/${runNocon}.layer${tlayer}.${iStart}-${iStop}.log"
-                if [ ! -e $conf ]
-                then
+                    theConf=$conf
+                    prev_ithread=$ithread
+                    prev_occupied=true
+                    return 0 # ready to process
+                else # waiting in line
                     continue
                 fi
-                configure=`cat $conf`
-                if [ -z "$configure" ] # thread with no configure, probably not processing any job
-                then
-                    isReady "${runNocon}.layer${tlayer}.${iStart}-${iStop}"
-                    if [ $? -eq 0 ]
-                    then
-                        echo $conf
-                        prev_tlayer=$tlayer
-                        prev_iEvent=$j
-                        return 0 # ready to process
-                    else # waiting in line
-                        continue
-                    fi
-                else # dealing with other jobs
-                    continue
-                fi
-            done
+            else # dealing with other jobs
+                continue
+            fi
         done
+        prev_ithread=$thread_iStart
+        prev_occupied=false
         sleep 10
-        JobLists=`updateJobLists`
+        threadLists=`updateThreadLists`
         if [ ! $? -eq 0 ]
         then
             return 2 # cannot get hep_q
         fi
-        prev_tlayer=$minLayercon
-        prev_iEvent=0
     done
     return 1 # cannot find any vacent slots in 10 hours
-}
-
-checkThread(){
-    tempname=$1
-    tlayer=$2
-    iStart=$3
-    iStop=$4
-    conf="$CDCS8WORKING_DIR/Conf/${runNocon}.layer${tlayer}.${iStart}-${iStop}.conf"
-    log="$CDCS8WORKING_DIR/Conf/${runNocon}.layer${tlayer}.${iStart}-${iStop}.log"
-    if [ ! -e $conf ]
-    then
-        echo "    ERROR! configure file doesn't exist! $conf"
-        return 6
-    fi
-    configure=`cat $conf`
-    if [ ! -z "$configure" ] # thread with configure
-    then
-        if [ ! -e $log ] # but no log file?
-        then
-            sleep 3 # wait
-            if [ ! -e $log ] # really no log file!
-            then
-                echo "    ERROR! configure file not empty but no log file! $conf"
-                echo "        $configure"
-                return 4 # job dead!?
-            fi
-        fi
-        NPARAS=`echo $configure | gawk '{print NF;}'`
-        if [ $NPARAS -eq 16 ] # configure format is correct
-        then
-            trunno=`echo $configure | gawk '{print $1;}'`
-            ttlayer=`echo $configure | gawk '{print $2;}'`
-            ttempname=`echo $configure | gawk '{print $4;}'`
-            tiStart=`echo $configure | gawk '{print $12;}'`
-            tiStop=`echo $configure | gawk '{print $13;}'`
-            if [ $trunno == $runNo -a $ttempname == $tempname -a $ttlayer == $tlayer -a $tiStart == $iStart -a $tiStop == $iStop ]
-            then
-                return 1 # under processing
-            else
-                return 2 # used by others
-            fi
-        else # configure format is wrong but not reset?
-            echo "    ERROR! wrong format in $conf"
-            echo "        $configure"
-            if [ -e $log ]; then tail $log; fi
-            return 5 # job dead!?
-        fi
-    else  # thread with no configure, probably not processing any job
-        isReady "${runNocon}.layer${tlayer}.${iStart}-${iStop}"
-        if [ $? -eq 0 ]
-        then
-            return 0 # ready to process
-        else
-            return 3 # Waiting in line
-        fi
-    fi
 }
 
 for (( iter=IterStart; iter<=IterEnd; iter++ ))
@@ -178,10 +119,14 @@ do
     fi
 
     # t range
-    if [ $iter -gt 8 ]
+    if [ $iter -gt 6 ]
     then
         tmin=-10
-        tmax=340
+        tmax=600
+    elif [ $iter -gt 4 ]
+    then
+        tmin=-10
+        tmax=360
     else
         tmin=-10
         tmax=340
@@ -232,20 +177,20 @@ do
     echo "  DEBUG = $DEBUG"
     echo "  SAVEHISTS = $SAVEHISTS"
 
-    Njobs=0
-    JobLists=`updateJobLists`
+    threadLists=`updateThreadLists`
     if [ ! $? -eq 0 ]
     then
-        echo "    ERROR in updateJobLists!"
+        echo "    ERROR in updateThreadLists!"
         exit 1
     fi
+    Njobs=0
     for testlayer in $layers;
     do
-        for (( j=0; j<nEvents; j+=5000 ))
+        for (( iEvent=0; iEvent<nEvents; iEvent+=nEvtPerRun ))
         do
             ((Njobs++))
-            iEntryStart=$j
-            iEntryStop=$((j+4999))
+            iEntryStart=$iEvent
+            iEntryStop=$((iEvent+nEvtPerRun-1))
             if (( iEntryStop>=nEvents ))
             then
                 iEntryStop=$((nEvents-1))
@@ -267,69 +212,20 @@ do
             else
                 echo "  logfile \"$file\" doesn't exist, so generate a new job!"
             fi
-            threadName="${runNocon}.layer${testlayer}.${iEntryStart}-${iEntryStop}"
-            theConf="$CDCS8WORKING_DIR/Conf/${threadName}.conf"
             temprunname="${currunname}.$iEntryStart-$iEntryStop"
             tempconfig="$runNo $testlayer $prerunname $temprunname $nHitsMax $t0shift $tmin $tmax $geoSetup $sumCut $aaCut $iEntryStart $iEntryStop $workType $inputType $debug"
-            checkThread ${temprunname} ${testlayer} ${iEntryStart} ${iEntryStop}
-            result=$?
-            if [ $result -eq 0 ] # thread is ready
-            then # go with this job
-                echo "    Thread $threadName is ready"
-                echo "$tempconfig" > $theConf # send the trigger info to the job
-            elif [ $result -eq 1 ] # thread is running this job
-            then # do nothing
-                echo "    Thread $threadName is already running this job $jobname!"
-                tail $theConf
-            elif [ $result -eq 2 ] # thread is used by others
-            then # notify and find a job which is emtpy
-                echo "    Thread $threadName is used by others!"
-                tail $theConf
-                echo "    will find another thread to use..."
-                theConf=`findVacentThread`
-                if [ $? -eq 1 ]
-                then
-                    echo "    ERROR: cannot find a vacent thread in 10 hours!"
-                    exit 1
-                elif [ $? -eq 2 ]
-                then
-                    echo "    ERROR: cannot access hep_q in 10 minutes!"
-                    exit 1
-                fi
-                echo "    found new thread available $theConf"
-                echo "$tempconfig" > $theConf # send the trigger info to the job
-            elif [ $result -eq 3 ] # thread is still waiting
-            then # notify and find a job which is emtpy
-                echo "    Thread $threadName is still waiting in queue!"
-                echo "    will find another thread to use..."
-                theConf=`findVacentThread`
-                if [ $? -eq 1 ]
-                then
-                    echo "    ERROR: cannot find a vacent thread in 10 hours!"
-                    exit 1
-                elif [ $? -eq 2 ]
-                then
-                    echo "    ERROR: cannot access hep_q in 10 minutes!"
-                    exit 1
-                fi
-                echo "    found new job available $theConf"
-                echo "$tempconfig" > $theConf # send the trigger info to the job
-            else # error with this thread
-                echo "    Thread $threadName is dead?"
-                echo "    will find another thread to use..."
-                theConf=`findVacentThread`
-                if [ $? -eq 1 ]
-                then
-                    echo "    ERROR: cannot find a vacent thread in 10 hours!"
-                    exit 1
-                elif [ $? -eq 2 ]
-                then
-                    echo "    ERROR: cannot access hep_q in 10 minutes!"
-                    exit 1
-                fi
-                echo "    found new thread available $theConf"
-                echo "$tempconfig" > $theConf # send the trigger info to the job
+            findVacentThread
+            if [ $? -eq 1 ]
+            then
+                echo "    ERROR: cannot find a vacent thread in 10 hours!"
+                exit 1
+            elif [ $? -eq 2 ]
+            then
+                echo "    ERROR: cannot access hep_q in 10 minutes!"
+                exit 1
             fi
+            echo "    found new thread available $theConf"
+            echo "$tempconfig" > $theConf # send the trigger info to the job
         done
     done
     echo "Starting iteration $iter, $Njobs jobs to be finished!"
