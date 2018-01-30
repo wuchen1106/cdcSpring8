@@ -161,7 +161,7 @@ checkThread(){
             return 5 # job dead!?
         fi
     else  # thread with no configure, probably not processing any job
-        isReady $conf $log
+        isReady "${runNocon}.layer${tlayer}.${iStart}-${iStop}"
         if [ $? -eq 0 ]
         then
             return 0 # ready to process
