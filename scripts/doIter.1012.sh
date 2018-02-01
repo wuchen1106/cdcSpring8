@@ -1,8 +1,8 @@
 #!/bin/bash
 
 threadName="job"
-thread_iStart=0
-thread_iStop=99
+thread_iStart=100
+thread_iStop=199
 
 StartName="Garfield"
 runNo="1012"
@@ -19,7 +19,7 @@ geoSetup=0 # 0 for general; 1 for finger
 inputType=0 # 1 for MC; 0 for data
 workType=0 # 0, fr/l_0; 1, even/odd; -1, even/odd reversed; others, all layers
 nHitsMax=13
-t0shift=-2
+t0shift=0
 tmin=-10
 tmax=800
 sumCut=30

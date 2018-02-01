@@ -581,7 +581,7 @@ int main(int argc, char** argv){
             	double dt = (*i_driftT)[ihit];
             	double dd0 = (*i_driftD[theCand])[ihit];
 				int ip = 0;
-				for (int jhit = ihit-1; jhit>0; jhit--){
+				for (int jhit = ihit-1; jhit>=0; jhit--){
 					if ((*i_layerID)[jhit]!=(*i_layerID)[ihit]||(*i_wireID)[jhit]!=(*i_wireID)[ihit]) break;
 					//int type = getHitType((*i_type)[jhit],(*i_fitD[theCand])[jhit]>=0);
 					//if (type<100) ip++;
