@@ -37,9 +37,12 @@ int main(int argc, char** argv){
     double maxchi2 = 0;
     if (argc>=9)
         maxchi2 = (double)strtod(argv[8],NULL);
-    int debugLevel = 0;
+    int defaultLayerID = 4;
     if (argc>=10)
-        debugLevel = (int)strtol(argv[9],NULL,10);
+        defaultLayerID = (int)strtol(argv[9],NULL,10);
+    int debugLevel = 0;
+    if (argc>=11)
+        debugLevel = (int)strtol(argv[10],NULL,10);
     printf("##############Input %d Parameters##################\n",argc);
     printf("runNo       = %d\n",runNo);
     printf("prerunname  = \"%s\"\n",prerunname.Data());
@@ -49,6 +52,7 @@ int main(int argc, char** argv){
     printf("save slice fittings? \"%s\"\n",saveHists?"yes":"no");
     printf("inputType   = %d, %s\n",inputType,inputType==0?"Real Data":"MC");
     printf("maxchi2     = %.3e\n",maxchi2);
+    printf("default layer: %d\n",defaultLayerID);
     printf("debug       = %d\n",debugLevel);
     fflush(stdout);
 
@@ -263,7 +267,7 @@ int main(int argc, char** argv){
 		}
 
 		int saveEvenOdd = 0; if (lid==4) saveEvenOdd = 1; else if (lid==5) saveEvenOdd = -1;
-		int statusInitialize = fXTAnalyzer->Initialize(Form("%d.%s.layer%d",runNo,runname.Data(),lid),lid,preXTFile,newXTFile,newXTTree,xtType,saveHists, lid==4, saveEvenOdd); // take the XT from layer 4 as default output XT (0). 4 as default even and 5 as default odd.
+		int statusInitialize = fXTAnalyzer->Initialize(Form("%d.%s.layer%d",runNo,runname.Data(),lid),lid,preXTFile,newXTFile,newXTTree,xtType,saveHists, lid==defaultLayerID, saveEvenOdd);
 		if (statusInitialize){
 			fprintf(stderr,"WARNING: something wrong with initializing XTAnalyzer for layer[%d], will ignore this layer!\n",lid);
 			continue;
@@ -653,5 +657,5 @@ int getHitType(int type,bool isRight){
 }
 
 void printUsage(char * name){
-    fprintf(stderr,"%s [runNo] [prerunname] [runname] <[xtType: 3, sym with min nLHits, (2), sym, thr 0; 1, sym+offset; 0, no req] [geoSetup: (0), normal;1, finger] [saveHists: (0);1] [inputType: (0), Real data; 1, MC] [maxchi2 (1)] [debug: 0;...]>\n",name);
+    fprintf(stderr,"%s [runNo] [prerunname] [runname] <[xtType: 3, sym with min nLHits, (2), sym, thr 0; 1, sym+offset; 0, no req] [geoSetup: (0), normal;1, finger] [saveHists: (0);1] [inputType: (0), Real data; 1, MC] [maxchi2 (1)] [defaultLayerID (4)] [debug: 0;...]>\n",name);
 }

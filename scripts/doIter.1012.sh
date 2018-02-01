@@ -7,24 +7,27 @@ thread_iStop=99
 StartName="Garfield"
 runNo="1012"
 nEvents="493189"
-nEvtPerRun="5200"
-runName="0131.s30a46first"
+nEvtPerRun="5000"
+runName="0131.s30a46alllayer5"
 IterStart=1
 IterEnd=10
-layers="4"
-wires=""
+layers=5 # layers to be reconstructed and analyzied
+wires="" # wires to be calibrated (position)
 
+# for tracking
 geoSetup=0 # 0 for general; 1 for finger
 inputType=0 # 1 for MC; 0 for data
 workType=0 # 0, fr/l_0; 1, even/odd; -1, even/odd reversed; others, all layers
-peakType=0 # 0, only the first peak over threshold; 1, all peaks over threshold; 2, even including shaddowed peaks
 nHitsMax=13
-t0shift=0
+t0shift=-2
 tmin=-10
 tmax=800
 sumCut=30
 aaCut=46
+peakType=1 # 0, only the first peak over threshold; 1, all peaks over threshold; 2, even including shaddowed peaks
 
+# for getOffset
+WPTYPE=0 # 0 for changing wiremap; 1 for not changing it;
 stepSize=0 # maximum step size for each movement in wire position calibration; 0 means no limit
 minslz=0 # min slz cut for mean slz value in each sample of events in wiremap calibration. minslz==maxslz==0 means no cut
 maxslz=0 # min slz cut for mean slz value in each sample of events in wiremap calibration. minslz==maxslz==0 means no cut
@@ -32,10 +35,11 @@ mininx=0 # min inx cut for mean inx value in each sample of events in wiremap ca
 maxinx=0 # min inx cut for mean inx value in each sample of events in wiremap calibration. mininx==maxinx==0 means no cut
 maxchi2=1
 scale=1 # move scale*offset on wiremap for fitting in the next round
-XTTYPE=1 # 2 for symmetrical; 1 for offset loading; 0 for no constraints.
-WPTYPE=0 # 0 for changing wiremap; 1 for not changing it;
+
+# for getXT
 UPDATEXT=1
-DEBUG=-1
+DEFAULTLAYER=5 # use this layer to generate fl(r)_0 and so on
+XTTYPE=1 # 2 for symmetrical; 1 for offset loading; 0 for no constraints.
 SAVEHISTS=0
 
 threadLists=""
@@ -136,25 +140,6 @@ do
         tmax=340
     fi
 
-    # one layer or more
-    if [ $iter -gt 8 ]
-    then
-        layers="4"
-        WPTYPE=0 # 0 for not changing wiremap
-        UPDATEXT=1
-        wires=""
-        stepSize="0" # no step size limit
-        scale="0.5"
-        minslz="0"
-        maxslz="0"
-        maxinx="0"
-        mininx="0"
-    else
-        layers="4"
-        WPTYPE=0 # 0 for not changing wiremap
-        UPDATEXT=1
-    fi
-
     echo "#Iteration $iter started"
     echo "  layers = $layers"
     echo "  wires = $wires"
@@ -178,7 +163,7 @@ do
     echo "  XTTYPE = $XTTYPE"
     echo "  WPTYPE = $WPTYPE"
     echo "  UPDATEXT = $UPDATEXT"
-    echo "  DEBUG = $DEBUG"
+    echo "  DEFAULTLAYER = $DEFAULTLAYER"
     echo "  SAVEHISTS = $SAVEHISTS"
 
     threadLists=`updateThreadLists`
@@ -301,7 +286,7 @@ do
         ln -s wire-position.${runNo}.${StartName}.root wire-position.${runNo}.${currunname}.root
         cd ..
     fi
-    getOffset $runNo $prerunname $currunname $geoSetup $WPTYPE $scale $stepSize $minslz $maxslz $mininx $maxinx $maxchi2 $DEBUG $wires
+    getOffset $runNo $prerunname $currunname $geoSetup $WPTYPE $scale $stepSize $minslz $maxslz $mininx $maxinx $maxchi2 -1 $wires
     if [ ! $UPDATEXT -eq 1 ] # ! 1 for not updating xt
     then
         if [ -z $lastxtfile ]
@@ -312,7 +297,7 @@ do
         ln -s $lastxtfile xt.${runNo}.${currunname}.root
         cd ..
     else
-        getXT $runNo $prerunname $currunname $XTTYPE $geoSetup $SAVEHISTS $inputType $maxchi2 $DEBUG
+        getXT $runNo $prerunname $currunname $XTTYPE $geoSetup $SAVEHISTS $inputType $maxchi2 $DEFAULTLAYER
         lastxtfile=xt.${runNo}.${currunname}.root
     fi
 done
