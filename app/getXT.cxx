@@ -48,7 +48,7 @@ int main(int argc, char** argv){
     printf("prerunname  = \"%s\"\n",prerunname.Data());
     printf("runname     = \"%s\"\n",runname.Data());
     printf("geoSetup:     %s\n",geoSetup==0?"normal scintillator":"finger scintillator");
-    printf("xtType:       %s\n",xtType==0?"asymmetric":(xtType==1?"symmetric, with offset":(xtType==2?"symmetric, thru 0":(xtType==3?"symmetric with nLHits==0":(xtType==4?"symmetric with smallest chi2a":(xtType==5?"symmetric with smallest chi2":"others?"))))));
+    printf("xtType:       %d: %s\n",xtType,xtType==0?"asymmetric":(xtType==1?"symmetric, with offset":(xtType==2?"symmetric, thru 0":(xtType==3?"symmetric with nLHits==0":(xtType==4?"symmetric with smallest chi2a":(xtType==5?"symmetric with smallest chi2":"others?"))))));
     printf("save slice fittings? \"%s\"\n",saveHists?"yes":"no");
     printf("inputType   = %d, %s\n",inputType,inputType==0?"Real Data":"MC");
     printf("maxchi2     = %.3e\n",maxchi2);
@@ -107,7 +107,7 @@ int main(int argc, char** argv){
 			off[lid][wid] = 0;
 		}
 	}
-	if (xtType==1){
+	if (xtType==1||xtType==6){
 		TChain * iChain_off = new TChain("t","t");
 		iChain_off->Add(Form("%s/info/offset.%d.%s.root",HOME.Data(),runNo,runname.Data()));
 		double i_off_delta;
@@ -363,8 +363,8 @@ int main(int argc, char** argv){
             	if ((*i_sel[theCand])[ihit]==1&&(fabs(tdriftD)<0.5||fabs(tdriftD)>7.5)) hasBadHit = true;
                 if (tlayerID!=lid) continue;
 				int ttype = getHitType((*i_type)[ihit],tfitD>=0);
-                //if (ttype<100&&fabs(tfitD-tdriftD)<fabs(minres)){
-                if (fabs(tfitD-tdriftD)<fabs(minres)){ // no cut for test layer!
+                if ((ttype<100&&xtType==6||xtType!=6)&&fabs(tfitD-tdriftD)<fabs(minres)){ // Should have cut for test layer! otherwise XT will not be well tuned
+                //if (fabs(tfitD-tdriftD)<fabs(minres)){ // no cut for test layer!
                     minres = tfitD-tdriftD;
                     wireID = (*i_wireID)[ihit];
                     fitD = tfitD;
@@ -618,8 +618,8 @@ int main(int argc, char** argv){
 				(*i_fitD[theCand])[ihit]-=off[tlid][twid];
                 double tfitD = (*i_fitD[theCand])[ihit];
 				int ttype = getHitType((*i_type)[ihit],tfitD>=0);
-                //if (tlid==lid&&ttype<100&&status==0&&fabs(tfitD-dd)<fabs(minres)){
-                if (tlid==lid&&status==0&&fabs(tfitD-dd)<fabs(minres)){ // no cut for test layer
+                if (tlid==lid&&((ttype<100&&xtType==6)||xtType!=6)&&status==0&&fabs(tfitD-dd)<fabs(minres)){ // Should have cut for test layer! otherwise XT will not be well tuned
+                //if (tlid==lid&&status==0&&fabs(tfitD-dd)<fabs(minres)){ // no cut for test layer
                     minres = tfitD-dd;
                     theDD = dd;
                     theDT = dt;

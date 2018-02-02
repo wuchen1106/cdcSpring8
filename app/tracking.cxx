@@ -679,7 +679,8 @@ int main(int argc, char** argv){
             if ((*i_aa)[ihit]<aaCut) type+=1*1000;
             // M: index of peak in a multi-peak wave packet
             type+=(*i_mpi)[ihit]*10000;
-            // I: index of peak in the hole waveform
+            // I: index of peak over sum cut in the whole waveform
+            // added above // type+=npoc*100000; 
             (*i_type)[ihit] = type;
             int ttype = getHitType(type,true);
             if (lid != testlayer&&ttype<=3){ // good hit
@@ -963,8 +964,8 @@ int getHitType(int type,bool isRight){ // see if the driftT is really out of ran
 	else{
 		if (ttype==2||ttype==5) type-=ttype*10; // r- or r+
 	}
-    if (peakType>1) type=type%100000; // ignoring npoc cut, leaving all the peaks over threshold competing
-    else if (peakType) type=type%100000; // ignoring npoc cut, leaving all the peaks over threshold (and mpi==0) competing
+    if (peakType>1) type=type%10000; // ignoring npoc cut and mpi cut, leaving all the peaks over threshold competing
+    else if (peakType) type=type%100000; // ignoring npoc cut, leaving all the peaks with mpi==0 over threshold competing
 	return type;
 }
 
@@ -1413,5 +1414,5 @@ double getError(int lid,double dt, bool isR){
 //______________________________________________________________________________
 void print_usage(char* prog_name)
 {
-    fprintf(stderr,"\t%s [runNo] [testlayer] [prerunname] [runname] <[nHitsMax] [t0shift0] [t0shift1] [tmin] [tmax] [geoSetup] [sumCut] [aaCut] [iEntryStart] [iEntryStop] [workType: 0, fr/l_0; 1, even/odd; -1, even/odd reversed; others, all layers] [inputType: 0, Data; 1: MC] [debug] [memdebug]>\n",prog_name);
+    fprintf(stderr,"\t%s [runNo] [testlayer] [prerunname] [runname] <[nHitsMax] [t0shift0] [t0shift1] [tmin] [tmax] [geoSetup] [sumCut] [aaCut] [iEntryStart] [iEntryStop] [workType: 0, fr/l_0; 1, even/odd; -1, even/odd reversed; others, all layers] [inputType: 0, Data; 1: MC] [peakType] [debug] [memdebug]>\n",prog_name);
 }
