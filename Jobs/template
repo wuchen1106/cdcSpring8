@@ -9,34 +9,35 @@ do
     if [ ! -z "$configure" ]
     then
         NPARAS=`echo $configure | gawk '{print NF;}'`
-        if [ $NPARAS -eq 16 ]
+        if [ $NPARAS -eq 17 ]
         then # triggered, start a tracking
             runNo=`echo $configure | gawk '{print $1;}'`
             testlayer=`echo $configure | gawk '{print $2;}'`
             prerunname=`echo $configure | gawk '{print $3;}'`
             runname=`echo $configure | gawk '{print $4;}'`
             nHitsMax=`echo $configure | gawk '{print $5;}'`
-            t0shift=`echo $configure | gawk '{print $6;}'`
-            tmin=`echo $configure | gawk '{print $7;}'`
-            tmax=`echo $configure | gawk '{print $8;}'`
-            geoSetup=`echo $configure | gawk '{print $9;}'`
-            sumCut=`echo $configure | gawk '{print $10;}'`
-            aaCut=`echo $configure | gawk '{print $11;}'`
-            iEntryStart=`echo $configure | gawk '{print $12;}'`
-            iEntryStop=`echo $configure | gawk '{print $13;}'`
-            workType=`echo $configure | gawk '{print $14;}'`
-            inputType=`echo $configure | gawk '{print $15;}'`
-            peakType=`echo $configure | gawk '{print $16;}'`
+            t0shift0=`echo $configure | gawk '{print $6;}'`
+            t0shift1=`echo $configure | gawk '{print $7;}'`
+            tmin=`echo $configure | gawk '{print $8;}'`
+            tmax=`echo $configure | gawk '{print $9;}'`
+            geoSetup=`echo $configure | gawk '{print $10;}'`
+            sumCut=`echo $configure | gawk '{print $11;}'`
+            aaCut=`echo $configure | gawk '{print $12;}'`
+            iEntryStart=`echo $configure | gawk '{print $13;}'`
+            iEntryStop=`echo $configure | gawk '{print $14;}'`
+            workType=`echo $configure | gawk '{print $15;}'`
+            inputType=`echo $configure | gawk '{print $16;}'`
+            peakType=`echo $configure | gawk '{print $17;}'`
             log="$CDCS8WORKING_DIR/root/t_${runNo}.${runname}.layer${testlayer}.log"
             err="$CDCS8WORKING_DIR/root/t_${runNo}.${runname}.layer${testlayer}.err"
             date >> $theLog
-            echo "Scan$iScan: tracking $runNo $testlayer $prerunname $runname $nHitsMax $t0shift $tmin $tmax $geoSetup $sumCut $aaCut $iEntryStart $iEntryStop $workType $inputType $peakType > $log 2> $err" >> $theLog
-            nohup tracking $runNo $testlayer $prerunname $runname $nHitsMax $t0shift $tmin $tmax $geoSetup $sumCut $aaCut $iEntryStart $iEntryStop $workType $inputType $peakType > $log 2> $err &
+            echo "Scan$iScan: tracking $runNo $testlayer $prerunname $runname $nHitsMax $t0shift0 $t0shift1 $tmin $tmax $geoSetup $sumCut $aaCut $iEntryStart $iEntryStop $workType $inputType $peakType > $log 2> $err" >> $theLog
+            nohup tracking $runNo $testlayer $prerunname $runname $nHitsMax $t0shift0 $t0shift1 $tmin $tmax $geoSetup $sumCut $aaCut $iEntryStart $iEntryStop $workType $inputType $peakType > $log 2> $err &
             pid=" $!"
             wait $pid || { echo "there were errors" >&2; exit 1; }
             echo "Scan$iScan: Finished!" >> $theLog
         else # wrong number of parameters, do nothing
-            echo "Scan$iScan: There are $NPARAS parameters in $theConf but we need 16! Reset this job" >> $theLog
+            echo "Scan$iScan: There are $NPARAS parameters in $theConf but we need 17! Reset this job" >> $theLog
         fi
         echo "" > $theConf # make sure to reset the configure file so that this job will sleep and wait for the next trigger
     fi

@@ -183,12 +183,12 @@ double getError(int lid,double dt, bool isR);
 MyProcessManager * pMyProcessManager;
 
 //===================About xt============================
-TF1 * f_left[NLAY+2];
-TF1 * f_right[NLAY+2];
+TF1 * f_left[NLAYp2];
+TF1 * f_right[NLAYp2];
 // for error function
 TF1 * funcErr;
-TGraph * gr_error_left[NLAY+2];
-TGraph * gr_error_right[NLAY+2];
+TGraph * gr_error_left[NLAYp2];
+TGraph * gr_error_right[NLAYp2];
 
 int main(int argc, char** argv){
 
@@ -204,47 +204,49 @@ int main(int argc, char** argv){
     if (argc>=6){
         nHitsMax = (int)strtol(argv[5],NULL,10);
     }
-    int t0shift = 0;
-    if (argc>=7) t0shift = (int)strtol(argv[6],NULL,10);
+    int t0shift0 = 0;
+    if (argc>=7) t0shift0 = (int)strtol(argv[6],NULL,10);
+    int t0shift1 = 0;
+    if (argc>=8) t0shift1 = (int)strtol(argv[7],NULL,10);
     int tmin = -10;
-    if (argc>=8){
-        tmin = (int)strtol(argv[7],NULL,10);
+    if (argc>=9){
+        tmin = (int)strtol(argv[8],NULL,10);
     }
     int tmax = 800;
-    if (argc>=9){
-        tmax = (int)strtol(argv[8],NULL,10);
-    }
     if (argc>=10){
-        geoSetup = (int)strtol(argv[9],NULL,10);
+        tmax = (int)strtol(argv[9],NULL,10);
+    }
+    if (argc>=11){
+        geoSetup = (int)strtol(argv[10],NULL,10);
     }
     float sumCut = 0;
-    if (argc>=11){
-        sumCut = (float)atof(argv[10]);
+    if (argc>=12){
+        sumCut = (float)atof(argv[11]);
     }
     float aaCut = 0;
-    if (argc>=12){
-        aaCut = (float)atof(argv[11]);
+    if (argc>=13){
+        aaCut = (float)atof(argv[12]);
     }
     int iEntryStart = 0;
     int iEntryStop = 0;
-    if (argc>=14){
-        iEntryStart = (int)strtol(argv[12],NULL,10);
-        iEntryStop = (int)strtol(argv[13],NULL,10);
-    }
     if (argc>=15){
-        workType = (int)strtol(argv[14],NULL,10);
+        iEntryStart = (int)strtol(argv[13],NULL,10);
+        iEntryStop = (int)strtol(argv[14],NULL,10);
     }
     if (argc>=16){
-        inputType = (int)strtol(argv[15],NULL,10);
+        workType = (int)strtol(argv[15],NULL,10);
     }
     if (argc>=17){
-        peakType = (int)strtol(argv[16],NULL,10);
+        inputType = (int)strtol(argv[16],NULL,10);
     }
     if (argc>=18){
-        debug = (int)strtol(argv[17],NULL,10);
+        peakType = (int)strtol(argv[17],NULL,10);
     }
     if (argc>=19){
-        memdebug = (int)strtol(argv[18],NULL,10);
+        debug = (int)strtol(argv[18],NULL,10);
+    }
+    if (argc>=20){
+        memdebug = (int)strtol(argv[19],NULL,10);
     }
     printf("##############Input Parameters##################\n");
     printf("runNo       = %d\n",runNo);
@@ -252,7 +254,8 @@ int main(int argc, char** argv){
     printf("prerunname  = \"%s\"\n",prerunname.Data());
     printf("runname     = \"%s\"\n",runname.Data());
     printf("nHitsMax    = %d\n",nHitsMax);
-    printf("t0shift     = %d\n",t0shift);
+    printf("t0shift b0  = %d\n",t0shift0);
+    printf("t0shift b1  = %d\n",t0shift1);
     printf("tmin        = %d\n",tmin);
     printf("tmax        = %d\n",tmax);
     printf("geoSetup:     %s\n",geoSetup==0?"normal scintillator":"finger scintillator");
@@ -640,10 +643,11 @@ int main(int argc, char** argv){
         int prevch = -1; // the mych ID of the previous hit
         int npoc = 0; // number of peaks over sum cut in this chanel
         for (int ihit = 0; ihit<i_nHits; ihit++){
-            (*i_driftT)[ihit]+=t0shift; // fix driftT according to t0shift
-            double dt = (*i_driftT)[ihit];
             int lid = (*i_layerID)[ihit];
             int wid = (*i_wireID)[ihit];
+            int bid = map_bid[lid][wid];
+            (*i_driftT)[ihit]+=bid==0?t0shift0:t0shift1; // fix driftT according to t0shift
+            double dt = (*i_driftT)[ihit];
             int mych = lid*1000+wid;
             if (mych!=prevch) // new channel
                 npoc = 0; // reset npoc
@@ -1409,5 +1413,5 @@ double getError(int lid,double dt, bool isR){
 //______________________________________________________________________________
 void print_usage(char* prog_name)
 {
-    fprintf(stderr,"\t%s [runNo] [testlayer] [prerunname] [runname] <[nHitsMax] [t0shift] [tmin] [tmax] [geoSetup] [sumCut] [aaCut] [iEntryStart] [iEntryStop] [workType: 0, fr/l_0; 1, even/odd; -1, even/odd reversed; others, all layers] [inputType: 0, Data; 1: MC] [debug] [memdebug]>\n",prog_name);
+    fprintf(stderr,"\t%s [runNo] [testlayer] [prerunname] [runname] <[nHitsMax] [t0shift0] [t0shift1] [tmin] [tmax] [geoSetup] [sumCut] [aaCut] [iEntryStart] [iEntryStop] [workType: 0, fr/l_0; 1, even/odd; -1, even/odd reversed; others, all layers] [inputType: 0, Data; 1: MC] [debug] [memdebug]>\n",prog_name);
 }

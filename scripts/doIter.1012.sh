@@ -1,25 +1,26 @@
 #!/bin/bash
 
 threadName="job"
-thread_iStart=0
-thread_iStop=249
+thread_iStart=300
+thread_iStop=399
 
 StartName="Garfield"
 runNo="1012"
 nEvents="493189"
-nEvtPerRun="6000"
-runName="0131.s30a46all"
-IterStart=10
+nEvtPerRun="10000"
+runName="0131.s30a46allEO"
+IterStart=1
 IterEnd=10
-layers="3 5 6" # layers to be reconstructed and analyzied
+layers="4 5" # layers to be reconstructed and analyzied
 wires="" # wires to be calibrated (position)
 
 # for tracking
 geoSetup=0 # 0 for general; 1 for finger
 inputType=0 # 1 for MC; 0 for data
-workType=0 # 0, fr/l_0; 1, even/odd; -1, even/odd reversed; others, all layers
+workTypeini=1 # 0, fr/l_0; 1, even/odd; -1, even/odd reversed; others, all layers
 nHitsMax=13
-t0shift=0
+t0shift0=0
+t0shift1=-1
 tmin=-10
 tmax=800
 sumCut=30
@@ -145,6 +146,13 @@ do
         tmax=340
     fi
 
+    if [ $iter -gt 1 ]
+    then
+        workType=$workTypeini
+    else
+        workType=0
+    fi
+
     echo "#Iteration $iter started"
     echo "  layers = $layers"
     echo "  wires = $wires"
@@ -152,7 +160,8 @@ do
     echo "  inputType = $inputType"
     echo "  workType = $workType"
     echo "  nHitsMax = $nHitsMax"
-    echo "  t0shift = $t0shift"
+    echo "  t0shift0 = $t0shift0"
+    echo "  t0shift1 = $t0shift1"
     echo "  tmin = $tmin"
     echo "  tmax = $tmax"
     echo "  sumCut = $sumCut"
@@ -177,7 +186,7 @@ do
         echo "    ERROR in updateThreadLists!"
         exit 1
     fi
-    Njobs=100
+    Njobs=0
     for testlayer in $layers;
     do
         for (( iEvent=0; iEvent<nEvents; iEvent+=nEvtPerRun ))
@@ -207,7 +216,7 @@ do
                 echo "  logfile \"$file\" doesn't exist, so generate a new job!"
             fi
             temprunname="${currunname}.$iEntryStart-$iEntryStop"
-            tempconfig="$runNo $testlayer $prerunname $temprunname $nHitsMax $t0shift $tmin $tmax $geoSetup $sumCut $aaCut $iEntryStart $iEntryStop $workType $inputType $peakType"
+            tempconfig="$runNo $testlayer $prerunname $temprunname $nHitsMax $t0shift0 $t0shift1 $tmin $tmax $geoSetup $sumCut $aaCut $iEntryStart $iEntryStop $workType $inputType $peakType"
             findVacentThread
             if [ $? -eq 1 ]
             then

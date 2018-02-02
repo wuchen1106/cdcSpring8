@@ -12,6 +12,7 @@
 //#define NLAY  19
 
 #if NLAY == 9
+#define NLAYp2 11
 #define NCEL  11
 #define NCELA 99
 #define NBRD 2
@@ -19,6 +20,7 @@
 #define NZXP 8
 #define NITERSMAX 100
 #elif NLAY == 11
+#define NLAYp2 13
 #define NCEL  12
 #define NCELA 132
 #define NBRD 3
@@ -26,6 +28,7 @@
 #define NZXP 10
 #define NITERSMAX 100
 #elif NLAY == 19
+#define NLAYp2 21
 #define NCEL  12
 #define NCELA 228
 #define NBRD 5
