@@ -41,7 +41,7 @@ int main(int argc, char** argv){
 	    return -1;
     }
 	int runNo = (int)strtol(argv[1],NULL,10);
-	int workMode = (int)strtol(argv[2],NULL,10); // 0: h_XXX; 1: t_XXX; 10: h_XXX with zx; 11: t_XXX with zx
+	int workMode = (int)strtol(argv[2],NULL,10); // 0: h_XXX; 1: t_XXX; 2: ana_XXX; 10: h_XXX with zx; 11: t_XXX with zx
 	int testlayer = 4;
 	if (argc>=4){
 	    testlayer = atoi(argv[3]);
@@ -200,16 +200,14 @@ int main(int argc, char** argv){
             map_theta[wp_lid][wp_wid] = atan(-(map_x[wp_lid][wp_wid][0]-map_x[wp_lid][wp_wid][1])/chamberHL/2); // rotation angle viewing from the dart plane (RO plane, z>0); positive rotation angle point to -x direction
 		}
         else{
-            fprintf(stderr,"ERROR: Entry %d in wiremap file, lid = %d wid = %d out of range (%d,%d)!\n",i,wp_lid,wp_wid,NLAY,NCEL);
-            return -1;
+            fprintf(stderr,"WARNING: Entry %d in wiremap file, lid = %d wid = %d out of range (%d,%d)!\n",i,wp_lid,wp_wid,NLAY,NCEL);
         }
 		if (wp_bid>=0&&wp_bid<NBRD&&wp_ch>=0&&wp_ch<NCHS){
 			map_lid[wp_bid][wp_ch] = wp_lid;
 			map_wid[wp_bid][wp_ch] = wp_wid;
         }
         else{
-            fprintf(stderr,"ERROR: Entry %d in wiremap file, bid = %d ch = %d out of range (%d,%d)!\n",i,wp_bid,wp_ch,NBRD,NCHS);
-            return -1;
+            fprintf(stderr,"WARNING: Entry %d in wiremap file, bid = %d ch = %d out of range (%d,%d)!\n",i,wp_bid,wp_ch,NBRD,NCHS);
         }
 	}
 	TFile_wirepos->Close();
@@ -348,12 +346,19 @@ int main(int argc, char** argv){
 	double i_chi2[NCAND];
     std::vector<double> * i_fitD[NCAND] = {0};
     std::vector<int> * i_sel[NCAND] = {0};
+    double theRes;
+    double theDD;
+    int    theWid;
+    int    has;
 	TChain * iChain = new TChain("t","t");
     if (workMode%10==0){ // 0: h_XXX; 1: t_XXX
         iChain->Add(HOME+Form("/root/h_%d.",runNo)+runname+".root");
     }
     else if (workMode%10==1){
         iChain->Add(Form("%s/root/t_%d.%s.layer%d.root",HOME.Data(),runNo,runname.Data(),testlayer));
+    }
+    else if (workMode%10==2){
+        iChain->Add(Form("%s/root/ana_%d.%s.layer%d.root",HOME.Data(),runNo,runname.Data(),testlayer));
     }
     int triggerNumberMax = 0;
     int nEntries = iChain->GetEntries();
@@ -388,6 +393,35 @@ int main(int argc, char** argv){
             iChain->SetBranchAddress(Form("fitD%d",iCand),&(i_fitD[iCand]));
             iChain->SetBranchAddress(Form("sel%d",iCand),&(i_sel[iCand]));
         }
+    }
+    else if (workMode%10==2){
+        iChain->SetBranchAddress("res",&theRes);
+        iChain->SetBranchAddress("theDD",&theDD);
+        iChain->SetBranchAddress("theWid",&theWid);
+        iChain->SetBranchAddress("has",&has);
+        iChain->SetBranchAddress("nHitsG",&nHitsG);
+        iChain->SetBranchAddress("dxl",&i_dxl);
+        iChain->SetBranchAddress("dxr",&i_dxr);
+		iChain->SetBranchAddress("driftD",&(i_driftD[0]));
+		iChain->SetBranchAddress("icom",&(i_icombi[0]));
+		iChain->SetBranchAddress("isel",&(i_iselec[0]));
+		iChain->SetBranchAddress("npairs",&(i_npairs[0]));
+		iChain->SetBranchAddress("islx",&(i_islx[0]));
+		iChain->SetBranchAddress("iinx",&(i_iinx[0]));
+		iChain->SetBranchAddress("islz",&(i_islz[0]));
+		iChain->SetBranchAddress("iinz",&(i_iinz[0]));
+		iChain->SetBranchAddress("chi2x",&(i_chi2x[0]));
+		iChain->SetBranchAddress("chi2z",&(i_chi2z[0]));
+		iChain->SetBranchAddress("chi2i",&(i_chi2i[0]));
+		iChain->SetBranchAddress("calD",&(i_calD[0]));
+		iChain->SetBranchAddress("nHitsS",&(nHitsS[0]));
+		iChain->SetBranchAddress("slx",&(i_slx[0]));
+		iChain->SetBranchAddress("inx",&(i_inx[0]));
+		iChain->SetBranchAddress("slz",&(i_slz[0]));
+		iChain->SetBranchAddress("inz",&(i_inz[0]));
+		iChain->SetBranchAddress("chi2",&(i_chi2[0]));
+		iChain->SetBranchAddress("fitD",&(i_fitD[0]));
+		iChain->SetBranchAddress("sel",&(i_sel[0]));
     }
     else{
         fprintf(stderr,"workMode %d is not supported! please chose from 0,1\n",workMode);
@@ -560,7 +594,7 @@ int main(int argc, char** argv){
 					for (int ip = 0; ip<MULTI; ip++){
 						for (int jp = 0; jp<MULTI; jp++){
 							for (int icombi = 0; icombi<4; icombi++){
-								if (workMode%10==1&&icombi==3) // reverse izx when icombi is 0 or 1, reverse izx+1 when icombi is 0 or 2. Keep them unchanged only when icombi is 3
+								if (workMode%10>0&&icombi==3) // reverse izx when icombi is 0 or 1, reverse izx+1 when icombi is 0 or 2. Keep them unchanged only when icombi is 3
 									point_cross_zx[izx][wid][wjd][ip][jp][icombi] = new TMarker(0,0,20);
 								else
 									point_cross_zx[izx][wid][wjd][ip][jp][icombi] = new TMarker(0,0,4);
@@ -579,7 +613,7 @@ int main(int argc, char** argv){
     // Prepare track points on z-x planes
     TMarker * point_track_zx[NZXP];
     TMarker * point_itrack_zx[NZXP];
-    if (workMode%10==1&&workMode/10==1){
+    if (workMode%10>0&&workMode/10==1){
         for (int izx = 1; izx<NZXP; izx++){ // z-x planes corresponding to the layerID of the lower layer counting from 1
             point_track_zx[izx] = new TMarker(0,0,20);
             point_track_zx[izx]->SetMarkerColor(kRed);
@@ -722,7 +756,7 @@ int main(int argc, char** argv){
         iChain_p->GetEntry(iEntry);
 
 		// set prefix
-		if (workMode%10==1){
+		if (workMode%10>0){
             if (nHitsG<=6) prefix = "incom.";
             else if (nHitsG==7 ) prefix = "single.";
             else if (nHitsG==8 ) prefix = "single.";
@@ -756,7 +790,7 @@ int main(int argc, char** argv){
                 i_driftD[0]->push_back(dd);
             }
 			else{
-				for (int iCand = 0; iCand<NCAND; iCand++){
+				for (int iCand = 0; iCand<(workMode%10==1?NCAND:1); iCand++){
 					if (nHitsS[iCand]==0){// bad fitting, driftD nonsense.
 						(*i_driftD[iCand])[ihit] = (*i_dxr)[ihit];
 					}
@@ -875,7 +909,7 @@ int main(int argc, char** argv){
             for (int iwire = 0; iwire<v_wire_xc.size(); iwire++){
                 double y = v_wire_yc[iwire];
                 double x;
-                if (workMode%10==1){ // according to z-y relation from tracking
+                if (workMode%10>0){ // according to z-y relation from tracking
                     double z = i_slz[iCand]*(y-iny)+i_inz[iCand];
                     x = ((chamberHL-z)*v_wire_xhv[iwire]+(chamberHL+z)*v_wire_xro[iwire])/chamberHL/2;
                     y = ((chamberHL-z)*v_wire_yhv[iwire]+(chamberHL+z)*v_wire_yro[iwire])/chamberHL/2;
@@ -890,7 +924,7 @@ int main(int argc, char** argv){
             }
             // Draw the background graph for x-y plane
             pad_xyADC[0]->cd();
-            if (workMode%10==1)
+            if (workMode%10>0)
                 gr_wireCenter->SetTitle(Form("Ent %d, nHitsG %d(%d), icom %d, isel %d, sl_{z}: %.2e->%.2e, #chi^{2}: %.2e->%.2e",iEntry,nHitsG,nHitsS[iCand],i_icombi[iCand],i_iselec[iCand],i_islz[iCand],i_slz[iCand],i_chi2i[iCand],i_chi2[iCand]));
             else
                 gr_wireCenter->SetTitle(Form("Entry %d nHits = %d",iEntry,nHits));
@@ -907,7 +941,7 @@ int main(int argc, char** argv){
                     double wzhv = -chamberHL;
                     double wy = (wyro+wyhv)/2.;
                     double wx = (wxro+wxhv)/2.;
-                    if (workMode%10==1){
+                    if (workMode%10>0){
                         // correct wx wy wz according to the track position
                         double wz = i_slz[iCand]*(wy-iny)+i_inz[iCand];
                         wx = ((wzro-wz)*wxhv+(wz-wzhv)*wxro)/(wzro-wzhv);
@@ -924,7 +958,7 @@ int main(int argc, char** argv){
                         // Get hit information
                         double fitd = 0;
                         double dd = (*i_driftD[iCand])[ihit];
-                        if (workMode%10==1){
+                        if (workMode%10>0){
                             fitd = (*i_fitD[iCand])[ihit]; // !!! make sure it's mm
                         }
                         // set the hit circles
@@ -938,7 +972,7 @@ int main(int argc, char** argv){
                         }
                         else{
                             circle_driftD[lid][wid][ip]->SetLineStyle(1);
-                            if (workMode%10==1&&(*i_sel[iCand])[ihit]) // used for fitting
+                            if (workMode%10>0&&(*i_sel[iCand])[ihit]) // used for fitting
                                 circle_driftD[lid][wid][ip]->SetLineColor(kRed);
                             else
                                 circle_driftD[lid][wid][ip]->SetLineColor(kOrange);
@@ -947,7 +981,7 @@ int main(int argc, char** argv){
                         circle_driftD[lid][wid][ip]->Draw(); // from track fitting/finding
 
                         // get the min residual
-                        if (fabs(fitd-dd)<fabs(resmin)&&(workMode%10==1&&type<=3)){ // only print when t_XXX and good hit
+                        if (fabs(fitd-dd)<fabs(resmin)&&(workMode%10>0&&type<=3)){ // only print when t_XXX and good hit
                             resmin = fitd-dd;
                             thefitd = fitd;
                         }
@@ -963,6 +997,10 @@ int main(int argc, char** argv){
 							}
 						}
                     }
+                    if (workMode%10==2&&wid==theWid&&has==1&&lid==testlayer){
+                    	resmin = theRes;
+                    	thefitd = theDD+theRes;
+                    }
                     if (resmin<1e9){ // found a hit in this wire
                         text_xyhit[lid][wid]->SetText(wx,wy,Form("%d,%.3f,%.3f",wid,thefitd-resmin,resmin));// draw the one with the smallest res
                         text_xyhit[lid][wid]->Draw();
@@ -975,7 +1013,7 @@ int main(int argc, char** argv){
             double xup    = i_inx[iCand] + (yup-iny)*i_slx[iCand];
             double xdowni = i_iinx[iCand] + (ydown-iny)*i_islx[iCand];
             double xupi   = i_iinx[iCand] + (yup-iny)*i_islx[iCand];
-            if (workMode%10==1){
+            if (workMode%10>0){
                 l_itrack->SetX1(xupi);
                 l_itrack->SetX2(xdowni);
                 l_itrack->Draw();
@@ -983,7 +1021,7 @@ int main(int argc, char** argv){
                 l_track->SetX2(xdown);
                 l_track->Draw();
             }
-            if (workMode%10==1){
+            if (workMode%10>0){
                 ca_xyADC->SaveAs(prefix+Form("xyADC.%d.i%d.pdf",iEntry,iCand));
                 ca_xyADC->SaveAs(prefix+Form("xyADC.%d.i%d.png",iEntry,iCand));
             }
@@ -1059,7 +1097,7 @@ int main(int argc, char** argv){
 										int jtype = (*i_type)[jhit];
 										int isel = 0;
 										int jsel = 0;
-										if (workMode%10==1){
+										if (workMode%10>0){
 											isel = (*i_sel[iCand])[ihit];
 											jsel = (*i_sel[iCand])[jhit];
 										}
@@ -1082,7 +1120,7 @@ int main(int argc, char** argv){
 											double theta2 = map_theta[izx+1][wjd];
 											double sintheta12 = sin(theta1-theta2);
 											double zc_fix_slx = 0;
-											if (workMode%10==1){
+											if (workMode%10>0){
 												double deltaY = y_cell[izx+1][wjd]-y_cell[izx][wid];
 												zc_fix_slx = deltaY*i_slx[iCand]/(tan(theta2)-tan(theta1));
 											}
@@ -1093,7 +1131,7 @@ int main(int argc, char** argv){
 												point_cross_zx[izx][wid][wjd][ip][jp][icombi]->SetY(xc);
 												point_cross_zx[izx][wid][wjd][ip][jp][icombi]->Draw();
 											}
-											if (workMode%10==1){
+											if (workMode%10>0){
 												if (icombi==3){
 													double y_track = (y_cell[izx][wid]+y_cell[izx+1][wjd])/2.;
 													z_track = i_inz[iCand]+(y_track-iny)*i_slz[iCand];
@@ -1128,7 +1166,7 @@ int main(int argc, char** argv){
 						}
 						if (wjd==NCEL) wjd = NCEL/2;
 						double y_track = (y_cell[izx][wid]+y_cell[izx+1][wjd])/2.; // take the y value from a previous event
-						if (workMode%10==1){
+						if (workMode%10>0){
 							z_track = i_inz[iCand]+(y_track-iny)*i_slz[iCand];
 							x_track = i_inx[iCand]+(y_track-iny)*i_slx[iCand];
 							z_itrack = i_iinz[iCand]+(y_track-iny)*i_islz[iCand];
@@ -1137,7 +1175,7 @@ int main(int argc, char** argv){
 						gr_all[izx]->SetTitle(Form("Layer %d and Layer %d",izx,izx+1));
 					}
 					// draw the track point
-					if (workMode%10==1){
+					if (workMode%10>0){
 						point_itrack_zx[izx]->SetX(z_itrack);
 						point_itrack_zx[izx]->SetY(x_itrack);
 						point_itrack_zx[izx]->Draw();
@@ -1145,7 +1183,7 @@ int main(int argc, char** argv){
 						point_track_zx[izx]->SetY(x_track);
 						point_track_zx[izx]->Draw();
 					}
-					if (workMode%10==1){
+					if (workMode%10>0){
 						ca_zx[izx]->SaveAs(prefix+Form("zx.%d.i%d.l%d.pdf",iEntry,iCand,izx));
 						ca_zx[izx]->SaveAs(prefix+Form("zx.%d.i%d.l%d.png",iEntry,iCand,izx));
 					}
@@ -1159,7 +1197,7 @@ int main(int argc, char** argv){
 				ca_zx_all->cd();
 				gr_all[0]->Draw("AP");
 				for (int izx = 1; izx<NZXP; izx++){
-					if (workMode%10>=1)
+					if (workMode%10>0)
 						point_track_zx[izx]->Draw();
 					if (nHits_layer[izx]>0&&nHits_layer[izx+1]>0){
 						for (int wid = 0; wid<NCEL; wid++){
@@ -1183,7 +1221,7 @@ int main(int argc, char** argv){
 											double theta2 = map_theta[izx+1][wjd];
 											double sintheta12 = sin(theta1-theta2);
 											double zc_fix_slx = 0;
-											if (workMode%10>=1){
+											if (workMode%10>0){
 												double deltaY = y_cell[izx+1][wjd]-y_cell[izx][wid];
 												zc_fix_slx = deltaY*i_slx[iCand]/(tan(theta2)-tan(theta1));
 											}
@@ -1201,7 +1239,7 @@ int main(int argc, char** argv){
 						}
 					}
 				}
-				if (workMode%10==1){
+				if (workMode%10>0){
 					ca_zx_all->SaveAs(prefix+Form("zx.%d.i%d.all.png",iEntry,iCand));
 					ca_zx_all->SaveAs(prefix+Form("zx.%d.i%d.all.pdf",iEntry,iCand));
 				}
