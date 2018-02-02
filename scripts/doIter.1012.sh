@@ -1,17 +1,17 @@
 #!/bin/bash
 
 threadName="job"
-thread_iStart=100
-thread_iStop=199
+thread_iStart=0
+thread_iStop=249
 
 StartName="Garfield"
 runNo="1012"
 nEvents="493189"
-nEvtPerRun="5000"
-runName="0131.s30a46alllayer5"
-IterStart=1
+nEvtPerRun="6000"
+runName="0131.s30a46all"
+IterStart=10
 IterEnd=10
-layers=5 # layers to be reconstructed and analyzied
+layers="3 5 6" # layers to be reconstructed and analyzied
 wires="" # wires to be calibrated (position)
 
 # for tracking
@@ -38,7 +38,7 @@ scale=1 # move scale*offset on wiremap for fitting in the next round
 
 # for getXT
 UPDATEXT=1
-DEFAULTLAYER=5 # use this layer to generate fl(r)_0 and so on
+DEFAULTLAYER=4 # use this layer to generate fl(r)_0 and so on
 XTTYPE=1 # 2 for symmetrical; 1 for offset loading; 0 for no constraints.
 SAVEHISTS=0
 
@@ -106,6 +106,11 @@ findVacentThread(){
         then
             return 2 # cannot get hep_q
         fi
+        if [ -e kill.$runNo.$runName ]
+        then
+            echo "Killed by user!"
+            return 0
+        fi
     done
     return 1 # cannot find any vacent slots in 10 hours
 }
@@ -172,7 +177,7 @@ do
         echo "    ERROR in updateThreadLists!"
         exit 1
     fi
-    Njobs=0
+    Njobs=100
     for testlayer in $layers;
     do
         for (( iEvent=0; iEvent<nEvents; iEvent+=nEvtPerRun ))
@@ -270,11 +275,8 @@ do
 
     cd root/
     pids=""
-    for ilayer in $layers
-    do
-        combine $runNo $currunname $ilayer &
-        pids+=" $!"
-    done
+    combine $runNo $currunname &
+    pids+=" $!"
     wait $pids || { echo "there were errors in combining $runNo $currunname $ilayer" >&2; exit 1; }
     rm -f t_${runNo}.${currunname}.*-*.*
     cd ..

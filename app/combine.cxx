@@ -3,6 +3,8 @@
 #include "TChain.h"
 #include "TString.h"
 
+#include "header.h"
+
 int main(int argc, char ** argv){
     if (argc<3) return -1;
     int runNo = atoi(argv[1]);
@@ -14,7 +16,7 @@ int main(int argc, char ** argv){
     int N = iChain_h->GetEntries();
 
     int iLayerStart = 1;
-    int iLayerStop = 8;
+    int iLayerStop = NLAY-1;
     if (theLayer){
         iLayerStart = theLayer;
         iLayerStop = theLayer;
