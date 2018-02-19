@@ -898,7 +898,7 @@ int main(int argc, char** argv){
             double dt = (*i_driftT)[the_ihit+ip];
             int clk = (*i_clk)[the_ihit+ip];
             int height = (*i_height)[the_ihit+ip];
-            textTDC[the_bid][the_ch][ip]->SetText(clk,height+(0.5-ip%2)*50,Form("s%.0f,%.0fns,%.1fmm",sum,dt,dd));
+            textTDC[the_bid][the_ch][ip]->SetText(clk,height+(0.5-ip%2)*50,Form("s%.0f,%.0f,%.2f",sum,dt,dd));
 			textTDC[the_bid][the_ch][ip]->Draw();
 			markerTDC[the_bid][the_ch][ip]->Draw();
 		}
@@ -925,7 +925,7 @@ int main(int argc, char** argv){
             // Draw the background graph for x-y plane
             pad_xyADC[0]->cd();
             if (workMode%10>0)
-                gr_wireCenter->SetTitle(Form("Ent %d, nHitsG %d(%d), icom %d, isel %d, sl_{z}: %.2e->%.2e, #chi^{2}: %.2e->%.2e",iEntry,nHitsG,nHitsS[iCand],i_icombi[iCand],i_iselec[iCand],i_islz[iCand],i_slz[iCand],i_chi2i[iCand],i_chi2[iCand]));
+                gr_wireCenter->SetTitle(Form("Ent %d, nHitsG (%d)%d(%d), icom %d, isel %d, sl_{z}: %.2e->%.2e, #chi^{2}: %.2e->%.2e",iEntry,nHits,nHitsG,nHitsS[iCand],i_icombi[iCand],i_iselec[iCand],i_islz[iCand],i_slz[iCand],i_chi2i[iCand],i_chi2[iCand]));
             else
                 gr_wireCenter->SetTitle(Form("Entry %d nHits = %d",iEntry,nHits));
             gr_wireCenter->Draw("AP");
@@ -1002,7 +1002,7 @@ int main(int argc, char** argv){
                     	thefitd = theDD+theRes;
                     }
                     if (resmin<1e9){ // found a hit in this wire
-                        text_xyhit[lid][wid]->SetText(wx,wy,Form("%d,%.3f,%.3f",wid,thefitd-resmin,resmin));// draw the one with the smallest res
+                        text_xyhit[lid][wid]->SetText(wx,wy,Form("%d,%.3f,%.3f",wid,thefitd,resmin));// draw the one with the smallest res
                         text_xyhit[lid][wid]->Draw();
                     }
                     y_cell[lid][wid] = wy;
