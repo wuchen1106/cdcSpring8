@@ -43,6 +43,12 @@ int main(int argc, char** argv){
     int debugLevel = 0;
     if (argc>=11)
         debugLevel = (int)strtol(argv[10],NULL,10);
+    int iEntryStart = 0;
+    if (argc>=12)
+        iEntryStart = (int)strtol(argv[11],NULL,10);
+    int iEntryStop = 0;
+    if (argc>=13)
+        iEntryStop = (int)strtol(argv[12],NULL,10);
     printf("##############Input %d Parameters##################\n",argc);
     printf("runNo       = %d\n",runNo);
     printf("prerunname  = \"%s\"\n",prerunname.Data());
@@ -54,6 +60,7 @@ int main(int argc, char** argv){
     printf("maxchi2     = %.3e\n",maxchi2);
     printf("default layer: %d\n",defaultLayerID);
     printf("debug       = %d\n",debugLevel);
+    printf("Entries:     [%d~%d]\n",iEntryStart,iEntryStop);
     fflush(stdout);
 
     TString HOME=getenv("CDCS8WORKING_DIR");
@@ -210,6 +217,12 @@ int main(int argc, char** argv){
         if (debugLevel>0) {printf("In Layer %d: preparing input TChain\n",lid);fflush(stdout);}
 		TChain * ichain = new TChain("t","t");
 		ichain->Add(Form("%s/root/t_%d.%s.layer%d.root",HOME.Data(),runNo,runname.Data(),lid));
+        ichain->GetEntries();
+        Long64_t N = ichain->GetEntries();
+        if (N==0){
+            fprintf(stderr,"WARNING: \"%s/root/t_%d.%s.layer%d.root\" is empty! Will ignore this layer.\n",HOME.Data(),runNo,runname.Data(),lid);
+            continue;
+        }
         ichain->SetBranchAddress("triggerNumber",&triggerNumber);
         ichain->SetBranchAddress("nHits",&nHits);
         ichain->SetBranchAddress("nHitsG",&nHitsG);
@@ -274,11 +287,9 @@ int main(int argc, char** argv){
 		}
 
         // Loop in events
-        ichain->GetEntries();
-        Long64_t N = ichain->GetEntries();
-        if (N==0){
-            fprintf(stderr,"WARNING: \"%s/root/t_%d.%s.layer%d.root\" is empty! Will ignore this layer.\n",HOME.Data(),runNo,runname.Data(),lid);
-            continue;
+        if (!iEntryStart&&!iEntryStop){
+        	iEntryStart = 0;
+        	iEntryStop = N-1;
         }
 		int nSmallSumHits = 0;
 		int nShadowedHits = 0;
@@ -286,7 +297,7 @@ int main(int argc, char** argv){
 		int nBoundaryHits = 0;
 		int nSmallBoundaryHits = 0;
         if (debugLevel>0) {printf("Processing %d events\n",N);fflush(stdout);}
-        for ( int iEntry = 0 ; iEntry<N; iEntry++){
+        for ( int iEntry = iEntryStart ; iEntry<=iEntryStop; iEntry++){
             if (iEntry%10000==0) printf("%d\n",iEntry);
             if (debugLevel>=20) printf("Entry%d: \n",iEntry);
             ichain->GetEntry(iEntry);
@@ -474,7 +485,7 @@ int main(int argc, char** argv){
         o_driftDs = new std::vector<int>;
 
 		// Get new driftD
-        for ( int iEntry = 0 ; iEntry<N; iEntry++){
+        for ( int iEntry = iEntryStart ; iEntry<=iEntryStop; iEntry++){
             if (iEntry%10000==0) printf("%d\n",iEntry);
             if (debugLevel>=20) printf("Entry%d: \n",iEntry);
             ichain->GetEntry(iEntry);
@@ -657,5 +668,5 @@ int getHitType(int type,bool isRight){
 }
 
 void printUsage(char * name){
-    fprintf(stderr,"%s [runNo] [prerunname] [runname] <[xtType: 3, sym with min nLHits, (2), sym, thr 0; 1, sym+offset; 0, no req] [geoSetup: (0), normal;1, finger] [saveHists: (0);1] [inputType: (0), Real data; 1, MC] [maxchi2 (1)] [defaultLayerID (4)] [debug: 0;...]>\n",name);
+    fprintf(stderr,"%s [runNo] [prerunname] [runname] <[xtType: 3, sym with min nLHits, (2), sym, thr 0; 1, sym+offset; 0, no req] [geoSetup: (0), normal;1, finger] [saveHists: (0);1] [inputType: (0), Real data; 1, MC] [maxchi2 (1)] [defaultLayerID (4)] [debug: 0;...] [iEntryStart (0)] [iEntryStop (0)]>\n",name);
 }
