@@ -15,7 +15,7 @@ int main(int argc, char ** argv){
     iChain_h->Add(Form("h_%d.root",runNo));
     int N = iChain_h->GetEntries();
 
-    int iLayerStart = 1;
+    int iLayerStart = 0;
     int iLayerStop = NLAY-1;
     if (theLayer){
         iLayerStart = theLayer;

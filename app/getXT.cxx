@@ -40,15 +40,18 @@ int main(int argc, char** argv){
     int defaultLayerID = 4;
     if (argc>=10)
         defaultLayerID = (int)strtol(argv[9],NULL,10);
-    int debugLevel = 0;
+    int nHitsMax = 0;
     if (argc>=11)
-        debugLevel = (int)strtol(argv[10],NULL,10);
-    int iEntryStart = 0;
+        nHitsMax = (int)strtol(argv[10],NULL,10);
+    int debugLevel = 0;
     if (argc>=12)
-        iEntryStart = (int)strtol(argv[11],NULL,10);
-    int iEntryStop = 0;
+        debugLevel = (int)strtol(argv[11],NULL,10);
+    int iEntryStart = 0;
     if (argc>=13)
-        iEntryStop = (int)strtol(argv[12],NULL,10);
+        iEntryStart = (int)strtol(argv[12],NULL,10);
+    int iEntryStop = 0;
+    if (argc>=14)
+        iEntryStop = (int)strtol(argv[13],NULL,10);
     printf("##############Input %d Parameters##################\n",argc);
     printf("runNo       = %d\n",runNo);
     printf("prerunname  = \"%s\"\n",prerunname.Data());
@@ -59,6 +62,7 @@ int main(int argc, char** argv){
     printf("inputType   = %d, %s\n",inputType,inputType==0?"Real Data":"MC");
     printf("maxchi2     = %.3e\n",maxchi2);
     printf("default layer: %d\n",defaultLayerID);
+    printf("maxNhits    = %d\n",nHitsMax);
     printf("debug       = %d\n",debugLevel);
     printf("Entries:     [%d~%d]\n",iEntryStart,iEntryStop);
     fflush(stdout);
@@ -213,7 +217,7 @@ int main(int argc, char** argv){
     std::vector<int>    * o_driftDs = 0;
 
     // Loop in layers
-	for (int lid = 1; lid<NLAY; lid++){
+	for (int lid = 0; lid<NLAY; lid++){
         if (debugLevel>0) {printf("In Layer %d: preparing input TChain\n",lid);fflush(stdout);}
 		TChain * ichain = new TChain("t","t");
 		ichain->Add(Form("%s/root/t_%d.%s.layer%d.root",HOME.Data(),runNo,runname.Data(),lid));
@@ -357,6 +361,7 @@ int main(int argc, char** argv){
             else{
                 if (fabs(slz[theCand])>0.15) continue;
             }
+            if (nHitsMax&&nHits>nHitsMax) continue;
 
             if (debugLevel>=20) printf("  Good Event! Looping in %d hits\n",nHits);
             // find the closest hit in the test layer
@@ -668,5 +673,5 @@ int getHitType(int type,bool isRight){
 }
 
 void printUsage(char * name){
-    fprintf(stderr,"%s [runNo] [prerunname] [runname] <[xtType: 3, sym with min nLHits, (2), sym, thr 0; 1, sym+offset; 0, no req] [geoSetup: (0), normal;1, finger] [saveHists: (0);1] [inputType: (0), Real data; 1, MC] [maxchi2 (1)] [defaultLayerID (4)] [debug: 0;...] [iEntryStart (0)] [iEntryStop (0)]>\n",name);
+    fprintf(stderr,"%s [runNo] [prerunname] [runname] <[xtType: 3, sym with min nLHits, (2), sym, thr 0; 1, sym+offset; 0, no req] [geoSetup: (0), normal;1, finger] [saveHists: (0);1] [inputType: (0), Real data; 1, MC] [maxchi2 (1)] [defaultLayerID (4)] [nHitsMax (0)] [debug: 0;...] [iEntryStart (0)] [iEntryStop (0)]>\n",name);
 }

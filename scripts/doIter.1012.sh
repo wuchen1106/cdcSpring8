@@ -1,31 +1,31 @@
 #!/bin/bash
 
 threadName="job"
-thread_iStart=300
-thread_iStop=399
+thread_iStart=0
+thread_iStop=99
 
 StartName="Garfield"
 runNo="1012"
 nEvents="493189"
-nEvtPerRun="10000"
-runName="0131.s30a46allEO"
-IterStart=1
+nEvtPerRun="5000"
+runName="0219.sp10a30n35"
+IterStart=10
 IterEnd=10
-layers="4 5" # layers to be reconstructed and analyzied
+layers="4" # layers to be reconstructed and analyzied
 wires="" # wires to be calibrated (position)
 
 # for tracking
 geoSetup=0 # 0 for general; 1 for finger
 inputType=0 # 1 for MC; 0 for data
-workTypeini=1 # 0, fr/l_0; 1, even/odd; -1, even/odd reversed; others, all layers
-nHitsMax=13
+workTypeini=0 # 0, fr/l_0; 1, even/odd; -1, even/odd reversed; others, all layers
+nHitsGMax=13
 t0shift0=0
 t0shift1=-1
 tmin=-10
 tmax=800
-sumCut=30
-aaCut=46
-peakType=1 # 0, only the first peak over threshold; 1, all peaks over threshold; 2, even including shaddowed peaks
+sumCut=-10
+aaCut=30
+peakType=0 # 0, only the first peak over threshold; 1, all peaks over threshold; 2, even including shaddowed peaks
 
 # for getOffset
 WPTYPE=0 # 0 for changing wiremap; 1 for not changing it;
@@ -40,7 +40,8 @@ scale=1 # move scale*offset on wiremap for fitting in the next round
 # for getXT
 UPDATEXT=1
 DEFAULTLAYER=4 # use this layer to generate fl(r)_0 and so on
-XTTYPE=1 # 2 for symmetrical; 1 for offset loading; 0 for no constraints.
+XTTYPE=6 # 2 for symmetrical; 1 for symmetrical + offset loading; 0 for no constraints; 6 for symmetrical + offset loading + only first over threshold peak
+NHITSMAXini=35
 SAVEHISTS=0
 
 threadLists=""
@@ -153,13 +154,22 @@ do
         workType=0
     fi
 
+    if [ $iter -eq $IterEnd ]
+    then
+        NHITSMAX=0
+        layers="0"
+    else
+        nHitsGMax=16
+        NHITSMAX=$NHITSMAXini
+    fi
+
     echo "#Iteration $iter started"
     echo "  layers = $layers"
     echo "  wires = $wires"
     echo "  geoSetup = $geoSetup"
     echo "  inputType = $inputType"
     echo "  workType = $workType"
-    echo "  nHitsMax = $nHitsMax"
+    echo "  nHitsGMax = $nHitsGMax"
     echo "  t0shift0 = $t0shift0"
     echo "  t0shift1 = $t0shift1"
     echo "  tmin = $tmin"
@@ -178,6 +188,7 @@ do
     echo "  WPTYPE = $WPTYPE"
     echo "  UPDATEXT = $UPDATEXT"
     echo "  DEFAULTLAYER = $DEFAULTLAYER"
+    echo "  NHITSMAX = $NHITSMAX"
     echo "  SAVEHISTS = $SAVEHISTS"
 
     threadLists=`updateThreadLists`
@@ -216,7 +227,7 @@ do
                 echo "  logfile \"$file\" doesn't exist, so generate a new job!"
             fi
             temprunname="${currunname}.$iEntryStart-$iEntryStop"
-            tempconfig="$runNo $testlayer $prerunname $temprunname $nHitsMax $t0shift0 $t0shift1 $tmin $tmax $geoSetup $sumCut $aaCut $iEntryStart $iEntryStop $workType $inputType $peakType"
+            tempconfig="$runNo $testlayer $prerunname $temprunname $nHitsGMax $t0shift0 $t0shift1 $tmin $tmax $geoSetup $sumCut $aaCut $iEntryStart $iEntryStop $workType $inputType $peakType"
             findVacentThread
             if [ $? -eq 1 ]
             then
@@ -308,7 +319,7 @@ do
         ln -s $lastxtfile xt.${runNo}.${currunname}.root
         cd ..
     else
-        getXT $runNo $prerunname $currunname $XTTYPE $geoSetup $SAVEHISTS $inputType $maxchi2 $DEFAULTLAYER
+        getXT $runNo $prerunname $currunname $XTTYPE $geoSetup $SAVEHISTS $inputType $maxchi2 $DEFAULTLAYER $NHITSMAX
         lastxtfile=xt.${runNo}.${currunname}.root
     fi
 done
