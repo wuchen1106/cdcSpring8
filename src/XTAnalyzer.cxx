@@ -12,7 +12,7 @@
 #include "TStyle.h"
 
 XTAnalyzer::XTAnalyzer(int gasID, int debug)
-	:mGasID(gasID), mDebugLevel(debug), mSaveXT0(false), mSaveXTEO(0)
+	:mGasID(gasID), mDebugLevel(debug), mSaveXT0(false), mSaveXTEO(0), mUpdateXT(true)
 {
 	v_x_slicex.resize(NSLICEX);
 	v_t_slicex.resize(NSLICEX);
@@ -47,7 +47,7 @@ void XTAnalyzer::SetSaveHists(int save){
 	mSaveHists = save;
 }
 
-int XTAnalyzer::Initialize(TString runname, int lid, TFile * infile, TFile * outfile, TTree * otree, int xttype, int savehists, bool saveXT0, int saveOddEven){
+int XTAnalyzer::Initialize(TString runname, int lid, TFile * infile, TFile * outfile, TTree * otree, int xttype, int savehists, bool saveXT0, int saveOddEven, bool updateXT){
 	// Set options
 	mRunName = runname;
 	mLayerID = lid;
@@ -60,6 +60,7 @@ int XTAnalyzer::Initialize(TString runname, int lid, TFile * infile, TFile * out
 	mSaveXTEO = saveOddEven;
 	mEOsuffix = "even";
 	if (mSaveXTEO<0) mEOsuffix = "odd";
+	mUpdateXT = updateXT;
 
 	mEntriesMin = 30;
 	mSigTmax = 20;
@@ -450,7 +451,7 @@ void XTAnalyzer::Process(void){
 			v_left_mid_t.push_back(v_t_slicet[i]);
 		}
 		double presig = 0;
-		if (v_sig_slicetls.size()) presig = v_sig_slicetls[v_sig_slicetls.size()-1];
+		if (v_sig_slicetls.size()) presig = v_sig_slicetls[(int)(v_sig_slicetls.size())-1];
 		double sigma = v_sig_slicet[i];
 		if (v_t_slicet[i]>t7Left&&sigma<presig) sigma=presig;
 		sigmaXIncrement(v_t_slicet[i],sigma,v_n_slicet[i],v_t_slicetls,v_sig_slicetls);
@@ -530,7 +531,7 @@ void XTAnalyzer::Process(void){
 			v_right_mid_t.push_back(v_t_slicet[i]);
 		}
 		double presig = 0;
-		if (v_sig_slicetrs.size()) presig = v_sig_slicetrs[v_sig_slicetrs.size()-1];
+		if (v_sig_slicetrs.size()) presig = v_sig_slicetrs[(int)(v_sig_slicetrs.size())-1];
 		double sigma = v_sig_slicet[i];
 		if (v_t_slicet[i]>t7Right&&sigma<presig) sigma=presig;
 		sigmaXIncrement(v_t_slicet[i],sigma,v_n_slicet[i],v_t_slicetrs,v_sig_slicetrs);
@@ -588,7 +589,7 @@ void XTAnalyzer::Process(void){
 			v_both_mid_t.push_back(v_t_slicetn[i]);
 		}
 		double presig = 0;
-		if (v_sig_slicetns.size()) presig = v_sig_slicetns[v_sig_slicetns.size()-1];
+		if (v_sig_slicetns.size()) presig = v_sig_slicetns[(int)(v_sig_slicetns.size())-1];
 		double sigma = v_sig_slicetn[i];
 		if (v_t_slicetn[i]>t7Both&&sigma<presig) sigma=presig;
 		sigmaXIncrement(v_t_slicetn[i],sigma,v_n_slicetn[i],v_t_slicetns,v_sig_slicetns);
@@ -629,8 +630,8 @@ void XTAnalyzer::Process(void){
 	double tTurnRight = findFirstZero(f_right_delta,t7Right,mTmax,1);
 	double tTurnBoth = findFirstZero(f_both_delta,t7Both,mTmax,1);
 	double tEndLeft = v_left_end_t.size()>0?v_left_end_t[0]:0;
-	double tEndRight = v_right_end_t.size()>0?v_right_end_t[v_right_end_t.size()-1]:0;
-	double tEndBoth = v_both_end_t.size()>0?v_both_end_t[v_both_end_t.size()-1]:0;
+	double tEndRight = v_right_end_t.size()>0?v_right_end_t[(int)(v_right_end_t.size())-1]:0;
+	double tEndBoth = v_both_end_t.size()>0?v_both_end_t[(int)(v_both_end_t.size())-1]:0;
 	if (mDebugLevel>=1){
 		printf("After selecting samples:\n");
 		printf(" t0l:%.1f, t0r:%.1f, t0b:%.1f\n",tZeroLeft,tZeroRight,tZeroBoth);
@@ -751,7 +752,7 @@ void XTAnalyzer::Process(void){
 		v_SmF_right_t.push_back(t);
 		v_SmF_right_dx.push_back((x-xf)*1000);
 	}
-	for (int i = 0; i<v_right_mid_t.size()-3; i++){ // 3 points overlaping with end
+	for (int i = 0; i<(int)(v_right_mid_t.size())-3; i++){ // 3 points overlaping with end
 		double t = v_right_mid_t[i];
 		double x = v_right_mid_x[i];
 		if (x<xCenter2Mid) continue; // marginal region overlaping with center
@@ -773,7 +774,7 @@ void XTAnalyzer::Process(void){
 		v_SmF_both_t.push_back(t);
 		v_SmF_both_dx.push_back((x-xf)*1000);
 	}
-	for (int i = 0; i<v_both_mid_t.size()-3; i++){ // 3 points overlaping with end
+	for (int i = 0; i<(int)(v_both_mid_t.size())-3; i++){ // 3 points overlaping with end
 		double t = v_both_mid_t[i];
 		double x = v_both_mid_x[i];
 		if (x<xCenter2Mid) continue; // marginal region overlaping with center
@@ -817,7 +818,12 @@ void XTAnalyzer::Process(void){
 	drawIteration();
 
 	//==========================Save==============================
-	writeObjects();
+	if (mUpdateXT)
+		writeObjects();
+	else{
+		f_right = fo_right;
+		f_left = fo_left;
+	}
 }
 
 int XTAnalyzer::t2d(double t, double & d, bool isRight){

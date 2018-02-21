@@ -1381,6 +1381,9 @@ void getchi2(double &f, double & cp, double & ca, double slx, double inx, double
 			ca = f*N+minres*minres/error/error;
 			ca/=(N+1);
 		}
+		else{
+			ca = f;
+		}
 	}
 }
 

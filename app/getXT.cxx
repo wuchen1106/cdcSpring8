@@ -284,7 +284,7 @@ int main(int argc, char** argv){
 		}
 
 		int saveEvenOdd = 0; if (lid==4) saveEvenOdd = 1; else if (lid==5) saveEvenOdd = -1;
-		int statusInitialize = fXTAnalyzer->Initialize(Form("%d.%s.layer%d",runNo,runname.Data(),lid),lid,preXTFile,newXTFile,newXTTree,xtType,saveHists, lid==defaultLayerID, saveEvenOdd);
+		int statusInitialize = fXTAnalyzer->Initialize(Form("%d.%s.layer%d",runNo,runname.Data(),lid),lid,preXTFile,newXTFile,newXTTree,xtType,saveHists, lid==defaultLayerID, saveEvenOdd, lid!=0);
 		if (statusInitialize){
 			fprintf(stderr,"WARNING: something wrong with initializing XTAnalyzer for layer[%d], will ignore this layer!\n",lid);
 			continue;
