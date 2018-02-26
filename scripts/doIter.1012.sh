@@ -9,9 +9,10 @@ runNo="1012"
 nEvents="493189"
 nEvtPerRun="5000"
 runName="0219.sp10a30n35"
-IterStart=10
+IterStart=0
 IterEnd=10
-layers="4" # layers to be reconstructed and analyzied
+layers="0" # layers to be reconstructed and [analyzed (in case of layers is not 0)]
+LAYERS="4" # layers to be analyzed (in case of layers is 0)
 wires="" # wires to be calibrated (position)
 
 # for tracking
@@ -20,7 +21,7 @@ inputType=0 # 1 for MC; 0 for data
 workTypeini=0 # 0, fr/l_0; 1, even/odd; -1, even/odd reversed; others, all layers
 nHitsGMax=13
 t0shift0=0
-t0shift1=-1
+t0shift1=0
 tmin=-10
 tmax=800
 sumCut=-10
@@ -157,7 +158,9 @@ do
     if [ $iter -eq $IterEnd ]
     then
         NHITSMAX=0
-        layers="0"
+        layers="1 2 3 4 5 6 7 8"
+#        layers="0"
+#        LAYERS="1 2 3 4 5 6 7 8"
     else
         nHitsGMax=16
         NHITSMAX=$NHITSMAXini
@@ -165,6 +168,7 @@ do
 
     echo "#Iteration $iter started"
     echo "  layers = $layers"
+    echo "  LAYERS = $LAYERS"
     echo "  wires = $wires"
     echo "  geoSetup = $geoSetup"
     echo "  inputType = $inputType"
@@ -294,12 +298,22 @@ do
     fi
 
     cd root/
-    pids=""
-    combine $runNo $currunname &
-    pids+=" $!"
+    combine $runNo $currunname $nEvtPerRun &
+    pids="$!"
     wait $pids || { echo "there were errors in combining $runNo $currunname $ilayer" >&2; exit 1; }
     rm -f t_${runNo}.${currunname}.*-*.*
     cd ..
+
+#   using layer0?
+    if [ "$layers" == "0" ]
+    then
+        cd root
+        for lid in $LAYERS
+        do
+            ln -s t_${runNo}.${currunname}.layer0.root t_${runNo}.${currunname}.layer${lid}.root
+        done
+        cd ..
+    fi
 
 #   upgrading wireposition?
     if [ ! $WPTYPE -eq 1 ] # ! 1 for not changing wiremap
