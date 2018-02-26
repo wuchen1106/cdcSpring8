@@ -322,6 +322,8 @@ int main(int argc, char** argv){
             map_x[lid][wid][1] = 0;
             map_y[lid][wid][1] = 0;
             map_z[lid][wid][1] = 0;
+        	map_ch[lid][wid] = -1;
+        	map_bid[lid][wid] = -1;
             if (lid <NZXP){ // z-x planes corresponding to the layerID of the lower layer counting from 1 
                 for (int wjd = 0; wjd<NCEL; wjd++){
                     mcp_xc[lid][wid][wjd] = 999;
@@ -646,7 +648,7 @@ int main(int argc, char** argv){
             int lid = (*i_layerID)[ihit];
             int wid = (*i_wireID)[ihit];
             int bid = map_bid[lid][wid];
-            (*i_driftT)[ihit]+=bid==0?t0shift0:t0shift1; // fix driftT according to t0shift
+            (*i_driftT)[ihit]+=(bid==0?t0shift0:t0shift1); // fix driftT according to t0shift
             double dt = (*i_driftT)[ihit];
             int mych = lid*1000+wid;
             if (mych!=prevch) // new channel

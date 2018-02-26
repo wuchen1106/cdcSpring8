@@ -15,6 +15,7 @@ int getHitType(int type,bool isRight);
 
 int main(int argc, char** argv){
 
+	//=================================================Get options========================================================
 	if (argc<4){
 	    printUsage(argv[0]);
 		return 1;
@@ -69,7 +70,8 @@ int main(int argc, char** argv){
 
     TString HOME=getenv("CDCS8WORKING_DIR");
 
-	//===================Get run info============================
+	//=================================================Get related info========================================================
+	// get run info
 	TFile * if_run = new TFile(HOME+"/info/run-info.root");
 	TTree * t_run = (TTree*) if_run->Get("t");
 	int i_runNo, gasID, runGr, HV, THR;
@@ -135,6 +137,34 @@ int main(int argc, char** argv){
 		}
 	}
 
+	// get wire map
+	int map_ch[NLAY][NCEL];
+	int map_bid[NLAY][NCEL];
+    for(int lid = 0; lid<NLAY; lid++){
+        for (int wid = 0; wid<NCEL; wid++){
+        	map_ch[lid][wid] = -1;
+        	map_bid[lid][wid] = -1;
+		}
+	}
+    TFile * TFile_wirepos = new TFile(Form("%s/info/wire-position.%d.%s.root",HOME.Data(),runNo,runname.Data()));
+    TTree * TTree_wirepos = (TTree*) TFile_wirepos->Get("t");
+    int     wp_bid;
+    int     wp_ch;
+    int     wp_wid;
+    int     wp_lid;
+    TTree_wirepos->SetBranchAddress("b",&wp_bid);
+    TTree_wirepos->SetBranchAddress("ch",&wp_ch);
+    TTree_wirepos->SetBranchAddress("l",&wp_lid);
+    TTree_wirepos->SetBranchAddress("w",&wp_wid);
+    for (int i = 0; i<TTree_wirepos->GetEntries(); i++){
+        TTree_wirepos->GetEntry(i);
+        if (wp_lid>=0&&wp_lid<NLAY&&wp_wid>=0&&wp_wid<NCEL){
+            map_ch[wp_lid][wp_wid] = wp_ch;
+            map_bid[wp_lid][wp_wid] = wp_bid;
+        }
+    }
+    TFile_wirepos->Close();
+
     // get XT file of the previous run
     TFile * preXTFile = new TFile(Form("%s/info/xt.%d.%s.root",HOME.Data(),runNo,prerunname.Data()));
 
@@ -156,9 +186,7 @@ int main(int argc, char** argv){
 	newXTTree->Branch("n",&mEntries);
 	newXTTree->Branch("type",&mType);
 
-	// Prepare XTAnalyzer
-	XTAnalyzer * fXTAnalyzer = new XTAnalyzer(gasID,debugLevel);
-
+	//==============================================Prepare input file & output variables=================================================
     // input file
     int triggerNumber;
     int nHits;
@@ -215,16 +243,52 @@ int main(int argc, char** argv){
 	// output file
     std::vector<double> * o_driftD = 0;
     std::vector<int>    * o_driftDs = 0;
+    std::vector<int> * o_channelID = 0;
+    std::vector<int> * o_boardID = 0;
+	int nHitsSmallAll = 0;
+	int nHitsSmallSASD = 0;
+	int nSmallSumHits = 0;
+	int nShadowedHits = 0;
+	int nLateHits = 0;
+	int nBoundaryHits = 0;
+	int nSmallBoundaryHits = 0;
+	// the closest peak to the track in the test layer
+	double minres = 1e9;
+	double theDD = 1e9;
+	double theDT = 1e9;
+	int has = 0;
+	int theWid = -1;
+	double theSum = 0;
+	double thePeak = 0;
+	double theHeight = 0;
+	double sum1st = 0;
+	double dt1st = 0;
+	int theIp = 0;
+	int theMpi = 0;
+	int theCand = 0;
+	// the highest hit in this event
+	int highBid = 0;
+	int highCh = 0;
+	int highLid = 0;
+	int highWid = 0;
+	int highIp = 0;
+	double highSum = 0;
+	double highAA = 0;
+	double highDT = 0;
 
+	//=================================================Start to get XT====================================================
+	// Prepare XTAnalyzer
+	XTAnalyzer * fXTAnalyzer = new XTAnalyzer(gasID,debugLevel);
     // Loop in layers
-	for (int lid = 0; lid<NLAY; lid++){
-        if (debugLevel>0) {printf("In Layer %d: preparing input TChain\n",lid);fflush(stdout);}
+	for (int testLayer = 0; testLayer<NLAY; testLayer++){
+		//----------------------------------Set input file--------------------------------------------
+        if (debugLevel>0) {printf("In Layer %d: preparing input TChain\n",testLayer);fflush(stdout);}
 		TChain * ichain = new TChain("t","t");
-		ichain->Add(Form("%s/root/t_%d.%s.layer%d.root",HOME.Data(),runNo,runname.Data(),lid));
+		ichain->Add(Form("%s/root/t_%d.%s.layer%d.root",HOME.Data(),runNo,runname.Data(),testLayer));
         ichain->GetEntries();
         Long64_t N = ichain->GetEntries();
         if (N==0){
-            fprintf(stderr,"WARNING: \"%s/root/t_%d.%s.layer%d.root\" is empty! Will ignore this layer.\n",HOME.Data(),runNo,runname.Data(),lid);
+            fprintf(stderr,"WARNING: \"%s/root/t_%d.%s.layer%d.root\" is empty! Will ignore this layer.\n",HOME.Data(),runNo,runname.Data(),testLayer);
             continue;
         }
         ichain->SetBranchAddress("triggerNumber",&triggerNumber);
@@ -283,23 +347,19 @@ int main(int argc, char** argv){
 			ichain->SetBranchAddress("inzmc",&inzmc);
 		}
 
-		int saveEvenOdd = 0; if (lid==4) saveEvenOdd = 1; else if (lid==5) saveEvenOdd = -1;
-		int statusInitialize = fXTAnalyzer->Initialize(Form("%d.%s.layer%d",runNo,runname.Data(),lid),lid,preXTFile,newXTFile,newXTTree,xtType,saveHists, lid==defaultLayerID, saveEvenOdd, lid!=0);
+		//----------------------------------Initialize the analyzer--------------------------------------------
+		int saveEvenOdd = 0; if (testLayer==4) saveEvenOdd = 1; else if (testLayer==5) saveEvenOdd = -1;
+		int statusInitialize = fXTAnalyzer->Initialize(Form("%d.%s.layer%d",runNo,runname.Data(),testLayer),testLayer,preXTFile,newXTFile,newXTTree,xtType,saveHists, testLayer==defaultLayerID, saveEvenOdd, testLayer!=0);
 		if (statusInitialize){
-			fprintf(stderr,"WARNING: something wrong with initializing XTAnalyzer for layer[%d], will ignore this layer!\n",lid);
+			fprintf(stderr,"WARNING: something wrong with initializing XTAnalyzer for layer[%d], will ignore this layer!\n",testLayer);
 			continue;
 		}
 
-        // Loop in events
+		//----------------------------------Loop in events--------------------------------------------
         if (!iEntryStart&&!iEntryStop){
         	iEntryStart = 0;
         	iEntryStop = N-1;
         }
-		int nSmallSumHits = 0;
-		int nShadowedHits = 0;
-		int nLateHits = 0;
-		int nBoundaryHits = 0;
-		int nSmallBoundaryHits = 0;
         if (debugLevel>0) {printf("Processing %d events\n",N);fflush(stdout);}
         for ( int iEntry = iEntryStart ; iEntry<=iEntryStop; iEntry++){
             if (iEntry%10000==0) printf("%d\n",iEntry);
@@ -377,7 +437,7 @@ int main(int argc, char** argv){
                 double tfitD = (*i_fitD[theCand])[ihit]-off[tlayerID][twireID];
                 double tdriftD = (*i_driftD[theCand])[ihit];
             	if ((*i_sel[theCand])[ihit]==1&&(fabs(tdriftD)<0.5||fabs(tdriftD)>7.5)) hasBadHit = true;
-                if (tlayerID!=lid) continue;
+                if (tlayerID!=testLayer) continue;
 				int ttype = getHitType((*i_type)[ihit],tfitD>=0);
                 if ((ttype<100&&xtType==6||xtType!=6)&&fabs(tfitD-tdriftD)<fabs(minres)){ // Should have cut for test layer! otherwise XT will not be well tuned
                 //if (fabs(tfitD-tdriftD)<fabs(minres)){ // no cut for test layer!
@@ -399,22 +459,9 @@ int main(int argc, char** argv){
         // fit histograms/graphs, make plots, and save new xt file
         fXTAnalyzer->Process();
 
-        // prepare for output ROOT file
-        TFile * ofile = new TFile(Form("%s/root/ana_%d.%s.layer%d.root",HOME.Data(),runNo,runname.Data(),lid),"RECREATE");
+		//----------------------------------prepare for output ROOT file--------------------------------------------
+        TFile * ofile = new TFile(Form("%s/root/ana_%d.%s.layer%d.root",HOME.Data(),runNo,runname.Data(),testLayer),"RECREATE");
         TTree * otree = new TTree("t","t");
-		double minres = 1e9;
-		double theDD = 1e9;
-		double theDT = 1e9;
-		int has = 0;
-        int theWid = -1;
-		double theSum = 0;
-		double thePeak = 0;
-		double theHeight = 0;
-		double sum1st = 0;
-		double dt1st = 0;
-		int theIp = 0;
-		int theMpi = 0;
-		int theCand = 0;
         otree->Branch("triggerNumber",&triggerNumber);
         otree->Branch("res",&minres);
         otree->Branch("theDD",&theDD);
@@ -429,6 +476,16 @@ int main(int argc, char** argv){
         otree->Branch("theIp",&theIp);
         otree->Branch("theMpi",&theMpi);
         otree->Branch("theCand",&theCand);
+        otree->Branch("highBid",&highBid);
+        otree->Branch("highCh",&highCh);
+        otree->Branch("highLid",&highLid);
+        otree->Branch("highWid",&highWid);
+        otree->Branch("highIp",&highIp);
+        otree->Branch("highSum",&highSum);
+        otree->Branch("highAA",&highAA);
+        otree->Branch("highDT",&highDT);
+        otree->Branch("nHitsSmallSASD",&nHitsSmallSASD);
+        otree->Branch("nHitsSmallAll",&nHitsSmallAll);
         otree->Branch("nSHits",&nShadowedHits);
         otree->Branch("nLHits",&nLateHits);
         otree->Branch("nSSHits",&nSmallSumHits);
@@ -438,6 +495,8 @@ int main(int argc, char** argv){
         otree->Branch("nHitsG",&nHitsG);
         otree->Branch("layerID",&i_layerID);
         otree->Branch("wireID",&i_wireID);
+        otree->Branch("channelID",&o_channelID);
+        otree->Branch("boardID",&o_boardID);
         otree->Branch("driftT",&i_driftT);
         if (inputType) otree->Branch("driftDmc",&i_driftDmc);
         otree->Branch("type",&i_type);
@@ -488,8 +547,10 @@ int main(int argc, char** argv){
         otree->Branch("sel",&(i_sel[0]));
         o_driftD = new std::vector<double>;
         o_driftDs = new std::vector<int>;
+        o_channelID = new std::vector<int>;
+        o_boardID = new std::vector<int>;
 
-		// Get new driftD
+		//----------------------------------Loop in events--------------------------------------------
         for ( int iEntry = iEntryStart ; iEntry<=iEntryStop; iEntry++){
             if (iEntry%10000==0) printf("%d\n",iEntry);
             if (debugLevel>=20) printf("Entry%d: \n",iEntry);
@@ -518,28 +579,6 @@ int main(int argc, char** argv){
 						theCand = iCand;
 					}
 				}
-			}
-            else if (xtType==4||xtType==5){
-                double minchi2 = 1e9;
-                int minNhitsS = 0;
-				for (int iCand = 0; iCand<NCAND; iCand++){
-                    if (xtType==4){
-                        if ((minchi2>chi2a[iCand]&&minNhitsS==nHitsS[iCand])||minNhitsS<nHitsS[iCand]){
-                            theCand = iCand;
-                            minchi2 = chi2a[iCand];
-                            minNhitsS = nHitsS[iCand];
-                        }
-                    }
-                    else if (xtType==5){
-                        if ((minchi2>chi2[iCand]&&minNhitsS==nHitsS[iCand])||minNhitsS<nHitsS[iCand]){
-                            theCand = iCand;
-                            minchi2 = chi2[iCand];
-                            minNhitsS = nHitsS[iCand];
-                        }
-                    }
-                }
-            }
-            if (xtType>=3){
                 otree->SetBranchAddress("driftD",&(i_driftD[theCand]));
                 otree->SetBranchAddress("npairs",&(npairs[theCand]));
                 otree->SetBranchAddress("isel",&(isel[theCand]));
@@ -571,11 +610,33 @@ int main(int argc, char** argv){
                 }
                 otree->SetBranchAddress("fitD",&(i_fitD[theCand]));
                 otree->SetBranchAddress("sel",&(i_sel[theCand]));
+			}
+            else if (xtType==4||xtType==5){
+                double minchi2 = 1e9;
+                int minNhitsS = 0;
+				for (int iCand = 0; iCand<NCAND; iCand++){
+                    if (xtType==4){
+                        if ((minchi2>chi2a[iCand]&&minNhitsS==nHitsS[iCand])||minNhitsS<nHitsS[iCand]){
+                            theCand = iCand;
+                            minchi2 = chi2a[iCand];
+                            minNhitsS = nHitsS[iCand];
+                        }
+                    }
+                    else if (xtType==5){
+                        if ((minchi2>chi2[iCand]&&minNhitsS==nHitsS[iCand])||minNhitsS<nHitsS[iCand]){
+                            theCand = iCand;
+                            minchi2 = chi2[iCand];
+                            minNhitsS = nHitsS[iCand];
+                        }
+                    }
+                }
             }
 
-            // set driftD
+            // set driftD and extra info
             o_driftD->clear();
             o_driftDs->clear();
+            o_channelID->clear();
+            o_boardID->clear();
             minres = 1e9;
             theDD = 1e9;
             theDT = 1e9;
@@ -588,21 +649,33 @@ int main(int argc, char** argv){
 			theHeight = 0;
 			theIp = 0;
 			theMpi = 0;
+			highBid = -1;
+			highCh = -1;
+			highLid = -1;
+			highWid = -1;
+			highIp = -1;
+			highAA=0;
+			highSum=-1e9;
+			highDT=0;
+			nHitsSmallSASD = 0;
+			nHitsSmallAll = 0;
 			nSmallSumHits = 0;
 			nShadowedHits = 0;
 			nLateHits = 0;
             nSmallBoundaryHits = 0;
             nBoundaryHits = 0;
             for (int ihit = 0; ihit<nHits; ihit++){
-            	double dt = (*i_driftT)[ihit];
-            	double dd0 = (*i_driftD[theCand])[ihit];
+            	// get new ip // FIXME: now taking ip as its original meaning. Can redefine it by ignoring small peaks
 				int ip = 0;
 				for (int jhit = ihit-1; jhit>=0; jhit--){
 					if ((*i_layerID)[jhit]!=(*i_layerID)[ihit]||(*i_wireID)[jhit]!=(*i_wireID)[ihit]) break;
 					//int type = getHitType((*i_type)[jhit],(*i_fitD[theCand])[jhit]>=0);
 					//if (type<100) ip++;
-					ip++; // FIXME: ignore type for this moment
+					ip++;
 				}
+
+				// get nXXXHits according to the original hit distance
+            	double dd0 = (*i_driftD[theCand])[ihit];
             	if ((*i_sel[theCand])[ihit]==1){
             		if((fabs(dd0)<0.5||fabs(dd0)>7.5))
 						nBoundaryHits++;
@@ -625,22 +698,32 @@ int main(int argc, char** argv){
 					if(has_rank&&(*i_rank)[ihit]!=0)
 						nSmallSumHits++;
 				}
+
+				// get other numbers updated
+                int lid = (*i_layerID)[ihit];
+                int wid = (*i_wireID)[ihit];
+            	int ch = map_ch[lid][wid];
+            	int bid = map_bid[lid][wid];
+                double aa = (*i_aa)[ihit];
+                double sum = (*i_sum)[ihit];
+                double fitD = (*i_fitD[theCand])[ihit]-off[lid][wid];
+				int type = getHitType((*i_type)[ihit],fitD>=0);
+            	double dt = (*i_driftT)[ihit];
             	double dd;
             	int status = fXTAnalyzer->t2d(dt,dd,dd0>0);
             	o_driftD->push_back(dd);
             	o_driftDs->push_back(status);
-                int tlid = (*i_layerID)[ihit];
-                int twid = (*i_wireID)[ihit];
-				(*i_fitD[theCand])[ihit]-=off[tlid][twid];
-                double tfitD = (*i_fitD[theCand])[ihit];
-				int ttype = getHitType((*i_type)[ihit],tfitD>=0);
-                if (tlid==lid&&((ttype<100&&xtType==6)||xtType!=6)&&status==0&&fabs(tfitD-dd)<fabs(minres)){ // Should have cut for test layer! otherwise XT will not be well tuned
-                //if (tlid==lid&&status==0&&fabs(tfitD-dd)<fabs(minres)){ // no cut for test layer
-                    minres = tfitD-dd;
+            	o_channelID->push_back(ch);
+            	o_boardID->push_back(bid);
+				(*i_fitD[theCand])[ihit]=fitD;
+
+				// check the closest peak
+                if (lid==testLayer&&((type<100&&xtType==6)||xtType!=6)&&status==0&&fabs(fitD-dd)<fabs(minres)){ // Should have cut for test layer! otherwise XT will not be well tuned
+                    minres = fitD-dd;
                     theDD = dd;
                     theDT = dt;
-                    theWid = (*i_wireID)[ihit];
-                    theSum = (*i_sum)[ihit];
+                    theWid = wid;
+                    theSum = sum;
                     double ped = 220;
                     if (has_ped) ped = (*i_ped)[ihit];
                     thePeak = (*i_peak)[ihit]-ped;
@@ -649,7 +732,39 @@ int main(int argc, char** argv){
                     theMpi = (*i_mpi)[ihit];
                     has = 1;
                 }
+
+                // check the highest hit
+                if (highSum<sum){
+                	highBid = bid;
+                	highCh = ch;
+                	highLid = lid;
+                	highWid = wid;
+                	highIp = ip;
+                	highAA=aa;
+                	highSum=sum;
+                	highDT=dt;
+                }
 			}
+
+			// get statistics relating to the ADC with the highest hit
+			printf("high: l_w(%d,%d), b_c(%d,%d), aa %.1f, dt*0.96 %.1f\n",highLid,highWid,highBid,highCh,highAA,highDT*0.96);
+            for (int ihit = 0; ihit<nHits; ihit++){
+                int lid = (*i_layerID)[ihit];
+                int wid = (*i_wireID)[ihit];
+            	int ch = map_ch[lid][wid];
+            	int bid = map_bid[lid][wid];
+                double aa = (*i_aa)[ihit];
+            	double dt = (*i_driftT)[ihit];
+                if (aa<35){
+                	printf("  hit[%d]: l_w(%d,%d), b_c(%d,%d), aa %.1f, dt*0.96 %.1f\n",ihit,lid,wid,bid,ch,aa,dt*0.96);
+                	nHitsSmallAll++;
+					if (bid==highBid&&ch/8==highCh/8){
+						nHitsSmallSASD++;
+						printf("   Same ASD!\n");
+					}
+				}
+			}
+
 			otree->Fill();
 		}
 		otree->Write();
