@@ -7,11 +7,11 @@ thread_iStop=99
 StartName="Garfield"
 runNo="1012"
 nEvents="493189"
-nEvtPerRun="5000"
-runName="0219.sp10a30n35"
-IterStart=0
+nEvtPerRun="15000"
+runName="0226.sm10a30n35"
+IterStart=1
 IterEnd=10
-layers="0" # layers to be reconstructed and [analyzed (in case of layers is not 0)]
+layers="4" # layers to be reconstructed and [analyzed (in case of layers is not 0)]
 LAYERS="4" # layers to be analyzed (in case of layers is 0)
 wires="" # wires to be calibrated (position)
 
@@ -19,7 +19,7 @@ wires="" # wires to be calibrated (position)
 geoSetup=0 # 0 for general; 1 for finger
 inputType=0 # 1 for MC; 0 for data
 workTypeini=0 # 0, fr/l_0; 1, even/odd; -1, even/odd reversed; others, all layers
-nHitsGMax=13
+nHitsGMaxini=13
 t0shift0=0
 t0shift1=0
 tmin=-10
@@ -70,6 +70,11 @@ prev_occupied=false
 findVacentThread(){
     for (( i=0; i<3600; i++ )) #3600*10 sec = 10 hours running
     do
+        if [ -e kill.$runNo.$runName ]
+        then
+            echo "Killed by user!"
+            exit 0
+        fi
         for (( ithread=prev_ithread; ithread<=thread_iStop; ithread++ ))
         do
             if $prev_occupied
@@ -109,11 +114,6 @@ findVacentThread(){
         then
             return 2 # cannot get hep_q
         fi
-        if [ -e kill.$runNo.$runName ]
-        then
-            echo "Killed by user!"
-            return 0
-        fi
     done
     return 1 # cannot find any vacent slots in 10 hours
 }
@@ -121,7 +121,7 @@ findVacentThread(){
 for (( iter=IterStart; iter<=IterEnd; iter++ ))
 do
     im1=$((iter-1))
-    if [ $iter == 1 ]
+    if [ $iter == $IterStart ]
     then
         currunname="${runName}.i${iter}"
         prerunname="${StartName}"
@@ -162,7 +162,7 @@ do
 #        layers="0"
 #        LAYERS="1 2 3 4 5 6 7 8"
     else
-        nHitsGMax=16
+        nHitsGMax=$nHitsGMaxini
         NHITSMAX=$NHITSMAXini
     fi
 
@@ -251,6 +251,11 @@ do
     allfinished=false
     for (( i=0; i<3600; i++ )) #3600*10 sec = 10 hours running
     do
+        if [ -e kill.$runNo.$runName ]
+        then
+            echo "Killed by user!"
+            exit 0
+        fi
         sleep 10
         echo -n "$i "
         finished=true
@@ -295,6 +300,12 @@ do
     then
         echo "ERROR! iteration $iter still not finished after 10 hours!"
         exit 1
+    fi
+
+    if [ -e kill.$runNo.$runName ]
+    then
+        echo "Killed by user!"
+        exit 0
     fi
 
     cd root/

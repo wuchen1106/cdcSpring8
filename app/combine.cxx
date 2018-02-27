@@ -9,13 +9,13 @@ int main(int argc, char ** argv){
     if (argc<3) return -1;
     int runNo = atoi(argv[1]);
     TString runname = argv[2];
+    int nPerRun = 0;
+    if (argc>=4) nPerRun = atoi(argv[3]);
     int theLayer = 0;
-    if (argc==4) theLayer = atoi(argv[3]);
+    if (argc>=5) theLayer = atoi(argv[4]);
     TChain * iChain_h = new TChain("t","t");
     iChain_h->Add(Form("h_%d.root",runNo));
     int N = iChain_h->GetEntries();
-    int nPerRun = 0;
-    if (argc==5) nPerRun = atoi(argv[4]);
 
     int iLayerStart = 0;
     int iLayerStop = NLAY-1;
