@@ -747,7 +747,6 @@ int main(int argc, char** argv){
 			}
 
 			// get statistics relating to the ADC with the highest hit
-			printf("high: l_w(%d,%d), b_c(%d,%d), aa %.1f, dt*0.96 %.1f\n",highLid,highWid,highBid,highCh,highAA,highDT*0.96);
             for (int ihit = 0; ihit<nHits; ihit++){
                 int lid = (*i_layerID)[ihit];
                 int wid = (*i_wireID)[ihit];
@@ -756,11 +755,9 @@ int main(int argc, char** argv){
                 double aa = (*i_aa)[ihit];
             	double dt = (*i_driftT)[ihit];
                 if (aa<35){
-                	printf("  hit[%d]: l_w(%d,%d), b_c(%d,%d), aa %.1f, dt*0.96 %.1f\n",ihit,lid,wid,bid,ch,aa,dt*0.96);
                 	nHitsSmallAll++;
 					if (bid==highBid&&ch/8==highCh/8){
 						nHitsSmallSASD++;
-						printf("   Same ASD!\n");
 					}
 				}
 			}

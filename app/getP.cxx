@@ -96,7 +96,10 @@ int main(int argc, char** argv){
 	printf("Processing %d entries...\n",N);
 	for (Long64_t i = 0;i<N; i++){
 		//FIXME
-		if (i%1000==0) printf("Entry %d, %.2e%%\n",i,(double)i/N*100);
+		if (i%1000==0){
+		    printf("Entry %d, %.2e%%\n",i,(double)i/N*100);
+            fflush(stdout);
+        }
 		c->GetEntry(i);
 
         // reset
