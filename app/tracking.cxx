@@ -593,8 +593,8 @@ int main(int argc, char** argv){
     for (Long64_t iEntry = iEntryStart; iEntry<=iEntryStop; iEntry++){
         if (debug>10) printf("#####################################\n");
         if (debug>10) printf("Entry %d\n",iEntry);
-        if (memdebug>10) std::cout<<"Memory size @"<<__LINE__<<": "<<pMyProcessManager->GetMemorySize()<<std::endl;
-        else if (iEntry%100==0&&memdebug>1) std::cout<<"Memory size @"<<__LINE__<<": "<<pMyProcessManager->GetMemorySize()<<std::endl;
+        if (memdebug>10) std::cout<<"Memory size in "<<iEntry<<" @"<<__LINE__<<": "<<pMyProcessManager->GetMemorySize()<<std::endl;
+        else if (iEntry%100==0&&memdebug>1) std::cout<<"Memory size in "<<iEntry<<" @"<<__LINE__<<": "<<pMyProcessManager->GetMemorySize()<<std::endl;
         if (iEntry%100==0) std::cout<<iEntry<<std::endl;
         c->GetEntry(iEntry);
         N_trigger++; // triggered event
@@ -722,7 +722,7 @@ int main(int argc, char** argv){
             }
         }
         ot->Fill();
-        if (memdebug>10) std::cout<<"Memory size @"<<__LINE__<<": "<<pMyProcessManager->GetMemorySize()<<std::endl;
+        if (memdebug>10) std::cout<<"Memory size in "<<iEntry<<" @"<<__LINE__<<": "<<pMyProcessManager->GetMemorySize()<<std::endl;
     }// end of event loop
     if (memdebug>0) std::cout<<"Memory size @"<<__LINE__<<": "<<pMyProcessManager->GetMemorySize()<<std::endl;
 
@@ -737,9 +737,9 @@ int main(int argc, char** argv){
 int Tracking(int ipick,int & iselection,int iEntry){
     if (ipick == v_pick_lid.size()){ // finished picking hits
         if (debug>11) printf(" Finished picking selection %d:\n",iselection);
-        if (memdebug>11) std::cout<<"Memory size @"<<__LINE__<<": "<<pMyProcessManager->GetMemorySize()<<std::endl;
+        if (memdebug>11) std::cout<<"Memory size in "<<iEntry<<" @"<<__LINE__<<": "<<pMyProcessManager->GetMemorySize()<<std::endl;
         doFitting(v_pick_lid.size(),iEntry,iselection);
-        if (memdebug>11) std::cout<<"Memory size @"<<__LINE__<<": "<<pMyProcessManager->GetMemorySize()<<std::endl;
+        if (memdebug>11) std::cout<<"Memory size in "<<iEntry<<" @"<<__LINE__<<": "<<pMyProcessManager->GetMemorySize()<<std::endl;
         iselection++;
     }
     else{
@@ -1047,10 +1047,17 @@ int updatePairPositions(int nPicks,int & nPairs){
 }
 
 int setErrors(int nPairs, bool noError){
-    if (g_z) delete g_z;
-    if (g_x) delete g_x;
-    g_z = new TGraphErrors(nPairs,&(pair_wy[0]),&(pair_wz[0]),0,0);
-    g_x = new TGraphErrors(nPairs,&(pair_wy[0]),&(pair_wx[0]),0,0);
+    // Should not delete the graph!
+//    if (g_z) delete g_z;
+//    if (g_x) delete g_x;
+//    g_z = new TGraphErrors(nPairs,&(pair_wy[0]),&(pair_wz[0]),0,0);
+//    g_x = new TGraphErrors(nPairs,&(pair_wy[0]),&(pair_wx[0]),0,0);
+    g_x->Set(nPairs);
+    g_z->Set(nPairs);
+    for (int i = 0; i<nPairs; i++){
+        g_x->SetPoint(i,pair_wy[i],pair_wx[i]);
+        g_z->SetPoint(i,pair_wy[i],pair_wz[i]);
+    }
     double errorzMax0 = 0;
     double errorzMax1 = 0;
     int errorzMax0_i = -1;
