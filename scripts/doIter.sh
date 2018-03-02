@@ -184,7 +184,7 @@ findVacentThread(){
         done
         prev_ithread=$thread_iStart
         prev_occupied=false
-        sleep 10
+        sleep 2
         threadLists=`updateThreadLists`
         if [ ! $? -eq 0 ]
         then

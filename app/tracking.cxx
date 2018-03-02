@@ -1048,16 +1048,16 @@ int updatePairPositions(int nPicks,int & nPairs){
 
 int setErrors(int nPairs, bool noError){
     // Should not delete the graph!
-//    if (g_z) delete g_z;
-//    if (g_x) delete g_x;
-//    g_z = new TGraphErrors(nPairs,&(pair_wy[0]),&(pair_wz[0]),0,0);
-//    g_x = new TGraphErrors(nPairs,&(pair_wy[0]),&(pair_wx[0]),0,0);
-    g_x->Set(nPairs);
-    g_z->Set(nPairs);
-    for (int i = 0; i<nPairs; i++){
-        g_x->SetPoint(i,pair_wy[i],pair_wx[i]);
-        g_z->SetPoint(i,pair_wy[i],pair_wz[i]);
-    }
+    if (g_z) delete g_z;
+    if (g_x) delete g_x;
+    g_z = new TGraphErrors(nPairs,&(pair_wy[0]),&(pair_wz[0]),0,0);
+    g_x = new TGraphErrors(nPairs,&(pair_wy[0]),&(pair_wx[0]),0,0);
+//    g_x->Set(nPairs);
+//    g_z->Set(nPairs);
+//    for (int i = 0; i<nPairs; i++){
+//        g_x->SetPoint(i,pair_wy[i],pair_wx[i]);
+//        g_z->SetPoint(i,pair_wy[i],pair_wz[i]);
+//    }
     double errorzMax0 = 0;
     double errorzMax1 = 0;
     int errorzMax0_i = -1;
