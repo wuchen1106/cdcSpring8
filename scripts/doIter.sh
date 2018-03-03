@@ -31,6 +31,10 @@ tmin=-10
 tmax=800
 sumCut=-10
 aaCut=30
+if [ $# -gt 6 ]
+then
+    aaCut=$7
+fi
 peakType=0 # 0, only the first peak over threshold; 1, all peaks over threshold; 2, even including shaddowed peaks
 
 # for getOffset

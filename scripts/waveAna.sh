@@ -5,8 +5,7 @@ bin=$1
 which $bin
 if [ ! $? -eq 0 ]
 then
-    echo "Cannot find \"$bin\"!"
-    exit 0
+    bin="NONE"
 fi
 
 if [ $# -lt 2 ]
@@ -28,36 +27,52 @@ else
     done
 fi
 
+cd $CDCS8WORKING_DIR/info
 for i in $list
 do
-	file=`printf $CDCS8WORKING_DIR/root/run_%06d_built.root $i`
+    if [ $bin == "getP" ]
+    then
+        file=`printf $CDCS8WORKING_DIR/root/run_%06d_built.root $i`
+    else
+        file=$CDCS8WORKING_DIR/root/p_$i.root
+    fi
 	if [ -e $file ]
 	then
-		for (( j=1; j>0; j++ ))
-		do
-			sleep 2
-			n=`ps -ef | grep $bin | wc -l`
-			echo "		$j: $n"
-			if [ $n -lt 4 ]
-			then
-				echo "submit $i"
-				nohup $bin $i &
-				break
-			fi
-		done
-        if [ ! -e $CDCS8WORKING_DIR/info/wire-position.${i}.${startName}.root ]
+	    if [ ! $bin == "NONE" ]
+	    then
+            for (( j=1; j>0; j++ ))
+            do
+                sleep 2
+                n=`ps -ef | grep $bin | wc -l`
+                echo "		$j: $n"
+                if [ $n -lt 4 ]
+                then
+                    echo "submit $i"
+                    nohup $bin $i &
+                    break
+                fi
+            done
+		fi
+        if [ -e $CDCS8WORKING_DIR/info/wire-position.${i}.${startName}.root ]
         then
-            cd $CDCS8WORKING_DIR/info
-            ln -s wire-position.root wire-position.${i}.${startName}.root
-            cd -
+            rm $CDCS8WORKING_DIR/info/wire-position.${i}.${startName}.root
         fi
-        if [ ! -e $CDCS8WORKING_DIR/info/xt.${i}.${startName}.root ]
+        if [ -e $CDCS8WORKING_DIR/info/xt.${i}.${startName}.root ]
         then
-            cd $CDCS8WORKING_DIR/info
-            ln -s xt.C4H10.1800.root xt.${i}.${startName}.root
-            cd -
+            rm $CDCS8WORKING_DIR/info/xt.${i}.${startName}.root
         fi
+        for runlist in list.*.*
+        do
+            if grep -q "\<$i\>" $runlist
+            then
+                gas=`echo $runlist | sed 's/list.\(.*\)/\1/'`
+                break
+            fi
+        done
+        ln -s wire-position.root wire-position.${i}.${startName}.root
+        ln -s xt.${gas}.root xt.${i}.${startName}.root
     else
         echo "Cannot find file \"$file\""
 	fi
 done
+cd -
