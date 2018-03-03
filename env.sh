@@ -13,9 +13,7 @@ for name in $OUTPUT
 do
     if [ ! -e $name ]; then
         echo "This is the first time lauching this setup!"
-        if [ $name = $OUTPUT ]; then
-            read -p "Where shall I put analysis result? [Press enter for ./$name]"
-        fi
+        read -p "Where shall I put analysis result? [Press enter for ./$name]"
         while [ -n $REPLY ] && [ ! -e $REPLY ]; do
             read -p "You must provide a valid directory!"
         done

@@ -400,8 +400,6 @@ int main(int argc, char** argv){
         iChain->SetBranchAddress("theWid",&theWid);
         iChain->SetBranchAddress("has",&has);
         iChain->SetBranchAddress("nHitsG",&nHitsG);
-        iChain->SetBranchAddress("dxl",&i_dxl);
-        iChain->SetBranchAddress("dxr",&i_dxr);
 		iChain->SetBranchAddress("driftD",&(i_driftD[0]));
 		iChain->SetBranchAddress("icom",&(i_icombi[0]));
 		iChain->SetBranchAddress("isel",&(i_iselec[0]));
@@ -775,8 +773,15 @@ int main(int argc, char** argv){
 			}
 		}
 		if (workMode%10==0) i_driftD[0]->clear();
+        else if (workMode%10==1){
+            for (int iCand = 0; iCand<(workMode%10==1?NCAND:1); iCand++){
+                if (nHitsS[iCand]==0){// bad fitting, driftD nonsense.
+                    i_driftD[iCand]->resize(nHits);
+                }
+            }
+        }
 		// count
-        for (int ihit = 0; ihit<i_driftT->size(); ihit++){
+        for (int ihit = 0; ihit<nHits; ihit++){
             int lid = (*i_layerID)[ihit];
             int wid = (*i_wireID)[ihit];
             int type = (*i_type)[ihit];
@@ -789,7 +794,7 @@ int main(int argc, char** argv){
                 (*i_type)[ihit] = type;
                 i_driftD[0]->push_back(dd);
             }
-			else{
+			else if (workMode%10==1){
 				for (int iCand = 0; iCand<(workMode%10==1?NCAND:1); iCand++){
 					if (nHitsS[iCand]==0){// bad fitting, driftD nonsense.
 						(*i_driftD[iCand])[ihit] = (*i_dxr)[ihit];
@@ -804,7 +809,7 @@ int main(int argc, char** argv){
                 nHits_layer[lid]++;
             }
         }
-        for (int ihit = 0; ihit<i_driftT->size(); ihit++){// then bad hit for t_XXX
+        for (int ihit = 0; ihit<nHits; ihit++){// then bad hit for t_XXX
             int lid = (*i_layerID)[ihit];
             int wid = (*i_wireID)[ihit];
             int type = (*i_type)[ihit];
