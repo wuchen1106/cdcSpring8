@@ -33,8 +33,11 @@ do
     if [ $bin == "getP" ]
     then
         file=`printf $CDCS8WORKING_DIR/root/run_%06d_built.root $i`
-    else
+    elif [ $bin == "getH" ]
+    then
         file=$CDCS8WORKING_DIR/root/p_$i.root
+    else
+        file=$CDCS8WORKING_DIR/root/h_$i.root
     fi
 	if [ -e $file ]
 	then
@@ -53,11 +56,11 @@ do
                 fi
             done
 		fi
-        if [ -e $CDCS8WORKING_DIR/info/wire-position.${i}.${startName}.root ]
+        if [ -L $CDCS8WORKING_DIR/info/wire-position.${i}.${startName}.root ]
         then
             rm $CDCS8WORKING_DIR/info/wire-position.${i}.${startName}.root
         fi
-        if [ -e $CDCS8WORKING_DIR/info/xt.${i}.${startName}.root ]
+        if [ -L $CDCS8WORKING_DIR/info/xt.${i}.${startName}.root ]
         then
             rm $CDCS8WORKING_DIR/info/xt.${i}.${startName}.root
         fi
