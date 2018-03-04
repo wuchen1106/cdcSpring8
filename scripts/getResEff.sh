@@ -38,7 +38,7 @@ do
             if [ $n -lt 4 ]
             then
                 echo "submit $i"
-                echo nohup ana $i $name $lid $options &
+                nohup ana $i $name $lid $options &
                 break
             fi
         done
