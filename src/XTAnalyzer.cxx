@@ -1012,7 +1012,7 @@ double XTAnalyzer::findFirstZero(TF1 * f, double xmin, double xmax, double delta
 	double theX = 0;
 	for (double x = xmin+delta; x<xmax; x+=delta){ // At least two solutions. Scan to find the smallest one
 		theX = f->GetX(0,xmin,x);
-		if (fabs(theX-x)>delta/10.&&fabs(theX-xmin)>delta/10.){
+		if (fabs(theX-x)>delta/10.&&fabs(theX-xmin)>delta/10.&&fabs(f->Eval(theX))<1e-5){
 			break;
 		}
 	}
@@ -1416,7 +1416,7 @@ void XTAnalyzer::drawSamplingsLR(){
     else{ // by default, He:C2H6 (50:50)
         h2_xt->GetXaxis()->SetRangeUser(160,260);
     }
-	h2_xt->GetYaxis()->SetRangeUser(6.5,8);
+	h2_xt->GetYaxis()->SetRangeUser(7,8.5);
 	h2_xt->Draw("COLZ");
 	if (gr_xt_slicet) gr_xt_slicet->Draw("PSAME");
 	if (gr_xt_slicex) gr_xt_slicex->Draw("PSAME");
@@ -1425,7 +1425,7 @@ void XTAnalyzer::drawSamplingsLR(){
 	f_right_com->Draw("SAME");
 	canv_xtsamplesz->SaveAs("xtsamples_endR_"+mRunName+".png");
 	canv_xtsamplesz->SaveAs("xtsamples_endR_"+mRunName+".pdf");
-	h2_xt->GetYaxis()->SetRangeUser(-8,-6.5);
+	h2_xt->GetYaxis()->SetRangeUser(-8.5,-7);
 	h2_xt->Draw("COLZ");
 	if (gr_xt_slicet) gr_xt_slicet->Draw("PSAME");
 	if (gr_xt_slicex) gr_xt_slicex->Draw("PSAME");
@@ -1538,7 +1538,7 @@ void XTAnalyzer::drawSamplingsB(){
     else{ // by default, He:C2H6 (50:50)
         h2_xtn->GetXaxis()->SetRangeUser(160,260);
     }
-	h2_xtn->GetYaxis()->SetRangeUser(6.5,8);
+	h2_xtn->GetYaxis()->SetRangeUser(7,8.5);
 	h2_xtn->Draw("COLZ");
 	if (gr_xt_slicetn) gr_xt_slicetn->Draw("PSAME");
 	if (gr_xt_slicexn) gr_xt_slicexn->Draw("PSAME");
