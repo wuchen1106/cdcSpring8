@@ -35,11 +35,9 @@ do
         fi
     done
     setup=`echo $setuplist | sed 's/list\.\(.*\)/\1/'`
-    echo "$runNo $runName $aaCut $nHitsMax $layerID $setup"
-#    echo "$runNo $runName $aaCut $nHitsMax $layerID $setup"
-#    dir=$CDCS8WORKING_DIR/results/ResEff/$setup/$runNo
-#    mkdir -p $dir
-#    cd $dir
-#    ana $runNo $runName $layerID $xtType $maxChi2 $nHitsMax $aaCut $saveHists
+    dir=$CDCS8WORKING_DIR/results/ResEff/$setup/$runNo
+    mkdir -p $dir
+    cd $dir
+    ana $runNo $runName $layerID $xtType $maxChi2 $nHitsMax $aaCut $saveHists
 done
 $CDCS8WORKING_DIR
