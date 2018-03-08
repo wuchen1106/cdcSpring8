@@ -22,10 +22,12 @@
 
 #include "header.h"
 
-#define NBINS 50
+#define NBINS    20
+#define MAXTRANC 5
 
 //===================Chamber Parameter============================
-double U = 8; // mm
+double CELLH = 16; // mm
+double CELLW = 16.8; // mm
 double chamberHL = 599.17/2; // mm
 double chamberHH = 170.05/2; // mm
 double chamberCY = 572; // mm
@@ -51,7 +53,6 @@ double t8l = 0;
 double t7r = 0;
 double t8r = 0;
 double W = 0;
-double avGG = 1e5;
 
 //==================About RECBE======================
 TF1 * fADC2ChargeFunction = 0;
@@ -126,7 +127,6 @@ int main(int argc, char** argv){
     if (argc>=12)
         iEntryStop = (int)strtol(argv[11],NULL,10);
     int nHitsSmin = 7;
-    avGG = 1.2e5;
     printf("##############Input %d Parameters##################\n",argc);
     printf("runNo       = %d\n",runNo);
     printf("runname     = \"%s\"\n",runname.Data());
@@ -135,7 +135,6 @@ int main(int argc, char** argv){
     printf("test layer:   %d\n",testLayer);
     printf("nHits max   = %d\n",nHitsMax);
     printf("Q cut       = %d\n",aaCut);
-    printf("average GG  = %.3e\n",avGG);
     printf("savehists:    %s\n",savehists?"yes":"no");
     printf("debug       = %d\n",debugLevel);
     printf("Entries:     [%d~%d]\n",iEntryStart,iEntryStop);
@@ -499,7 +498,6 @@ int main(int argc, char** argv){
 	TH1D * h_DriftDb = new TH1D("hDriftDb","Drift distance without Left/Right",mNbinx/2,0,mXmax);
 	TH2D * h_aaVST = new TH2D("haaVST","ADC sum VS driftT",mNbint,mTmin,mTmax,200,-50,550);
 	TH2D * h_aaVSD = new TH2D("haaVSD","ADC sum VS driftD",mNbinx,0,mXmax,200,-50,550);
-	TH2D * h_dedxVSX = new TH2D("hdedxVSX","dE/dX VS DOCA",mNbinx,0,mXmax,256,0,5);
 	TH2D * h_ggVSX = new TH2D("hggVSX","Gas gain VS DOCA",mNbinx,-mXmax,mXmax,256,0,2e5);
 	TH2D * h_xt = new TH2D("hxt","Time space relation",mNbint,mTmin,mTmax,mNbinx,-mXmax,mXmax);
 	TH2D * h_tx = new TH2D("htx","Space time relation",mNbinx,-mXmax,mXmax,mNbint,mTmin,mTmax);
@@ -507,6 +505,7 @@ int main(int argc, char** argv){
 	TH2D * h_resVSD = new TH2D("hresVSD","Residual VS drift distance",mNbinx,-mXmax,mXmax,mNbinRes,-maxRes,maxRes);
 	TH1D * h_resD[NBINS];
 	TH1D * h_resX[NBINS];
+	TH1D * h_dedx[MAXTRANC];
 	for (int i = 0; i<NBINS; i++){
 		double xmin = mXmax*(i)/NBINS;
 		double xmax = mXmax*(i+1)/NBINS;
@@ -514,6 +513,10 @@ int main(int argc, char** argv){
 		h_resD[i]->GetXaxis()->SetTitle("Residual [mm]");
 		h_resX[i] = new TH1D(Form("hresX%d",i),Form("Resolution with DOCA in [%.1f,%.1f] mm",xmin,xmax),mNbinRes,-maxRes,maxRes);
 		h_resX[i]->GetXaxis()->SetTitle("Residual [mm]");
+	}
+	for (int i = 0; i<MAXTRANC; i++){
+		h_dedx[i] = new TH1D(Form("hdedx%d",i),Form("dEdX with %d hits omitted",i),128,0,3);
+		h_dedx[i]->GetXaxis()->SetTitle("dE/dX [keV/cm]");
 	}
 	h_nHits->GetXaxis()->SetTitle("Number of Hits");
 	h_DOF->GetXaxis()->SetTitle("DOF");
@@ -527,8 +530,6 @@ int main(int argc, char** argv){
 	h_aaVST->GetYaxis()->SetTitle("ADC sum");
 	h_aaVSD->GetXaxis()->SetTitle("Drift distance [mm]");
 	h_aaVSD->GetYaxis()->SetTitle("ADC sum");
-	h_dedxVSX->GetXaxis()->SetTitle("DOCA [mm]");
-	h_dedxVSX->GetYaxis()->SetTitle("dE/dX [keV/cm]");
 	h_ggVSX->GetXaxis()->SetTitle("DOCA [mm]");
 	h_ggVSX->GetYaxis()->SetTitle("Gas gain");
 	h_xt->GetXaxis()->SetTitle("Drift time [ns]");
@@ -562,11 +563,12 @@ int main(int argc, char** argv){
 	int N_BIN[NBINS] = {0};
 
 	//=================================================Loop in events====================================================
-	double totalAA;
+	double chargeInTLayer;
 	double closeFD;
 	double closeFD2;
 	int    closeWid;
 	int    closeWid2;
+	std::vector<double> chargeOnTrack;
 	Long64_t N = ichain->GetEntries();
 	if (!iEntryStart&&!iEntryStop){
 		iEntryStart = 0;
@@ -631,20 +633,26 @@ int main(int argc, char** argv){
 		}
 
 		// fill hit level histograms
-		totalAA = 0;
+		chargeOnTrack.clear();
+		chargeInTLayer = 0;
 		for (int ihit = 0; ihit<nHits; ihit++){
 			if ((*i_ip)[ihit]==0){ // only consider first peaks
+				int lid = (*i_layerID)[ihit];
+				int wid = (*i_wireID)[ihit];
+				double aa = (*i_aa)[ihit];
+				double charge = ADC2Charge(aa);
+				double fd = get_dist(lid,wid,slx,inx,slz,inz);
+				if (fabs(fd)<CELLW/2){
+					chargeOnTrack.push_back(charge);
+				}
 				if ((*i_layerID)[ihit]==testLayer){ // in test layer hits
-					int wid = (*i_wireID)[ihit];
-					double aa = (*i_aa)[ihit];
 					double dt = (*i_driftT)[ihit];
-					double fd = get_dist(testLayer,wid,slx,inx,slz,inz);
 					double dd = 0;
 					int status = t2d(dt,dd,fd>0);
 					h_aaVST->Fill(dt,aa); // first peak in all hits
 					h_aaVSD->Fill(dd,aa); // first peak in all hits
 					if (wid==closeWid||(wid==closeWid2&&has2nd)){ // signal peak
-						totalAA+=aa;
+						chargeInTLayer+=charge;
 						if (!status) continue; // out of range
 						if (aa<aaCut) continue; // too small
 						h_DriftD->Fill(dd);
@@ -667,11 +675,34 @@ int main(int argc, char** argv){
 			}
 		}
 		// gas gain
-		double theCharge = ADC2Charge(totalAA); // fC
-		double theGG = getGG(theCharge,slx,slz);
+		double theGG = getGG(chargeInTLayer,slx,slz);
 		h_ggVSX->Fill(closeFD,theGG);
-		double theDE = theCharge*1e-15/avGG/1.6e-19*W;
-		h_dedxVSX->Fill(closeFD,theDE/1000/(U/sqrt(1+slx*slx+slz*slz)/10)); // keV/cm
+		double avGG = h_ggVSX->GetMean(2);
+
+		// sort the hits by charge;
+		int nHitsOnTrack = chargeOnTrack.size();
+		for (int ihit = 0; ihit<nHitsOnTrack; ihit++){
+			for (int jhit = ihit+1; jhit<nHitsOnTrack; jhit++){
+				if (chargeOnTrack[ihit]>chargeOnTrack[jhit]){
+					double temp = chargeOnTrack[ihit];
+					chargeOnTrack[ihit] = chargeOnTrack[jhit];
+					chargeOnTrack[jhit] = temp;
+				}
+			}
+		}
+		double totalCharge = 0;
+		for (int ihit = 0; ihit<nHitsOnTrack; ihit++){
+			if (ihit){
+				for (int itranc = 0; itranc < MAXTRANC; itranc++){
+					if (ihit==nHitsOnTrack-1-itranc){
+						double theDE = totalCharge*1e-15/avGG/1.6e-19*W;
+						double theDX = (nHitsOnTrack-itranc)*CELLH*sqrt(1+slx*slx+slz*slz);
+						h_dedx[itranc]->Fill(theDE/1000/(theDX/10));
+					}
+				}
+			}
+			totalCharge+=chargeOnTrack[ihit];
+		}
 
 		if (debugLevel>=20) printf("  Good Event! Looping in %d hits\n",nHits);
 	}
@@ -690,6 +721,16 @@ int main(int argc, char** argv){
 		gPad->SetGridx(1);
 		gPad->SetGridy(1);
 	}
+	int NusedD = 0;
+	int NusedX = 0;
+	double averageEffD = 0;
+	double averageResD = 0;
+	double averageEffX = 0;
+	double averageResX = 0;
+	double bestEffD = 0;
+	double bestResD = 1e6;
+	double bestEffX = 0;
+	double bestResX = 1e6;
 	for (int ibin = 0; ibin<NBINS; ibin++){
 		o_ibin = ibin;
 		o_xmin = mXmax*(ibin)/NBINS;
@@ -772,6 +813,13 @@ int main(int argc, char** argv){
 		}
 		otree->Fill();
 		if (o_nd>100){
+			if (o_xmid<8){
+				NusedD++;
+				averageResD+=o_dres;
+				averageEffD+=o_deff500um;
+				if (bestResD>o_dres) bestResD = o_dres;
+				if (bestEffD<o_deff500um) bestEffD = o_deff500um;
+			}
 			v_dx.push_back(o_xmid);
 			v_dxerr.push_back((o_xmax-o_xmin)/2.);
 			v_deff500um.push_back(o_deff500um);
@@ -780,6 +828,13 @@ int main(int argc, char** argv){
 			v_doff.push_back(o_doff);
 		}
 		if (o_nxh>100){
+			if (o_xmid<8){
+				NusedX++;
+				averageResX+=o_xres;
+				averageEffX+=o_xeff500um;
+				if (bestResX>o_xres) bestResX = o_xres;
+				if (bestEffX<o_xeff500um) bestEffX = o_xeff500um;
+			}
 			v_xx.push_back(o_xmid);
 			v_xxerr.push_back((o_xmax-o_xmin)/2.);
 			v_xeff.push_back(o_xeff);
@@ -789,6 +844,11 @@ int main(int argc, char** argv){
 			v_xoff.push_back(o_xoff);
 		}
 	}
+	averageEffD/=NusedD;
+	averageResD/=NusedD;
+	averageEffX/=NusedX;
+	averageResX/=NusedX;
+	printf("=> %d %d %d %d %d %.3e %.3e %.3e %.3e %.3e %.3e %.3e %.3e\n",runNo,HV,THR,gasID,aaCut,averageEffD,averageResD,averageEffX,averageResX,bestEffD,bestResD,bestEffX,bestResX);
 
 	//=================================================Draw====================================================
 	TCanvas * canv_tracking = new TCanvas("canv_tracking","canv_tracking",1024,768);
@@ -951,9 +1011,19 @@ int main(int argc, char** argv){
 	canv_general->SaveAs(Form("ggVSX_%d.%s.layer%d.pdf",runNo,runname.Data(),testLayer));
 	canv_general->SaveAs(Form("ggVSX_%d.%s.layer%d.png",runNo,runname.Data(),testLayer));
 
-	h_dedxVSX->Draw("COLZ");
-	canv_general->SaveAs(Form("dedxVSD_%d.%s.layer%d.pdf",runNo,runname.Data(),testLayer));
-	canv_general->SaveAs(Form("dedxVSD_%d.%s.layer%d.png",runNo,runname.Data(),testLayer));
+	TLegend* leg_dedx = new TLegend(0.7,0.7,0.9,0.9);
+	leg_dedx->AddEntry(h_dedx[0],Form("All hits used"));
+	h_dedx[0]->SetLineColor(1);
+	h_dedx[0]->GetYaxis()->SetRangeUser(0,h_dedx[MAXTRANC-1]->GetMaximum());
+	h_dedx[0]->Draw();
+	for (int i = 1; i<MAXTRANC; i++){
+		h_dedx[i]->SetLineColor(i+1);
+		leg_dedx->AddEntry(h_dedx[i],Form("Neglecting %d hits",i));
+		h_dedx[i]->Draw("SAME");
+	}
+	leg_dedx->Draw();
+	canv_general->SaveAs(Form("dedx_%d.%s.layer%d.pdf",runNo,runname.Data(),testLayer));
+	canv_general->SaveAs(Form("dedx_%d.%s.layer%d.png",runNo,runname.Data(),testLayer));
 
 	TGraphErrors * g_xeff = new TGraphErrors(v_xx.size(),&(v_xx[0]),&(v_xeff[0]));
 	TGraphErrors * g_xeff500 = new TGraphErrors(v_xx.size(),&(v_xx[0]),&(v_xeff500um[0]));
@@ -969,7 +1039,7 @@ int main(int argc, char** argv){
 	g_xeff500->SetMarkerColor(kRed);
 	g_xeff500->SetLineColor(kRed);
 	g_xeff500->Draw("PLSAME");
-	TLegend * leg_xeff = new TLegend(0.7,0.7,0.9,0.9);
+	TLegend * leg_xeff = new TLegend(0.1,0.1,0.4,0.4);
 	leg_xeff->AddEntry(g_xeff,"Raw efficiency","PL");
 	leg_xeff->AddEntry(g_xeff500,"Efficiency with 500 um cut","PL");
 	leg_xeff->Draw("SAME");
@@ -1037,6 +1107,9 @@ int main(int argc, char** argv){
 		h_resD[i]->Write();
 		h_resX[i]->Write();
 	}
+	for (int i = 0; i<MAXTRANC; i++){
+		h_dedx[i]->Write();
+	}
 	h_resVSX->Write();
 	h_resVSD->Write();
 	h_xt->Write();
@@ -1044,7 +1117,6 @@ int main(int argc, char** argv){
 	h_aaVST->Write();
 	h_aaVSD->Write();
 	h_ggVSX->Write();
-	h_dedxVSX->Write();
 	h_nHits->Write();
 	h_DOF->Write();
 	h_chi2->Write();
@@ -1074,7 +1146,7 @@ double ADC2Charge(double adc){ // fC
 }
 
 double getGG(double charge, double slx, double slz){
-	double nPairs = U*sqrt(1+slx*slx+slz*slz)*npair_per_cm/10;
+	double nPairs = CELLH*sqrt(1+slx*slx+slz*slz)*npair_per_cm/10;
 	double gg = charge*1e-15/1.6e-19/nPairs; // FIXME: fake gas gain for now
 	return gg;
 }
