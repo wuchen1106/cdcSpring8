@@ -50,6 +50,8 @@ double t7l = 0;
 double t8l = 0;
 double t7r = 0;
 double t8r = 0;
+double W = 0;
+double avGG = 1e5;
 
 //==================About RECBE======================
 TF1 * fADC2ChargeFunction = 0;
@@ -79,7 +81,7 @@ double minchi2p = 1;
 double closestchi2 = 1e9;
 double maxRes = 2;
 
-double ADC2Charge(double adc);
+double ADC2Charge(double adc); // fC
 double get_dist(int lid, int wid, double slx, double inx, double slz, double inz);
 double getGG(double aa, double slx, double slz);
 int t2d(double t, double & d, bool isRight);
@@ -124,6 +126,7 @@ int main(int argc, char** argv){
     if (argc>=12)
         iEntryStop = (int)strtol(argv[11],NULL,10);
     int nHitsSmin = 7;
+    avGG = 1.2e5;
     printf("##############Input %d Parameters##################\n",argc);
     printf("runNo       = %d\n",runNo);
     printf("runname     = \"%s\"\n",runname.Data());
@@ -132,6 +135,7 @@ int main(int argc, char** argv){
     printf("test layer:   %d\n",testLayer);
     printf("nHits max   = %d\n",nHitsMax);
     printf("Q cut       = %d\n",aaCut);
+    printf("average GG  = %.3e\n",avGG);
     printf("savehists:    %s\n",savehists?"yes":"no");
     printf("debug       = %d\n",debugLevel);
     printf("Entries:     [%d~%d]\n",iEntryStart,iEntryStop);
@@ -160,15 +164,18 @@ int main(int argc, char** argv){
 		t_run->GetEntry(i);
 		if (i_runNo == runNo) break;
 	}
-	npair_per_cm = 17.96;
-	TString gastype = "He:C_{2}H_{4}(50:50)";
+	npair_per_cm = 56.10;
+	TString gastype = "He:C_{2}H_{6}(50:50)";
+	W = 32; // eV
 	if (gasID==1){
 		gastype = "He:iC_{4}H_{10}(90:10)";
 		npair_per_cm = 27.96;
+		W = 39; // eV
 	}
 	else if (gasID==2){
 		gastype = "He:CH_{4}(80:20)";
-		npair_per_cm = 56.10;
+		npair_per_cm = 17.96;
+		W = 39; // eV
 	}
 	TString duration = runDu;
 	const char *sep = ":";
@@ -492,6 +499,7 @@ int main(int argc, char** argv){
 	TH1D * h_DriftDb = new TH1D("hDriftDb","Drift distance without Left/Right",mNbinx/2,0,mXmax);
 	TH2D * h_aaVST = new TH2D("haaVST","ADC sum VS driftT",mNbint,mTmin,mTmax,200,-50,550);
 	TH2D * h_aaVSD = new TH2D("haaVSD","ADC sum VS driftD",mNbinx,0,mXmax,200,-50,550);
+	TH2D * h_dedxVSD = new TH2D("hdedxVSD","dE/dX VS driftD",mNbinx,0,mXmax,256,0,5);
 	TH2D * h_ggVSX = new TH2D("hggVSX","Gas gain VS DOCA",mNbinx,-mXmax,mXmax,256,0,2e5);
 	TH2D * h_xt = new TH2D("hxt","Time space relation",mNbint,mTmin,mTmax,mNbinx,-mXmax,mXmax);
 	TH2D * h_tx = new TH2D("htx","Space time relation",mNbinx,-mXmax,mXmax,mNbint,mTmin,mTmax);
@@ -519,6 +527,8 @@ int main(int argc, char** argv){
 	h_aaVST->GetYaxis()->SetTitle("ADC sum");
 	h_aaVSD->GetXaxis()->SetTitle("Drift distance [mm]");
 	h_aaVSD->GetYaxis()->SetTitle("ADC sum");
+	h_dedxVSD->GetXaxis()->SetTitle("Drift distance [mm]");
+	h_dedxVSD->GetYaxis()->SetTitle("dE/dX [keV/cm]");
 	h_ggVSX->GetXaxis()->SetTitle("DOCA [mm]");
 	h_ggVSX->GetYaxis()->SetTitle("Gas gain");
 	h_xt->GetXaxis()->SetTitle("Drift time [ns]");
@@ -657,8 +667,11 @@ int main(int argc, char** argv){
 			}
 		}
 		// gas gain
-		double theGG = getGG(ADC2Charge(totalAA),slx,slz);
+		double theCharge = ADC2Charge(totalAA); // fC
+		double theGG = getGG(theCharge,slx,slz);
 		h_ggVSX->Fill(closeFD,theGG);
+		double theDE = theCharge*1e-15/avGG/1.6e-19*W;
+		h_dedxVSD->Fill(closeFD,theDE/1000/(U/sqrt(1+slx*slx+slz*slz)/10)); // keV/cm
 
 		if (debugLevel>=20) printf("  Good Event! Looping in %d hits\n",nHits);
 	}
@@ -938,6 +951,10 @@ int main(int argc, char** argv){
 	canv_general->SaveAs(Form("ggVSX_%d.%s.layer%d.pdf",runNo,runname.Data(),testLayer));
 	canv_general->SaveAs(Form("ggVSX_%d.%s.layer%d.png",runNo,runname.Data(),testLayer));
 
+	h_dedxVSD->Draw("COLZ");
+	canv_general->SaveAs(Form("dedxVSD_%d.%s.layer%d.pdf",runNo,runname.Data(),testLayer));
+	canv_general->SaveAs(Form("dedxVSD_%d.%s.layer%d.png",runNo,runname.Data(),testLayer));
+
 	TGraphErrors * g_xeff = new TGraphErrors(v_xx.size(),&(v_xx[0]),&(v_xeff[0]));
 	TGraphErrors * g_xeff500 = new TGraphErrors(v_xx.size(),&(v_xx[0]),&(v_xeff500um[0]));
 	g_xeff->SetTitle("Efficiency VS DOCA");
@@ -1044,7 +1061,7 @@ int main(int argc, char** argv){
     return 0;
 }
 
-double ADC2Charge(double adc){
+double ADC2Charge(double adc){ // fC
 	double charge = 0;
 	if (adc<735.346)
 		charge = fADC2ChargeFunction->Eval(adc);
