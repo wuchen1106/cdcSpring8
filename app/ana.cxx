@@ -499,12 +499,12 @@ int main(int argc, char** argv){
 	TH1D * h_DriftDb = new TH1D("hDriftDb","Drift distance without Left/Right",mNbinx/2,0,mXmax);
 	TH2D * h_aaVST = new TH2D("haaVST","ADC sum VS driftT",mNbint,mTmin,mTmax,200,-50,550);
 	TH2D * h_aaVSD = new TH2D("haaVSD","ADC sum VS driftD",mNbinx,0,mXmax,200,-50,550);
-	TH2D * h_dedxVSD = new TH2D("hdedxVSD","dE/dX VS driftD",mNbinx,0,mXmax,256,0,5);
+	TH2D * h_dedxVSX = new TH2D("hdedxVSX","dE/dX VS DOCA",mNbinx,0,mXmax,256,0,5);
 	TH2D * h_ggVSX = new TH2D("hggVSX","Gas gain VS DOCA",mNbinx,-mXmax,mXmax,256,0,2e5);
 	TH2D * h_xt = new TH2D("hxt","Time space relation",mNbint,mTmin,mTmax,mNbinx,-mXmax,mXmax);
 	TH2D * h_tx = new TH2D("htx","Space time relation",mNbinx,-mXmax,mXmax,mNbint,mTmin,mTmax);
 	TH2D * h_resVSX = new TH2D("hresVSX","Residual VS DOCA",mNbinx,-mXmax,mXmax,mNbinRes,-maxRes,maxRes);
-	TH2D * h_resVSD = new TH2D("hresVSX","Residual VS drift distance",mNbinx,-mXmax,mXmax,mNbinRes,-maxRes,maxRes);
+	TH2D * h_resVSD = new TH2D("hresVSD","Residual VS drift distance",mNbinx,-mXmax,mXmax,mNbinRes,-maxRes,maxRes);
 	TH1D * h_resD[NBINS];
 	TH1D * h_resX[NBINS];
 	for (int i = 0; i<NBINS; i++){
@@ -527,8 +527,8 @@ int main(int argc, char** argv){
 	h_aaVST->GetYaxis()->SetTitle("ADC sum");
 	h_aaVSD->GetXaxis()->SetTitle("Drift distance [mm]");
 	h_aaVSD->GetYaxis()->SetTitle("ADC sum");
-	h_dedxVSD->GetXaxis()->SetTitle("Drift distance [mm]");
-	h_dedxVSD->GetYaxis()->SetTitle("dE/dX [keV/cm]");
+	h_dedxVSX->GetXaxis()->SetTitle("DOCA [mm]");
+	h_dedxVSX->GetYaxis()->SetTitle("dE/dX [keV/cm]");
 	h_ggVSX->GetXaxis()->SetTitle("DOCA [mm]");
 	h_ggVSX->GetYaxis()->SetTitle("Gas gain");
 	h_xt->GetXaxis()->SetTitle("Drift time [ns]");
@@ -671,7 +671,7 @@ int main(int argc, char** argv){
 		double theGG = getGG(theCharge,slx,slz);
 		h_ggVSX->Fill(closeFD,theGG);
 		double theDE = theCharge*1e-15/avGG/1.6e-19*W;
-		h_dedxVSD->Fill(closeFD,theDE/1000/(U/sqrt(1+slx*slx+slz*slz)/10)); // keV/cm
+		h_dedxVSX->Fill(closeFD,theDE/1000/(U/sqrt(1+slx*slx+slz*slz)/10)); // keV/cm
 
 		if (debugLevel>=20) printf("  Good Event! Looping in %d hits\n",nHits);
 	}
@@ -951,7 +951,7 @@ int main(int argc, char** argv){
 	canv_general->SaveAs(Form("ggVSX_%d.%s.layer%d.pdf",runNo,runname.Data(),testLayer));
 	canv_general->SaveAs(Form("ggVSX_%d.%s.layer%d.png",runNo,runname.Data(),testLayer));
 
-	h_dedxVSD->Draw("COLZ");
+	h_dedxVSX->Draw("COLZ");
 	canv_general->SaveAs(Form("dedxVSD_%d.%s.layer%d.pdf",runNo,runname.Data(),testLayer));
 	canv_general->SaveAs(Form("dedxVSD_%d.%s.layer%d.png",runNo,runname.Data(),testLayer));
 
@@ -1035,13 +1035,16 @@ int main(int argc, char** argv){
 	//=================================================Save====================================================
 	for (int i = 0; i<NBINS; i++){
 		h_resD[i]->Write();
+		h_resX[i]->Write();
 	}
 	h_resVSX->Write();
 	h_resVSD->Write();
 	h_xt->Write();
 	h_tx->Write();
 	h_aaVST->Write();
+	h_aaVSD->Write();
 	h_ggVSX->Write();
+	h_dedxVSX->Write();
 	h_nHits->Write();
 	h_DOF->Write();
 	h_chi2->Write();
