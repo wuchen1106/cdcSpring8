@@ -40,4 +40,4 @@ do
     cd $dir
     ana $runNo $runName $layerID $xtType $maxChi2 $nHitsMax $aaCut $saveHists
 done
-$CDCS8WORKING_DIR
+cd $CDCS8WORKING_DIR
