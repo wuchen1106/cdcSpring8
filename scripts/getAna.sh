@@ -18,21 +18,28 @@ do
     nHitsMax=`echo $file | sed 's/root\/ana_\(\w*\)\..*a\(\w*\)n\(\w*\).*\.i15.layer\(\w\)\.root/\3/'`
     layerID=`echo $file | sed 's/root\/ana_\(\w*\)\..*a\(\w*\)n\(\w*\).*\.i15.layer\(\w\)\.root/\4/'`
     cd $CDCS8WORKING_DIR/info
+    found=false;
     for setuplist in list.C*.*;
     do
         for rid in `cat $setuplist`
         do
             if [ $rid == $runNo ]
             then
+                found=true
                 break;
             fi
         done
+        if $found
+        then
+            break;
+        fi
     done
     setup=`echo $setuplist | sed 's/list\.\(.*\)/\1/'`
     echo "$runNo $runName $aaCut $nHitsMax $layerID $setup"
-    dir=$CDCS8WORKING_DIR/results/ResEff/$setup/$runNo
-    mkdir -p $dir
-    cd $dir
-    ana $runNo $runName $layerID $xtType $maxChi2 $nHitsMax $aaCut $saveHists
+#    echo "$runNo $runName $aaCut $nHitsMax $layerID $setup"
+#    dir=$CDCS8WORKING_DIR/results/ResEff/$setup/$runNo
+#    mkdir -p $dir
+#    cd $dir
+#    ana $runNo $runName $layerID $xtType $maxChi2 $nHitsMax $aaCut $saveHists
 done
 $CDCS8WORKING_DIR
