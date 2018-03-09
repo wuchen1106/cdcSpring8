@@ -163,17 +163,17 @@ int main(int argc, char** argv){
 		t_run->GetEntry(i);
 		if (i_runNo == runNo) break;
 	}
-	npair_per_cm = 56.10;
+	npair_per_cm = 60;
 	TString gastype = "He:C_{2}H_{6}(50:50)";
 	W = 32; // eV
 	if (gasID==1){
 		gastype = "He:iC_{4}H_{10}(90:10)";
-		npair_per_cm = 27.96;
+		npair_per_cm = 29;
 		W = 39; // eV
 	}
 	else if (gasID==2){
 		gastype = "He:CH_{4}(80:20)";
-		npair_per_cm = 17.96;
+		npair_per_cm = 17;
 		W = 39; // eV
 	}
 	TString duration = runDu;
@@ -447,6 +447,8 @@ int main(int argc, char** argv){
 	double o_xmax;
 	double o_xres;
 	double o_xreserr;
+	double o_xrms;
+	double o_xrmserr;
 	double o_xeff;
 	double o_xeff3sig;
 	double o_xeff5sig;
@@ -455,6 +457,8 @@ int main(int argc, char** argv){
 	double o_xoff;
 	double o_dres;
 	double o_dreserr;
+	double o_drms;
+	double o_drmserr;
 	double o_deff3sig;
 	double o_deff5sig;
 	double o_deff500um;
@@ -469,6 +473,8 @@ int main(int argc, char** argv){
 	otree->Branch("xmax",&o_xmax);
 	otree->Branch("xres",&o_xres);
 	otree->Branch("xreserr",&o_xreserr);
+	otree->Branch("xrms",&o_xrms);
+	otree->Branch("xrmserr",&o_xrmserr);
 	otree->Branch("xeff",&o_xeff);
 	otree->Branch("xeff3sig",&o_xeff3sig);
 	otree->Branch("xeff5sig",&o_xeff5sig);
@@ -477,6 +483,8 @@ int main(int argc, char** argv){
 	otree->Branch("xoff",&o_xoff);
 	otree->Branch("dres",&o_dres);
 	otree->Branch("dreserr",&o_dreserr);
+	otree->Branch("drms",&o_drms);
+	otree->Branch("drmserr",&o_drmserr);
 	otree->Branch("deff3sig",&o_deff3sig);
 	otree->Branch("deff5sig",&o_deff5sig);
 	otree->Branch("deff500um",&o_deff500um);
@@ -547,12 +555,16 @@ int main(int argc, char** argv){
 	std::vector<double> v_xeff;
 	std::vector<double> v_xeff500um;
 	std::vector<double> v_xres;
+	std::vector<double> v_xrms;
 	std::vector<double> v_xreserr;
+	std::vector<double> v_xrmserr;
 	std::vector<double> v_xoff;
 	std::vector<double> v_deff;
 	std::vector<double> v_deff500um;
 	std::vector<double> v_dres;
+	std::vector<double> v_drms;
 	std::vector<double> v_dreserr;
+	std::vector<double> v_drmserr;
 	std::vector<double> v_doff;
 
 	int N_ALL = 0;
@@ -632,47 +644,74 @@ int main(int argc, char** argv){
 			has2nd = true;
 		}
 
-		// fill hit level histograms
+		// get charge deposition in test layer and along the track
+		// find the signal hit (peak level)
 		chargeOnTrack.clear();
 		chargeInTLayer = 0;
+		double minRes[2] = {1e3};
+		int sigIhit[2] = {-1};
+		bool found[2] = {false};
 		for (int ihit = 0; ihit<nHits; ihit++){
-			if ((*i_ip)[ihit]==0){ // only consider first peaks
-				int lid = (*i_layerID)[ihit];
-				int wid = (*i_wireID)[ihit];
-				double aa = (*i_aa)[ihit];
-				double charge = ADC2Charge(aa);
-				double fd = get_dist(lid,wid,slx,inx,slz,inz);
-				if (fabs(fd)<CELLW/2){
+			int lid = (*i_layerID)[ihit];
+			int wid = (*i_wireID)[ihit];
+			double aa = (*i_aa)[ihit];
+			double charge = ADC2Charge(aa);
+			double fd = get_dist(lid,wid,slx,inx,slz,inz);
+			double dt = (*i_driftT)[ihit];
+			double dd = 0;
+			int status = t2d(dt,dd,fd>0);
+			if ((*i_ip)[ihit]==0){ // to count charge, only count first peaks
+				if (fabs(fd)<CELLW/2){ // along the track
 					chargeOnTrack.push_back(charge);
 				}
 				if ((*i_layerID)[ihit]==testLayer){ // in test layer hits
-					double dt = (*i_driftT)[ihit];
-					double dd = 0;
-					int status = t2d(dt,dd,fd>0);
-					h_aaVST->Fill(dt,aa); // first peak in all hits
-					h_aaVSD->Fill(dd,aa); // first peak in all hits
-					if (wid==closeWid||(wid==closeWid2&&has2nd)){ // signal peak
-						chargeInTLayer+=charge;
-						if (!status) continue; // out of range
-						if (aa<aaCut) continue; // too small
-						h_DriftD->Fill(dd);
-						h_DriftDb->Fill(fabs(dd));
-						int ibx = fabs(fd)/mXmax*NBINS;
-						int ib = fabs(dd)/mXmax*NBINS;
-						//dd = (*i_driftD)[ihit];
-						res = fabs(dd) - fabs(fd);
-						// xt
-						h_tx->Fill(fd,dt);
-						h_xt->Fill(dt,fd);
-						// res VS x/d
-						h_resVSX->Fill(fd,res);
-						h_resVSD->Fill(dd,res);
-						// res
-						h_resD[ib]->Fill(res);
-						h_resX[ibx]->Fill(res);
+					chargeInTLayer+=charge;
+					h_aaVST->Fill(dt,aa);
+					h_aaVSD->Fill(dd,aa);
+				}
+			}
+			if ((*i_layerID)[ihit]==testLayer){
+				int isig = -1;
+				if (wid==closeWid) isig = 0;
+				else if (wid==closeWid2&&has2nd) isig = 1;
+				if (isig>=0){
+					double res = fabs(dd)-fabs(fd);
+					if (fabs(res)<fabs(minRes[isig])){
+						found[isig] = true;
+						minRes[isig] = res;
+						sigIhit[isig] = ihit;
 					}
 				}
 			}
+		}
+
+		for (int isig = 0; isig<2; isig++){
+			if (!found[isig]) continue;
+			int ihit = sigIhit[isig];
+			int lid = (*i_layerID)[ihit];
+			int wid = (*i_wireID)[ihit];
+			double aa = (*i_aa)[ihit];
+			double fd = get_dist(lid,wid,slx,inx,slz,inz);
+			double dt = (*i_driftT)[ihit];
+			double dd = 0;
+			int status = t2d(dt,dd,fd>0);
+			if (!status) continue; // out of range
+			if (aa<aaCut) continue; // too small
+			h_DriftD->Fill(dd);
+			h_DriftDb->Fill(fabs(dd));
+			int ibx = fabs(fd)/mXmax*NBINS;
+			int ib = fabs(dd)/mXmax*NBINS;
+			//dd = (*i_driftD)[ihit];
+			res = fabs(dd) - fabs(fd);
+			// xt
+			h_tx->Fill(fd,dt);
+			h_xt->Fill(dt,fd);
+			// res VS x/d
+			h_resVSX->Fill(fd,res);
+			h_resVSD->Fill(dd,res);
+			// res
+			h_resD[ib]->Fill(res);
+			h_resX[ibx]->Fill(res);
 		}
 		// gas gain
 		double theGG = getGG(chargeInTLayer,slx,slz);
@@ -725,12 +764,16 @@ int main(int argc, char** argv){
 	int NusedX = 0;
 	double averageEffD = 0;
 	double averageResD = 0;
+	double averageRMSD = 0;
 	double averageEffX = 0;
 	double averageResX = 0;
+	double averageRMSX = 0;
 	double bestEffD = 0;
 	double bestResD = 1e6;
+	double bestRMSD = 1e6;
 	double bestEffX = 0;
 	double bestResX = 1e6;
+	double bestRMSX = 1e6;
 	for (int ibin = 0; ibin<NBINS; ibin++){
 		o_ibin = ibin;
 		o_xmin = mXmax*(ibin)/NBINS;
@@ -739,6 +782,10 @@ int main(int argc, char** argv){
 		o_nx = N_BIN[ibin];
 		o_nxh = h_resX[ibin]->GetEntries();
 		o_nd = h_resD[ibin]->GetEntries();
+		o_xrms = h_resX[ibin]->GetRMS();
+		o_xrmserr = h_resX[ibin]->GetRMSError();
+		o_drms = h_resD[ibin]->GetRMS();
+		o_drmserr = h_resD[ibin]->GetRMSError();
 		if (o_nx&&h_resX[ibin]->Integral()>0){
 			o_xeff = (double)o_nxh/o_nx;
 			if (o_xmid<0.5)
@@ -816,8 +863,10 @@ int main(int argc, char** argv){
 			if (o_xmid<8){
 				NusedD++;
 				averageResD+=o_dres;
+				averageRMSD+=o_drms;
 				averageEffD+=o_deff500um;
 				if (bestResD>o_dres) bestResD = o_dres;
+				if (bestRMSD>o_drms) bestRMSD = o_drms;
 				if (bestEffD<o_deff500um) bestEffD = o_deff500um;
 			}
 			v_dx.push_back(o_xmid);
@@ -825,14 +874,18 @@ int main(int argc, char** argv){
 			v_deff500um.push_back(o_deff500um);
 			v_dres.push_back(o_dres);
 			v_dreserr.push_back(o_dreserr);
+			v_drms.push_back(o_drms);
+			v_drmserr.push_back(o_drmserr);
 			v_doff.push_back(o_doff);
 		}
 		if (o_nxh>100){
 			if (o_xmid<8){
 				NusedX++;
 				averageResX+=o_xres;
+				averageRMSX+=o_xrms;
 				averageEffX+=o_xeff500um;
 				if (bestResX>o_xres) bestResX = o_xres;
+				if (bestRMSX>o_xrms) bestRMSX = o_xrms;
 				if (bestEffX<o_xeff500um) bestEffX = o_xeff500um;
 			}
 			v_xx.push_back(o_xmid);
@@ -841,14 +894,18 @@ int main(int argc, char** argv){
 			v_xeff500um.push_back(o_xeff500um);
 			v_xres.push_back(o_xres);
 			v_xreserr.push_back(o_xreserr);
+			v_xrms.push_back(o_xrms);
+			v_xrmserr.push_back(o_xrmserr);
 			v_xoff.push_back(o_xoff);
 		}
 	}
 	averageEffD/=NusedD;
 	averageResD/=NusedD;
+	averageRMSD/=NusedD;
 	averageEffX/=NusedX;
-	averageResX/=NusedX;
-	printf("=> %d %d %d %d %d %.3e %.3e %.3e %.3e %.3e %.3e %.3e %.3e\n",runNo,HV,THR,gasID,aaCut,averageEffD,averageResD,averageEffX,averageResX,bestEffD,bestResD,bestEffX,bestResX);
+	averageRMSX/=NusedX;
+	printf("=>  %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s\n","runNo","testLayer","HV","THR","gasID","aaCut","averageEffD","averageResD","averageEffX","averageResX","averageRMSD","averageResX","bestEffD","bestResD","bestEffX","bestResX","bestRMSD","bestRMSX");
+	printf("==> %d %d %d %d %d %d %.3e %.3e %.3e %.3e %.3e %.3e %.3e %.3e %.3e %.3e %.3e %.3e\n",runNo,testLayer,HV,THR,gasID,aaCut,averageEffD,averageResD,averageEffX,averageResX,averageRMSD,averageResX,bestEffD,bestResD,bestEffX,bestResX,bestRMSD,bestRMSX);
 
 	//=================================================Draw====================================================
 	TCanvas * canv_tracking = new TCanvas("canv_tracking","canv_tracking",1024,768);
@@ -1027,6 +1084,8 @@ int main(int argc, char** argv){
 
 	TGraphErrors * g_xeff = new TGraphErrors(v_xx.size(),&(v_xx[0]),&(v_xeff[0]));
 	TGraphErrors * g_xeff500 = new TGraphErrors(v_xx.size(),&(v_xx[0]),&(v_xeff500um[0]));
+	g_xeff->SetName("gxeff");
+	g_xeff500->SetName("gxeff500um");
 	g_xeff->SetTitle("Efficiency VS DOCA");
 	g_xeff->GetXaxis()->SetTitle("DOCA [mm]");
 	g_xeff->GetYaxis()->SetTitle("Efficiency");
@@ -1047,6 +1106,7 @@ int main(int argc, char** argv){
 	canv_general->SaveAs(Form("effx_%d.%s.layer%d.png",runNo,runname.Data(),testLayer));
 
 	TGraphErrors * g_deff500 = new TGraphErrors(v_dx.size(),&(v_dx[0]),&(v_deff500um[0]));
+	g_deff500->SetName("gdeff500um");
 	g_deff500->SetTitle("Efficiency VS drift distance");
 	g_deff500->GetXaxis()->SetTitle("Drift distance [mm]");
 	g_deff500->GetYaxis()->SetTitle("Efficiency");
@@ -1059,6 +1119,7 @@ int main(int argc, char** argv){
 	canv_general->SaveAs(Form("effd_%d.%s.layer%d.png",runNo,runname.Data(),testLayer));
 
 	TGraphErrors * g_xres = new TGraphErrors(v_xx.size(),&(v_xx[0]),&(v_xres[0]),&(v_xxerr[0]),&(v_xreserr[0]));
+	g_xres->SetName("gxres");
 	g_xres->SetTitle("Spatial resolution VS DOCA");
 	g_xres->GetXaxis()->SetTitle("Drift distance [mm]");
 	g_xres->GetYaxis()->SetTitle("Spatial resolution [mm]");
@@ -1070,6 +1131,7 @@ int main(int argc, char** argv){
 	canv_general->SaveAs(Form("resx_%d.%s.layer%d.png",runNo,runname.Data(),testLayer));
 
 	TGraphErrors * g_dres = new TGraphErrors(v_dx.size(),&(v_dx[0]),&(v_dres[0]),&(v_dxerr[0]),&(v_dreserr[0]));
+	g_dres->SetName("gdres");
 	g_dres->SetTitle("Spatial resolution VS drift distance");
 	g_dres->GetXaxis()->SetTitle("Drift distance [mm]");
 	g_dres->GetYaxis()->SetTitle("Spatial resolution [mm]");
@@ -1080,7 +1142,32 @@ int main(int argc, char** argv){
 	canv_general->SaveAs(Form("resd_%d.%s.layer%d.pdf",runNo,runname.Data(),testLayer));
 	canv_general->SaveAs(Form("resd_%d.%s.layer%d.png",runNo,runname.Data(),testLayer));
 
+	TGraphErrors * g_xrms = new TGraphErrors(v_xx.size(),&(v_xx[0]),&(v_xrms[0]),&(v_xxerr[0]),&(v_xrmserr[0]));
+	g_xrms->SetName("gxrms");
+	g_xrms->SetTitle("Spatial rmsolution VS DOCA");
+	g_xrms->GetXaxis()->SetTitle("Drift distance [mm]");
+	g_xrms->GetYaxis()->SetTitle("Spatial rmsolution [mm]");
+	g_xrms->SetMarkerStyle(20);
+	g_xrms->SetMarkerColor(kBlack);
+	g_xrms->SetLineColor(kBlack);
+	g_xrms->Draw("APL");
+	canv_general->SaveAs(Form("rmsx_%d.%s.layer%d.pdf",runNo,runname.Data(),testLayer));
+	canv_general->SaveAs(Form("rmsx_%d.%s.layer%d.png",runNo,runname.Data(),testLayer));
+
+	TGraphErrors * g_drms = new TGraphErrors(v_dx.size(),&(v_dx[0]),&(v_drms[0]),&(v_dxerr[0]),&(v_drmserr[0]));
+	g_drms->SetName("gdrms");
+	g_drms->SetTitle("Spatial rmsolution VS drift distance");
+	g_drms->GetXaxis()->SetTitle("Drift distance [mm]");
+	g_drms->GetYaxis()->SetTitle("Spatial rmsolution [mm]");
+	g_drms->SetMarkerStyle(20);
+	g_drms->SetMarkerColor(kBlack);
+	g_drms->SetLineColor(kBlack);
+	g_drms->Draw("APL");
+	canv_general->SaveAs(Form("rmsd_%d.%s.layer%d.pdf",runNo,runname.Data(),testLayer));
+	canv_general->SaveAs(Form("rmsd_%d.%s.layer%d.png",runNo,runname.Data(),testLayer));
+
 	TGraphErrors * g_xoff = new TGraphErrors(v_xx.size(),&(v_xx[0]),&(v_xoff[0]));
+	g_xoff->SetName("gxoff");
 	g_xoff->SetTitle("Offset VS DOCA");
 	g_xoff->GetXaxis()->SetTitle("Drift distance [mm]");
 	g_xoff->GetYaxis()->SetTitle("offset [mm]");
@@ -1092,6 +1179,7 @@ int main(int argc, char** argv){
 	canv_general->SaveAs(Form("offx_%d.%s.layer%d.png",runNo,runname.Data(),testLayer));
 
 	TGraphErrors * g_doff = new TGraphErrors(v_dx.size(),&(v_dx[0]),&(v_doff[0]));
+	g_doff->SetName("gdoff");
 	g_doff->SetTitle("Offset VS drift distance");
 	g_doff->GetXaxis()->SetTitle("Drift distance [mm]");
 	g_doff->GetYaxis()->SetTitle("offset [mm]");
@@ -1125,6 +1213,15 @@ int main(int argc, char** argv){
 	h_DOCAb->Write();
 	h_DriftD->Write();
 	h_DriftDb->Write();
+	g_deff500->Write();
+	g_xeff->Write();
+	g_xeff500->Write();
+	g_dres->Write();
+	g_xres->Write();
+	g_drms->Write();
+	g_xrms->Write();
+	g_doff->Write();
+	g_xoff->Write();
 	otree->Write();
 	ofile->Close();
 
