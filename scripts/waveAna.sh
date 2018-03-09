@@ -48,7 +48,7 @@ do
                 sleep 2
                 n=`ps -ef | grep $bin | wc -l`
                 echo "		$j: $n"
-                if [ $n -lt 4 ]
+                if [ $n -lt 6 ]
                 then
                     echo "submit $i"
                     nohup $bin $i &

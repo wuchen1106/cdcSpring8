@@ -100,5 +100,5 @@ int main(int argc, char** argv){
 }
 
 void printUsage(char * name){
-    fprintf(stderr,"%s [runname] [gasID: 0, C2H6; 1, C4H10;] <[saveHists: (0);1] [debugLevel: (0)]>\n",name);
+    fprintf(stderr,"%s [runname] [gasID: 0, C2H6; 1, C4H10; 2, CH4] <[saveHists: (0);1] [debugLevel: (0)]>\n",name);
 }

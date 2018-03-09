@@ -220,24 +220,6 @@ do
         prerunname="${runName}.i${im1}"
     fi
 
-    # t range
-    if [ $iter -gt 6 ]
-    then
-        tmin=-10
-        tmax=800
-    elif [ $iter -gt 4 ]
-    then
-        tmin=-10
-        tmax=600
-    elif [ $iter -gt 2 ]
-    then
-        tmin=-10
-        tmax=360
-    else
-        tmin=-10
-        tmax=340
-    fi
-
     if [ $iter -gt 1 ]
     then
         workType=$workTypeini
