@@ -253,14 +253,14 @@ int main(int argc, char** argv){
 	}
 	f_left0 = (TF1*) XTFile->Get("fl_0");
 	f_right0 = (TF1*) XTFile->Get("fr_0");
-	f_left = (TF1*) XTFile->Get("flc_4");
-	f_right = (TF1*) XTFile->Get("frc_4");
-	f_left_cent = (TF1*) XTFile->Get("flce_4");
-	f_right_cent = (TF1*) XTFile->Get("frce_4");
-	f_left_mid = (TF1*) XTFile->Get("flm_4");
-	f_right_mid = (TF1*) XTFile->Get("frm_4");
-	f_left_end = (TF1*) XTFile->Get("fle_4");
-	f_right_end = (TF1*) XTFile->Get("fre_4");
+	f_left = (TF1*) XTFile->Get(Form("flc_%d",testLayer));
+	f_right = (TF1*) XTFile->Get(Form("frc_%d",testLayer));
+	f_left_cent = (TF1*) XTFile->Get(Form("flce_%d",testLayer));
+	f_right_cent = (TF1*) XTFile->Get(Form("frce_%d",testLayer));
+	f_left_mid = (TF1*) XTFile->Get(Form("flm_%d",testLayer));
+	f_right_mid = (TF1*) XTFile->Get(Form("frm_%d",testLayer));
+	f_left_end = (TF1*) XTFile->Get(Form("fle_%d",testLayer));
+	f_right_end = (TF1*) XTFile->Get(Form("fre_%d",testLayer));
     if (!f_left||!f_right|!f_left0||!f_right0||!f_left_mid||!f_right_mid||!f_left_cent||!f_right_cent||!f_left_end||!f_right_end){
     	fprintf(stderr,"Cannot find XT functions!\n");
     	return 0;

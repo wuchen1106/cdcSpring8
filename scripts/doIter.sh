@@ -2,7 +2,7 @@
 
 if [ $# -lt 6 ]
 then
-    echo $0 runNo runName thread_iStart nThreads iStart iStop
+    echo $0 runNo runName thread_iStart nThreads iStart iStop aaCut isLast
     exit 0
 fi
 
@@ -13,9 +13,13 @@ nThreads=$4
 thread_iStop=`echo "$thread_iStart+$nThreads-1"|bc`
 IterStart=$5
 IterEnd=$6
+isLast=false
+if [ $# -gt 7 ]
+then
+    isLast=$8
+fi
 
 StartName="Garfield"
-isLast=false
 layers="4" # layers to be reconstructed and [analyzed (in case of layers is not 0)]
 LAYERS="4" # layers to be analyzed (in case of layers is 0)
 wires="" # wires to be calibrated (position)
@@ -243,6 +247,7 @@ do
 
     if [ $iter -eq $IterEnd ] && $isLast
     then
+        nHitsGMax=$nHitsGMaxini
         NHITSMAX=0
         layers="1 2 3 4 5 6 7 8"
 #        layers="0"

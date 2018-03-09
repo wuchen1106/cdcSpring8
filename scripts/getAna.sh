@@ -10,13 +10,13 @@ xtType=11
 maxChi2=1
 saveHists=0
 
-for file in root/ana_*${keyword}*.i15.layer*.root
+for file in root/ana_*${keyword}*.layer*.root
 do
     runName=`echo $file | sed 's/root\/ana_\(\w*\)\.\(.*\)\.layer\(\w\)\.root/\2/'`
-    runNo=`echo $file | sed 's/root\/ana_\(\w*\)\..*a\(\w*\)n\(\w*\).*\.i15.layer\(\w\)\.root/\1/'`
-    aaCut=`echo $file | sed 's/root\/ana_\(\w*\)\..*a\(\w*\)n\(\w*\).*\.i15.layer\(\w\)\.root/\2/'`
-    nHitsMax=`echo $file | sed 's/root\/ana_\(\w*\)\..*a\(\w*\)n\(\w*\).*\.i15.layer\(\w\)\.root/\3/'`
-    layerID=`echo $file | sed 's/root\/ana_\(\w*\)\..*a\(\w*\)n\(\w*\).*\.i15.layer\(\w\)\.root/\4/'`
+    runNo=`echo $file | sed 's/root\/ana_\(\w*\)\..*a\(\w*\)n\(\w*\).*\.i\w*.layer\(\w\)\.root/\1/'`
+    aaCut=`echo $file | sed 's/root\/ana_\(\w*\)\..*a\(\w*\)n\(\w*\).*\.i\w*.layer\(\w\)\.root/\2/'`
+    nHitsMax=`echo $file | sed 's/root\/ana_\(\w*\)\..*a\(\w*\)n\(\w*\).*\.i\w*.layer\(\w\)\.root/\3/'`
+    layerID=`echo $file | sed 's/root\/ana_\(\w*\)\..*a\(\w*\)n\(\w*\).*\.i\w*.layer\(\w\)\.root/\4/'`
     cd $CDCS8WORKING_DIR/info
     found=false;
     for setuplist in list.C*.*;
@@ -35,7 +35,7 @@ do
         fi
     done
     setup=`echo $setuplist | sed 's/list\.\(.*\)/\1/'`
-    dir=$CDCS8WORKING_DIR/results/ResEff/$setup/$runNo
+    dir=$CDCS8WORKING_DIR/results/ResEff/$setup/$runNo/layer${layerID}
     mkdir -p $dir
     cd $dir
     ana $runNo $runName $layerID $xtType $maxChi2 $nHitsMax $aaCut $saveHists
