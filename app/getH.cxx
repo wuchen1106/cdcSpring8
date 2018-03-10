@@ -540,7 +540,7 @@ int main(int argc, char** argv){
 	canvas->SaveAs(Form("run%d.at.b0.png",runNo));
 	// Draw h VS dt for Board 1
 	canvas->cd();
-	text->SetText(0.1,0.98,"ADC (-pedestal) Sum (of All Peak1) VS TDC (Board #1)");
+	text->SetText(0.1,0.98,"ADC (-pedestal) Sum (of All Peaks) VS TDC (Board #1)");
 	text->Draw("SAME");
 	text2->Draw("SAME");
 	for (int i = 0; i<8; i++){
@@ -548,7 +548,7 @@ int main(int argc, char** argv){
 			int index = j*8+i;
 			int index2 = index+NCHS;
 			pad[index]->cd();
-			hst[index2]->Draw("COLZ");
+			hat[index2]->Draw("COLZ");
 			line_ht[index]->SetX1(-1000);
 			line_ht[index]->SetY1(aacut);
 			line_ht[index]->SetX2(0);

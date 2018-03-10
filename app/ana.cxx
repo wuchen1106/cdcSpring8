@@ -375,6 +375,8 @@ int main(int argc, char** argv){
 	std::vector<int> * i_wireID = 0;
 	std::vector<int> * i_ip = 0;
 	std::vector<int> * i_sel = 0;
+	std::vector<int> * i_peak = 0;
+	std::vector<double> * i_ped = 0;
 	std::vector<double> * i_aa = 0;
 	std::vector<double> * i_driftT = 0;
 	std::vector<double> * i_driftD = 0;
@@ -434,6 +436,8 @@ int main(int argc, char** argv){
 	ichain->SetBranchAddress("wireID",&i_wireID);
 	ichain->SetBranchAddress("ip",&i_ip);
 	ichain->SetBranchAddress("aa",&i_aa);
+	ichain->SetBranchAddress("peak",&i_peak);
+	ichain->SetBranchAddress("ped",&i_ped);
 	ichain->SetBranchAddress("sel",&i_sel);
 	ichain->SetBranchAddress("driftT",&i_driftT);
 	ichain->SetBranchAddress("driftD",&i_driftD);
@@ -605,11 +609,15 @@ int main(int argc, char** argv){
 		N_CUT1++;
 		h_DOF->Fill(nHitsS-4);
 		if (nHitsS<nHitsSmin) continue;
+		if (nHitsS<nHitsG) continue; // FIXME: temparory approach
 		N_CUT2++;
 		h_chi2->Fill(chi2);
 		h_chi2p->Fill(chi2p);
 		if (chi2>maxchi2) continue;
 		N_CUT3++;
+		if (geoSetup==0){ // FIXME: should use option
+			if (fabs(slz)>0.1) continue;
+		}
 
 		// get closest wire
 		closeFD = 1e3;
@@ -691,12 +699,13 @@ int main(int argc, char** argv){
 			int lid = (*i_layerID)[ihit];
 			int wid = (*i_wireID)[ihit];
 			double aa = (*i_aa)[ihit];
+			double peak = (*i_peak)[ihit] - (*i_ped)[ihit];
 			double fd = get_dist(lid,wid,slx,inx,slz,inz);
 			double dt = (*i_driftT)[ihit];
 			double dd = 0;
 			int status = t2d(dt,dd,fd>0);
 			if (!status) continue; // out of range
-			if (aa<aaCut) continue; // too small
+			if (aa<aaCut||peak<aaCut) continue; // too small // FIXME: should separate
 			h_DriftD->Fill(dd);
 			h_DriftDb->Fill(fabs(dd));
 			int ibx = fabs(fd)/mXmax*NBINS;
