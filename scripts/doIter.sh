@@ -2,7 +2,7 @@
 
 if [ $# -lt 6 ]
 then
-    echo $0 runNo runName thread_iStart nThreads iStart iStop aaCut isLast
+    echo $0 runNo runName thread_iStart nThreads iStart iStop [aaCut isLast NHITSMAX] 
     exit 0
 fi
 
@@ -56,6 +56,10 @@ UPDATEXT=1
 DEFAULTLAYER=4 # use this layer to generate fl(r)_0 and so on
 XTTYPE=6 # 2 for symmetrical; 1 for symmetrical + offset loading; 0 for no constraints; 6 for symmetrical + offset loading + only first over threshold peak
 NHITSMAXini=35
+if [ $# -gt 8 ]
+then
+    NHITSMAXini=$9
+fi
 SAVEHISTS=0
 
 threadName="job"

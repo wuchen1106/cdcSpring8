@@ -7,15 +7,37 @@ then
 fi
 
 xtType=11
-maxChi2=1
+if [ $# -gt 1 ]
+then
+    xtType=$2
+fi
+maxChi2=2
+if [ $# -gt 2 ]
+then
+    maxChi2=$3
+fi
+nHitsMaxini=0
+if [ $# -gt 3 ]
+then
+    nHitsMaxini=$4
+fi
 saveHists=0
+if [ $# -gt 4 ]
+then
+    saveHists=$5
+fi
 
 for file in root/ana_*${keyword}*.layer*.root
 do
     runName=`echo $file | sed 's/root\/ana_\(\w*\)\.\(.*\)\.layer\(\w\)\.root/\2/'`
     runNo=`echo $file | sed 's/root\/ana_\(\w*\)\..*a\(\w*\)n\(\w*\).*\.i\w*.layer\(\w\)\.root/\1/'`
     aaCut=`echo $file | sed 's/root\/ana_\(\w*\)\..*a\(\w*\)n\(\w*\).*\.i\w*.layer\(\w\)\.root/\2/'`
-    nHitsMax=`echo $file | sed 's/root\/ana_\(\w*\)\..*a\(\w*\)n\(\w*\).*\.i\w*.layer\(\w\)\.root/\3/'`
+    if [ $nHitsMaxini -eq 0 ]
+    then
+        nHitsMax=`echo $file | sed 's/root\/ana_\(\w*\)\..*a\(\w*\)n\(\w*\).*\.i\w*.layer\(\w\)\.root/\3/'`
+    else
+        nHitsMax=$nHitsMaxini
+    fi
     layerID=`echo $file | sed 's/root\/ana_\(\w*\)\..*a\(\w*\)n\(\w*\).*\.i\w*.layer\(\w\)\.root/\4/'`
     cd $CDCS8WORKING_DIR/info
     found=false;
