@@ -412,7 +412,7 @@ int main(int argc, char** argv){
             }
 
             // ignore events with bad fitting
-            if (nHitsS[theCand]<6) continue;
+            if (nHitsS[theCand]<7) continue;
 			if (chi2[theCand]>maxchi2) continue;
             //if (nHitsG>nHitsS[theCand]) continue;
             if (geoSetup==1){

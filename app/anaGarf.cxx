@@ -370,6 +370,7 @@ int main(int argc, char** argv){
 		// res
 		h_resD[ib]->Fill(res);
 		h_resX[ibx]->Fill(res);
+		N_BIN[ibx]++;
 	}
 
 	//=================================================Get bin by bin information====================================================
