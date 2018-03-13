@@ -53,8 +53,9 @@ class XTAnalyzer{
 		TGraph * myNewTGraph(TString name, int n, const double * x, const double * y, TString title, TString Xtitle, TString Ytitle, int mType, double mSize, int mColor, double lSize, int lColor);
 		TF1 * scalePolN(TF1 * f, double factor, TString name = "f_test");
 		TF1 * minusPolN(TString name, TF1 * f1, TF1 * f2, double xmin, double xmax);
+		TF1 * combinePolN(TString name, TF1 * f1, TF1 * f2, double x0, double x1, double x2, double xmin, double xmax);
 		TF1 * combinePolN(TString name, TF1 * f1, TF1 * f2, TF1 * f3, double x0, double x1, double x2, double x3, double xmin, double xmax);
-		TString formPolN(TF1 * f);
+		TString formPolN(int start,int n);
 		void createGraphs();
 		void drawFitting(TH1D* h,TF1 * f,TCanvas * c,TString title, TString filename,double left, double center, double right);
 		void drawSamplingsLR();

@@ -35,7 +35,7 @@ int main(int argc, char** argv){
     int inputType = 0; // by defualt it's data
     if (argc>=8)
         inputType = (int)strtol(argv[7],NULL,10);
-    double maxchi2 = 0;
+    double maxchi2 = 2;
     if (argc>=9)
         maxchi2 = (double)strtod(argv[8],NULL);
     int defaultLayerID = 4;
@@ -58,7 +58,7 @@ int main(int argc, char** argv){
     printf("prerunname  = \"%s\"\n",prerunname.Data());
     printf("runname     = \"%s\"\n",runname.Data());
     printf("geoSetup:     %s\n",geoSetup==0?"normal scintillator":"finger scintillator");
-    printf("xtType:       %d: %s\n",xtType,xtType==0?"asymmetric":(xtType==1?"symmetric, with offset":(xtType==2?"symmetric, thru 0":(xtType==3?"symmetric with nLHits==0":(xtType==4?"symmetric with smallest chi2a":(xtType==5?"symmetric with smallest chi2":"others?"))))));
+    printf("xtType:       %d\n",xtType);
     printf("save slice fittings? \"%s\"\n",saveHists?"yes":"no");
     printf("inputType   = %d, %s\n",inputType,inputType==0?"Real Data":"MC");
     printf("maxchi2     = %.3e\n",maxchi2);
@@ -120,7 +120,7 @@ int main(int argc, char** argv){
 			off[lid][wid] = 0;
 		}
 	}
-	if (xtType==1||xtType==6){
+	if (xtType==1||xtType==6||xtType==7){
 		TChain * iChain_off = new TChain("t","t");
 		iChain_off->Add(Form("%s/info/offset.%d.%s.root",HOME.Data(),runNo,runname.Data()));
 		double i_off_delta;
@@ -419,7 +419,7 @@ int main(int argc, char** argv){
                 if (fabs(inz[theCand])>24) continue;
             }
             else{
-                if (fabs(slz[theCand])>0.15) continue;
+                if (fabs(slz[theCand])>0.11) continue;
             }
             if (nHitsMax&&nHits>nHitsMax) continue;
 
@@ -439,7 +439,7 @@ int main(int argc, char** argv){
             	if ((*i_sel[theCand])[ihit]==1&&(fabs(tdriftD)<0.5||fabs(tdriftD)>7.5)) hasBadHit = true;
                 if (tlayerID!=testLayer) continue;
 				int ttype = getHitType((*i_type)[ihit],tfitD>=0);
-                if ((ttype<100&&xtType==6||xtType!=6)&&fabs(tfitD-tdriftD)<fabs(minres)){ // Should have cut for test layer! otherwise XT will not be well tuned
+                if ((ttype<100&&(xtType==7||xtType==6)||(xtType!=6&&xtType!=7))&&fabs(tfitD-tdriftD)<fabs(minres)){ // Should have cut for test layer! otherwise XT will not be well tuned
                 //if (fabs(tfitD-tdriftD)<fabs(minres)){ // no cut for test layer!
                     minres = tfitD-tdriftD;
                     wireID = (*i_wireID)[ihit];
@@ -785,5 +785,5 @@ int getHitType(int type,bool isRight){
 }
 
 void printUsage(char * name){
-    fprintf(stderr,"%s [runNo] [prerunname] [runname] <[xtType: 3, sym with min nLHits, (2), sym, thr 0; 1, sym+offset; 0, no req] [geoSetup: (0), normal;1, finger] [saveHists: (0);1] [inputType: (0), Real data; 1, MC] [maxchi2 (1)] [defaultLayerID (4)] [nHitsMax (0)] [debug: 0;...] [iEntryStart (0)] [iEntryStop (0)]>\n",name);
+    fprintf(stderr,"%s [runNo] [prerunname] [runname] <[xtType: (2) sym; 1 sym+offset; 0 no; 6 sym+offset+first OT peak; 7 sym+offset+first OT peak+2segments] [geoSetup: (0), normal;1, finger] [saveHists: (0);1] [inputType: (0), Real data; 1, MC] [maxchi2 (2)] [defaultLayerID (4)] [nHitsMax (0)] [debug: 0;...] [iEntryStart (0)] [iEntryStop (0)]>\n",name);
 }

@@ -215,9 +215,16 @@ int XTAnalyzer::Initialize(TString runname, int lid, TFile * infile, TFile * out
 	f_left_cen = myNewTF1(Form("flce_%d",mLayerID),"pol5",mTmin,mTmax);
 	f_right_cen = myNewTF1(Form("frce_%d",mLayerID),"pol5",mTmin,mTmax);
 	f_both_cen = myNewTF1(Form("fbce_%d",mLayerID),"pol5",mTmin,mTmax);
-	f_left_mid = myNewTF1(Form("flm_%d",mLayerID),"pol5",mTmin,mTmax);
-	f_right_mid = myNewTF1(Form("frm_%d",mLayerID),"pol5",mTmin,mTmax);
-	f_both_mid = myNewTF1(Form("fbm_%d",mLayerID),"pol5",mTmin,mTmax);
+	if (mXTType==7){
+		f_left_mid = myNewTF1(Form("flm_%d",mLayerID),"pol9",mTmin,mTmax);
+		f_right_mid = myNewTF1(Form("frm_%d",mLayerID),"pol9",mTmin,mTmax);
+		f_both_mid = myNewTF1(Form("fbm_%d",mLayerID),"pol9",mTmin,mTmax);
+	}
+	else{
+		f_left_mid = myNewTF1(Form("flm_%d",mLayerID),"pol5",mTmin,mTmax);
+		f_right_mid = myNewTF1(Form("frm_%d",mLayerID),"pol5",mTmin,mTmax);
+		f_both_mid = myNewTF1(Form("fbm_%d",mLayerID),"pol5",mTmin,mTmax);
+	}
 	f_left_end = myNewTF1(Form("fle_%d",mLayerID),"pol3",mTmin,mTmax);
 	f_right_end = myNewTF1(Form("fre_%d",mLayerID),"pol3",mTmin,mTmax);
 	f_both_end = myNewTF1(Form("fbe_%d",mLayerID),"pol3",mTmin,mTmax);
@@ -419,6 +426,7 @@ void XTAnalyzer::Process(void){
 	// FIXME: Currently seperate the mid/end graphs by 8 mm line, and search for the real one from 7 mm line.
 	// FIXME: Currently seperate the cen/mid graphs by 1 mm line, and search for the real one from mTmin.
 	double xCenter2Mid = 1.5;
+	if (mXTType==7) xCenter2Mid = 0;
 	double xStart2Turn = 7;
 	double xMargin = 0.2;
 	double t8Left = v_t_slicex[0];
@@ -623,9 +631,19 @@ void XTAnalyzer::Process(void){
 	f_left_delta = minusPolN(Form("fld_%d",mLayerID),f_left_mid,f_left_end,0,mTmax);
 	f_right_delta = minusPolN(Form("frd_%d",mLayerID),f_right_mid,f_right_end,0,mTmax);
 	f_both_delta = minusPolN(Form("fbd_%d",mLayerID),f_both_mid,f_both_end,0,mTmax);
-	double tZeroLeft = findFirstZero(f_left_cen,mTmin,mTmax,1);
-	double tZeroRight = findFirstZero(f_right_cen,mTmin,mTmax,1);
-	double tZeroBoth = findFirstZero(f_both_cen,mTmin,mTmax,1);
+	double tZeroLeft = 0;
+	double tZeroRight = 0;
+	double tZeroBoth = 0;
+	if (mXTType==7){
+		tZeroLeft = findFirstZero(f_left_mid,mTmin,mTmax,1);
+		tZeroRight = findFirstZero(f_right_mid,mTmin,mTmax,1);
+		tZeroBoth = findFirstZero(f_both_mid,mTmin,mTmax,1);
+	}
+	else{
+		tZeroLeft = findFirstZero(f_left_cen,mTmin,mTmax,1);
+		tZeroRight = findFirstZero(f_right_cen,mTmin,mTmax,1);
+		tZeroBoth = findFirstZero(f_both_cen,mTmin,mTmax,1);
+	}
 	double tCentLeft = findFirstZero(f_left_deltac,5,mTmax,1); // FIXME: better to use driftT at 0.5 mm to start searching
 	double tCentRight = findFirstZero(f_right_deltac,5,mTmax,1);
 	double tCentBoth = findFirstZero(f_both_deltac,5,mTmax,1);
@@ -644,10 +662,18 @@ void XTAnalyzer::Process(void){
 	}
 
 	// combine functions
-	f_left_com = combinePolN(Form("flc_%d",mLayerID),f_left_cen,f_left_mid,f_left_end,tZeroLeft,tCentLeft,tTurnLeft,tEndLeft,mTmin,tEndLeft);
-	f_right_com = combinePolN(Form("frc_%d",mLayerID),f_right_cen,f_right_mid,f_right_end,tZeroRight,tCentRight,tTurnRight,tEndRight,mTmin,tEndRight);
-	f_both_com = combinePolN(Form("fbc_%d",mLayerID),f_both_cen,f_both_mid,f_both_end,tZeroBoth,tCentBoth,tTurnBoth,tEndBoth,mTmin,tEndBoth);
-	f_bothL_com = combinePolN(Form("fblc_%d",mLayerID),scalePolN(f_both_cen,-1),scalePolN(f_both_mid,-1),scalePolN(f_both_end,-1),tZeroBoth,tCentBoth,tTurnBoth,tEndBoth,mTmin,tEndBoth);
+	if (mXTType==7){
+		f_left_com = combinePolN(Form("flc_%d",mLayerID),f_left_mid,f_left_end,tZeroLeft,tTurnLeft,tEndLeft,mTmin,tEndLeft);
+		f_right_com = combinePolN(Form("frc_%d",mLayerID),f_right_mid,f_right_end,tZeroRight,tTurnRight,tEndRight,mTmin,tEndRight);
+		f_both_com = combinePolN(Form("fbc_%d",mLayerID),f_both_mid,f_both_end,tZeroBoth,tTurnBoth,tEndBoth,mTmin,tEndBoth);
+		f_bothL_com = combinePolN(Form("fblc_%d",mLayerID),scalePolN(f_both_mid,-1),scalePolN(f_both_end,-1),tZeroBoth,tTurnBoth,tEndBoth,mTmin,tEndBoth);
+	}
+	else{
+		f_left_com = combinePolN(Form("flc_%d",mLayerID),f_left_cen,f_left_mid,f_left_end,tZeroLeft,tCentLeft,tTurnLeft,tEndLeft,mTmin,tEndLeft);
+		f_right_com = combinePolN(Form("frc_%d",mLayerID),f_right_cen,f_right_mid,f_right_end,tZeroRight,tCentRight,tTurnRight,tEndRight,mTmin,tEndRight);
+		f_both_com = combinePolN(Form("fbc_%d",mLayerID),f_both_cen,f_both_mid,f_both_end,tZeroBoth,tCentBoth,tTurnBoth,tEndBoth,mTmin,tEndBoth);
+		f_bothL_com = combinePolN(Form("fblc_%d",mLayerID),scalePolN(f_both_cen,-1),scalePolN(f_both_mid,-1),scalePolN(f_both_end,-1),tZeroBoth,tCentBoth,tTurnBoth,tEndBoth,mTmin,tEndBoth);
+	}
 	f_left_com->SetLineColor(kMagenta);
 	f_both_com->SetLineColor(kBlack);
 	f_bothL_com->SetLineColor(kBlack);
@@ -666,15 +692,29 @@ void XTAnalyzer::Process(void){
 		}
 	}
 	else{ // use Both-Side case
-		f_left = combinePolN(Form("fl_%d",mLayerID),scalePolN(f_both_cen,-1),scalePolN(f_both_mid,-1),scalePolN(f_both_end,-1),tZeroBoth,tCentBoth,tTurnBoth,tEndBoth,mTmin,tEndBoth);
-		f_right = combinePolN(Form("fr_%d",mLayerID),f_both_cen,f_both_mid,f_both_end,tZeroBoth,tCentBoth,tTurnBoth,tEndBoth,mTmin,tEndBoth);
-		if (mSaveXT0){
-			f_left0 = combinePolN(Form("fl_%d",0),scalePolN(f_both_cen,-1),scalePolN(f_both_mid,-1),scalePolN(f_both_end,-1),tZeroBoth,tCentBoth,tTurnBoth,tEndBoth,mTmin,tEndBoth);
-			f_right0 = combinePolN(Form("fr_%d",0),f_both_cen,f_both_mid,f_both_end,tZeroBoth,tCentBoth,tTurnBoth,tEndBoth,mTmin,tEndBoth);
+		if (mXTType==7){
+			f_left = combinePolN(Form("fl_%d",mLayerID),scalePolN(f_both_mid,-1),scalePolN(f_both_end,-1),tZeroBoth,tTurnBoth,tEndBoth,mTmin,tEndBoth);
+			f_right = combinePolN(Form("fr_%d",mLayerID),f_both_mid,f_both_end,tZeroBoth,tTurnBoth,tEndBoth,mTmin,tEndBoth);
+			if (mSaveXT0){
+				f_left0 = combinePolN(Form("fl_%d",0),scalePolN(f_both_mid,-1),scalePolN(f_both_end,-1),tZeroBoth,tTurnBoth,tEndBoth,mTmin,tEndBoth);
+				f_right0 = combinePolN(Form("fr_%d",0),f_both_mid,f_both_end,tZeroBoth,tTurnBoth,tEndBoth,mTmin,tEndBoth);
+			}
+			if (mSaveXTEO){
+				f_leftEO = combinePolN("fl_"+mEOsuffix,scalePolN(f_both_mid,-1),scalePolN(f_both_end,-1),tZeroBoth,tTurnBoth,tEndBoth,mTmin,tEndBoth);
+				f_rightEO = combinePolN("fr_"+mEOsuffix,f_both_mid,f_both_end,tZeroBoth,tTurnBoth,tEndBoth,mTmin,tEndBoth);
+			}
 		}
-		if (mSaveXTEO){
-			f_leftEO = combinePolN("fl_"+mEOsuffix,scalePolN(f_both_cen,-1),scalePolN(f_both_mid,-1),scalePolN(f_both_end,-1),tZeroBoth,tCentBoth,tTurnBoth,tEndBoth,mTmin,tEndBoth);
-			f_rightEO = combinePolN("fr_"+mEOsuffix,f_both_cen,f_both_mid,f_both_end,tZeroBoth,tCentBoth,tTurnBoth,tEndBoth,mTmin,tEndBoth);
+		else{
+			f_left = combinePolN(Form("fl_%d",mLayerID),scalePolN(f_both_cen,-1),scalePolN(f_both_mid,-1),scalePolN(f_both_end,-1),tZeroBoth,tCentBoth,tTurnBoth,tEndBoth,mTmin,tEndBoth);
+			f_right = combinePolN(Form("fr_%d",mLayerID),f_both_cen,f_both_mid,f_both_end,tZeroBoth,tCentBoth,tTurnBoth,tEndBoth,mTmin,tEndBoth);
+			if (mSaveXT0){
+				f_left0 = combinePolN(Form("fl_%d",0),scalePolN(f_both_cen,-1),scalePolN(f_both_mid,-1),scalePolN(f_both_end,-1),tZeroBoth,tCentBoth,tTurnBoth,tEndBoth,mTmin,tEndBoth);
+				f_right0 = combinePolN(Form("fr_%d",0),f_both_cen,f_both_mid,f_both_end,tZeroBoth,tCentBoth,tTurnBoth,tEndBoth,mTmin,tEndBoth);
+			}
+			if (mSaveXTEO){
+				f_leftEO = combinePolN("fl_"+mEOsuffix,scalePolN(f_both_cen,-1),scalePolN(f_both_mid,-1),scalePolN(f_both_end,-1),tZeroBoth,tCentBoth,tTurnBoth,tEndBoth,mTmin,tEndBoth);
+				f_rightEO = combinePolN("fr_"+mEOsuffix,f_both_cen,f_both_mid,f_both_end,tZeroBoth,tCentBoth,tTurnBoth,tEndBoth,mTmin,tEndBoth);
+			}
 		}
 	}
 
@@ -1144,26 +1184,64 @@ TF1 * XTAnalyzer::minusPolN(TString name, TF1 * f1, TF1 * f2, double xmin, doubl
 	return f;
 }
 
-TF1 * XTAnalyzer::combinePolN(TString name, TF1 * f1, TF1 * f2, TF1 * f3, double x0, double x1, double x2, double x3, double xmin, double xmax){
-	TString form1 = formPolN(f1);
-	TString form2 = formPolN(f2);
-	TString form3 = formPolN(f3);
-	double ymax = f3->Eval(x3);
-	TF1 * f = new TF1(name,Form("(x>=%.14f&&x<%.14f)*(%s)+(x>=%.14f&&x<%.14f)*(%s)+(x>=%.14f&&x<%.14f)*(%s)+(x>=%.14f)*%.14e",x0,x1,form1.Data(),x1,x2,form2.Data(),x2,x3,form3.Data(),x3,ymax),xmin,xmax);
+TF1 * XTAnalyzer::combinePolN(TString name, TF1 * f1, TF1 * f2, double x0, double x1, double x2, double xmin, double xmax){
+	int nPar = 0;
+	TString form1 = formPolN(nPar,f1->GetNpar()); nPar+=f1->GetNpar();
+	TString form2 = formPolN(nPar,f2->GetNpar()); nPar+=f2->GetNpar();
+	TF1 * f = new TF1(name,Form("(x>=[%d]&&x<[%d])*(%s)+(x>=[%d]&&x<[%d])*(%s)+(x>=[%d])*[%d]",nPar,nPar+1,form1.Data(),nPar+1,nPar+2,form2.Data(),nPar+2,nPar+3),xmin,xmax);
+	int iPar = 0;
+	for (int i = 0; i<f1->GetNpar(); i++){
+		f->SetParameter(iPar,f1->GetParameter(i));
+		iPar++;
+	}
+	for (int i = 0; i<f2->GetNpar(); i++){
+		f->SetParameter(iPar,f2->GetParameter(i));
+		iPar++;
+	}
+	f->SetParameter(iPar++,x0);
+	f->SetParameter(iPar++,x1);
+	f->SetParameter(iPar++,x2);
+	f->SetParameter(iPar++,f2->Eval(x2));
 	f->SetNpx(1024);
 	f->SetNumberFitPoints(1024);
 	f->SetLineWidth(0.3);
 	return f;
 }
 
-TString XTAnalyzer::formPolN(TF1 * f){
-	int n = f->GetNpar();
-	double p0 = f->GetParameter(0);
-	TString form = Form("%.14e",p0);
+TF1 * XTAnalyzer::combinePolN(TString name, TF1 * f1, TF1 * f2, TF1 * f3, double x0, double x1, double x2, double x3, double xmin, double xmax){
+	int nPar = 0;
+	TString form1 = formPolN(nPar,f1->GetNpar()); nPar+=f1->GetNpar();
+	TString form2 = formPolN(nPar,f2->GetNpar()); nPar+=f2->GetNpar();
+	TString form3 = formPolN(nPar,f3->GetNpar()); nPar+=f3->GetNpar();
+	TF1 * f = new TF1(name,Form("(x>=[%d]&&x<[%d])*(%s)+(x>=[%d]&&x<[%d])*(%s)+(x>=[%d]&&x<[%d])*(%s)+(x>=[%d])*[%d]",nPar,nPar+1,form1.Data(),nPar+1,nPar+2,form2.Data(),nPar+2,nPar+3,form3.Data(),nPar+3,nPar+4),xmin,xmax);
+	int iPar = 0;
+	for (int i = 0; i<f1->GetNpar(); i++){
+		f->SetParameter(iPar,f1->GetParameter(i));
+		iPar++;
+	}
+	for (int i = 0; i<f2->GetNpar(); i++){
+		f->SetParameter(iPar,f2->GetParameter(i));
+		iPar++;
+	}
+	for (int i = 0; i<f3->GetNpar(); i++){
+		f->SetParameter(iPar,f3->GetParameter(i));
+		iPar++;
+	}
+	f->SetParameter(iPar++,x0);
+	f->SetParameter(iPar++,x1);
+	f->SetParameter(iPar++,x2);
+	f->SetParameter(iPar++,x3);
+	f->SetParameter(iPar++,f3->Eval(x3));
+	f->SetNpx(1024);
+	f->SetNumberFitPoints(1024);
+	f->SetLineWidth(0.3);
+}
+
+TString XTAnalyzer::formPolN(int start,int n){
+	TString form = Form("[%d]",start);
 	TString x = "x";
 	for (int i = 1; i<n; i++){
-		double p = f->GetParameter(i);
-		form+=Form("+(%.14e*%s)",p,x.Data());
+		form+=Form("+[%d]*%s",i+start,x.Data());
 		x+="*x";
 	}
 	return form;
