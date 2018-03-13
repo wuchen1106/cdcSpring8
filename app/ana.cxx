@@ -108,30 +108,34 @@ int main(int argc, char** argv){
     double maxchi2 = 1;
     if (argc>=6)
         maxchi2 = (double)strtod(argv[5],NULL);
-    int nHitsMax = 0;
+    double maxslz = 0;
     if (argc>=7)
-        nHitsMax = (int)strtol(argv[6],NULL,10);
-    int aaCut = 0;
+        maxslz = (double)strtod(argv[6],NULL);
+    int nHitsMax = 0;
     if (argc>=8)
-        aaCut = (int)strtol(argv[7],NULL,10);
-	int savehists = 0;
+        nHitsMax = (int)strtol(argv[7],NULL,10);
+    int aaCut = 0;
     if (argc>=9)
-        savehists = (int)strtol(argv[8],NULL,10);
-    int debugLevel = 0;
+        aaCut = (int)strtol(argv[8],NULL,10);
+	int savehists = 0;
     if (argc>=10)
-        debugLevel = (int)strtol(argv[9],NULL,10);
-    int iEntryStart = 0;
+        savehists = (int)strtol(argv[9],NULL,10);
+    int debugLevel = 0;
     if (argc>=11)
-        iEntryStart = (int)strtol(argv[10],NULL,10);
-    int iEntryStop = 0;
+        debugLevel = (int)strtol(argv[10],NULL,10);
+    int iEntryStart = 0;
     if (argc>=12)
-        iEntryStop = (int)strtol(argv[11],NULL,10);
+        iEntryStart = (int)strtol(argv[11],NULL,10);
+    int iEntryStop = 0;
+    if (argc>=13)
+        iEntryStop = (int)strtol(argv[12],NULL,10);
     int nHitsSmin = 7;
     printf("##############Input %d Parameters##################\n",argc);
     printf("runNo       = %d\n",runNo);
     printf("runname     = \"%s\"\n",runname.Data());
     printf("xtType:       %d\n",xtType);
     printf("maxchi2     = %.3e\n",maxchi2);
+    printf("maxslz      = %.3e\n",maxslz);
     printf("test layer:   %d\n",testLayer);
     printf("nHits max   = %d\n",nHitsMax);
     printf("Q cut       = %d\n",aaCut);
@@ -216,6 +220,14 @@ int main(int argc, char** argv){
 
     // Get Wire Position
     TFile * TFile_wirepos = new TFile(Form("%s/info/wire-position.%d.%s.root",HOME.Data(),runNo,runname.Data()));
+    if (!TFile_wirepos){
+    	fprintf(stderr,"Cannot find %s/info/wire-position.%d.%s.root, using default one\n",HOME.Data(),runNo,runname.Data());
+		TFile_wirepos = new TFile(Form("%s/info/wire-position.%d.%s.root",HOME.Data(),runNo,runname.Data()));
+	}
+    if (!TFile_wirepos){
+    	fprintf(stderr,"Cannot find default wire-position!\n");
+    	return 1;
+    }
     TTree * TTree_wirepos = (TTree*) TFile_wirepos->Get("t");
     int     wp_bid;
     int     wp_ch;
@@ -503,7 +515,7 @@ int main(int argc, char** argv){
 	TH1I * h_nHits = new TH1I("hnHits","Number of TDC hits in each event",100,0,100);
 	TH1I * h_DOF = new TH1I("hDOF","Number of DOF",5,0,5);
 	TH1D * h_chi2 = new TH1D("hchi2","#chi^{2} of fitting",256,0,10);
-	TH1D * h_chi2p = new TH1D("hchi2p","p value of fitting",256,0,1);
+	TH1D * h_slz = new TH1D("hslz","Slope on z direction",256,-0.3,0.3);
 	TH1D * h_DOCA = new TH1D("hDOCA","DOCA with Left/Right",mNbinx,-mXmax,mXmax);
 	TH1D * h_DOCAb = new TH1D("hDOCAb","DOCA without Left/Right",mNbinx/2,0,mXmax);
 	TH1D * h_DriftD = new TH1D("hDriftD","Drift distance with Left/Right",mNbinx,-mXmax,mXmax);
@@ -533,7 +545,7 @@ int main(int argc, char** argv){
 	h_nHits->GetXaxis()->SetTitle("Number of Hits");
 	h_DOF->GetXaxis()->SetTitle("DOF");
 	h_chi2->GetXaxis()->SetTitle("#chi^{2}");
-	h_chi2p->GetXaxis()->SetTitle("p value");
+	h_slz->GetXaxis()->SetTitle("tan#theta_{z}");
 	h_DOCA->GetXaxis()->SetTitle("DOCA [mm]");
 	h_DOCAb->GetXaxis()->SetTitle("DOCA with left(-)/right(+) [mm]");
 	h_DriftD->GetXaxis()->SetTitle("Drift distance [mm]");
@@ -609,15 +621,13 @@ int main(int argc, char** argv){
 		N_CUT1++;
 		h_DOF->Fill(nHitsS-4);
 		if (nHitsS<nHitsSmin) continue;
-		if (nHitsS<nHitsG) continue; // FIXME: temparory approach
 		N_CUT2++;
 		h_chi2->Fill(chi2);
-		h_chi2p->Fill(chi2p);
 		if (chi2>maxchi2) continue;
 		N_CUT3++;
-		if (geoSetup==0){ // FIXME: should use option
-			if (fabs(slz)>0.1) continue;
-		}
+		h_slz->Fill(slz);
+		if (fabs(slz)>maxslz) continue;
+		N_CUT4++;
 
 		// get closest wire
 		closeFD = 1e3;
@@ -639,7 +649,6 @@ int main(int argc, char** argv){
 		}
 		int ibinX = fabs(closeFD)/mXmax*NBINS;
 		if (ibinX>=NBINS) continue; // too far away from any cell
-		N_CUT4++;
 		h_DOCA->Fill(closeFD);
 		h_DOCAb->Fill(fabs(closeFD));
 		N_BIN[ibinX]++;
@@ -705,7 +714,7 @@ int main(int argc, char** argv){
 			double dd = 0;
 			int status = t2d(dt,dd,fd>0);
 			if (!status) continue; // out of range
-			if (aa<aaCut||peak<aaCut) continue; // too small // FIXME: should separate
+			if (aa<aaCut) continue; // too small
 			h_DriftD->Fill(dd);
 			h_DriftDb->Fill(fabs(dd));
 			int ibx = fabs(fd)/mXmax*NBINS;
@@ -959,14 +968,17 @@ int main(int argc, char** argv){
 	canv_tracking->cd(4);
 	gPad->SetGridx(1);
 	gPad->SetGridy(1);
-	h_chi2p->Draw();
-	TLine * line_chi2p = new TLine(minchi2p,0,minchi2p,h_chi2p->GetMaximum());
-	line_chi2p->SetLineColor(kRed);
-	line_chi2p->Draw("SAME");
-	TLatex * text_chi2p = new TLatex(minchi2p,h_chi2p->GetMaximum()*0.7,Form("%d(%.1f%%)",N_CUT3,(double)N_CUT3/N_ALL*100));
-	text_chi2p->SetTextColor(kRed);
-	text_chi2p->SetTextSize(0.04);
-	text_chi2p->Draw("SAME");
+	h_slz->Draw();
+	TLine * line_slzl = new TLine(-maxslz,0,-maxslz,h_slz->GetMaximum());
+	line_slzl->SetLineColor(kRed);
+	line_slzl->Draw("SAME");
+	TLine * line_slzr = new TLine(maxslz,0,maxslz,h_slz->GetMaximum());
+	line_slzr->SetLineColor(kRed);
+	line_slzr->Draw("SAME");
+	TLatex * text_slz = new TLatex(maxslz,h_slz->GetMaximum()*0.7,Form("%d(%.1f%%)",N_CUT4,(double)N_CUT4/N_ALL*100));
+	text_slz->SetTextColor(kRed);
+	text_slz->SetTextSize(0.04);
+	text_slz->Draw("SAME");
 	canv_tracking->SaveAs(Form("track_%d.%s.layer%d.pdf",runNo,runname.Data(),testLayer));
 	canv_tracking->SaveAs(Form("track_%d.%s.layer%d.png",runNo,runname.Data(),testLayer));
 
@@ -1217,7 +1229,7 @@ int main(int argc, char** argv){
 	h_nHits->Write();
 	h_DOF->Write();
 	h_chi2->Write();
-	h_chi2p->Write();
+	h_slz->Write();
 	h_DOCA->Write();
 	h_DOCAb->Write();
 	h_DriftD->Write();
@@ -1253,7 +1265,7 @@ double ADC2Charge(double adc){ // fC
 
 double getGG(double charge, double slx, double slz){
 	double nPairs = CELLH*sqrt(1+slx*slx+slz*slz)*npair_per_cm/10;
-	double gg = charge*1e-15/1.6e-19/nPairs; // FIXME: fake gas gain for now
+	double gg = charge*1e-15/1.6e-19/nPairs;
 	return gg;
 }
 
