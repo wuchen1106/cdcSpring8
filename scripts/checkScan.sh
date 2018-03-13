@@ -26,7 +26,7 @@ do
             then
                 continue
             fi
-            echo "$gas $HV $runname $thefile"
+            echo "$gas $HV $run $runname $thefile"
         done
     done
 done
