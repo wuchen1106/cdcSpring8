@@ -48,7 +48,7 @@ minslz=0 # min slz cut for mean slz value in each sample of events in wiremap ca
 maxslz=0 # min slz cut for mean slz value in each sample of events in wiremap calibration. minslz==maxslz==0 means no cut
 mininx=0 # min inx cut for mean inx value in each sample of events in wiremap calibration. mininx==maxinx==0 means no cut
 maxinx=0 # min inx cut for mean inx value in each sample of events in wiremap calibration. mininx==maxinx==0 means no cut
-maxchi2=1
+maxchi2=2
 scale=1 # move scale*offset on wiremap for fitting in the next round
 
 # for getXT
@@ -308,7 +308,7 @@ do
                 echo "  logfile \"$file\" doesn't exist, so generate a new job!"
             fi
             temprunname="${currunname}.$iEntryStart-$iEntryStop"
-            tempconfig="$runNo $testlayer $prerunname $temprunname $nHitsGMax $t0shift0 $t0shift1 $tmin $tmax $geoSetup $sumCut $aaCut $iEntryStart $iEntryStop $workType $inputType $peakType"
+            tempconfig="    $runNo $testlayer $prerunname $temprunname $nHitsGMax $t0shift0 $t0shift1 $tmin $tmax $geoSetup $sumCut $aaCut $iEntryStart $iEntryStop $workType $inputType $peakType"
             findVacentThread
             if [ $? -eq 1 ]
             then
