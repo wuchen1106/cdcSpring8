@@ -52,6 +52,7 @@ double t7l = 0;
 double t8l = 0;
 double t7r = 0;
 double t8r = 0;
+int    tmaxSet = 0;
 double W = 0;
 
 //==================About RECBE======================
@@ -105,40 +106,51 @@ int main(int argc, char** argv){
 	xtType = 0;
     if (argc>=5)
 		xtType = (int)strtol(argv[4],NULL,10);
-    double maxchi2 = 1;
+    double maxchi2 = 2;
     if (argc>=6)
         maxchi2 = (double)strtod(argv[5],NULL);
-    double maxslz = 0;
+    double maxslz = 0.1;
     if (argc>=7)
         maxslz = (double)strtod(argv[6],NULL);
     int nHitsMax = 0;
     if (argc>=8)
         nHitsMax = (int)strtol(argv[7],NULL,10);
-    int aaCut = 0;
-    if (argc>=9)
-        aaCut = (int)strtol(argv[8],NULL,10);
-	int savehists = 0;
-    if (argc>=10)
-        savehists = (int)strtol(argv[9],NULL,10);
-    int debugLevel = 0;
-    if (argc>=11)
-        debugLevel = (int)strtol(argv[10],NULL,10);
-    int iEntryStart = 0;
-    if (argc>=12)
-        iEntryStart = (int)strtol(argv[11],NULL,10);
-    int iEntryStop = 0;
-    if (argc>=13)
-        iEntryStop = (int)strtol(argv[12],NULL,10);
     int nHitsSmin = 7;
+    if (argc>=9)
+        nHitsSmin = (int)strtol(argv[8],NULL,10);
+    int aaCut = 0;
+    if (argc>=10)
+        aaCut = (int)strtol(argv[9],NULL,10);
+    geoSetup = 0;
+    if (argc>=11)
+        geoSetup = (int)strtol(argv[10],NULL,10);
+    tmaxSet = 0;
+    if (argc>=12)
+        tmaxSet = (int)strtol(argv[11],NULL,10);
+	int savehists = 0;
+    if (argc>=13)
+        savehists = (int)strtol(argv[12],NULL,10);
+    int debugLevel = 0;
+    if (argc>=14)
+        debugLevel = (int)strtol(argv[13],NULL,10);
+    int iEntryStart = 0;
+    if (argc>=15)
+        iEntryStart = (int)strtol(argv[14],NULL,10);
+    int iEntryStop = 0;
+    if (argc>=16)
+        iEntryStop = (int)strtol(argv[15],NULL,10);
     printf("##############Input %d Parameters##################\n",argc);
     printf("runNo       = %d\n",runNo);
     printf("runname     = \"%s\"\n",runname.Data());
+    printf("test layer:   %d\n",testLayer);
     printf("xtType:       %d\n",xtType);
     printf("maxchi2     = %.3e\n",maxchi2);
     printf("maxslz      = %.3e\n",maxslz);
-    printf("test layer:   %d\n",testLayer);
     printf("nHits max   = %d\n",nHitsMax);
+    printf("nHitsSmin   = %d\n",nHitsSmin);
     printf("Q cut       = %d\n",aaCut);
+    printf("geoSetup    = %d\n",geoSetup);
+    printf("tmaxSet     = %d\n",tmaxSet);
     printf("savehists:    %s\n",savehists?"yes":"no");
     printf("debug       = %d\n",debugLevel);
     printf("Entries:     [%d~%d]\n",iEntryStart,iEntryStop);
@@ -219,16 +231,16 @@ int main(int argc, char** argv){
 	}
 
     // Get Wire Position
-    TFile * TFile_wirepos = new TFile(Form("%s/info/wire-position.%d.%s.root",HOME.Data(),runNo,runname.Data()));
-    if (!TFile_wirepos){
+    TChain * TChain_wirepos = new TChain("t","t");
+    TChain_wirepos->Add(Form("%s/info/wire-position.%d.%s.root",HOME.Data(),runNo,runname.Data()));
+    if (!TChain_wirepos->GetEntries()){
     	fprintf(stderr,"Cannot find %s/info/wire-position.%d.%s.root, using default one\n",HOME.Data(),runNo,runname.Data());
-		TFile_wirepos = new TFile(Form("%s/info/wire-position.%d.%s.root",HOME.Data(),runNo,runname.Data()));
-	}
-    if (!TFile_wirepos){
+		TChain_wirepos->Add(Form("%s/info/wire-position.root",HOME.Data()));
+    }
+    if (!TChain_wirepos->GetEntries()){
     	fprintf(stderr,"Cannot find default wire-position!\n");
     	return 1;
     }
-    TTree * TTree_wirepos = (TTree*) TFile_wirepos->Get("t");
     int     wp_bid;
     int     wp_ch;
     int     wp_wid;
@@ -237,16 +249,16 @@ int main(int argc, char** argv){
     double  wp_yro;
     double  wp_xhv;
     double  wp_yhv;
-    TTree_wirepos->SetBranchAddress("b",&wp_bid);
-    TTree_wirepos->SetBranchAddress("ch",&wp_ch);
-    TTree_wirepos->SetBranchAddress("l",&wp_lid);
-    TTree_wirepos->SetBranchAddress("w",&wp_wid);
-    TTree_wirepos->SetBranchAddress("xhv",&wp_xhv);
-    TTree_wirepos->SetBranchAddress("yhv",&wp_yhv);
-    TTree_wirepos->SetBranchAddress("xro",&wp_xro);
-    TTree_wirepos->SetBranchAddress("yro",&wp_yro);
-    for (int i = 0; i<TTree_wirepos->GetEntries(); i++){
-        TTree_wirepos->GetEntry(i);
+    TChain_wirepos->SetBranchAddress("b",&wp_bid);
+    TChain_wirepos->SetBranchAddress("ch",&wp_ch);
+    TChain_wirepos->SetBranchAddress("l",&wp_lid);
+    TChain_wirepos->SetBranchAddress("w",&wp_wid);
+    TChain_wirepos->SetBranchAddress("xhv",&wp_xhv);
+    TChain_wirepos->SetBranchAddress("yhv",&wp_yhv);
+    TChain_wirepos->SetBranchAddress("xro",&wp_xro);
+    TChain_wirepos->SetBranchAddress("yro",&wp_yro);
+    for (int i = 0; i<TChain_wirepos->GetEntries(); i++){
+        TChain_wirepos->GetEntry(i);
         if (wp_lid>=0&&wp_lid<NLAY&&wp_wid>=0&&wp_wid<NCEL){
             map_x[wp_lid][wp_wid][0] = wp_xhv;
             map_y[wp_lid][wp_wid][0] = wp_yhv;
@@ -255,14 +267,9 @@ int main(int argc, char** argv){
             map_has[wp_lid][wp_wid] = true;
         }
     }
-    TFile_wirepos->Close();
 
     // get XT file
     TFile * XTFile = new TFile(Form("%s/info/xt.%d.%s.root",HOME.Data(),runNo,runname.Data()));
-    if (!XTFile){
-    	fprintf(stderr,"Cannot find XT file!\n");
-    	return 0;
-	}
 	f_left0 = (TF1*) XTFile->Get("fl_0");
 	f_right0 = (TF1*) XTFile->Get("fr_0");
 	f_left = (TF1*) XTFile->Get(Form("flc_%d",testLayer));
@@ -303,8 +310,12 @@ int main(int argc, char** argv){
 		else
 			maxDT = f_left_mid->GetXmax()<f_right_mid->GetXmax()?f_right_mid->GetXmax():f_left_mid->GetXmax();
 	}
-	else
-		maxDT = t8l<t8r?t8r:t8l;
+	else{
+	    if (tmaxSet)
+	        maxDT = tmaxSet;
+        else
+            maxDT = t8l<t8r?t8r:t8l;
+    }
 
 	//===================Set scintillator geometry============================
 	if (geoSetup==0){
@@ -596,6 +607,8 @@ int main(int argc, char** argv){
 	double closeFD2;
 	int    closeWid;
 	int    closeWid2;
+	double averageGG = 0;
+	int    NusedGG = 0;
 	std::vector<double> chargeOnTrack;
 	Long64_t N = ichain->GetEntries();
 	if (!iEntryStart&&!iEntryStop){
@@ -692,10 +705,10 @@ int main(int argc, char** argv){
 				if (wid==closeWid) isig = 0;
 				else if (wid==closeWid2&&has2nd) isig = 1;
 				if (isig>=0){
-					double res = fabs(dd)-fabs(fd);
-					if (fabs(res)<fabs(minRes[isig])){
+					double resi = fabs(dd)-fabs(fd);
+					if (fabs(resi)<fabs(minRes[isig])){
 						found[isig] = true;
-						minRes[isig] = res;
+						minRes[isig] = resi;
 						sigIhit[isig] = ihit;
 					}
 				}
@@ -714,27 +727,29 @@ int main(int argc, char** argv){
 			double dd = 0;
 			int status = t2d(dt,dd,fd>0);
 			if (!status) continue; // out of range
-			if (aa<aaCut) continue; // too small
+			//if (aa<aaCut) continue; // too small
 			h_DriftD->Fill(dd);
 			h_DriftDb->Fill(fabs(dd));
 			int ibx = fabs(fd)/mXmax*NBINS;
 			int ib = fabs(dd)/mXmax*NBINS;
 			//dd = (*i_driftD)[ihit];
-			res = fabs(dd) - fabs(fd);
+			double resi = fabs(dd) - fabs(fd);
 			// xt
 			h_tx->Fill(fd,dt);
 			h_xt->Fill(dt,fd);
-			// res VS x/d
-			h_resVSX->Fill(fd,res);
-			h_resVSD->Fill(dd,res);
-			// res
-			h_resD[ib]->Fill(res);
-			h_resX[ibx]->Fill(res);
+			// resi VS x/d
+			h_resVSX->Fill(fd,resi);
+			h_resVSD->Fill(dd,resi);
+			// resi
+			h_resD[ib]->Fill(resi);
+			h_resX[ibx]->Fill(resi);
 		}
 		// gas gain
 		double theGG = getGG(chargeInTLayer,slx,slz);
 		h_ggVSX->Fill(closeFD,theGG);
 		double avGG = h_ggVSX->GetMean(2);
+		averageGG += avGG;
+		NusedGG++;
 
 		// sort the hits by charge;
 		int nHitsOnTrack = chargeOnTrack.size();
@@ -763,6 +778,7 @@ int main(int argc, char** argv){
 
 		if (debugLevel>=20) printf("  Good Event! Looping in %d hits\n",nHits);
 	}
+	NusedGG?averageGG/=NusedGG:averageGG=0;
 
 	//=================================================Get bin by bin information====================================================
 	int ibinl = 0;
@@ -917,13 +933,14 @@ int main(int argc, char** argv){
 			v_xoff.push_back(o_xoff);
 		}
 	}
-	averageEffD/=NusedD;
-	averageResD/=NusedD;
-	averageRMSD/=NusedD;
-	averageEffX/=NusedX;
-	averageRMSX/=NusedX;
-	printf("=>  %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s\n","runNo","testLayer","HV","THR","gasID","aaCut","averageEffD","averageResD","averageEffX","averageResX","averageRMSD","averageResX","bestEffD","bestResD","bestEffX","bestResX","bestRMSD","bestRMSX");
-	printf("==> %d %d %d %d %d %d %.3e %.3e %.3e %.3e %.3e %.3e %.3e %.3e %.3e %.3e %.3e %.3e\n",runNo,testLayer,HV,THR,gasID,aaCut,averageEffD,averageResD,averageEffX,averageResX,averageRMSD,averageResX,bestEffD,bestResD,bestEffX,bestResX,bestRMSD,bestRMSX);
+	NusedD?averageEffD/=NusedD:averageEffD=0;
+	NusedD?averageResD/=NusedD:averageResD=0;
+	NusedD?averageRMSD/=NusedD:averageRMSD=0;
+	NusedX?averageEffX/=NusedX:averageEffX=0;
+	NusedX?averageResX/=NusedX:averageResX=0;
+	NusedX?averageRMSX/=NusedX:averageRMSX=0;
+	printf("=>  %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s\n","runNo/I","testLayer/I","HV/I","THR/I","gasID/I","aaCut/I","averageGG","averageEffX","averageResX","averageRMSX","averageEffD","averageResD","averageRMSD","bestEffD","bestResD","bestEffX","bestResX","bestRMSD","bestRMSX");
+	printf("==> %4d %d %d %2d %d %2d %.3e %.3e %.3e %.3e %.3e %.3e %.3e %.3e %.3e %.3e %.3e %.3e %.3e\n",runNo,testLayer,HV,THR,gasID,aaCut,averageGG,averageEffX,averageResX,averageRMSX,averageEffD,averageResD,averageRMSD,bestEffD,bestResD,bestEffX,bestResX,bestRMSD,bestRMSX);
 
 	//=================================================Draw====================================================
 	TCanvas * canv_tracking = new TCanvas("canv_tracking","canv_tracking",1024,768);
@@ -1336,6 +1353,7 @@ int t2d(double t, double & d, bool isRight){
 	else{
 		if (isRight) tmax = t8r;
 		else tmax = t8l;
+		if (tmaxSet) tmax = tmaxSet;
 	}
 
 	if (t<tmin){
@@ -1394,5 +1412,5 @@ void doFit(TH1D * h,double leftRatio, double rightRatio, double leftEnd, double 
 }
 
 void printUsage(char * name){
-    fprintf(stderr,"%s [runNo] [runname] <[testLayer (4)] [xtType: (0), fx_0; 1, fxc_4; 2, fxc_4|fxm_4; 3, fxm_4; 10, fx_0, 8mm; 11, fxc_4, 8mm; 12, fxc_4|fxm_4, 8mm; 13, fxm_4, 8mm] [maxchi2 (1)] [nHitsMax (0)] [aaCut (0)] [savehists: (0)] [debug: 0;...] [iEntryStart (0)] [iEntryStop (0)]>\n",name);
+    fprintf(stderr,"%s [runNo] [runname] <[testLayer (4)] [xtType: (0), fx_0; 1, fxc_4; 2, fxc_4|fxm_4; 3, fxm_4; 10, fx_0, 8mm; 11, fxc_4, 8mm; 12, fxc_4|fxm_4, 8mm; 13, fxm_4, 8mm] [maxchi2 (2)] [maxslz (0.1)] [nHitsMax (0)] [nHitsSMin (7)] [aaCut (0)] [geoSetup (0)] [savehists: (0)] [debug: 0;...] [iEntryStart (0)] [iEntryStop (0)]>\n",name);
 }
