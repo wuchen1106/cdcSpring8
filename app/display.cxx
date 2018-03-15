@@ -297,6 +297,10 @@ int main(int argc, char** argv){
 	iChain_ADC->SetBranchAddress("driftTime",tdc);
 	iChain_ADC->SetBranchAddress("clockNumberDriftTime",clockNumberDriftTime);
 	iChain_ADC->SetBranchAddress("tdcNhit",tdcNhit);
+	if (!iChain_ADC->GetEntries()) {
+	    fprintf(stderr,"Cannot find root/run_%0.6d_built.root!\n",runNo);
+	    return -1;
+	}
 
 	//==================Get Peaks==========================
 	TChain * iChain_p = new TChain("t","t");
