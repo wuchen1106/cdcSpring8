@@ -381,7 +381,7 @@ int main(int argc, char** argv){
     TFile_wirepos->Close();
 
     //==================Get Crosspoints==========================
-    TFile * TFile_crosspoint = new TFile(HOME+"/info/crosspoint.root");
+    TFile * TFile_crosspoint = new TFile(HOME+"/Input/crosspoint.root");
     TTree * TTree_crosspoint = (TTree*) TFile_crosspoint->Get("t");
     int     cp_l1;
     int     cp_l2;

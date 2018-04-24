@@ -111,7 +111,7 @@ int main(int argc, char** argv){
         }
     }
 	TChain * ichain_beam = new TChain("t","t");
-	ichain_beam->Add(Form("%s/info/beammap.%d.root",HOME.Data(),runNo));
+	ichain_beam->Add(Form("%s/Input/beammap.%d.root",HOME.Data(),runNo));
 	if (ichain_beam->GetEntries()){
         double beam_inxmc;
         double beam_slzmc;
@@ -129,7 +129,7 @@ int main(int argc, char** argv){
         }
     }
     else{
-        printf("Cannot find%s/info/beammap.%d.root, will assume slzmc/inxmc center at 0\n",HOME.Data(),runNo);
+        printf("Cannot find%s/Input/beammap.%d.root, will assume slzmc/inxmc center at 0\n",HOME.Data(),runNo);
     }
 
     // input file

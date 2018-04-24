@@ -251,7 +251,7 @@ int main(int argc, char** argv){
     TFile_crosspoint->Close();
 
 	//===================Get run info============================
-	TFile * if_run = new TFile(HOME+"/info/run-info.root");
+	TFile * if_run = new TFile(HOME+"/Input/run-info.root");
 	TTree * t_run = (TTree*) if_run->Get("t");
 	int i_runNo, gasID, runGr, HV, THR;
 	char runDu[128];
