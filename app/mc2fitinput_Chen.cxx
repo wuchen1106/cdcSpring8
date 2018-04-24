@@ -30,15 +30,23 @@ TVector3 vWireHV, vWireRO, vWire;
 TVector3 vDist;
 TVector3 vAxis;
 
+// for smearing
+int smearType = 0;
+TRandom1 random1;
+
 void printUsage(char* name);
 int getwid(int layerID, int cellID);
 double get_dist(int lid, int wid, double slx, double inx, double slz, double inz);
-double getRes(double x);
+double getResT(double x);
+double getResX(double x);
+double t2x(double t, bool isRight=true);
 double x2t(double x);
+void smearXT(double driftDmc,double & driftD, double & driftT);
 
-TF1 * f_xt_l;
-TF1 * f_xt_r;
-TF1 * f_sig;
+TF1 * f_xt_l = 0;
+TF1 * f_xt_r = 0;
+TF1 * f_sigT = 0;
+TGraph * gr_sigX = 0;
 
 int main(int argc, char ** argv){
 
@@ -48,32 +56,35 @@ int main(int argc, char ** argv){
     }
     TString xt_filename = argv[2];
     int geoSetup = 0;
-    if (argc>=4) geoSetup = atoi(argv[3]);
+    TString outputFileName = "output.root";
+    if (argc>=4) outputFileName = argv[3];
+    if (argc>=5) geoSetup = atoi(argv[4]);
     double offset_sigma = 0.05;
-    if (argc>=5) offset_sigma = atof(argv[4]);
+    if (argc>=6) offset_sigma = atof(argv[5]);
     double offset_max = offset_sigma*2;
-    if (argc>=6) offset_max = atof(argv[5]);
+    if (argc>=7) offset_max = atof(argv[6]);
     if (offset_max<0){
         printf("offset_max = %.3e < 0! Will set positive\n",offset_max);
         offset_max *= -1;
     }
     int maxLayer = 0;
-    if (argc>=7) maxLayer = atoi(argv[6]);
+    if (argc>=8) maxLayer = atoi(argv[7]);
     if (maxLayer>NLAY-1){
     	maxLayer=NLAY-1;
     	printf("WARNING: maxLayer[%d] is exceeding the range! Totally support %d layers counting from 0\n",maxLayer,NLAY);
 	}
+	smearType = 0; // default: smear driftT
+    if (argc>=8) smearType = atoi(argv[7]);
     int inputFileType = 0; // 0: using simulation file as input; 1: using tracking file (ana_XXX) as input
-    if (argc=8) inputFileType = atoi(argv[7]);
+    if (argc>=9) inputFileType = atoi(argv[8]);
 	printf("geoSetup = %d\n",geoSetup);
 	printf("offSig   = %.3e\n",offset_sigma);
 	printf("offMax   = %.3e\n",offset_max);
 	printf("maxLayer = %d\n",maxLayer);
+	printf("smear on \"%s\"\n",smearType==0?"T":"X");
 	printf("inputFile: %s, \"%s\"\n",inputFileType==0?"MC":"Data",argv[1]);
 
     TString HOME=getenv("CDCS8WORKING_DIR");
-
-    TRandom1 random1;
 
 	//===================Geometry Parameter============================
 	if (geoSetup==0){
@@ -102,7 +113,16 @@ int main(int argc, char ** argv){
 	TFile * i_xt_file = new TFile(xt_filename);
 	f_xt_l = (TF1*) i_xt_file->Get("fl_0");
 	f_xt_r = (TF1*) i_xt_file->Get("fr_0");
-	f_sig = (TF1*) i_xt_file->Get("f_sig_0");
+	if (smearType==0){
+        f_sigT = (TF1*) i_xt_file->Get("f_sigT_0");
+    }
+    else{
+        gr_sigX = (TGraph*) i_xt_file->Get("gr_resIni");
+        if (!gr_sigX){
+            fprintf(stderr,"WARNING: Cannot find gr_resIni!\n");
+            return 1;
+        }
+    }
 
     //===================Get Wire Position============================
     // prepare offset
@@ -228,7 +248,7 @@ int main(int argc, char ** argv){
 	}
 
     //==============================Prepare output file==============================
-    TFile * ofile = new TFile("output.root","RECREATE");
+    TFile * ofile = new TFile(outputFileName,"RECREATE");
     TTree * otree = new TTree("t","t");
 	int triggerNumber;
 	int o_nHits;
@@ -250,6 +270,7 @@ int main(int argc, char ** argv){
 	std::vector<double> * o_aa = 0;
 	std::vector<double> * o_driftT = 0;
 	std::vector<double> * o_driftD = 0;
+	std::vector<double> * o_driftDmc = 0;
 	double inx,inz;
 	double slx,slz;
 	otree->Branch("triggerNumber",&triggerNumber);
@@ -271,7 +292,8 @@ int main(int argc, char ** argv){
 	otree->Branch("sum",&o_sum);
 	otree->Branch("aa",&o_aa);
 	otree->Branch("driftT",&o_driftT);
-	otree->Branch("driftDmc",&o_driftD);
+	otree->Branch("driftDmc",&o_driftDmc);
+	otree->Branch("driftD",&o_driftD);
 	otree->Branch("slxmc",&slx);
 	otree->Branch("slzmc",&slz);
 	otree->Branch("inxmc",&inx);
@@ -292,6 +314,8 @@ int main(int argc, char ** argv){
 	o_sum = new std::vector<double>;
 	o_aa = new std::vector<double>;
 	o_driftT = new std::vector<double>;
+	o_driftD = new std::vector<double>;
+	o_driftDmc = new std::vector<double>;
 
 	double m1x,m1y,m1z;
 	double m2x,m2y,m2z;
@@ -364,6 +388,7 @@ int main(int argc, char ** argv){
 		o_aa->clear();
 		o_driftT->clear();
 		o_driftD->clear();
+		o_driftDmc->clear();
         for (int i = 0; i<NLAY; i++){
             nHitLayer[i] = 0;
         }
@@ -377,16 +402,13 @@ int main(int argc, char ** argv){
 				int lid = (*CdcCell_layerID)[ihit];
 				int cellID = (*CdcCell_cellID)[ihit];
 				int wid = getwid(lid,cellID);
-				// get driftD
-				// FIXME: now we want to ignore scattering and corner effect, so recalculating driftD by DOCA!
-				//double driftD = (*CdcCell_driftDtrue)[ihit]*10;
-				double driftD = get_dist(lid,wid,slx,inx,slz,inz);
-				// get driftT
-				//double driftT=fabs(driftD/0.023);
-				double driftT = x2t(driftD);
-				// smear driftT
-				double res = getRes(driftD);
-				driftT += random1.Gaus((res-4)*3,res);
+				// get driftDmc
+				// FIXME: now we want to ignore scattering and corner effect, so recalculating driftDmc by DOCA!
+				//double driftDmc = (*CdcCell_driftDtrue)[ihit]*10;
+				double driftDmc = get_dist(lid,wid,slx,inx,slz,inz);
+				double driftT = 1e9;
+				double driftD = 1e9;
+				smearXT(driftDmc,driftD,driftT);
 
 				// set output
 				o_layerID->push_back(lid);
@@ -406,6 +428,7 @@ int main(int argc, char ** argv){
 				o_aa->push_back(100);
 				o_driftT->push_back(driftT);
 				o_driftD->push_back(driftD);
+				o_driftDmc->push_back(driftDmc);
 
 				// increment counters
 				nHitLayer[lid]++;
@@ -414,26 +437,24 @@ int main(int argc, char ** argv){
 		}
 		else{
 			for (int lid = 1; lid<=maxLayer; lid++){
-				double ddmin = 1e9;
-				int theWid = -1;
-				for (int wid = 1; wid<NCEL; wid++){
-					double driftD = get_dist(lid,wid,slx,inx,slz,inz);
-					if (fabs(driftD)<10&&fabs(driftD)<fabs(ddmin)){
-						ddmin = driftD;
-						theWid = wid;
+				double driftDmc = 1e9;
+				int wid = -1;
+				for (int iw = 1; iw<NCEL; iw++){
+					double doca = get_dist(lid,iw,slx,inx,slz,inz);
+					if (fabs(doca)<10&&fabs(doca)<fabs(driftDmc)){
+						driftDmc = doca;
+						wid = iw;
 					}
 				}
-				if (theWid==-1) continue;
+				if (wid==-1) continue;
 				// get driftT
-				//double driftT=fabs(driftD/0.023);
-				double driftT = x2t(ddmin);
-				// smear driftT
-				double res = getRes(ddmin);
-				driftT += random1.Gaus((res-4)*3,res);
+				double driftT = 1e9;
+				double driftD = 1e9;
+				smearXT(driftDmc,driftD,driftT);
 
 				// set output
 				o_layerID->push_back(lid);
-				o_wireID->push_back(theWid);
+				o_wireID->push_back(wid);
 				o_type->push_back(0);
 				o_ip->push_back(0);
 				o_np->push_back(1);
@@ -448,7 +469,8 @@ int main(int argc, char ** argv){
 				o_sum->push_back(100);
 				o_aa->push_back(100);
 				o_driftT->push_back(driftT);
-				o_driftD->push_back(ddmin);
+				o_driftD->push_back(driftD);
+				o_driftDmc->push_back(driftDmc);
 
 				// increment counters
 				nHitLayer[lid]++;
@@ -467,7 +489,7 @@ int main(int argc, char ** argv){
 }
 
 void printUsage(char* name){
-    printf("%s [inputFile] [xtfile] <[geoSetup (0)] [sigma (0.05 mm)] [maxsigma (2*sigma)] [maxLayer (0)] [inputFileType]>\n",name);
+    printf("%s [inputFile] [xtfile] <[outputfile] [geoSetup (0):general; 1: finger] [sigma_posX (0.05 mm)] [sigma_posXmax (2*sigma)] [maxLayer (0):same as MC; n] [SmearXorT (0):t; 1:x]  [inputFileType: (0): MC, 1: Data]>\n",name);
 }
 
 int getwid(int layerID, int cellID){
@@ -511,6 +533,75 @@ double x2t(double x){
 		t = f->GetX(x,-25,800);
 }
 
-double getRes(double x){
-	return f_sig->Eval(fabs(x));
+double t2x(double t, bool isRight){
+	TF1 * f = f_xt_r;
+	if (!isRight) f = f_xt_l;
+	double x = f->Eval(t);
+	return x;
+}
+
+double getResT(double x){
+	return f_sigT->Eval(fabs(x));
+}
+
+double getResX(double x){
+//    printf("x = %.3e\n",x);
+    x = fabs(x);
+	double residual = 0;
+
+    bool foundPre = false;
+    bool foundPost = false;
+    double preX = 0;
+    double postX = 0;
+    double preRes = 0;
+    double postRes = 0;
+    int nPoints = gr_sigX->GetN();
+    for (int i = 0; i<nPoints; i++){
+        double res, doca;
+        gr_sigX->GetPoint(i,doca,res);
+        if (doca>x){
+            postX = doca;
+            postRes = res;
+            foundPost = true;
+            break;
+        }
+        preX = doca;
+        preRes = res;
+        foundPre = true;
+    }
+    if (!foundPre){
+        if (foundPost){
+            residual = postRes;
+        }
+        else{
+            residual = 0;
+        }
+    }
+    else if (!foundPost){
+        residual = preRes;
+    }
+    else{
+        residual = (postRes*(x-preX)+preRes*(postX-x))/(postX-preX);
+    }
+//    printf("found pre?%s: %.3e %.3e, found post?%s: %.3e %.3e, => %.3e\n",foundPre?"yes":"no",preX,preRes,foundPost?"yes":"no",postX,postRes,residual);
+
+	double res = residual;
+    return res;
+}
+
+void smearXT(double driftDmc,double & driftD, double & driftT){
+    if (smearType==0){// smear driftT
+        driftT = x2t(driftDmc);
+        double resT = getResT(driftDmc);
+        driftT += random1.Gaus((resT-4)*3,resT);
+        driftD = t2x(driftT,driftDmc>0);
+    }
+    else{// smear driftD if needed
+        double resX = getResX(driftDmc);
+//        driftD = fabs(driftDmc)+random1.Gaus(0,resX);
+//        if (driftD<0) driftD = 0; // FIXME: don't smear driftD across 0
+//        if (driftDmc<0) driftD*=-1; // keep the left/right info
+        driftD = driftDmc+random1.Gaus(0,resX);
+        driftT = x2t(driftD);
+    }
 }
