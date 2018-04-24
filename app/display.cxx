@@ -22,6 +22,19 @@
 
 #define MULTI 5 // maximum peak multiplicity of one cell to be considered in drawing
 
+#define NLAY4DR 8
+#define NWIRE4DR 8
+#define NCELL4DR (NLAY4DR*NWIRE4DR)
+#define IFWIRE4DR 1
+#define IFLAY4DR 1
+
+// for test 180404
+//#define NLAY4DR 2
+//#define NWIRE4DR 2
+//#define NCELL4DR (NLAY4DR*NWIRE4DR)
+//#define IFWIRE4DR 1
+//#define IFLAY4DR 5
+
 //===================About xt============================
 TF1 * f_left[NCELA];
 TF1 * f_right[NCELA];
@@ -29,6 +42,8 @@ TF1 * f_right[NCELA];
 double t0[NBRD];
 
 double tdc2t(int tdc);
+void cid4dr2lidwid(int cid, int & lid, int & wid);
+bool lidwid2cid4dr(int lid, int wid, int & cid);
 
 double t2x(double time, int lid, int wid, int lr, int & status);
 void print_usage(char* progname);
@@ -454,7 +469,7 @@ int main(int argc, char** argv){
 
 	TLatex * text_title = new TLatex(0,0,"");
 	text_title->SetTextSize(0.02);
-	//Prepare the Canvas for waveforms
+	//Prepare the Canvas for waveforms (by board)
 	TCanvas * ca_WF[NBRD];
 	TPad * pad_WF[NBRD][NCHS];
 	for (int bid = 0; bid<NBRD; bid++){
@@ -473,6 +488,23 @@ int main(int argc, char** argv){
             }
         }
     }
+	//Prepare the Canvas for waveforms (by layer)
+	TCanvas * ca_WFL;
+	TPad * pad_WFL[NCELL4DR];
+	ca_WFL = new TCanvas("ca_WFL","ca_WFL",1024,1024.*NLAY4DR/NWIRE4DR);
+	gStyle->SetPalette(1);
+	gStyle->SetOptStat(0);
+	gStyle->SetPadTickX(1);
+	gStyle->SetPadTickY(1);
+	for (int i = 0; i<NWIRE4DR; i++){
+		for (int j = 0; j<NLAY4DR; j++){
+			int index = j*NWIRE4DR+i;
+			pad_WFL[index] = new TPad(Form("padL_%d_%d",i,j),Form("padL_%d_%d",i,j),1./NWIRE4DR*i,0.95/NLAY4DR*(NLAY4DR-1-j),1./NWIRE4DR*(i+1),0.95/NLAY4DR*(NLAY4DR-j));
+			pad_WFL[index]->Draw();
+//			pad_WFL[index]->SetGridx(1);
+//			pad_WFL[index]->SetGridy(1);
+		}
+	}
 	//Prepare the Canvas for x-y plane and target chanel ADC
 	TCanvas * ca_xyADC = new TCanvas("ca_xyADC","ca_xyADC",896,1024);
     gStyle->SetPalette(1);
@@ -836,15 +868,17 @@ int main(int argc, char** argv){
         // Draw waveforms
         for (int bid = 0; bid<NBRD; bid++){
             ca_WF[bid]->cd();
-            text_title->SetText(0.05,0.96,Form("Entry %d, Trigger Number %d, Board %d",iEntry,triggerNumber,bid));
+			text_title->SetText(0.05,0.96,Form("Entry %d, Trigger Number %d, %d TDCs, %d chosen (first TDC in channel with ADC sum > %.0f)",iEntry,triggerNumber,nHits,nHitsG,aacut));
             text_title->Draw();
             text_runsum->Draw();
             for (int ch = 0; ch<NCHS; ch++){
                 // get waveform and draw
                 int chg = bid*NCHS+ch;
+                int lid = map_lid[bid][ch];
+                int wid = map_wid[bid][ch];
                 pad_WF[bid][ch]->cd();
                 gr_waveForm[bid][ch] = new TGraph(NSAM,vSample,adc[chg]);
-                gr_waveForm[bid][ch]->SetTitle(Form("Channel %d Layer %d Wire %d",ch,map_lid[bid][ch],map_wid[bid][ch]));
+				gr_waveForm[bid][ch]->SetTitle(Form("Layer %d Wire %d Board %d Channel %d ",lid,wid,bid,ch));
                 gr_waveForm[bid][ch]->GetXaxis()->SetRangeUser(0,NSAM-1);
                 gr_waveForm[bid][ch]->GetYaxis()->SetRangeUser(MIN_ADC,MAX_ADC);
                 gr_waveForm[bid][ch]->GetXaxis()->SetTitle("Sample Index");
@@ -853,7 +887,7 @@ int main(int argc, char** argv){
                 gr_waveForm[bid][ch]->SetMarkerSize(0.3);
                 gr_waveForm[bid][ch]->Draw("APL");
                 // set title text
-                textWF[bid][ch]->SetText(1,MAX_ADC-50,Form("%d peaks area %.0lf",tdcNhit[chg],pk_aa[chg]));
+                textWF[bid][ch]->SetText(1,MAX_ADC-50,Form("%d peaks, ADC sum %.0lf",tdcNhit[chg],pk_aa[chg]));
                 if (tdcNhit[chg]>0)
                     textWF[bid][ch]->SetTextColor(kBlue); // has hit
                 else
@@ -875,11 +909,11 @@ int main(int argc, char** argv){
             pad_WF[bid][ch]->cd();
             markerTDC[bid][ch][ip]->SetX(clk);
             markerTDC[bid][ch][ip]->SetY(height);
-            textTDC[bid][ch][ip]->SetText(clk,height+(0.5-ip%2)*50,Form("%d",(int)(tdc[chg][ip])));
+            textTDC[bid][ch][ip]->SetText(clk,height,Form("%d",(int)(tdc[chg][ip])));
             if (type<=3){ // good hit
                 markerTDC[bid][ch][ip]->SetMarkerColor(kRed);
                 textTDC[bid][ch][ip]->SetTextColor(kRed);
-                textWF[bid][ch]->SetTextColor(kOrange);
+                textWF[bid][ch]->SetTextColor(kRed);
                 textWF[bid][ch]->Draw();
             }
             else{ // bad hit
@@ -893,6 +927,55 @@ int main(int argc, char** argv){
             ca_WF[bid]->SaveAs(prefix+Form("wf.%d.b%d.pdf",iEntry,bid));
             ca_WF[bid]->SaveAs(prefix+Form("wf.%d.b%d.png",iEntry,bid));
         }
+
+        //===================Draw waveforms by layer============================
+		ca_WFL->cd();
+		text_title->Draw();
+		text_runsum->Draw();
+		for (int cell = 0; cell<NCELL4DR; cell++){
+			// get waveform and draw
+			int lid = 0;
+			int wid = 0;
+			cid4dr2lidwid(cell,lid,wid);
+			int ch = map_ch[lid][wid];
+			int bid = map_bid[lid][wid];
+			pad_WFL[cell]->cd();
+			gr_waveForm[bid][ch]->GetYaxis()->UnZoom();
+			gr_waveForm[bid][ch]->Draw("APL");
+			double maxadc  = gr_waveForm[bid][ch]->GetYaxis()->GetXmax();
+			double minadc  = gr_waveForm[bid][ch]->GetYaxis()->GetXmin();
+			double rangeadc = maxadc-minadc;
+			textWF[bid][ch]->SetY(minadc+rangeadc/20);
+			textWF[bid][ch]->Draw();
+		}
+        for (int ihit = 0; ihit<nHits; ihit++){ // update with hit information
+            int lid = (*i_layerID)[ihit];
+            int wid = (*i_wireID)[ihit];
+            int cell = 0;
+            bool notincluded = lidwid2cid4dr(lid,wid,cell);
+            if (notincluded) continue;
+            if (cell<0||cell>=NCELL4DR) continue;
+            int bid = map_bid[lid][wid];
+            int ch = map_ch[lid][wid];
+            int chg = bid*NCHS+ch;
+            int ip = (*i_ip)[ihit];
+            pad_WFL[cell]->cd();
+            int type = (*i_type)[ihit];
+            if (type<=3){
+				markerTDC[bid][ch][ip]->SetMarkerColor(kRed);
+				textTDC[bid][ch][ip]->SetTextColor(kRed);
+			}
+			else{
+				markerTDC[bid][ch][ip]->SetMarkerColor(kBlue);
+				textTDC[bid][ch][ip]->SetTextColor(kBlue);
+			}
+			// for test 180404
+			//markerTDC[bid][ch][ip]->SetMarkerSize(1);
+            markerTDC[bid][ch][ip]->Draw();
+            textTDC[bid][ch][ip]->Draw();
+        }
+		ca_WFL->SaveAs(prefix+Form("wfl.%d.pdf",iEntry));
+		ca_WFL->SaveAs(prefix+Form("wfl.%d.png",iEntry));
 
         //===================Draw target waveform in xyADC plot============================
         // draw the target channel ADC
@@ -1303,6 +1386,33 @@ double t2x(double time, int lid, int wid, int lr, int & status){ // 1: right; 2:
 
 double tdc2t(int deltaTDC){
     return (deltaTDC)/0.96;
+}
+
+void cid4dr2lidwid(int cid, int & lid, int & wid){
+	lid = cid/NWIRE4DR+IFLAY4DR; // skip the first layer (dummy) by counting from 1.
+	wid = cid%NWIRE4DR+IFWIRE4DR; // skip first wire (on boundary)  by counting from 1.
+
+	// for test 180404
+//	lid = 5;
+//	if (cid==0) wid=6;
+//	else if (cid==1) wid=7;
+//	else if (cid==2) wid=1;
+//	else if (cid==3) wid=2;
+}
+
+bool lidwid2cid4dr(int lid, int wid, int & cid){
+    cid = (lid-IFLAY4DR)*NWIRE4DR+wid-IFWIRE4DR;
+	if (lid<IFLAY4DR||lid-IFLAY4DR>=NLAY4DR||wid<IFWIRE4DR||wid-IFWIRE4DR>=NWIRE4DR) return true;
+	else return false;
+
+	// for test 180404
+//	if (lid!=5) return true;
+//	if (wid==6) cid=0;
+//	else if (wid==7) cid=1;
+//	else if (wid==1) cid=2;
+//	else if (wid==2) cid=3;
+//	else return true;
+//	return false;
 }
 
 void print_usage(char* progname){

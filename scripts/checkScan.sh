@@ -26,6 +26,14 @@ do
             then
                 continue
             fi
+# if you want to remove intermidiate steps
+#            if [ $iter -gt 2 ]
+#            then
+#                for (( i=2; i<$iter; i++ ))
+#                do
+#                    rm root/*_$run.$runname.i$i.layer4.root
+#                done
+#            fi
             echo "$gas $HV $run $runname $thefile"
         done
     done
