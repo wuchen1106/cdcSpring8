@@ -67,6 +67,7 @@ std::vector<int> * i_wireID = 0;
 std::vector<int> * i_type = 0;
 std::vector<double> * i_driftT = 0;
 std::vector<double> * i_driftDmc = 0;
+std::vector<double> * i_driftD = 0;
 std::vector<double> * o_dxl = 0;
 std::vector<double> * o_dxr = 0;
 int o_nFind = 0;
@@ -264,7 +265,7 @@ int main(int argc, char** argv){
     printf("Start Entry = %d\n",iEntryStart);
     printf("Stop Entry  = %d\n",iEntryStop);
     printf("workType    = %d, %s\n",workType,workType==0?"all as 0":(workType==1?"even/odd":(workType==-1?"even/odd reversed":"all layers")));
-    printf("inputType   = %d, %s\n",inputType,inputType==0?"Real Data":"MC");
+    printf("inputType   = %d, %s\n",inputType,inputType==0?"Real Data":(inputType==2?"MC X":"MC T"));
     printf("peakType    = %d, %s\n",peakType,peakType==0?"First peak over threshold":"All peaks over threshold");
     printf("debug       = %d\n",debug);
     printf("memdebug    = %d\n",memdebug);
@@ -467,6 +468,7 @@ int main(int argc, char** argv){
     c->SetBranchAddress("nHits",&i_nHits);
     c->SetBranchAddress("driftT",&i_driftT);
     if (inputType) c->SetBranchAddress("driftDmc",&i_driftDmc);
+    if (inputType==2) c->SetBranchAddress("driftD",&i_driftD);
     c->SetBranchAddress("layerID",&i_layerID);
     c->SetBranchAddress("wireID",&i_wireID);
     c->SetBranchAddress("type",&i_type); // 0 center, 1 left, 2 right, 3 guard, 4 dummy
@@ -655,24 +657,32 @@ int main(int argc, char** argv){
                 npoc = 0; // reset npoc
             prevch = mych; // record current channel ID
             int statusl,statusr; // 1:  large t; -1: small t; 0: good t
-            (*o_dxl)[ihit] = t2x(dt,lid,wid,-1,statusl);
-            (*o_dxr)[ihit] = t2x(dt,lid,wid,1,statusr);
+            if (inputType!=2){
+                (*o_dxl)[ihit] = t2x(dt,lid,wid,-1,statusl);
+                (*o_dxr)[ihit] = t2x(dt,lid,wid,1,statusr);
+            }
+            else{
+                (*o_dxl)[ihit] = -fabs((*i_driftD)[ihit]);
+                (*o_dxr)[ihit] = fabs((*i_driftD)[ihit]);
+            }
             int type = (*i_type)[ihit]; // IMASTR
             // R: region
             // keep the original defination
             // T: time
-            if (dt<tmin) type+=3*10;
-            else if (dt>tmax) type+=6*10;
-			else{
-				if (statusl==-1&&statusr==0) type+=1*10;
-				else if (statusl==0&&statusr==-1) type+=2*10;
-				else if (statusl==-1&&statusr==-1) type+=3*10;
-				else if (statusl==1&&statusr==0) type+=4*10;
-				else if (statusl==0&&statusr==1) type+=5*10;
-				else if (statusl==1&&statusr==1) type+=6*10;
-				else if (statusl==0&&statusr==0) type+=0;
-				else type+=7*10;
-			}
+            if (inputType!=2){
+                if (dt<tmin) type+=3*10;
+                else if (dt>tmax) type+=6*10;
+                else{
+                    if (statusl==-1&&statusr==0) type+=1*10;
+                    else if (statusl==0&&statusr==-1) type+=2*10;
+                    else if (statusl==-1&&statusr==-1) type+=3*10;
+                    else if (statusl==1&&statusr==0) type+=4*10;
+                    else if (statusl==0&&statusr==1) type+=5*10;
+                    else if (statusl==1&&statusr==1) type+=6*10;
+                    else if (statusl==0&&statusr==0) type+=0;
+                    else type+=7*10;
+                }
+            }
             type+=npoc*100000; // number of peaks above threshold before this peak in this channel
             // S: sum of wave packet
             if ((*i_sum)[ihit]<sumCut) type+=1*100;
@@ -968,6 +978,7 @@ int getHitType(int type,bool isRight){ // see if the driftT is really out of ran
 	}
     if (peakType>1) type=type%10000; // ignoring npoc cut and mpi cut, leaving all the peaks over threshold competing
     else if (peakType) type=type%100000; // ignoring npoc cut, leaving all the peaks with mpi==0 over threshold competing
+    if (inputType==2) type==0;
 	return type;
 }
 
@@ -1426,5 +1437,5 @@ double getError(int lid,double dt, bool isR){
 //______________________________________________________________________________
 void print_usage(char* prog_name)
 {
-    fprintf(stderr,"\t%s [runNo] [testlayer] [prerunname] [runname] <[nHitsMax] [t0shift0] [t0shift1] [tmin] [tmax] [geoSetup] [sumCut] [aaCut] [iEntryStart] [iEntryStop] [workType: 0, fr/l_0; 1, even/odd; -1, even/odd reversed; others, all layers] [inputType: 0, Data; 1: MC] [peakType] [debug] [memdebug]>\n",prog_name);
+    fprintf(stderr,"\t%s [runNo] [testlayer] [prerunname] [runname] <[nHitsMax] [t0shift0] [t0shift1] [tmin] [tmax] [geoSetup] [sumCut] [aaCut] [iEntryStart] [iEntryStop] [workType: 0, fr/l_0; 1, even/odd; -1, even/odd reversed; others, all layers] [inputType: 0, Data; 1: MC and use T; 2: MC and use X] [peakType] [debug] [memdebug]>\n",prog_name);
 }

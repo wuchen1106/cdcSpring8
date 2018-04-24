@@ -478,8 +478,10 @@ int main(int argc, char** argv){
 	double o_xrmserr;
 	double o_xeff;
 	double o_xeff3sig;
+	double o_xeff3sigerr;
 	double o_xeff5sig;
 	double o_xeff500um;
+	double o_xeff500umerr;
 	double o_xeff1mm;
 	double o_xoff;
 	double o_dres;
@@ -504,8 +506,10 @@ int main(int argc, char** argv){
 	otree->Branch("xrmserr",&o_xrmserr);
 	otree->Branch("xeff",&o_xeff);
 	otree->Branch("xeff3sig",&o_xeff3sig);
+	otree->Branch("xeff3sigerr",&o_xeff3sigerr);
 	otree->Branch("xeff5sig",&o_xeff5sig);
 	otree->Branch("xeff500um",&o_xeff500um);
+	otree->Branch("xeff500umerr",&o_xeff500umerr);
 	otree->Branch("xeff1mm",&o_xeff1mm);
 	otree->Branch("xoff",&o_xoff);
 	otree->Branch("dres",&o_dres);
@@ -608,6 +612,7 @@ int main(int argc, char** argv){
 	int    closeWid;
 	int    closeWid2;
 	double averageGG = 0;
+	double averageGGErr = 0;
 	int    NusedGG = 0;
 	std::vector<double> chargeOnTrack;
 	Long64_t N = ichain->GetEntries();
@@ -748,7 +753,9 @@ int main(int argc, char** argv){
 		double theGG = getGG(chargeInTLayer,slx,slz);
 		h_ggVSX->Fill(closeFD,theGG);
 		double avGG = h_ggVSX->GetMean(2);
+		double avGGErr = h_ggVSX->GetRMS(2);
 		averageGG += avGG;
+		averageGGErr += avGGErr;
 		NusedGG++;
 
 		// sort the hits by charge;
@@ -779,6 +786,7 @@ int main(int argc, char** argv){
 		if (debugLevel>=20) printf("  Good Event! Looping in %d hits\n",nHits);
 	}
 	NusedGG?averageGG/=NusedGG:averageGG=0;
+	NusedGG?averageGGErr/=NusedGG:averageGGErr=0;
 
 	//=================================================Get bin by bin information====================================================
 	int ibinl = 0;
@@ -800,8 +808,13 @@ int main(int argc, char** argv){
 	double averageResD = 0;
 	double averageRMSD = 0;
 	double averageEffX = 0;
-	double averageResX = 0;
+	double averageEffXErr = 0;
 	double averageRMSX = 0;
+	double averageRMSXErr = 0;
+	double averageEff3sX = 0;
+	double averageEff3sXErr = 0;
+	double averageResX = 0;
+	double averageResXErr = 0;
 	double bestEffD = 0;
 	double bestResD = 1e6;
 	double bestRMSD = 1e6;
@@ -834,12 +847,14 @@ int main(int argc, char** argv){
 			ibinl = h_resX[ibin]->FindBin(o_xoff-o_xres*3); 
 			ibinr = h_resX[ibin]->FindBin(o_xoff+o_xres*3); 
 			o_xeff3sig = h_resX[ibin]->Integral(ibinl,ibinr)/o_nx;
+            o_xeff3sigerr = sqrt(o_xeff3sig*(1-o_xeff3sig)/o_nx);
 			ibinl = h_resX[ibin]->FindBin(o_xoff-o_xres*5); 
 			ibinr = h_resX[ibin]->FindBin(o_xoff+o_xres*5); 
 			o_xeff5sig = h_resX[ibin]->Integral(ibinl,ibinr)/o_nx;
 			ibinl = h_resX[ibin]->FindBin(o_xoff-0.5); 
 			ibinr = h_resX[ibin]->FindBin(o_xoff+0.5); 
 			o_xeff500um = h_resX[ibin]->Integral(ibinl,ibinr)/o_nx;
+            o_xeff500umerr = sqrt(o_xeff500um*(1-o_xeff500um)/o_nx);
 			ibinl = h_resX[ibin]->FindBin(o_xoff-1); 
 			ibinr = h_resX[ibin]->FindBin(o_xoff+1); 
 			o_xeff1mm = h_resX[ibin]->Integral(ibinl,ibinr)/o_nx;
@@ -917,7 +932,11 @@ int main(int argc, char** argv){
 				NusedX++;
 				averageResX+=o_xres;
 				averageRMSX+=o_xrms;
+				averageRMSXErr+=o_xrmserr;
 				averageEffX+=o_xeff500um;
+				averageEffXErr+=o_xeff500umerr;
+				averageEff3sX+=o_xeff3sig;
+				averageEff3sXErr+=o_xeff3sigerr;
 				if (bestResX>o_xres) bestResX = o_xres;
 				if (bestRMSX>o_xrms) bestRMSX = o_xrms;
 				if (bestEffX<o_xeff500um) bestEffX = o_xeff500um;
@@ -937,10 +956,13 @@ int main(int argc, char** argv){
 	NusedD?averageResD/=NusedD:averageResD=0;
 	NusedD?averageRMSD/=NusedD:averageRMSD=0;
 	NusedX?averageEffX/=NusedX:averageEffX=0;
+	NusedX?averageEffXErr/=NusedX:averageEffXErr=0;
+	NusedX?averageEff3sXErr/=NusedX:averageEff3sXErr=0;
 	NusedX?averageResX/=NusedX:averageResX=0;
 	NusedX?averageRMSX/=NusedX:averageRMSX=0;
-	printf("=>  %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s\n","runNo/I","testLayer/I","HV/I","THR/I","gasID/I","aaCut/I","averageGG","averageEffX","averageResX","averageRMSX","averageEffD","averageResD","averageRMSD","bestEffD","bestResD","bestEffX","bestResX","bestRMSD","bestRMSX");
-	printf("==> %4d %d %d %2d %d %2d %.3e %.3e %.3e %.3e %.3e %.3e %.3e %.3e %.3e %.3e %.3e %.3e %.3e\n",runNo,testLayer,HV,THR,gasID,aaCut,averageGG,averageEffX,averageResX,averageRMSX,averageEffD,averageResD,averageRMSD,bestEffD,bestResD,bestEffX,bestResX,bestRMSD,bestRMSX);
+	NusedX?averageRMSXErr/=NusedX:averageRMSXErr=0;
+	printf("=>  %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s\n","runNo/I","testLayer/I","HV/I","THR/I","gasID/I","aaCut/I","averageGG","averageGGErr","averageEffX","averageRMSX","averageEff3sX","averageResX","averageEffXErr","averageRMSXErr","averageEff3sXErr","averageResXErr","averageEffD","averageResD","averageRMSD","bestEffD","bestResD","bestEffX","bestResX","bestRMSD","bestRMSX");
+	printf("==> %4d %d %d %2d %d %2d %.3e %.3e %.3e %.3e %.3e %.3e %.3e %.3e %.3e %.3e %.3e %.3e %.3e %.3e %.3e %.3e %.3e %.3e %.3e\n",runNo,testLayer,HV,THR,gasID,aaCut,averageGG,averageGGErr,averageEffX,averageRMSX,averageEff3sX,averageResX,averageEffXErr,averageRMSXErr,averageEff3sXErr,averageResXErr,averageEffD,averageResD,averageRMSD,bestEffD,bestResD,bestEffX,bestResX,bestRMSD,bestRMSX);
 
 	//=================================================Draw====================================================
 	TCanvas * canv_tracking = new TCanvas("canv_tracking","canv_tracking",1024,768);
