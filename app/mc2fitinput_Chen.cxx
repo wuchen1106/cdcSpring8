@@ -63,10 +63,13 @@ int main(int argc, char ** argv){
     	maxLayer=NLAY-1;
     	printf("WARNING: maxLayer[%d] is exceeding the range! Totally support %d layers counting from 0\n",maxLayer,NLAY);
 	}
+    int inputFileType = 0; // 0: using simulation file as input; 1: using tracking file (ana_XXX) as input
+    if (argc=8) inputFileType = atoi(argv[7]);
 	printf("geoSetup = %d\n",geoSetup);
 	printf("offSig   = %.3e\n",offset_sigma);
 	printf("offMax   = %.3e\n",offset_max);
 	printf("maxLayer = %d\n",maxLayer);
+	printf("inputFile: %s, \"%s\"\n",inputFileType==0?"MC":"Data",argv[1]);
 
     TString HOME=getenv("CDCS8WORKING_DIR");
 
@@ -178,30 +181,51 @@ int main(int argc, char ** argv){
     std::vector<double> * McTruth_px = 0;
     std::vector<double> * McTruth_py = 0;
     std::vector<double> * McTruth_pz = 0;
+    // Data input
+    double i_chi2;
+    int    i_nHitsS;
+    int    i_nHitsG;
+    double i_slx;
+    double i_slz;
+    double i_inx;
+    double i_inz;
+    double i_triggerNumber;
 
-    ichain->SetBranchAddress("M_x",&M_x);
-    ichain->SetBranchAddress("M_y",&M_y);
-    ichain->SetBranchAddress("M_z",&M_z);
-    ichain->SetBranchAddress("M_volID",&M_vid);
-    ichain->SetBranchAddress("M_tid",&M_tid);
-    ichain->SetBranchAddress("CdcCell_layerID",&CdcCell_layerID);
-    ichain->SetBranchAddress("CdcCell_cellID",&CdcCell_cellID);
-    ichain->SetBranchAddress("CdcCell_driftDtrue",&CdcCell_driftDtrue);
-    ichain->SetBranchAddress("CdcCell_tid",&CdcCell_tid);
-    ichain->SetBranchAddress("CdcCell_x",&CdcCell_x);
-    ichain->SetBranchAddress("CdcCell_y",&CdcCell_y);
-    ichain->SetBranchAddress("CdcCell_z",&CdcCell_z);
-    ichain->SetBranchAddress("wire_tid",&wire_tid);
-    ichain->SetBranchAddress("wire_x",&wire_x);
-    ichain->SetBranchAddress("wire_y",&wire_y);
-    ichain->SetBranchAddress("wire_z",&wire_z);
-    ichain->SetBranchAddress("McTruth_tid",&McTruth_tid);
-    ichain->SetBranchAddress("McTruth_x",&McTruth_x);
-    ichain->SetBranchAddress("McTruth_y",&McTruth_y);
-    ichain->SetBranchAddress("McTruth_z",&McTruth_z);
-    ichain->SetBranchAddress("McTruth_px",&McTruth_px);
-    ichain->SetBranchAddress("McTruth_py",&McTruth_py);
-    ichain->SetBranchAddress("McTruth_pz",&McTruth_pz);
+	if (inputFileType==0){
+		ichain->SetBranchAddress("M_x",&M_x);
+		ichain->SetBranchAddress("M_y",&M_y);
+		ichain->SetBranchAddress("M_z",&M_z);
+		ichain->SetBranchAddress("M_volID",&M_vid);
+		ichain->SetBranchAddress("M_tid",&M_tid);
+		ichain->SetBranchAddress("CdcCell_layerID",&CdcCell_layerID);
+		ichain->SetBranchAddress("CdcCell_cellID",&CdcCell_cellID);
+		ichain->SetBranchAddress("CdcCell_driftDtrue",&CdcCell_driftDtrue);
+		ichain->SetBranchAddress("CdcCell_tid",&CdcCell_tid);
+		ichain->SetBranchAddress("CdcCell_x",&CdcCell_x);
+		ichain->SetBranchAddress("CdcCell_y",&CdcCell_y);
+		ichain->SetBranchAddress("CdcCell_z",&CdcCell_z);
+		ichain->SetBranchAddress("wire_tid",&wire_tid);
+		ichain->SetBranchAddress("wire_x",&wire_x);
+		ichain->SetBranchAddress("wire_y",&wire_y);
+		ichain->SetBranchAddress("wire_z",&wire_z);
+		ichain->SetBranchAddress("McTruth_tid",&McTruth_tid);
+		ichain->SetBranchAddress("McTruth_x",&McTruth_x);
+		ichain->SetBranchAddress("McTruth_y",&McTruth_y);
+		ichain->SetBranchAddress("McTruth_z",&McTruth_z);
+		ichain->SetBranchAddress("McTruth_px",&McTruth_px);
+		ichain->SetBranchAddress("McTruth_py",&McTruth_py);
+		ichain->SetBranchAddress("McTruth_pz",&McTruth_pz);
+	}
+	else{
+		ichain->SetBranchAddress("chi2",&i_slz);
+		ichain->SetBranchAddress("nHitsS",&i_nHitsS);
+		ichain->SetBranchAddress("nHitsG",&i_nHitsG);
+		ichain->SetBranchAddress("slz",&i_slz);
+		ichain->SetBranchAddress("slx",&i_slx);
+		ichain->SetBranchAddress("inz",&i_inz);
+		ichain->SetBranchAddress("inx",&i_inx);
+		ichain->SetBranchAddress("triggerNumber",&i_triggerNumber);
+	}
 
     //==============================Prepare output file==============================
     TFile * ofile = new TFile("output.root","RECREATE");
@@ -280,35 +304,47 @@ int main(int argc, char ** argv){
     for (int iEntry = 0; iEntry<nEntries; iEntry++){
         if (iEntry%1000==0) printf("iEntry %d\n",iEntry);
         ichain->GetEntry(iEntry);
-        // check trigger
-        checkdown = false;
-        checkup = false;
-        for (int i = 0; i<M_x->size(); i++){
-            if ((*M_tid)[i]!=2) continue;
-            if ((*M_y)[i]>100) continue;
-            if ((*M_vid)[i]==0){
-                m1y = (*M_y)[i]*10+chamberCY;
-                m1z = (*M_z)[i]*10;
-                m1x = (*M_x)[i]*10;
-                checkup = true;
-            }
-            else if ((*M_vid)[i]==1){
-                m2y = (*M_y)[i]*10+chamberCY;
-                m2z = (*M_z)[i]*10;
-                m2x = (*M_x)[i]*10;
-                checkdown = true;
-            }
-        }
-        if (!checkdown||!checkup) continue;
-
-        // get initial value
-        slx = m2y-m1y==0?0:(m2x-m1x)/(m2y-m1y);
-        slz = m2y-m1y==0?0:(m2z-m1z)/(m2y-m1y);
-        inx = slx*(sciYup-m1y)+m1x;
-        inz = slz*(sciYup-m1y)+m1z;
+        double slx,slz,inx,inz;
+        if (inputFileType==0){ // MC: check trigger
+			checkdown = false;
+			checkup = false;
+			for (int i = 0; i<M_x->size(); i++){
+				if ((*M_tid)[i]!=2) continue;
+				if ((*M_y)[i]>100) continue;
+				if ((*M_vid)[i]==0){
+					m1y = (*M_y)[i]*10+chamberCY;
+					m1z = (*M_z)[i]*10;
+					m1x = (*M_x)[i]*10;
+					checkup = true;
+				}
+				else if ((*M_vid)[i]==1){
+					m2y = (*M_y)[i]*10+chamberCY;
+					m2z = (*M_z)[i]*10;
+					m2x = (*M_x)[i]*10;
+					checkdown = true;
+				}
+			}
+			if (!checkdown||!checkup) continue;
+			// get initial value
+			slx = m2y-m1y==0?0:(m2x-m1x)/(m2y-m1y);
+			slz = m2y-m1y==0?0:(m2z-m1z)/(m2y-m1y);
+			inx = slx*(sciYup-m1y)+m1x;
+			inz = slz*(sciYup-m1y)+m1z;
+			triggerNumber = iEntry;
+		}
+		else{ // Data: check fitting quality
+			if (i_chi2>2) continue;
+			if (i_nHitsS<7) continue;
+			if (i_nHitsG>35) continue;
+			if (fabs(i_slz>0.1)) continue;
+			slx = i_slx;
+			slz = i_slz;
+			inx = i_inx;
+			inz = i_inz;
+			triggerNumber = i_triggerNumber;
+		}
 
         // preset
-        triggerNumber = iEntry;
         o_nHits = 0;
         o_nLayers = 0;
 		o_layerID->clear();
@@ -333,7 +369,7 @@ int main(int argc, char ** argv){
         }
 
         // get cdc hits
-        if (!maxLayer){
+        if (!maxLayer&&inputFileType==0){
 			for (int ihit = 0; ihit<CdcCell_tid->size(); ihit++){
 				// is this the wanted track?
 				if ((*CdcCell_tid)[ihit]!=2) continue; // looking for e- from gamma conversion, tid==2
@@ -431,7 +467,7 @@ int main(int argc, char ** argv){
 }
 
 void printUsage(char* name){
-    printf("%s [inputFile] [xtfile] <[geoSetup (0)] [sigma (0.05 mm)] [maxsigma (2*sigma)] [maxLayer (0)]>\n",name);
+    printf("%s [inputFile] [xtfile] <[geoSetup (0)] [sigma (0.05 mm)] [maxsigma (2*sigma)] [maxLayer (0)] [inputFileType]>\n",name);
 }
 
 int getwid(int layerID, int cellID){
