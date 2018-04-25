@@ -171,8 +171,7 @@ int main(int argc, char ** argv){
     TFile_wirepos->Close();
 
     //==============================Get input file==============================
-    TChain * ichain = new TChain("tree","tree");
-    ichain->Add(argv[1]);
+    TChain * ichain = 0;
 
     // trigger
     std::vector<double> * M_x = 0;
@@ -209,9 +208,11 @@ int main(int argc, char ** argv){
     double i_slz;
     double i_inx;
     double i_inz;
-    double i_triggerNumber;
+    int i_triggerNumber;
 
 	if (inputFileType==0){
+        ichain=new TChain("tree","tree");
+        ichain->Add(argv[1]);
 		ichain->SetBranchAddress("M_x",&M_x);
 		ichain->SetBranchAddress("M_y",&M_y);
 		ichain->SetBranchAddress("M_z",&M_z);
@@ -237,7 +238,9 @@ int main(int argc, char ** argv){
 		ichain->SetBranchAddress("McTruth_pz",&McTruth_pz);
 	}
 	else{
-		ichain->SetBranchAddress("chi2",&i_slz);
+        ichain=new TChain("t","t");
+        ichain->Add(argv[1]);
+		ichain->SetBranchAddress("chi2",&i_chi2);
 		ichain->SetBranchAddress("nHitsS",&i_nHitsS);
 		ichain->SetBranchAddress("nHitsG",&i_nHitsG);
 		ichain->SetBranchAddress("slz",&i_slz);

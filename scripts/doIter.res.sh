@@ -275,7 +275,8 @@ do
     echo "  NHITSMAX = $NHITSMAX"
     echo "  SAVEHISTS = $SAVEHISTS"
 
-    mc2fitinput_Chen Input/20171016.photon.root info/res.$runNo.$prerunname.root root/h_$runNo.root 0 0 0 8 1
+#    mc2fitinput_Chen Input/20171016.photon.root info/res.$runNo.$prerunname.root root/h_$runNo.root 0 0 0 8 1
+    mc2fitinput_Chen root/ana_$runNo.root info/res.$runNo.$prerunname.root root/h_$runNo.root 0 0 0 8 1 1
 
     threadLists=`updateThreadLists`
     if [ ! $? -eq 0 ]
@@ -410,7 +411,7 @@ do
 
 #   updating
     backupname=$prerunname
-    if [ $IterStart == 1 ]
+    if [ $iter == 1 ]
     then
         backupname="${runName}.i0"
     fi

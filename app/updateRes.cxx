@@ -515,13 +515,13 @@ int main(int argc, char** argv){
         double resTot,resTrack,doca;
         gr_resTotx->GetPoint(i,doca,resTot);
         gr_Etrackx->GetPoint(i,doca,resTrack);
-        resTrack = avEtrackx; // FIXME: use an average tracking error
+//        resTrack = avEtrackx; // FIXME: use an average tracking error
         double reso = resTot>resTrack?sqrt(resTot*resTot-resTrack*resTrack):0;
         gr_resInix->SetPoint(i,doca,reso);
 
         gr_resTotd->GetPoint(i,doca,resTot);
         gr_Etrackd->GetPoint(i,doca,resTrack);
-        resTrack = avEtrackd; // FIXME: use an average tracking error
+//        resTrack = avEtrackd; // FIXME: use an average tracking error
         reso = resTot>resTrack?sqrt(resTot*resTot-resTrack*resTrack):0;
         gr_resInid->SetPoint(i,doca,reso);
     }
