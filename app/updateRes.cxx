@@ -20,48 +20,57 @@ double i2doca(int i);
 int getHitType(int type,bool isRight);
 
 int main(int argc, char** argv){
-    if (argc<3){
+    if (argc<4){
         printUsage(argv[0]);
         return -1;
     }
-	int runNo = (int)strtol(argv[1],NULL,10);
-    TString originalname = argv[2];
-    TString runname = argv[3];
+    int iArg = 1;
+	int runNo = (int)strtol(argv[iArg],NULL,10); iArg++;
+    TString originalname = argv[iArg]; iArg++;
+    TString runname = argv[iArg]; iArg++;
+    int isInitial=0;
+    if (argc>=iArg+1)
+		{isInitial = (int)strtol(argv[iArg],NULL,10);iArg++;}
+    int averageEtrack = 0;
+    if (argc>=iArg+1)
+		{averageEtrack = (int)strtol(argv[iArg],NULL,10);iArg++;}
 	int xtType = 2;
-    if (argc>=5)
-		xtType = (int)strtol(argv[4],NULL,10);
+    if (argc>=iArg+1)
+		{xtType = (int)strtol(argv[iArg],NULL,10);iArg++;}
 	int geoSetup = 0; // 0: normal scintillator; 1: finger scintillator
-    if (argc>=6)
-        geoSetup = (int)strtol(argv[5],NULL,10);
+    if (argc>=iArg+1)
+        {geoSetup = (int)strtol(argv[iArg],NULL,10);iArg++;}
     int saveHists = 0;
-    if (argc>=7)
-        saveHists = (int)strtol(argv[6],NULL,10);
+    if (argc>=iArg+1)
+        {saveHists = (int)strtol(argv[iArg],NULL,10);iArg++;}
     int inputType = 2; // by defualt it's MC using X
-    if (argc>=8)
-        inputType = (int)strtol(argv[7],NULL,10);
+    if (argc>=iArg+1)
+        {inputType = (int)strtol(argv[iArg],NULL,10);iArg++;}
     double maxchi2 = 2;
-    if (argc>=9)
-        maxchi2 = (double)strtod(argv[8],NULL);
+    if (argc>=iArg+1)
+        {maxchi2 = (double)strtod(argv[iArg],NULL);iArg++;}
     int defaultLayerID = 4;
-    if (argc>=10)
-        defaultLayerID = (int)strtol(argv[9],NULL,10);
+    if (argc>=iArg+1)
+        {defaultLayerID = (int)strtol(argv[iArg],NULL,10);iArg++;}
     int nHitsMax = 0;
-    if (argc>=11)
-        nHitsMax = (int)strtol(argv[10],NULL,10);
+    if (argc>=iArg+1)
+        {nHitsMax = (int)strtol(argv[iArg],NULL,10);iArg++;}
     int debugLevel = 0;
-    if (argc>=12)
-        debugLevel = (int)strtol(argv[11],NULL,10);
+    if (argc>=iArg+1)
+        {debugLevel = (int)strtol(argv[iArg],NULL,10);iArg++;}
     int iEntryStart = 0;
-    if (argc>=13)
-        iEntryStart = (int)strtol(argv[12],NULL,10);
+    if (argc>=iArg+1)
+        {iEntryStart = (int)strtol(argv[iArg],NULL,10);iArg++;}
     int iEntryStop = 0;
-    if (argc>=14)
-        iEntryStop = (int)strtol(argv[13],NULL,10);
+    if (argc>=iArg+1)
+        {iEntryStop = (int)strtol(argv[iArg],NULL,10);iArg++;}
     int testLayer = 4; // FIXME: currently only check the 4th layer.
     printf("##############Input %d Parameters##################\n",argc);
     printf("runNo        = %d\n",runNo);
     printf("originalname = \"%s\"\n",originalname.Data());
     printf("runname      = \"%s\"\n",runname.Data());
+    printf("Is initial?     %s\n",isInitial?"yes":"no");
+    printf("Average Etrack? %s\n",averageEtrack?"yes":"no");
     printf("geoSetup:      %s\n",geoSetup==0?"normal scintillator":"finger scintillator");
     printf("xtType:        %d\n",xtType);
     printf("save slice fittings? \"%s\"\n",saveHists?"yes":"no");
@@ -116,6 +125,9 @@ int main(int argc, char** argv){
     TGraph * gr_resInix = new TGraph();
     gr_resInix->Set(NBIND);
     gr_resInix->SetName("gr_resInix");
+    TGraph * gr_resIniOldx = new TGraph();
+    gr_resIniOldx->Set(NBIND);
+    gr_resIniOldx->SetName("gr_resIniOldx");
     TGraph * gr_Etrackd = new TGraph();
     gr_Etrackd->Set(NBIND);
     gr_Etrackd->SetName("gr_Etrackd");
@@ -125,8 +137,11 @@ int main(int argc, char** argv){
     TGraph * gr_resInid = new TGraph();
     gr_resInid->Set(NBIND);
     gr_resInid->SetName("gr_resInid");
+    TGraph * gr_resIniOldd = new TGraph();
+    gr_resIniOldd->Set(NBIND);
+    gr_resIniOldd->SetName("gr_resIniOldd");
 
-    if (runname!="initial"){ // not the initial step. Do the data analyzing
+    if (!isInitial){ // not the initial step. Do the data analyzing
         // get the input file from tracking
         int triggerNumber;
         int nHits;
@@ -377,13 +392,17 @@ int main(int argc, char** argv){
         TF1 * fres = new TF1("fres","gaus",-1,1);
         TH1D * h_Etrackx[NBIND];
         TH1D * h_resTotx[NBIND];
+        TH1D * h_resIniOldx[NBIND];
         TH1D * h_Etrackd[NBIND];
         TH1D * h_resTotd[NBIND];
+        TH1D * h_resIniOldd[NBIND];
         for (int i = 0; i<NBIND; i++){
             h_Etrackx[i] = new TH1D(Form("hex%d",i),"",256,-1,1);
             h_resTotx[i] = new TH1D(Form("hrx%d",i),"",256,-1,1);
+            h_resIniOldx[i] = new TH1D(Form("hrix%d",i),"",256,-1,1);
             h_Etrackd[i] = new TH1D(Form("hed%d",i),"",256,-1,1);
             h_resTotd[i] = new TH1D(Form("hrd%d",i),"",256,-1,1);
+            h_resIniOldd[i] = new TH1D(Form("hrid%d",i),"",256,-1,1);
         }
 
         // analyze the input data
@@ -455,10 +474,12 @@ int main(int argc, char** argv){
             if (isGoodEvent){
                 int ibin = doca2i(theFD); // pairing with xrms
                 h_Etrackx[ibin]->Fill(theFD-theDDmc);
-                h_resTotx[ibin]->Fill(theFD-theDD);
-                ibin = doca2i(theDDmc); // kind of driftD but more true-ish, so pairing with drms
+                h_resTotx[ibin]->Fill(theDD-theFD);
+                h_resIniOldx[ibin]->Fill(theDD-theDDmc);
+                ibin = doca2i(theDD); // kind of driftD but more true-ish, so pairing with drms
                 h_Etrackd[ibin]->Fill(theFD-theDDmc);
-                h_resTotd[ibin]->Fill(theFD-theDD);
+                h_resTotd[ibin]->Fill(theDD-theFD);
+                h_resIniOldd[ibin]->Fill(theDD-theDDmc);
             }
         }
 
@@ -474,6 +495,10 @@ int main(int argc, char** argv){
             sigma = fres->GetParameter(2);
             gr_resTotnewx->SetPoint(i,doca,sigma);
 
+            h_resIniOldx[i]->Fit("fres","QG","");
+            sigma = fres->GetParameter(2);
+            gr_resIniOldx->SetPoint(i,doca,sigma);
+
             h_Etrackd[i]->Fit("fres","QG","");
             sigma = fres->GetParameter(2);
             gr_Etrackd->SetPoint(i,doca,sigma);
@@ -482,10 +507,16 @@ int main(int argc, char** argv){
             sigma = fres->GetParameter(2);
             gr_resTotnewd->SetPoint(i,doca,sigma);
 
+            h_resIniOldd[i]->Fit("fres","QG","");
+            sigma = fres->GetParameter(2);
+            gr_resIniOldd->SetPoint(i,doca,sigma);
+
             h_Etrackx[i]->Write();
             h_resTotx[i]->Write();
+            h_resIniOldx[i]->Write();
             h_Etrackd[i]->Write();
             h_resTotd[i]->Write();
+            h_resIniOldd[i]->Write();
         }
 
         // save the tree
@@ -510,21 +541,34 @@ int main(int argc, char** argv){
     }
     avEtrackd/=NBIND;
     avEtrackx/=NBIND;
+    printf("avEtrackx: %.3e, avEtrackd: %.3e\n",avEtrackx,avEtrackd);
 
     for (int i = 0; i<NBIND; i++){
         double resTot,resTrack,doca;
         gr_resTotx->GetPoint(i,doca,resTot);
         gr_Etrackx->GetPoint(i,doca,resTrack);
-//        resTrack = avEtrackx; // FIXME: use an average tracking error
+        if (averageEtrack) resTrack = avEtrackx;
         double reso = resTot>resTrack?sqrt(resTot*resTot-resTrack*resTrack):0;
         gr_resInix->SetPoint(i,doca,reso);
 
         gr_resTotd->GetPoint(i,doca,resTot);
         gr_Etrackd->GetPoint(i,doca,resTrack);
-//        resTrack = avEtrackd; // FIXME: use an average tracking error
+        if (averageEtrack) resTrack = avEtrackd;
         reso = resTot>resTrack?sqrt(resTot*resTot-resTrack*resTrack):0;
         gr_resInid->SetPoint(i,doca,reso);
     }
+    double avresInix = 0;
+    double avresInid = 0;
+    for (int i = 0; i<NBIND; i++){
+        double doca,resIni;
+        gr_resInix->GetPoint(i,doca,resIni);
+        avresInix+=resIni;
+        gr_resInid->GetPoint(i,doca,resIni);
+        avresInid+=resIni;
+    }
+    avresInid/=NBIND;
+    avresInix/=NBIND;
+    printf("avresInix: %.3e, avresInid: %.3e\n",avresInix,avresInid);
 
     // save the new tracking resolution
     TFile * ofileRes = new TFile(Form("%s/info/res.%d.%s.root",HOME.Data(),runNo,runname.Data()),"RECREATE");
@@ -537,10 +581,12 @@ int main(int argc, char** argv){
     gr_resTotnewx->Write();
     gr_Etrackx->Write();
     gr_resInix->Write();
+    gr_resIniOldx->Write();
     gr_resTotd->Write();
     gr_resTotnewd->Write();
     gr_Etrackd->Write();
     gr_resInid->Write();
+    gr_resIniOldd->Write();
     ofileRes->Close();
 
     return 0;

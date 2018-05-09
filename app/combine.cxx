@@ -11,10 +11,12 @@ int main(int argc, char ** argv){
     TString runname = argv[2];
     int nPerRun = 0;
     if (argc>=4) nPerRun = atoi(argv[3]);
+    TString originalFile = Form("h_%d.root",runNo);
+    if (argc>=5) originalFile = argv[4];
     int theLayer = 0;
-    if (argc>=5) theLayer = atoi(argv[4]);
+    if (argc>=6) theLayer = atoi(argv[5]);
     TChain * iChain_h = new TChain("t","t");
-    iChain_h->Add(Form("h_%d.root",runNo));
+    iChain_h->Add(originalFile);
     int N = iChain_h->GetEntries();
 
     int iLayerStart = 0;

@@ -28,18 +28,18 @@ wires="" # wires to be calibrated (position)
 geoSetup=0 # 0 for general; 1 for finger
 inputType=0 # 1 for MC; 0 for data
 workTypeini=0 # 0, fr/l_0; 1, even/odd; -1, even/odd reversed; others, all layers
-nHitsGMaxini=30
+nHitsGMaxini=15
 t0shift0=0
 t0shift1=0
 tmin=-10
 tmax=800
 sumCut=-10
-aaCut=30
+aaCut=0
 if [ $# -gt 6 ]
 then
     aaCut=$7
 fi
-peakType=1 # 0, only the first peak over threshold; 1, all peaks over threshold; 2, even including shaddowed peaks
+peakType=0 # 0, only the first peak over threshold; 1, all peaks over threshold; 2, even including shaddowed peaks
 
 # for getOffset
 WPTYPE=0 # 0 for changing wiremap; 1 for not changing it;
@@ -54,8 +54,8 @@ scale=1 # move scale*offset on wiremap for fitting in the next round
 # for getXT
 UPDATEXT=1
 DEFAULTLAYER=4 # use this layer to generate fl(r)_0 and so on
-XTTYPE=7 # 2 for symmetrical; 1 for symmetrical + offset loading; 0 for no constraints; 6 for symmetrical + offset loading + only first over threshold peak
-NHITSMAXini=35
+XTTYPE=7 # 2 for symmetrical; 1 for symmetrical + offset loading; 0 for no constraints; 6 for symmetrical + offset loading + only first over threshold peak; 7 for symmetrical + offset loading + only first over threshold peak + 2 segments
+NHITSMAXini=30
 if [ $# -gt 8 ]
 then
     NHITSMAXini=$9

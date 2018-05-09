@@ -1,6 +1,6 @@
 #!/bin/bash
 
-for list in info/list.C*.*
+for list in Input/list.C*.*
 do
     setup=`echo $list|sed 's/info\/list\.\(C\w*\)\.\(\w*\)/\1\.\2/'`
     gas=`echo $list|sed 's/info\/list\.\(C\w*\)\.\(\w*\)/\1/'`

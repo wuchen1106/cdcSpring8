@@ -450,7 +450,10 @@ int main(int argc, char** argv){
 
     //===================Get input ROOT file============================
     TChain * c = new TChain("t","t");
-    c->Add(HOME+Form("/root/h_%d.root",runNo));
+    if (inputType==2)
+        c->Add(HOME+Form("/root/h_%d.MC.root",runNo));
+    else
+        c->Add(HOME+Form("/root/h_%d.root",runNo));
     int triggerNumber;
     std::vector<int> * i_np = 0;
     std::vector<int> * i_ip = 0;
@@ -590,7 +593,7 @@ int main(int argc, char** argv){
 
     //===================Tracking====================================
     Long64_t N = c->GetEntries();
-    if (!iEntryStop&&iEntryStart){iEntryStart = 0; iEntryStop=N-1;}
+    if (!iEntryStop&&!iEntryStart){iEntryStart = 0; iEntryStop=N-1;}
     if (memdebug>0) std::cout<<"Memory size @"<<__LINE__<<": "<<pMyProcessManager->GetMemorySize()<<std::endl;
     for (Long64_t iEntry = iEntryStart; iEntry<=iEntryStop; iEntry++){
         if (debug>10) printf("#####################################\n");

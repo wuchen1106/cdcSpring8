@@ -74,15 +74,34 @@ int main(int argc, char ** argv){
     	printf("WARNING: maxLayer[%d] is exceeding the range! Totally support %d layers counting from 0\n",maxLayer,NLAY);
 	}
 	smearType = 0; // default: smear driftT
-    if (argc>=8) smearType = atoi(argv[7]);
+    if (argc>=9) smearType = atoi(argv[8]);
     int inputFileType = 0; // 0: using simulation file as input; 1: using tracking file (ana_XXX) as input
-    if (argc>=9) inputFileType = atoi(argv[8]);
+    if (argc>=10) inputFileType = atoi(argv[9]);
+    int iEntryStart = 0;
+    int iEntryStop = 0;
+    if (argc>=12){
+        iEntryStart = (int)strtol(argv[10],NULL,10);
+        iEntryStop = (int)strtol(argv[11],NULL,10);
+    }
+    double chi2max = 2;
+    if (argc>=13) chi2max = atof(argv[12]);;
+    int nHitsSMin = 7;
+    if (argc>=14) nHitsSMin = (int)strtol(argv[13],NULL,10);
+    int nHitsMax = 0;
+    if (argc>=15) nHitsMax = (int)strtol(argv[14],NULL,10);
+    double slzMax = 0.1;
+    if (argc>=16) slzMax = atof(argv[15]);
 	printf("geoSetup = %d\n",geoSetup);
 	printf("offSig   = %.3e\n",offset_sigma);
 	printf("offMax   = %.3e\n",offset_max);
 	printf("maxLayer = %d\n",maxLayer);
 	printf("smear on \"%s\"\n",smearType==0?"T":"X");
 	printf("inputFile: %s, \"%s\"\n",inputFileType==0?"MC":"Data",argv[1]);
+	printf("Entries: %d~%d (%s~%s)\n",iEntryStart,iEntryStop,argv[9],argv[10]);
+	printf("max chi2:  %.3e\n",chi2max);
+	printf("min nHitsS:%d\n",nHitsSMin);
+	printf("max nHitsG:%d\n",nHitsMax);
+	printf("max slz:   %.3e\n",slzMax);
 
     TString HOME=getenv("CDCS8WORKING_DIR");
 
@@ -327,8 +346,9 @@ int main(int argc, char ** argv){
     bool checkup,checkdown;
     int nHitLayer[NLAY];
 
-    int nEntries = ichain->GetEntries();
-    for (int iEntry = 0; iEntry<nEntries; iEntry++){
+    Long64_t nEntries = ichain->GetEntries();
+    if (!iEntryStop&&!iEntryStart){iEntryStart = 0; iEntryStop=nEntries-1;}
+    for (int iEntry = iEntryStart; iEntry<=iEntryStop; iEntry++){
         if (iEntry%1000==0) printf("iEntry %d\n",iEntry);
         ichain->GetEntry(iEntry);
         double slx,slz,inx,inz;
@@ -360,10 +380,10 @@ int main(int argc, char ** argv){
 			triggerNumber = iEntry;
 		}
 		else{ // Data: check fitting quality
-			if (i_chi2>2) continue;
-			if (i_nHitsS<7) continue;
-			if (i_nHitsG>35) continue;
-			if (fabs(i_slz>0.1)) continue;
+			if (i_chi2>chi2max) continue;
+			if (i_nHitsS<nHitsSMin) continue;
+			if (nHitsMax&&i_nHitsG>nHitsMax) continue;
+			if (fabs(i_slz)>slzMax) continue;
 			slx = i_slx;
 			slz = i_slz;
 			inx = i_inx;

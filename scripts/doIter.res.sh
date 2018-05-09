@@ -13,16 +13,10 @@ nThreads=$4
 thread_iStop=`echo "$thread_iStart+$nThreads-1"|bc`
 IterStart=$5
 IterEnd=$6
+StartName=$7
 isLast=false
-if [ $# -gt 7 ]
-then
-    isLast=$8
-fi
 
-StartName="initial"
 layers="4" # layers to be reconstructed and [analyzed (in case of layers is not 0)]
-LAYERS="4" # layers to be analyzed (in case of layers is 0)
-wires="" # wires to be calibrated (position)
 
 # for tracking
 geoSetup=0 # 0 for general; 1 for finger
@@ -35,36 +29,38 @@ tmin=-10
 tmax=800
 sumCut=-10
 aaCut=30
-if [ $# -gt 6 ]
+if [ $# -gt 7 ]
 then
-    aaCut=$7
+    aaCut=$8
 fi
 peakType=0 # 0, only the first peak over threshold; 1, all peaks over threshold; 2, even including shaddowed peaks
 
-# for getOffset
-#WPTYPE=0 # 0 for changing wiremap; 1 for not changing it;
-#stepSize=0 # maximum step size for each movement in wire position calibration; 0 means no limit
-#minslz=0 # min slz cut for mean slz value in each sample of events in wiremap calibration. minslz==maxslz==0 means no cut
-#maxslz=0 # min slz cut for mean slz value in each sample of events in wiremap calibration. minslz==maxslz==0 means no cut
-#mininx=0 # min inx cut for mean inx value in each sample of events in wiremap calibration. mininx==maxinx==0 means no cut
-#maxinx=0 # min inx cut for mean inx value in each sample of events in wiremap calibration. mininx==maxinx==0 means no cut
-#maxchi2=2
-#scale=1 # move scale*offset on wiremap for fitting in the next round
-
 # for updateRes
-#UPDATEXT=1
-#DEFAULTLAYER=4 # use this layer to generate fl(r)_0 and so on
-#XTTYPE=6 # 2 for symmetrical; 1 for symmetrical + offset loading; 0 for no constraints; 6 for symmetrical + offset loading + only first over threshold peak
-#NHITSMAXini=35
-#if [ $# -gt 8 ]
-#then
-#    NHITSMAXini=$9
-#fi
-#SAVEHISTS=0
+averageEtrack=1 # use average Etrack
+
+# for mc2fitinput_Chen
+CHI2MAX=2
+NHITSSMIN=7
+NHITSMAX=35
+SLZMAX=0.1
+if [ $# -gt 8 ]
+then
+    CHI2MAX=$9
+fi
+if [ $# -gt 9 ]
+then
+    NHITSSMIN=${10}
+fi
+if [ $# -gt 10 ]
+then
+    NHITSMAX=${11}
+fi
+if [ $# -gt 11 ]
+then
+    SLZMAX=${12}
+fi
 
 threadName="job"
-nEvents=`GetEntries $CDCS8WORKING_DIR/root/h_$runNo.initial.root`
-nEvtPerRun=`echo "$nEvents/($thread_iStop-$thread_iStart+1)+1" | bc`
 
 threadLists=""
 threadlistfile=threadlist.$runName.$runNo
@@ -72,7 +68,7 @@ threadlistfile=threadlist.$runName.$runNo
 lastxtfile=""
 
 echo "You are going to start iteration ${IterStart}~${IterEnd} for run$runNo using threads \"$threadName\" $thread_iStart~$thread_iStop with $nEvtPerRun events in each"
-echo "StartName is $StartName, runName = $runName, layers for tracking \"$layers\", layers for getXT \"$LAYERS\", wires to calibrate \"$wires\""
+echo "StartName is $StartName, runName = $runName, layers for tracking \"$layers\""
 echo "Is this the last iteration? $isLast"
 echo "Tracking Parameters are:"
 echo "        geoSetup = $geoSetup;  0 for general; 1 for finger"
@@ -86,21 +82,11 @@ echo "        tmax = $tmax; "
 echo "        sumCut = $sumCut; "
 echo "        aaCut = $aaCut; "
 echo "        peakType = $peakType;  0, only the first peak over threshold; 1, all peaks over threshold; 2, even including shaddowed peaks"
-echo "getOffset Parameters are:"
-echo "        WPTYPE = $WPTYPE;  0 for changing wiremap; 1 for not changing it;"
-echo "        stepSize = $stepSize;  maximum step size for each movement in wire position calibration; 0 means no limit"
-echo "        minslz = $minslz;  min slz cut for mean slz value in each sample of events in wiremap calibration. minslz==maxslz==0 means no cut"
-echo "        maxslz = $maxslz;  min slz cut for mean slz value in each sample of events in wiremap calibration. minslz==maxslz==0 means no cut"
-echo "        mininx = $mininx;  min inx cut for mean inx value in each sample of events in wiremap calibration. mininx==maxinx==0 means no cut"
-echo "        maxinx = $maxinx;  min inx cut for mean inx value in each sample of events in wiremap calibration. mininx==maxinx==0 means no cut"
-echo "        maxchi2 = $maxchi2; "
-echo "        scale = $scale;  move scale*offset on wiremap for fitting in the next round"
-echo "getXT Parameters are:"
-echo "        UPDATEXT = $UPDATEXT; "
-echo "        DEFAULTLAYER = $DEFAULTLAYER;  use this layer to generate fl(r)_0 and so on"
-echo "        XTTYPE = $XTTYPE;  2 for symmetrical; 1 for symmetrical + offset loading; 0 for no constraints; 6 for symmetrical + offset loading + only first over threshold peak"
-echo "        NHITSMAXini = $NHITSMAXini; "
-echo "        SAVEHISTS = $SAVEHISTS; "
+echo "mc2fitinput_Chen Parameters are:"
+echo "        CHI2MAX = $CHI2MAX"
+echo "        NHITSSMIN = $NHITSSMIN"
+echo "        NHITSMAX = $NHITSMAX"
+echo "        SLZMAX = $SLZMAX"
 
 read -p 'You are going to do the job above, is that right? (Y/n):'
 if [ ! "$REPLY" = 'Y' ] && [ ! "$REPLY" = 'y' ] && [ ! "$REPLY" = '' ]; then
@@ -109,14 +95,6 @@ fi
 
 # check files needed
 echo "Will use following files as input"
-if [ $IterStart == 1 ]
-then
-    prerunname="${StartName}"
-else
-    im1=$((IterStart-1))
-    prerunname="${runName}.i${im1}"
-fi
-firstrunname="${StartName}"
 #if [ -e $CDCS8WORKING_DIR/root/h_$runNo.root ]
 #then
 #    ls -ltr $CDCS8WORKING_DIR/root/h_$runNo.root
@@ -124,18 +102,18 @@ firstrunname="${StartName}"
 #    echo "$CDCS8WORKING_DIR/root/h_$runNo.root doesn't exist!"
 #    exit 1
 #fi
-if [ -e $CDCS8WORKING_DIR/info/wire-position.$runNo.$firstrunname.root ]
+if [ -e $CDCS8WORKING_DIR/info/wire-position.$runNo.$StartName.root ]
 then
-    ls -ltr $CDCS8WORKING_DIR/info/wire-position.$runNo.$firstrunname.root
+    ls -ltr $CDCS8WORKING_DIR/info/wire-position.$runNo.$StartName.root
 else
-    echo "$CDCS8WORKING_DIR/info/wire-position.$runNo.$firstrunname.root doesn't exist!"
+    echo "$CDCS8WORKING_DIR/info/wire-position.$runNo.$StartName.root doesn't exist!"
     exit 1
 fi
-if [ -e $CDCS8WORKING_DIR/info/xt.$runNo.$firstrunname.root ]
+if [ -e $CDCS8WORKING_DIR/info/xt.$runNo.$StartName.root ]
 then
-    ls -ltr $CDCS8WORKING_DIR/info/xt.$runNo.$firstrunname.root
+    ls -ltr $CDCS8WORKING_DIR/info/xt.$runNo.$StartName.root
 else
-    echo "$CDCS8WORKING_DIR/info/xt.$runNo.$firstrunname.root doesn't exist!"
+    echo "$CDCS8WORKING_DIR/info/xt.$runNo.$StartName.root doesn't exist!"
     exit 1
 fi
 
@@ -207,8 +185,9 @@ findVacentThread(){
     return 1 # cannot find any vacent slots in 10 hours
 }
 
-updateRes $runNo $firstrunname initial
-cp info/res.$runNo.initial.root info/res.$runNo.$runName.i0.root
+im1=$((IterStart-1))
+prerunname="${runName}.i${im1}"
+updateRes $runNo $StartName $prerunname 1 $averageEtrack
 for (( iter=IterStart; iter<=IterEnd; iter++ ))
 do
     if [ -e kill.$runNo.$runName ]
@@ -218,13 +197,7 @@ do
     fi
 
     im1=$((iter-1))
-    if [ $iter == 1 ]
-    then
-        prerunname="${StartName}"
-    else
-        prerunname="${runName}.i${im1}"
-    fi
-    firstrunname="${StartName}"
+    prerunname="${runName}.i${im1}"
     currunname="${runName}.i${iter}"
 
     if [ $iter -gt 1 ]
@@ -237,19 +210,14 @@ do
     if [ $iter -eq $IterEnd ] && $isLast
     then
         nHitsGMax=$nHitsGMaxini
-        NHITSMAX=0
         layers="1 2 3 4 5 6 7 8"
 #        layers="0"
-#        LAYERS="1 2 3 4 5 6 7 8"
     else
         nHitsGMax=$nHitsGMaxini
-        NHITSMAX=$NHITSMAXini
     fi
 
     echo "#Iteration $iter started"
     echo "  layers = $layers"
-    echo "  LAYERS = $LAYERS"
-    echo "  wires = $wires"
     echo "  geoSetup = $geoSetup"
     echo "  inputType = $inputType"
     echo "  workType = $workType"
@@ -275,9 +243,6 @@ do
     echo "  NHITSMAX = $NHITSMAX"
     echo "  SAVEHISTS = $SAVEHISTS"
 
-#    mc2fitinput_Chen Input/20171016.photon.root info/res.$runNo.$prerunname.root root/h_$runNo.root 0 0 0 8 1
-    mc2fitinput_Chen root/ana_$runNo.root info/res.$runNo.$prerunname.root root/h_$runNo.root 0 0 0 8 1 1
-
     threadLists=`updateThreadLists`
     if [ ! $? -eq 0 ]
     then
@@ -287,6 +252,31 @@ do
     Njobs=0
     for testlayer in $layers;
     do
+        nEvents=`GetEntries $CDCS8WORKING_DIR/root/h_$runNo.root`
+        nEvtPR=$((nEvents/5))
+        pids=""
+        files=""
+        for (( iev=0; iev<nEvents; iev+=nEvtPR ))
+        do
+            istart=$iev
+            istop=$((iev+nEvtPR-1))
+            if (( istop>=nEvents ))
+            then
+                istop=$((nEvents-1))
+            fi
+            mc2fitinput_Chen root/ana_$runNo.$StartName.layer${testlayer}.root info/res.$runNo.$prerunname.root root/h_$runNo.${istart}-${istop}.MC.root 0 0 0 8 1 1 $istart $istop $CHI2MAX $NHITSSMIN $NHITSMAX $SLZMAX &
+            pids="$pids $!"
+            files="$files root/h_$runNo.${istart}-${istop}.MC.root"
+        done
+        wait $pids || { echo "there were errors in combining $runNo $currunname $testlayer" >&2; exit 1; }
+        if [ -e root/h_$runNo.MC.root ]
+        then
+            rm root/h_$runNo.MC.root
+        fi
+        hadd root/h_$runNo.MC.root $files;
+        rm $files;
+        nEvents=`GetEntries $CDCS8WORKING_DIR/root/h_$runNo.MC.root`
+        nEvtPerRun=`echo "$nEvents/($thread_iStop-$thread_iStart+1)+1" | bc`
         for (( iEvent=0; iEvent<nEvents; iEvent+=nEvtPerRun ))
         do
             ((Njobs++))
@@ -314,7 +304,7 @@ do
                 echo "  logfile \"$file\" doesn't exist, so generate a new job!"
             fi
             temprunname="${currunname}.$iEntryStart-$iEntryStop"
-            tempconfig="    $runNo $testlayer $firstrunname $temprunname $nHitsGMax $t0shift0 $t0shift1 $tmin $tmax $geoSetup $sumCut $aaCut $iEntryStart $iEntryStop $workType $inputType $peakType"
+            tempconfig="    $runNo $testlayer $StartName $temprunname $nHitsGMax $t0shift0 $t0shift1 $tmin $tmax $geoSetup $sumCut $aaCut $iEntryStart $iEntryStop $workType $inputType $peakType"
             findVacentThread
             if [ $? -eq 1 ]
             then
@@ -392,29 +382,13 @@ do
     fi
 
     cd root/
-    combine $runNo $currunname $nEvtPerRun &
+    combine $runNo $currunname $nEvtPerRun h_$runNo.MC.root &
     pids="$!"
-    wait $pids || { echo "there were errors in combining $runNo $currunname $ilayer" >&2; exit 1; }
+    wait $pids || { echo "there were errors in combining $runNo $currunname" >&2; exit 1; }
     rm -f t_${runNo}.${currunname}.*-*.*
     cd ..
 
-#   using layer0?
-    if [ "$layers" == "0" ]
-    then
-        cd root
-        for lid in $LAYERS
-        do
-            ln -s t_${runNo}.${currunname}.layer0.root t_${runNo}.${currunname}.layer${lid}.root
-        done
-        cd ..
-    fi
-
 #   updating
-    backupname=$prerunname
-    if [ $iter == 1 ]
-    then
-        backupname="${runName}.i0"
-    fi
-    updateRes $runNo $firstrunname $currunname
-    mv root/h_$runNo.root root/h_$runNo.$backupname.root
+    updateRes $runNo $StartName $currunname 0 $averageEtrack
+    mv root/h_$runNo.MC.root root/h_$runNo.$prerunname.MC.root
 done
