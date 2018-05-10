@@ -91,8 +91,8 @@ int main(int argc, char** argv){
         fprintf(stderr,"ERROR: Cannot find the original XT file!\n");
         return 1;
     }
-    TF1 * f_l = (TF1*) XTFile->Get(Form("flc_%d",testLayer));
-    TF1 * f_r = (TF1*) XTFile->Get(Form("frc_%d",testLayer));
+    TF1 * f_l = (TF1*) XTFile->Get(Form("fl_%d",testLayer));
+    TF1 * f_r = (TF1*) XTFile->Get(Form("fr_%d",testLayer));
     if (!f_l||!f_r){
         fprintf(stderr,"ERROR: Cannot find flc/frc in the original XT file!\n");
         return 1;

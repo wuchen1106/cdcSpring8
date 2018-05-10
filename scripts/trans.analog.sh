@@ -19,7 +19,7 @@ for (( i=1; i<=$NRUNS; i++ ))
 do
     runNo=`gawk -v gawk_keyword=$i 'BEGIN{i=1;}{if (i==gawk_keyword) print $1; i++;}' $temp`
     line=`gawk -v gawk_keyword=$i 'BEGIN{i=1;}{if (i==gawk_keyword) print $0; i++;}' $temp`
-    resfile=res.$runNo.*
+    resfile=$CDCS8WORKING_DIR/result/MCreso/res.$runNo.*
     if [ ! -e $resfile ]
     then
         echo "Cannot find $resfile!"
