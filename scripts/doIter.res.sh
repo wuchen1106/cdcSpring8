@@ -2,7 +2,7 @@
 
 if [ $# -lt 6 ]
 then
-    echo $0 runNo runName thread_iStart nThreads iStart iStop [aaCut isLast NHITSMAX] 
+    echo $0 runNo runName thread_iStart nThreads istart istop [aaCut isLast NHITSMAX] 
     exit 0
 fi
 
@@ -37,27 +37,31 @@ peakType=0 # 0, only the first peak over threshold; 1, all peaks over threshold;
 
 # for updateRes
 averageEtrack=1 # use average Etrack
+if [ $# -gt 8 ]
+then
+    averageEtrack=$9
+fi
 
 # for mc2fitinput_Chen
 CHI2MAX=2
 NHITSSMIN=7
 NHITSMAX=35
 SLZMAX=0.1
-if [ $# -gt 8 ]
-then
-    CHI2MAX=$9
-fi
 if [ $# -gt 9 ]
 then
-    NHITSSMIN=${10}
+    CHI2MAX=${10}
 fi
 if [ $# -gt 10 ]
 then
-    NHITSMAX=${11}
+    NHITSSMIN=${11}
 fi
 if [ $# -gt 11 ]
 then
-    SLZMAX=${12}
+    NHITSMAX=${12}
+fi
+if [ $# -gt 12 ]
+then
+    SLZMAX=${13}
 fi
 
 threadName="job"
@@ -67,7 +71,7 @@ threadlistfile=threadlist.$runName.$runNo
 
 lastxtfile=""
 
-echo "You are going to start iteration ${IterStart}~${IterEnd} for run$runNo using threads \"$threadName\" $thread_iStart~$thread_iStop with $nEvtPerRun events in each"
+echo "You are going to start iteration ${IterStart}~${IterEnd} for run$runNo using threads \"$threadName\" $thread_iStart~$thread_iStop"
 echo "StartName is $StartName, runName = $runName, layers for tracking \"$layers\""
 echo "Is this the last iteration? $isLast"
 echo "Tracking Parameters are:"
@@ -82,6 +86,8 @@ echo "        tmax = $tmax; "
 echo "        sumCut = $sumCut; "
 echo "        aaCut = $aaCut; "
 echo "        peakType = $peakType;  0, only the first peak over threshold; 1, all peaks over threshold; 2, even including shaddowed peaks"
+echo "updateRes Parameters are:"
+echo "        averageEtrack? $averageEtrack; "
 echo "mc2fitinput_Chen Parameters are:"
 echo "        CHI2MAX = $CHI2MAX"
 echo "        NHITSSMIN = $NHITSSMIN"
@@ -243,13 +249,34 @@ do
     echo "  NHITSMAX = $NHITSMAX"
     echo "  SAVEHISTS = $SAVEHISTS"
 
-    threadLists=`updateThreadLists`
+    threadLists=`updateThreadLists` # update the thread List for this iteration
     if [ ! $? -eq 0 ]
     then
         echo "    ERROR in updateThreadLists!"
         exit 1
     fi
-    Njobs=0
+    nThreads=0 # count number of threads available for this iteration (sometimes some threads are stopped in the middle)
+    for (( ithread=thread_iStart; ithread<=thread_iStop; ithread++ ))
+    do
+        thethread=${threadName}_${ithread}
+        conf="$CDCS8WORKING_DIR/Conf/${thethread}.conf"
+        log="$CDCS8WORKING_DIR/Conf/${thethread}.log"
+        if [ ! -e $conf ]
+        then
+            continue
+        fi
+        configure=`cat $conf`
+        if [ -z "$configure" ] # thread with no configure, probably not processing any job
+        then
+            isReady $thethread
+            if [ $? -eq 0 ]
+            then
+                ((nThreads++))
+            fi
+        fi
+    done
+
+    Njobs=0 # to count number of jobs to be finished
     for testlayer in $layers;
     do
         nEvents=`GetEntries $CDCS8WORKING_DIR/root/h_$runNo.root`
@@ -276,7 +303,7 @@ do
         hadd root/h_$runNo.MC.root $files;
         rm $files;
         nEvents=`GetEntries $CDCS8WORKING_DIR/root/h_$runNo.MC.root`
-        nEvtPerRun=`echo "$nEvents/($thread_iStop-$thread_iStart+1)+1" | bc`
+        nEvtPerRun=`echo "$nEvents/($nThreads)+1" | bc`
         for (( iEvent=0; iEvent<nEvents; iEvent+=nEvtPerRun ))
         do
             ((Njobs++))

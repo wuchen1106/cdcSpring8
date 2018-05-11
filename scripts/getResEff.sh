@@ -34,7 +34,7 @@ fi
 geoSetup=0
 if [ $# -gt 6 ]
 then
-    saveHists=$7
+    geoSetup=$7
 fi
 tmaxSet=0
 if [ $# -gt 7 ]

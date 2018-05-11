@@ -1,5 +1,17 @@
 #!/bin/bash
-bestRuns="bestRuns"
+if [ $# -lt 2 ]
+then
+    echo "Please provide RunListFile and a tag"
+    exit 0
+fi
+
+bestRuns=$1
+runTag=$2
+averageEtrack=1 # 1 means take averaged Etrack; 0 means using Etrack VS DOCA function
+if [ $# -gt 2 ]
+then
+    averageEtrack=$3
+fi
 
 NRUNS=`cat $CDCS8WORKING_DIR/$bestRuns | wc -l`
 for (( i=1; i<=$NRUNS; i++ ))
@@ -43,7 +55,7 @@ do
         NMIN=7
     fi
 
-    doIter.res.sh $runNo 0426resxAV 0 400 1 5 $runName $aaCut $CHI2MAX $NMIN $NMAX $SLZMAX > $CDCS8WORKING_DIR/res.$runNo.0426resxAV 2>&1 &
+    doIter.res.sh $runNo $runTag 0 400 1 5 $runName $aaCut $averageEtrack $CHI2MAX $NMIN $NMAX $SLZMAX > $CDCS8WORKING_DIR/res.$runNo.0426resxAV 2>&1 &
     pids="$!"
     wait $pids || { echo "there were errors in combining $runNo $currunname $ilayer" >&2; exit 1; }
 done

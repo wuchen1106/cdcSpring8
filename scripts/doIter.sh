@@ -63,15 +63,13 @@ fi
 SAVEHISTS=0
 
 threadName="job"
-nEvents=`GetEntries $CDCS8WORKING_DIR/root/h_$runNo.root`
-nEvtPerRun=`echo "$nEvents/($thread_iStop-$thread_iStart+1)+1" | bc`
 
 threadLists=""
 threadlistfile=threadlist.$runName.$runNo
 
 lastxtfile=""
 
-echo "You are going to start iteration ${IterStart}~${IterEnd} for run$runNo using threads \"$threadName\" $thread_iStart~$thread_iStop with $nEvtPerRun events in each"
+echo "You are going to start iteration ${IterStart}~${IterEnd} for run$runNo using threads \"$threadName\" $thread_iStart~$thread_iStop"
 echo "StartName is $StartName, runName = $runName, layers for tracking \"$layers\", layers for getXT \"$LAYERS\", wires to calibrate \"$wires\""
 echo "Is this the last iteration? $isLast"
 echo "Tracking Parameters are:"
@@ -278,6 +276,29 @@ do
         echo "    ERROR in updateThreadLists!"
         exit 1
     fi
+    nThreads=0 # count number of threads available for this iteration (sometimes some threads are stopped in the middle)
+    for (( ithread=thread_iStart; ithread<=thread_iStop; ithread++ ))
+    do
+        thethread=${threadName}_${ithread}
+        conf="$CDCS8WORKING_DIR/Conf/${thethread}.conf"
+        log="$CDCS8WORKING_DIR/Conf/${thethread}.log"
+        if [ ! -e $conf ]
+        then
+            continue
+        fi
+        configure=`cat $conf`
+        if [ -z "$configure" ] # thread with no configure, probably not processing any job
+        then
+            isReady $thethread
+            if [ $? -eq 0 ]
+            then
+                ((nThreads++))
+            fi
+        fi
+    done
+    nEvents=`GetEntries $CDCS8WORKING_DIR/root/h_$runNo.root`
+    nEvtPerRun=`echo "$nEvents/($nThreads)+1" | bc`
+
     Njobs=0
     for testlayer in $layers;
     do
