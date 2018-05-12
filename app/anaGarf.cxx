@@ -115,7 +115,7 @@ int main(int argc, char** argv){
     if (argc>=12)
         iEntryStop = (int)strtol(argv[11],NULL,10);
     int nHitsSmin = 7;
-    printf("##############Input %d Parameters##################\n",argc);
+    printf("##############%s with %d Parameters##################\n",argv[0],argc);
     printf("xtType:       %d\n",xtType);
     printf("maxchi2     = %.3e\n",maxchi2);
     printf("test layer:   %d\n",testLayer);

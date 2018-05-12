@@ -65,7 +65,7 @@ int main(int argc, char** argv){
     if (argc>=iArg+1)
         {iEntryStop = (int)strtol(argv[iArg],NULL,10);iArg++;}
     int testLayer = 4; // FIXME: currently only check the 4th layer.
-    printf("##############Input %d Parameters##################\n",argc);
+    printf("##############%s with %d Parameters##################\n",argv[0],argc);
     printf("runNo        = %d\n",runNo);
     printf("originalname = \"%s\"\n",originalname.Data());
     printf("runname      = \"%s\"\n",runname.Data());

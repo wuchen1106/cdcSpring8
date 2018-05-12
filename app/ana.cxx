@@ -143,7 +143,7 @@ int main(int argc, char** argv){
     int iEntryStop = 0;
     if (argc>=iArg+1)
         {iEntryStop = (int)strtol(argv[iArg],NULL,10);iArg++;}
-    printf("##############Input %d Parameters##################\n",argc);
+    printf("##############%s with %d Parameters##################\n",argv[0],argc);
     printf("runNo       = %d\n",runNo);
     printf("runname     = \"%s\"\n",runname.Data());
     printf("test layer:   %d\n",testLayer);

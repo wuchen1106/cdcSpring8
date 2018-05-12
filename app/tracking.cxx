@@ -249,7 +249,7 @@ int main(int argc, char** argv){
     if (argc>=20){
         memdebug = (int)strtol(argv[19],NULL,10);
     }
-    printf("##############Input Parameters##################\n");
+    printf("##############%s with %d Parameters##################\n",argv[0],argc);
     printf("runNo       = %d\n",runNo);
     printf("test layer  = %d\n",testlayer);
     printf("prerunname  = \"%s\"\n",prerunname.Data());

@@ -53,7 +53,7 @@ int main(int argc, char** argv){
     int iEntryStop = 0;
     if (argc>=14)
         iEntryStop = (int)strtol(argv[13],NULL,10);
-    printf("##############Input %d Parameters##################\n",argc);
+    printf("##############%s with %d Parameters##################\n",argv[0],argc);
     printf("runNo       = %d\n",runNo);
     printf("prerunname  = \"%s\"\n",prerunname.Data());
     printf("runname     = \"%s\"\n",runname.Data());

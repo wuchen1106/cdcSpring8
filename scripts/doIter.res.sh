@@ -1,8 +1,8 @@
 #!/bin/bash
 
-if [ $# -lt 6 ]
+if [ $# -lt 7 ]
 then
-    echo $0 runNo runName thread_iStart nThreads istart istop [aaCut isLast NHITSMAX] 
+    echo $0 runNo runName thread_iStart nThreads istart istop [averageEtrack CHI2MAX NHITSSMIN NHITSMAX SLZMAX] 
     exit 0
 fi
 
@@ -21,47 +21,43 @@ layers="4" # layers to be reconstructed and [analyzed (in case of layers is not 
 # for tracking
 geoSetup=0 # 0 for general; 1 for finger
 inputType=2 # 1 for MC; 0 for data; 2 for MC using X
-workTypeini=0 # 0, fr/l_0; 1, even/odd; -1, even/odd reversed; others, all layers
-nHitsGMaxini=13
+workType=0 # 0, fr/l_0; 1, even/odd; -1, even/odd reversed; others, all layers
+nHitsGMax=13
 t0shift0=0
 t0shift1=0
 tmin=-10
 tmax=800
 sumCut=-10
 aaCut=30
-if [ $# -gt 7 ]
-then
-    aaCut=$8
-fi
 peakType=0 # 0, only the first peak over threshold; 1, all peaks over threshold; 2, even including shaddowed peaks
 
 # for updateRes
 averageEtrack=1 # use average Etrack
-if [ $# -gt 8 ]
+if [ $# -gt 7 ]
 then
-    averageEtrack=$9
+    averageEtrack=$8
 fi
 
 # for mc2fitinput_Chen
 CHI2MAX=2
 NHITSSMIN=7
-NHITSMAX=35
+NHITSMAX=0
 SLZMAX=0.1
+if [ $# -gt 8 ]
+then
+    CHI2MAX=$9
+fi
 if [ $# -gt 9 ]
 then
-    CHI2MAX=${10}
+    NHITSSMIN=${10}
 fi
 if [ $# -gt 10 ]
 then
-    NHITSSMIN=${11}
+    NHITSMAX=${11}
 fi
 if [ $# -gt 11 ]
 then
-    NHITSMAX=${12}
-fi
-if [ $# -gt 12 ]
-then
-    SLZMAX=${13}
+    SLZMAX=${12}
 fi
 
 threadName="job"
@@ -71,14 +67,15 @@ threadlistfile=threadlist.$runName.$runNo
 
 lastxtfile=""
 
+echo "====================$0========================"
 echo "You are going to start iteration ${IterStart}~${IterEnd} for run$runNo using threads \"$threadName\" $thread_iStart~$thread_iStop"
 echo "StartName is $StartName, runName = $runName, layers for tracking \"$layers\""
 echo "Is this the last iteration? $isLast"
 echo "Tracking Parameters are:"
 echo "        geoSetup = $geoSetup;  0 for general; 1 for finger"
 echo "        inputType = $inputType;  1 for MC; 0 for data"
-echo "        workTypeini = $workTypeini;  0, fr/l_0; 1, even/odd; -1, even/odd reversed; others, all layers"
-echo "        nHitsGMaxini = $nHitsGMaxini; "
+echo "        workType = $workType;  0, fr/l_0; 1, even/odd; -1, even/odd reversed; others, all layers"
+echo "        nHitsGMax = $nHitsGMax; "
 echo "        t0shift0 = $t0shift0; "
 echo "        t0shift1 = $t0shift1; "
 echo "        tmin = $tmin; "
@@ -206,48 +203,7 @@ do
     prerunname="${runName}.i${im1}"
     currunname="${runName}.i${iter}"
 
-    if [ $iter -gt 1 ]
-    then
-        workType=$workTypeini
-    else
-        workType=0
-    fi
-
-    if [ $iter -eq $IterEnd ] && $isLast
-    then
-        nHitsGMax=$nHitsGMaxini
-        layers="1 2 3 4 5 6 7 8"
-#        layers="0"
-    else
-        nHitsGMax=$nHitsGMaxini
-    fi
-
     echo "#Iteration $iter started"
-    echo "  layers = $layers"
-    echo "  geoSetup = $geoSetup"
-    echo "  inputType = $inputType"
-    echo "  workType = $workType"
-    echo "  nHitsGMax = $nHitsGMax"
-    echo "  t0shift0 = $t0shift0"
-    echo "  t0shift1 = $t0shift1"
-    echo "  tmin = $tmin"
-    echo "  tmax = $tmax"
-    echo "  sumCut = $sumCut"
-    echo "  aaCut = $aaCut"
-    echo "  peakType = $peakType"
-    echo "  stepSize = $stepSize"
-    echo "  minslz = $minslz"
-    echo "  maxslz = $maxslz"
-    echo "  mininx = $mininx"
-    echo "  maxinx = $maxinx"
-    echo "  maxchi2 = $maxchi2"
-    echo "  scale = $scale"
-    echo "  XTTYPE = $XTTYPE"
-    echo "  WPTYPE = $WPTYPE"
-    echo "  UPDATEXT = $UPDATEXT"
-    echo "  DEFAULTLAYER = $DEFAULTLAYER"
-    echo "  NHITSMAX = $NHITSMAX"
-    echo "  SAVEHISTS = $SAVEHISTS"
 
     threadLists=`updateThreadLists` # update the thread List for this iteration
     if [ ! $? -eq 0 ]

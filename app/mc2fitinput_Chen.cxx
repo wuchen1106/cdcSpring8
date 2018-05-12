@@ -91,6 +91,7 @@ int main(int argc, char ** argv){
     if (argc>=15) nHitsMax = (int)strtol(argv[14],NULL,10);
     double slzMax = 0.1;
     if (argc>=16) slzMax = atof(argv[15]);
+    printf("##############%s with %d Parameters##################\n",argv[0],argc);
 	printf("geoSetup = %d\n",geoSetup);
 	printf("offSig   = %.3e\n",offset_sigma);
 	printf("offMax   = %.3e\n",offset_max);
@@ -146,16 +147,18 @@ int main(int argc, char ** argv){
     //===================Get Wire Position============================
     // prepare offset
     double deltaX[NLAY][NCEL];
-    for ( int lid = 0; lid<NLAY; lid++){
-        for ( int wid = 0; wid<NCEL; wid++){
-			if (lid<=8&&wid>=11) continue; // to be consistant with previous runs
-            //deltaX[lid][wid] = random1.Gaus(0,0.1);//
-            double dx = random1.Gaus(0,offset_sigma);
-            while(offset_max&&fabs(dx)>offset_max){
-                dx = random1.Gaus(0,offset_sigma);
+    if (offset_sigma){
+        for ( int lid = 0; lid<NLAY; lid++){
+            for ( int wid = 0; wid<NCEL; wid++){
+                if (lid<=8&&wid>=11) continue; // to be consistant with previous runs
+                //deltaX[lid][wid] = random1.Gaus(0,0.1);//
+                double dx = random1.Gaus(0,offset_sigma);
+                while(offset_max&&fabs(dx)>offset_max){
+                    dx = random1.Gaus(0,offset_sigma);
+                }
+                deltaX[lid][wid] = dx;
+                printf("%d %d %.3e\n",lid,wid,deltaX[lid][wid]);
             }
-            deltaX[lid][wid] = dx;
-            printf("%d %d %.3e\n",lid,wid,deltaX[lid][wid]);
         }
     }
 
@@ -349,7 +352,7 @@ int main(int argc, char ** argv){
     Long64_t nEntries = ichain->GetEntries();
     if (!iEntryStop&&!iEntryStart){iEntryStart = 0; iEntryStop=nEntries-1;}
     for (int iEntry = iEntryStart; iEntry<=iEntryStop; iEntry++){
-        if (iEntry%1000==0) printf("iEntry %d\n",iEntry);
+        if (iEntry%10000==0) printf("iEntry %d\n",iEntry);
         ichain->GetEntry(iEntry);
         double slx,slz,inx,inz;
         if (inputFileType==0){ // MC: check trigger

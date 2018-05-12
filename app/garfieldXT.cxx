@@ -27,7 +27,7 @@ int main(int argc, char** argv){
     int debugLevel = 0;
     if (argc>=5)
         debugLevel = (int)strtol(argv[4],NULL,10);
-    printf("##############Input %d Parameters##################\n",argc);
+    printf("##############%s with %d Parameters##################\n",argv[0],argc);
     printf("runname     = \"%s\"\n",runname.Data());
     printf("gasID       = %d\n",gasID);
     printf("save slice fittings? \"%s\"\n",saveHists?"yes":"no");
