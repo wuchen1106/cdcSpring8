@@ -184,12 +184,12 @@ double getError(int lid,double dt, bool isR);
 MyProcessManager * pMyProcessManager;
 
 //===================About xt============================
-TF1 * f_left[NLAYp2];
-TF1 * f_right[NLAYp2];
+TF1 * f_left[NLAY+2];
+TF1 * f_right[NLAY+2];
 // for error function
 TF1 * funcErr;
-TGraph * gr_error_left[NLAYp2];
-TGraph * gr_error_right[NLAYp2];
+TGraph * gr_error_left[NLAY+2];
+TGraph * gr_error_right[NLAY+2];
 
 int main(int argc, char** argv){
 

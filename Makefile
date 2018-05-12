@@ -17,6 +17,7 @@ INCS     += -Isrc -Iapp
 
 SRCA := $(wildcard $(APPDIR)/*$(SUFFIX))
 SRCS := $(wildcard $(SRCDIR)/*$(SUFFIX))
+HEADERS := $(wildcard $(SRCDIR)/*$(HEADER))
 
 TGTS = $(addprefix $(BINDIR)/, $(notdir $(basename $(SRCA))))
 OBJS = $(addprefix $(LIBDIR)/, $(notdir $(SRCS:$(SUFFIX)=.o)))
@@ -24,11 +25,11 @@ OBJS = $(addprefix $(LIBDIR)/, $(notdir $(SRCS:$(SUFFIX)=.o)))
 .PHONY: all
 all: $(TGTS) $(OBJS)
 
-$(BINDIR)/%: $(OBJS) $(APPDIR)/%$(SUFFIX)
+$(BINDIR)/%: $(OBJS) $(APPDIR)/%$(SUFFIX) $(HEADERS)
 	mkdir -p $(BINDIR); \
 	$(CXX) $(CXXFLAGS) $(LIBS) $(INCS) $(APPDIR)/$(notdir $@)$(SUFFIX) -o $@${EXCUTE} $(filter-out $(APPDIR)/%$(SUFFIX), $^)
 
-$(LIBDIR)/%.o: $(SRCDIR)/%$(SUFFIX) $(SRCDIR)/%$(HEADER)
+$(LIBDIR)/%.o: $(SRCDIR)/%$(SUFFIX) $(HEADERS)
 	mkdir -p $(LIBDIR); \
 	$(CXX) $(INCS) -c $(CXXFLAGS) $< -o $@
 
