@@ -11,6 +11,8 @@
 #include "TLine.h"
 #include "TStyle.h"
 
+#include <math.h>
+
 XTAnalyzer::XTAnalyzer(int gasID, int debug)
 	:mGasID(gasID), mDebugLevel(debug), mSaveXT0(false), mSaveXTEO(0), mUpdateXT(true)
 {

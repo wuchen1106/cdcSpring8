@@ -3,6 +3,7 @@
 #include "TGraph.h"
 #include "TF1.h"
 #include <vector>
+#include <math.h>
 
 #include "header.h"
 
