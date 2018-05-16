@@ -475,7 +475,8 @@ int main(int argc, char** argv){
     TTree * otree_events = 0;
     bool isGood = false;
     double theCharge = 0;
-    double trackCharge[MAXTRUNC] = {0};
+	double chargeOnTrack[NLAY]; // charge along the track
+	int    chargeOnTrackIndex[NLAY]; // index of the corresponding hit along the track
     int    nHitsT = 0;
     bool   o_hashit[2];
     double o_theFD[2];
@@ -499,8 +500,9 @@ int main(int argc, char** argv){
     otree_events->Branch("theST",o_theST,"theST[nHitsT]/I");
     otree_events->Branch("theAA",o_theAA,"theAA[nHitsT]/D");
     otree_events->Branch("theCharge",&theCharge);
-    for (int i = 0; i<MAXTRUNC; i++){
-        otree_events->Branch(Form("trackCharge%d",i),&(trackCharge[i]));
+    for (int i = 0; i<NLAY; i++){
+        otree_events->Branch(Form("chargeOnTrack%d",i),&(chargeOnTrack[i]));
+        otree_events->Branch(Form("chargeOnTrackIndex%d",i),&(chargeOnTrackIndex[i]));
     }
     otree_events->Branch("theGG",&theGG);
     otree_events->Branch("trackGG",&trackGG);
@@ -590,7 +592,7 @@ int main(int argc, char** argv){
 	int    closeWid2;
 	double averageGG = 0;
 	double averageGGErr = 0;
-	std::vector<double> chargeOnTrack(NLAY); // charge along the track
+    double trackCharge[MAXTRUNC] = {0};
 	Long64_t N = ichain->GetEntries();
 	if (!iEntryStart&&!iEntryStop){
 		iEntryStart = 0;
@@ -671,6 +673,7 @@ int main(int argc, char** argv){
 		o_hashit[1] = false;
 		for (int lid = 0; lid<NLAY; lid++){
             chargeOnTrack[lid] = 0;
+            chargeOnTrackIndex[lid] = 0;
         }
         theCharge = 0; // charge in the test layer
 		for (int ihit = 0; ihit<nHits; ihit++){
@@ -689,6 +692,7 @@ int main(int argc, char** argv){
 //                    if (lid>1&&lid<NLAY){ // don't count the first layer: guard layer
 //                    if (lid>1&&lid<NLAY-1){ // don't count the first layer and the last layer: guard layers
                     if (lid>0&&lid<NLAY){ // count all layers
+                        if (!chargeOnTrack[lid]||charge>chargeOnTrack[lid]) chargeOnTrackIndex[lid] = ihit;
                         chargeOnTrack[lid]+=charge;
                     }
                     if (lid==testLayer){ // in test layer hits
@@ -727,12 +731,15 @@ int main(int argc, char** argv){
         }
 
 		// sort the layers by charge from small to large
-		for (int lid = 0; lid<NLAY; lid++){
-			for (int ljd = lid+1; ljd<NLAY; ljd++){
+		for (int lid = 0; lid<nLayersOnTrack; lid++){
+			for (int ljd = lid+1; ljd<nLayersOnTrack; ljd++){
 				if (chargeOnTrack[lid]>chargeOnTrack[ljd]){
 					double temp = chargeOnTrack[lid];
 					chargeOnTrack[lid] = chargeOnTrack[ljd];
 					chargeOnTrack[ljd] = temp;
+					int tempi = chargeOnTrackIndex[lid];
+					chargeOnTrackIndex[lid] = chargeOnTrackIndex[ljd];
+					chargeOnTrackIndex[ljd] = tempi;
 				}
 			}
 		}
@@ -741,9 +748,11 @@ int main(int argc, char** argv){
         for (int itrunc = 0; itrunc < MAXTRUNC; itrunc++){
             trackCharge[itrunc] = 0;
         }
-        for (int lid = 0; lid<NLAY; lid++){
+        for (int lid = 0; lid<nLayersOnTrack; lid++){
             totalCharge+=chargeOnTrack[lid];
-            if (NLAY-1-lid>=0) trackCharge[NLAY-1-lid] = totalCharge;
+            if (nLayersOnTrack-1-lid>=0){
+                trackCharge[nLayersOnTrack-1-lid] = totalCharge;
+            }
         }
 
         // get gg
