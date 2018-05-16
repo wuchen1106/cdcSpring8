@@ -1,10 +1,11 @@
 #!/bin/bash
-if [ $# -lt 2 ]
+if [ $# -lt 3 ]
 then
     exit 0
 fi
 logfile=$1
 output=$2
+resdir=$3
 temp=/tmp/trans.analog
 
 title=`grep "^=>" $logfile | tail -n 1 | sed 's/=>//'`
@@ -19,7 +20,7 @@ for (( i=1; i<=$NRUNS; i++ ))
 do
     runNo=`gawk -v gawk_keyword=$i 'BEGIN{i=1;}{if (i==gawk_keyword) print $1; i++;}' $temp`
     line=`gawk -v gawk_keyword=$i 'BEGIN{i=1;}{if (i==gawk_keyword) print $0; i++;}' $temp`
-    resfile=$CDCS8WORKING_DIR/result/MCreso/res.$runNo.*
+    resfile=$resdir/res.$runNo.*
     if [ ! -e $resfile ]
     then
         echo "Cannot find $resfile!"

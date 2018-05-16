@@ -23,7 +23,7 @@
 #include "header.h"
 
 #define NBINS    20
-#define MAXTRANC 7
+#define MAXTRUNC 8
 
 //===================Chamber Parameter============================
 double CELLH = 16; // mm
@@ -475,7 +475,7 @@ int main(int argc, char** argv){
     TTree * otree_events = 0;
     bool isGood = false;
     double theCharge = 0;
-    double trackCharge[MAXTRANC] = {0};
+    double trackCharge[MAXTRUNC] = {0};
     int    nHitsT = 0;
     bool   o_hashit[2];
     double o_theFD[2];
@@ -499,7 +499,7 @@ int main(int argc, char** argv){
     otree_events->Branch("theST",o_theST,"theST[nHitsT]/I");
     otree_events->Branch("theAA",o_theAA,"theAA[nHitsT]/D");
     otree_events->Branch("theCharge",&theCharge);
-    for (int i = 0; i<MAXTRANC; i++){
+    for (int i = 0; i<MAXTRUNC; i++){
         otree_events->Branch(Form("trackCharge%d",i),&(trackCharge[i]));
     }
     otree_events->Branch("theGG",&theGG);
@@ -538,7 +538,7 @@ int main(int argc, char** argv){
 	TH2D * h_resVSD = new TH2D("hresVSD","Residual VS drift distance",mNbinx,-mXmax,mXmax,mNbinRes,-maxRes,maxRes);
 	TH1D * h_resD[NBINS];
 	TH1D * h_resX[NBINS];
-	TH1D * h_dedx[MAXTRANC];
+	TH1D * h_dedx[MAXTRUNC];
 	for (int i = 0; i<NBINS; i++){
 		double xmin = mXmax*(i)/NBINS;
 		double xmax = mXmax*(i+1)/NBINS;
@@ -547,7 +547,7 @@ int main(int argc, char** argv){
 		h_resX[i] = new TH1D(Form("hresX%d",i),Form("Residual with DOCA in [%.1f,%.1f] mm",xmin,xmax),mNbinRes,-maxRes,maxRes);
 		h_resX[i]->GetXaxis()->SetTitle("Residual [mm]");
 	}
-	for (int i = 0; i<MAXTRANC; i++){
+	for (int i = 0; i<MAXTRUNC; i++){
 		h_dedx[i] = new TH1D(Form("hdedx%d",i),Form("dEdX with %d hits omitted",i),256,0,3);
 		h_dedx[i]->GetXaxis()->SetTitle("dE/dX [keV/cm]");
 	}
@@ -684,6 +684,7 @@ int main(int argc, char** argv){
 			int status = t2d(dt,dd,fd>0);
             if ((*i_ip)[ihit]==0){ // to calculate the distance to track, only count first peaks
                 if (fabs(fd)<CELLW/2+0.5){ // along the track: distance smaller than half cell size (plus safety margin 0.5 mm)
+                    // FIXME: should decide whether to include the boundary layers or not: slightly smaller ADC, why?
 //                    if (lid>0&&lid<NLAY-1){ // don't count the last layer: guard layer
 //                    if (lid>1&&lid<NLAY){ // don't count the first layer: guard layer
 //                    if (lid>1&&lid<NLAY-1){ // don't count the first layer and the last layer: guard layers
@@ -737,8 +738,8 @@ int main(int argc, char** argv){
 		}
         // get the truncated charge
         double totalCharge = 0;
-        for (int itranc = 0; itranc < MAXTRANC; itranc++){
-            trackCharge[itranc] = 0;
+        for (int itrunc = 0; itrunc < MAXTRUNC; itrunc++){
+            trackCharge[itrunc] = 0;
         }
         for (int lid = 0; lid<NLAY; lid++){
             totalCharge+=chargeOnTrack[lid];
@@ -771,13 +772,13 @@ int main(int argc, char** argv){
 	    otree_events->GetEntry(iEntry);
 	    if (!isGood) continue; // not successfully reconstructed
 		// Fill histograms if needed;
-        for (int itranc = 0; itranc < MAXTRANC; itranc++){
-            if (!trackCharge[itranc]) continue;
-            double theDE = trackCharge[itranc]*1e-15/averageGG/1.6e-19*W;
-            double theDX = (nLayersOnTrack-itranc)*CELLH*sqrt(1+slx*slx+slz*slz);
-            h_dedx[itranc]->Fill(theDE/1000/(theDX/10));
+        for (int itrunc = 0; itrunc < MAXTRUNC; itrunc++){
+            if (!trackCharge[itrunc]) continue;
+            double theDE = trackCharge[itrunc]*1e-15/averageGG/1.6e-19*W;
+            double theDX = (nLayersOnTrack-itrunc)*CELLH*sqrt(1+slx*slx+slz*slz);
+            h_dedx[itrunc]->Fill(theDE/1000/(theDX/10));
         }
-        for (int i = 0; i<nHitsT; i++){ // FIXME: should record the new DD and AA and etc.
+        for (int i = 0; i<nHitsT; i++){
             if (!o_hashit[i]) continue;
             int status = o_theST[i];
             double fd = o_theFD[i];
@@ -1249,14 +1250,14 @@ int main(int argc, char** argv){
 	TLegend* leg_dedx = new TLegend(0.7,0.7,0.9,0.9);
 	leg_dedx->AddEntry(h_dedx[0],Form("All hits used"));
 	int maxEntry = 0;
-	for (int i = 0; i<MAXTRANC; i++){
+	for (int i = 0; i<MAXTRUNC; i++){
         int entries = h_dedx[i]->GetMaximum();
         if (maxEntry<entries) maxEntry = entries;
     }
 	h_dedx[0]->SetLineColor(1);
 	h_dedx[0]->GetYaxis()->SetRangeUser(0,maxEntry*1.1);
 	h_dedx[0]->Draw();
-	for (int i = 1; i<MAXTRANC; i++){
+	for (int i = 1; i<MAXTRUNC; i++){
 		h_dedx[i]->SetLineColor(i+1);
 		leg_dedx->AddEntry(h_dedx[i],Form("Neglecting %d hits",i));
 		h_dedx[i]->Draw("SAME");
@@ -1395,7 +1396,7 @@ int main(int argc, char** argv){
 		h_resD[i]->Write();
 		h_resX[i]->Write();
 	}
-	for (int i = 0; i<MAXTRANC; i++){
+	for (int i = 0; i<MAXTRUNC; i++){
 		h_dedx[i]->Write();
 	}
 	h_resVSX->Write();
