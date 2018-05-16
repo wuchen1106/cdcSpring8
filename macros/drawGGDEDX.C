@@ -53,7 +53,7 @@
 
 	TH1D * h_dedx[nLayersTruncMax];
 	TF1 * fgaus = new TF1("fgaus","gaus",0,3);
-	TGraph * gr_dedxRes = new TGraph();
+	TGraphErrors * gr_dedxRes = new TGraphErrors();
 	gr_dedxRes->Set(nLayersTruncMax);
 	printf("dE/dX resolution for prototype-4 (%d layers used)\n",nLayers4GG);
 	printf("itrunc mean sigma sigma/mean chi2\n");
@@ -66,9 +66,15 @@
 		h_dedx[itrunc]->Fit("fgaus","qN0","");
 		double mean = fgaus->GetParameter(1);
 		double sigma = fgaus->GetParameter(2);
+		double sigmaErr = fgaus->GetParError(2);
 		double chi2 = fgaus->GetChisquare();
+		// FIMXE: now use histogram's mean and rms
+        sigma = h_dedx[itrunc]->GetRMS();
+        sigmaErr = h_dedx[itrunc]->GetRMSError();
+        mean = h_dedx[itrunc]->GetMean();
 		printf("%d %.3e %.3e %.3e %.3e\n",itrunc,mean,sigma,sigma/mean,chi2);
 		gr_dedxRes->SetPoint(itrunc,100.*(nLayers4GG-itrunc)/nLayers4GG,sigma/mean*100);
+		gr_dedxRes->SetPointError(itrunc,0,sigmaErr/mean*100);
 	}
 	gr_dedxRes->GetXaxis()->SetTitle("Fraction of Used Layers [%]");
 	gr_dedxRes->GetYaxis()->SetTitle("dE/dX Resolution [%]");
@@ -81,7 +87,8 @@
 	TChain * ichain  = new TChain("tree","tree");
 	ichain->Add(Form("root/eres_%d.%s.layer%d.root",runNo,runName.Data(),testLayer));
 	int    triggerNumber = 0;
-	double trackCharge[nLayers4GG];
+	double chargeOnTrack[nLayers4GG];
+	int    chargeOnTrackIndex[nLayers4GG];
 	double theCharge = 0;
 	bool   isGood = false;
 	double slx = 0;
@@ -92,7 +99,8 @@
 	ichain->SetBranchAddress("theCharge",&theCharge);
 	ichain->SetBranchAddress("isGood",&isGood);
 	for (int itrunc = 0; itrunc<nLayers4GG; itrunc++){ // assuming we kept the same number of truncation options as the number of layers
-		ichain->SetBranchAddress(Form("trackCharge%d",itrunc),&(trackCharge[itrunc]));
+		ichain->SetBranchAddress(Form("chargeOnTrack%d",itrunc),&(chargeOnTrack[itrunc]));
+		ichain->SetBranchAddress(Form("chargeOnTrackIndex%d",itrunc),&(chargeOnTrackIndex[itrunc]));
 	}
 	ichain->SetBranchAddress("slx",&slx);
 	ichain->SetBranchAddress("slz",&slz);
@@ -109,12 +117,14 @@
 	std::vector<double> * chargeList = 0;
 	std::vector<double> * lengthList = 0;
 	std::vector<int>    * triggerList = 0;
+	std::vector<int>    * indexList = 0;
 	for (int iOpt = 0; iOpt<nLayersNeededLT.size(); iOpt++){
 		int nLayersNeeded = nLayersNeededLT[iOpt];
 		int nLayersTruncMax = nLayersTruncMaxLT[iOpt];
 		if (chargeList ) delete chargeList ; chargeList  = 0;
 		if (lengthList ) delete lengthList ; lengthList  = 0;
 		if (triggerList) delete triggerList; triggerList = 0;
+		if (indexList) delete indexList; indexList = 0;
 		TString treeName = Form("t%d",nLayersNeeded);
 		TTree * otree = new TTree(treeName,treeName);
 		for (int itrunc = 0; itrunc<nLayersTruncMax; itrunc++){
@@ -124,13 +134,15 @@
 		otree->Branch("chargeList",&chargeList);
 		otree->Branch("lengthList",&lengthList);
 		otree->Branch("triggerList",&triggerList);
+		otree->Branch("indexList",&indexList);
 		chargeList = new std::vector<double>(nLayersNeeded);
 		lengthList = new std::vector<double>(nLayersNeeded);
 		triggerList = new std::vector<int>(nLayersNeeded);
+		indexList = new std::vector<int>(nLayersNeeded);
 		for (int itrunc = 0; itrunc<nLayersTruncMax; itrunc++){
 			// don't delete the histogram made in the previous optionLT: still need to keep all of them in the output ROOT file
 			// if (h_dedxLT[itrunc]) delete h_dedxLT[itrunc];
-			h_dedxLT[itrunc] = new TH1D(Form("hdedxLT%d_%d",nLayersNeeded,itrunc),Form("dE/dX of simulated track with %d hits (%.1f%% truncation)",nLayersNeeded,100.*(nLayersNeeded-itrunc)/nLayersNeeded),256,0,3);
+			h_dedxLT[itrunc] = new TH1D(Form("hdedxLT%d_%d",nLayersNeeded,itrunc),Form("dE/dX of simulated track with %d hits (%.1f%% truncation)",nLayersNeeded,100.*(nLayersNeeded-itrunc)/nLayersNeeded),512,0,3);
 		}
 
 		int nLayersGot = 0;
@@ -139,14 +151,10 @@
 			ichain->GetEntry(iEntry);
 			if (!isGood) continue;
 			for (int itrunc = 0; itrunc<nLayers4GG; itrunc++){
-				if (itrunc<nLayers4GG-1){
-					(*chargeList)[nLayersGot] = trackCharge[itrunc]-trackCharge[itrunc+1];
-				}
-				else{
-					(*chargeList)[nLayersGot] = trackCharge[itrunc];
-				}
+                (*chargeList)[nLayersGot] = chargeOnTrack[itrunc];
 				(*lengthList)[nLayersGot] = cellH*sqrt(1+slx*slx+slz*slz);
 				(*triggerList)[nLayersGot] = triggerNumber;
+				(*indexList)[nLayersGot] = chargeOnTrackIndex[itrunc];
 				nLayersGot++;
 				if (nLayersGot==nLayersNeeded){ // finished one simulated track
 					// sort from small to large
@@ -162,6 +170,9 @@
 								int itemp = (*triggerList)[i];
 								(*triggerList)[i] = (*triggerList)[j];
 								(*triggerList)[j] = itemp;
+								int itemp = (*indexList)[i];
+								(*indexList)[i] = (*indexList)[j];
+								(*indexList)[j] = itemp;
 							}
 						}
 					}
@@ -200,9 +211,13 @@
 			double sigma = fgaus->GetParameter(2);
 			double chi2 = fgaus->GetChisquare();
 			double sigmaErr = fgaus->GetParError(2);
+            // FIMXE: now use histogram's mean and rms
+			sigma = h_dedxLT[itrunc]->GetRMS();
+			sigmaErr = h_dedxLT[itrunc]->GetRMSError();
+			mean = h_dedxLT[itrunc]->GetMean();
 			printf("%d %.3e %.3e %.3e %.3e\n",itrunc,mean,sigma,sigma/mean,chi2);
 			gr_dedxResLT->SetPoint(itrunc,100.*(nLayersNeeded-itrunc)/nLayersNeeded,sigma/mean*100);
-			gr_dedxResLT->SetPointError(itrunc,0.5/nLayersNeeded,sigmaErr/mean*100);
+			gr_dedxResLT->SetPointError(itrunc,0,sigmaErr/mean*100);
 		}
 		gr_dedxResLT->SetName(Form("grdedxLT%d",nLayersNeeded));
 		gr_dedxResLT->GetXaxis()->SetTitle("Fraction of Used Layers [%]");
