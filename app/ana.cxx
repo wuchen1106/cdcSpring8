@@ -1415,6 +1415,7 @@ int main(int argc, char** argv){
 	h_aaVST->Write();
 	h_aaVSD->Write();
 	h_ggVSX->Write();
+	h_ggall->Write();
 	h_nHits->Write();
 	h_DOF->Write();
 	h_chi2->Write();
