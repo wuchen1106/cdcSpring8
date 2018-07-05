@@ -16,7 +16,7 @@ IterEnd=$6
 StartName=$7
 isLast=false
 
-layers="4" # layers to be reconstructed and [analyzed (in case of layers is not 0)]
+layers="3 4 5 6" # layers to be reconstructed and [analyzed (in case of layers is not 0)]
 
 # for tracking
 geoSetup=0 # 0 for general; 1 for finger
@@ -190,7 +190,10 @@ findVacentThread(){
 
 im1=$((IterStart-1))
 prerunname="${runName}.i${im1}"
-updateRes $runNo $StartName $prerunname 1 $averageEtrack
+for testLayer in $layers
+do
+    updateRes $runNo $StartName $prerunname 1 $averageEtrack $testLayer
+done
 for (( iter=IterStart; iter<=IterEnd; iter++ ))
 do
     if [ -e kill.$runNo.$runName ]
@@ -372,6 +375,9 @@ do
     cd ..
 
 #   updating
-    updateRes $runNo $StartName $currunname 0 $averageEtrack
+    for testLayer in $layers
+    do
+        updateRes $runNo $StartName $currunname 0 $averageEtrack $testLayer
+    done
     mv root/h_$runNo.MC.root root/h_$runNo.$prerunname.MC.root
 done

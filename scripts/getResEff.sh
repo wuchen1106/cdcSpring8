@@ -109,7 +109,7 @@ do
     else
         nHitsSMin=$nHitsSMinini
     fi
-    dir=$CDCS8WORKING_DIR/results/ResEff/$setup/$runNo
+    dir=$CDCS8WORKING_DIR/result/ResEff/$setup/$runNo
     mkdir -p $dir
     cd $dir
     echo ana $runNo $runName $layerID $xtType $maxChi2 $maxslz $nHitsMax $nHitsSMin $aaCut $geoSetup $tmaxSet $saveHists $saveEventTree

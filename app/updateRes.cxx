@@ -14,6 +14,8 @@
 #define NBIND 17
 #define STEPD 0.5
 
+double MAXFD = 6; 
+
 void printUsage(char * name);
 int doca2i(double d);
 double i2doca(int i);
@@ -34,12 +36,15 @@ int main(int argc, char** argv){
     int averageEtrack = 0;
     if (argc>=iArg+1)
 		{averageEtrack = (int)strtol(argv[iArg],NULL,10);iArg++;}
-	int xtType = 2;
+    int testLayer = 4;
     if (argc>=iArg+1)
-		{xtType = (int)strtol(argv[iArg],NULL,10);iArg++;}
+        {testLayer = (int)strtol(argv[iArg],NULL,10);iArg++;}
 	int geoSetup = 0; // 0: normal scintillator; 1: finger scintillator
     if (argc>=iArg+1)
         {geoSetup = (int)strtol(argv[iArg],NULL,10);iArg++;}
+	int xtType = 2;
+    if (argc>=iArg+1)
+		{xtType = (int)strtol(argv[iArg],NULL,10);iArg++;}
     int saveHists = 0;
     if (argc>=iArg+1)
         {saveHists = (int)strtol(argv[iArg],NULL,10);iArg++;}
@@ -64,7 +69,6 @@ int main(int argc, char** argv){
     int iEntryStop = 0;
     if (argc>=iArg+1)
         {iEntryStop = (int)strtol(argv[iArg],NULL,10);iArg++;}
-    int testLayer = 4; // FIXME: currently only check the 4th layer.
     printf("##############%s with %d Parameters##################\n",argv[0],argc);
     printf("runNo        = %d\n",runNo);
     printf("originalname = \"%s\"\n",originalname.Data());
@@ -532,15 +536,18 @@ int main(int argc, char** argv){
     }
     double avEtrackx = 0;
     double avEtrackd = 0;
+    int nCount = 0;
     for (int i = 0; i<NBIND; i++){
         double doca,Etrack;
         gr_Etrackx->GetPoint(i,doca,Etrack);
+        if (doca>MAXFD) continue;
+        nCount++;
         avEtrackx+=Etrack;
         gr_Etrackd->GetPoint(i,doca,Etrack);
         avEtrackd+=Etrack;
     }
-    avEtrackd/=NBIND;
-    avEtrackx/=NBIND;
+    avEtrackd/=nCount;
+    avEtrackx/=nCount;
     printf("avEtrackx: %.3e, avEtrackd: %.3e\n",avEtrackx,avEtrackd);
 
     for (int i = 0; i<NBIND; i++){
@@ -559,19 +566,22 @@ int main(int argc, char** argv){
     }
     double avresInix = 0;
     double avresInid = 0;
+    nCount = 0;
     for (int i = 0; i<NBIND; i++){
         double doca,resIni;
         gr_resInix->GetPoint(i,doca,resIni);
+        if (doca>MAXFD) continue;
+        nCount++;
         avresInix+=resIni;
         gr_resInid->GetPoint(i,doca,resIni);
         avresInid+=resIni;
     }
-    avresInid/=NBIND;
-    avresInix/=NBIND;
+    avresInid/=nCount;
+    avresInix/=nCount;
     printf("avresInix: %.3e, avresInid: %.3e\n",avresInix,avresInid);
 
     // save the new tracking resolution
-    TFile * ofileRes = new TFile(Form("%s/info/res.%d.%s.root",HOME.Data(),runNo,runname.Data()),"RECREATE");
+    TFile * ofileRes = new TFile(Form("%s/info/res.%d.layer%d.%s.root",HOME.Data(),runNo,testLayer,runname.Data()),"RECREATE");
     f_r->Write();
     f_l->Write();
     // FIXME: choose ini VS d or ini VS x for smearing?
@@ -615,5 +625,5 @@ double i2doca(int i){
 }
 
 void printUsage(char * name){
-    fprintf(stderr,"%s [runNo] [originalname] [runname] <[xtType: (2) sym; 1 sym+offset; 0 no; 6 sym+offset+first OT peak; 7 sym+offset+first OT peak+2segments] [geoSetup: (0), normal;1, finger] [saveHists: (0);1] [inputType: 0, Real data; 1, MC T; (2), MC X] [maxchi2 (2)] [defaultLayerID (4)] [nHitsMax (0)] [debug: 0;...] [iEntryStart (0)] [iEntryStop (0)]>\n",name);
+    fprintf(stderr,"%s [runNo] [originalname] [runname] <[isInitial (0)] [averageEtrack (0)] [testLayer] [geoSetup: (0), normal;1, finger] [xtType: (2) sym; 1 sym+offset; 0 no; 6 sym+offset+first OT peak; 7 sym+offset+first OT peak+2segments] [saveHists: (0);1] [inputType: 0, Real data; 1, MC T; (2), MC X] [maxchi2 (2)] [defaultLayerID (4)] [nHitsMax (0)] [debug: 0;...] [iEntryStart (0)] [iEntryStop (0)]>\n",name);
 }

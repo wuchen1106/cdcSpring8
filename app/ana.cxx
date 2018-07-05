@@ -23,7 +23,9 @@
 #include "header.h"
 
 #define NBINS    20
-#define MAXTRUNC 8
+#define MAXTRUNC 6
+
+double MAXFD = 6; // only count hits with DOCA smaller than 6 mm
 
 //===================Chamber Parameter============================
 double CELLH = 16; // mm
@@ -344,7 +346,9 @@ int main(int argc, char** argv){
     printf("sciHW       = %.3e\n",sciHW);
 
 	// set RECBE ADC function
-	fADC2ChargeFunction = new TF1("a2c","5.98739+2.6652*x+0.000573394*x*x-5.21769e-05*x*x*x+3.05897e-07*x*x*x*x-7.54057e-10*x*x*x*x*x+8.60252e-13*    x*x*x*x*x*x-3.68603e-16*x*x*x*x*x*x*x",-10,800);
+	//fADC2ChargeFunction = new TF1("a2c","5.98739+2.6652*x+0.000573394*x*x-5.21769e-05*x*x*x+3.05897e-07*x*x*x*x-7.54057e-10*x*x*x*x*x+8.60252e-13*    x*x*x*x*x*x-3.68603e-16*x*x*x*x*x*x*x",-10,800);
+	//fADC2ChargeFunction = new TF1("a2c","5.98739+2.6652*x",-10,800);
+	fADC2ChargeFunction = new TF1("a2c","2.0158464*x",-10,800);
 
 	//==============================================Prepare input file & output variables=================================================
     // input file
@@ -476,6 +480,7 @@ int main(int argc, char** argv){
     bool isGood = false;
     double theCharge = 0;
 	double chargeOnTrack[NLAY]; // charge along the track
+	double adcsumOnTrack[NLAY]; // ADC sum along the track
 	int    chargeOnTrackIndex[NLAY]; // index of the corresponding hit along the track
     int    nHitsT = 0;
     bool   o_hashit[2];
@@ -493,7 +498,7 @@ int main(int argc, char** argv){
     otree_events->Branch("isGood",&isGood);
     otree_events->Branch("res",&res);
     otree_events->Branch("nHitsT",&nHitsT);
-    otree_events->Branch("hashit",o_hashit,"hashit[nHitsT]/B");
+    otree_events->Branch("hashit",o_hashit,"hashit[nHitsT]/O");
     otree_events->Branch("theFD",o_theFD,"theFD[nHitsT]/D");
     otree_events->Branch("theDD",o_theDD,"theDD[nHitsT]/D");
     otree_events->Branch("theDT",o_theDT,"theDT[nHitsT]/D");
@@ -502,6 +507,7 @@ int main(int argc, char** argv){
     otree_events->Branch("theCharge",&theCharge);
     for (int i = 0; i<NLAY; i++){
         otree_events->Branch(Form("chargeOnTrack%d",i),&(chargeOnTrack[i]));
+        otree_events->Branch(Form("adcsumOnTrack%d",i),&(adcsumOnTrack[i]));
         otree_events->Branch(Form("chargeOnTrackIndex%d",i),&(chargeOnTrackIndex[i]));
     }
     otree_events->Branch("theGG",&theGG);
@@ -673,6 +679,7 @@ int main(int argc, char** argv){
 		o_hashit[1] = false;
 		for (int lid = 0; lid<NLAY; lid++){
             chargeOnTrack[lid] = 0;
+            adcsumOnTrack[lid] = 0;
             chargeOnTrackIndex[lid] = 0;
         }
         theCharge = 0; // charge in the test layer
@@ -686,14 +693,16 @@ int main(int argc, char** argv){
 			double dd = 0;
 			int status = t2d(dt,dd,fd>0);
             if ((*i_ip)[ihit]==0){ // to calculate the distance to track, only count first peaks
-                if (fabs(fd)<CELLW/2+0.5){ // along the track: distance smaller than half cell size (plus safety margin 0.5 mm)
+//                if (fabs(fd)<CELLW/2+0.5){ // along the track: distance smaller than half cell size (plus safety margin 0.5 mm)
+                if (fabs(fd)<MAXFD){ // along the track: distance smaller than half cell size (plus safety margin 0.5 mm)
                     // FIXME: should decide whether to include the boundary layers or not: slightly smaller ADC, why?
 //                    if (lid>0&&lid<NLAY-1){ // don't count the last layer: guard layer
 //                    if (lid>1&&lid<NLAY){ // don't count the first layer: guard layer
-//                    if (lid>1&&lid<NLAY-1){ // don't count the first layer and the last layer: guard layers
-                    if (lid>0&&lid<NLAY){ // count all layers
+                    if (lid>1&&lid<NLAY-1){ // don't count the first layer and the last layer: guard layers
+//                    if (lid>0&&lid<NLAY){ // count all layers
                         if (!chargeOnTrack[lid]||charge>chargeOnTrack[lid]) chargeOnTrackIndex[lid] = ihit;
                         chargeOnTrack[lid]+=charge;
+                        adcsumOnTrack[lid]+=aa;
                     }
                     if (lid==testLayer){ // in test layer hits
                         theCharge+=charge;
@@ -726,17 +735,20 @@ int main(int argc, char** argv){
 
         // Count number of layers used for charge on track
 		nLayersOnTrack = 0;
-		for (int lid = 0; lid<NLAY; lid++){
+		for (int lid = 1; lid<NLAY; lid++){
 		    if (chargeOnTrack[lid]) nLayersOnTrack++;
         }
 
 		// sort the layers by charge from small to large
-		for (int lid = 0; lid<nLayersOnTrack; lid++){
-			for (int ljd = lid+1; ljd<nLayersOnTrack; ljd++){
+		for (int lid = 1; lid<NLAY; lid++){ // ignore layer 0
+			for (int ljd = lid+1; ljd<NLAY; ljd++){
 				if (chargeOnTrack[lid]>chargeOnTrack[ljd]){
 					double temp = chargeOnTrack[lid];
 					chargeOnTrack[lid] = chargeOnTrack[ljd];
 					chargeOnTrack[ljd] = temp;
+					temp = adcsumOnTrack[lid];
+					adcsumOnTrack[lid] = adcsumOnTrack[ljd];
+					adcsumOnTrack[ljd] = temp;
 					int tempi = chargeOnTrackIndex[lid];
 					chargeOnTrackIndex[lid] = chargeOnTrackIndex[ljd];
 					chargeOnTrackIndex[ljd] = tempi;
@@ -748,14 +760,15 @@ int main(int argc, char** argv){
         for (int itrunc = 0; itrunc < MAXTRUNC; itrunc++){
             trackCharge[itrunc] = 0;
         }
-        for (int lid = 0; lid<nLayersOnTrack; lid++){
+        for (int lid = 1; lid<NLAY; lid++){
             totalCharge+=chargeOnTrack[lid];
-            if (nLayersOnTrack-1-lid>=0){
-                trackCharge[nLayersOnTrack-1-lid] = totalCharge;
+            if (NLAY-1-lid>=0&&NLAY-1-lid<MAXTRUNC){
+                trackCharge[NLAY-1-lid] = totalCharge;
             }
         }
 
         // get gg
+        theGG = 0;
         if (isGood){
             int isig = -1;
             if (o_hashit[0]) isig = 0;
@@ -763,9 +776,11 @@ int main(int argc, char** argv){
             if (isig!=-1){
                 double gg = getGG(theCharge,slx,slz);
                 h_ggVSX->Fill(o_theFD[isig],gg); // only record the gas gain VS x in the test layer
+                if (gg>theGG) theGG = gg;
             }
             double gg = getGG(trackCharge[0]/nLayersOnTrack,slx,slz);
-            h_ggall->Fill(gg); // only record the gas gain VS x in the test layer
+            h_ggall->Fill(gg);
+            trackGG = gg;
         }
 
         otree_events->Fill();
@@ -780,6 +795,17 @@ int main(int argc, char** argv){
 	for ( int iEntry = iEntryStart ; iEntry<=iEntryStop; iEntry++){
 	    otree_events->GetEntry(iEntry);
 	    if (!isGood) continue; // not successfully reconstructed
+        // get the truncated charge
+        double totalCharge = 0;
+        for (int itrunc = 0; itrunc < MAXTRUNC; itrunc++){
+            trackCharge[itrunc] = 0;
+        }
+        for (int lid = 1; lid<NLAY; lid++){
+            totalCharge+=chargeOnTrack[lid];
+            if (NLAY-1-lid>=0&&NLAY-1-lid<MAXTRUNC){
+                trackCharge[NLAY-1-lid] = totalCharge;
+            }
+        }
 		// Fill histograms if needed;
         for (int itrunc = 0; itrunc < MAXTRUNC; itrunc++){
             if (!trackCharge[itrunc]) continue;
@@ -1018,7 +1044,7 @@ int main(int argc, char** argv){
 		}
 		otree->Fill();
 		if (o_nd>100){
-			if (o_xmid<8){
+			if (o_xmid<MAXFD){
 				NusedD++;
 				averageResD+=o_dres;
 				averageRMSD+=o_drms;
@@ -1039,7 +1065,7 @@ int main(int argc, char** argv){
 			v_doff.push_back(o_doff);
 		}
 		if (o_nxh>100){
-			if (o_xmid<8){
+			if (o_xmid<MAXFD){
 				NusedX++;
 				averageResX+=o_xres;
 				averageResXErr+=o_xreserr;
