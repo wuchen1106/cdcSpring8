@@ -1,6 +1,7 @@
 {
 	TChain * ichain = new TChain("t","t");
-	ichain->Add("result/ResEff/anabest.0507.resx.root");
+	//ichain->Add("result/ResEff/anabest.0507.resx.root");
+	ichain->Add("result/ResEff/anabest.0607.resxAV.root");
 	double gg;
 	double eff;
 	double rms;
@@ -62,6 +63,7 @@
 		if (gas==0 && hv>=2450) hverr = 50;
 		else if (gas==1 && hv>=1800) hverr = 15;
 		else if (gas==2 && hv>=2000) hverr = 5;
+		hverr = 0; // don't draw HV error bar
 		double efferr_t = efferr;
 		if (!efferr_t) efferr_t = sqrt(eff*(1-eff)/N);
 		gr_eff[gas]->SetPoint(nPoints[gas],hv,eff);
@@ -73,7 +75,7 @@
 		gr_etrack[gas]->SetPoint(nPoints[gas],hv,etrack);
 		gr_etrack[gas]->SetPointError(nPoints[gas],hverr,fabs(etrack-etrack0));
 		gr_gg[gas]->SetPoint(nPoints[gas],hv,gg);
-		gr_gg[gas]->SetPointError(nPoints[gas],hverr,ggerr);
+		gr_gg[gas]->SetPointError(nPoints[gas],hverr,ggerr/sqrt(nEntries));
 		nPoints[gas]++;
 	}
 
@@ -104,7 +106,7 @@
 		int opt;
 		TAxis * yax = gr_eff[i]->GetYaxis();
 		opt = yax->GetTitleFont(); ax->SetTitleFont(opt);
-		opt = yax->GetTickLength(); ax->SetTickLength(opt);
+		//opt = yax->GetTickLength(); ax->SetTickLength(opt);
 		opt = yax->GetLabelFont(); ax->SetLabelFont(opt);
 		double optd;
 		optd = yax->GetTitleSize(); ax->SetTitleSize(optd);
