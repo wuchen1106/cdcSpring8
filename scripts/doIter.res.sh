@@ -2,7 +2,7 @@
 
 if [ $# -lt 7 ]
 then
-    echo $0 runNo runName thread_iStart nThreads istart istop [averageEtrack CHI2MAX NHITSSMIN NHITSMAX SLZMAX] 
+    echo $0 runNo runName thread_iStart nThreads istart istop [averageEtrack CHI2MAX NHITSSMIN NHITSMAX SLZMAX LAYER] 
     exit 0
 fi
 
@@ -17,10 +17,14 @@ StartName=$7
 isLast=false
 
 layers="3 4 5 6" # layers to be reconstructed and [analyzed (in case of layers is not 0)]
+if [ $# -gt 12 ]
+then
+    layers=${13}
+fi
 
 # for tracking
 geoSetup=0 # 0 for general; 1 for finger
-inputType=2 # 1 for MC; 0 for data; 2 for MC using X
+inputType=3 # 1 for MC; 0 for data; 2 for MC using X; 3 for MC using X and according to different test layers
 workType=0 # 0, fr/l_0; 1, even/odd; -1, even/odd reversed; others, all layers
 nHitsGMax=13
 t0shift0=0
@@ -73,7 +77,7 @@ echo "StartName is $StartName, runName = $runName, layers for tracking \"$layers
 echo "Is this the last iteration? $isLast"
 echo "Tracking Parameters are:"
 echo "        geoSetup = $geoSetup;  0 for general; 1 for finger"
-echo "        inputType = $inputType;  1 for MC; 0 for data"
+echo "        inputType = $inputType;  1 for MC; 0 for data; 2 for MC using X; 3 for MC using X and according to different test layers"
 echo "        workType = $workType;  0, fr/l_0; 1, even/odd; -1, even/odd reversed; others, all layers"
 echo "        nHitsGMax = $nHitsGMax; "
 echo "        t0shift0 = $t0shift0; "
@@ -234,9 +238,13 @@ do
             fi
         fi
     done
+    if [ "$nThreads" -eq 0 ]
+    then
+        echo "Cannot find any available thread!"
+        exit 1
+    fi
 
-    Njobs=0 # to count number of jobs to be finished
-    for testlayer in $layers;
+    for testLayer in $layers;
     do
         nEvents=`GetEntries $CDCS8WORKING_DIR/root/h_$runNo.root`
         nEvtPR=$((nEvents/5))
@@ -250,19 +258,20 @@ do
             then
                 istop=$((nEvents-1))
             fi
-            mc2fitinput_Chen root/ana_$runNo.$StartName.layer${testlayer}.root info/res.$runNo.$prerunname.root root/h_$runNo.${istart}-${istop}.MC.root 0 0 0 8 1 1 $istart $istop $CHI2MAX $NHITSSMIN $NHITSMAX $SLZMAX &
+            mc2fitinput_Chen root/ana_$runNo.$StartName.layer${testLayer}.root info/res.$runNo.layer${testLayer}.$prerunname.root root/h_$runNo.${istart}-${istop}.MC.root 0 0 0 8 1 1 $istart $istop $CHI2MAX $NHITSSMIN $NHITSMAX $SLZMAX &
             pids="$pids $!"
             files="$files root/h_$runNo.${istart}-${istop}.MC.root"
         done
-        wait $pids || { echo "there were errors in combining $runNo $currunname $testlayer" >&2; exit 1; }
-        if [ -e root/h_$runNo.MC.root ]
+        wait $pids || { echo "there were errors in combining $runNo $currunname $testLayer" >&2; exit 1; }
+        if [ -e root/h_$runNo.layer${testLayer}.MC.root ]
         then
-            rm root/h_$runNo.MC.root
+            rm root/h_$runNo.layer${testLayer}.MC.root
         fi
-        hadd root/h_$runNo.MC.root $files;
+        hadd root/h_$runNo.layer${testLayer}.MC.root $files;
         rm $files;
-        nEvents=`GetEntries $CDCS8WORKING_DIR/root/h_$runNo.MC.root`
+        nEvents=`GetEntries $CDCS8WORKING_DIR/root/h_$runNo.layer${testLayer}.MC.root`
         nEvtPerRun=`echo "$nEvents/($nThreads)+1" | bc`
+        Njobs=0 # to count number of jobs to be finished
         for (( iEvent=0; iEvent<nEvents; iEvent+=nEvtPerRun ))
         do
             ((Njobs++))
@@ -272,7 +281,7 @@ do
             then
                 iEntryStop=$((nEvents-1))
             fi
-            jobname="${runNo}.${currunname}.$iEntryStart-$iEntryStop.layer${testlayer}"
+            jobname="${runNo}.${currunname}.$iEntryStart-$iEntryStop.layer${testLayer}"
             echo "checking job \"$jobname\""
             file="root/t_${jobname}.log"
             if [ -e $file ]
@@ -290,7 +299,7 @@ do
                 echo "  logfile \"$file\" doesn't exist, so generate a new job!"
             fi
             temprunname="${currunname}.$iEntryStart-$iEntryStop"
-            tempconfig="    $runNo $testlayer $StartName $temprunname $nHitsGMax $t0shift0 $t0shift1 $tmin $tmax $geoSetup $sumCut $aaCut $iEntryStart $iEntryStop $workType $inputType $peakType"
+            tempconfig="    $runNo $testLayer $StartName $temprunname $nHitsGMax $t0shift0 $t0shift1 $tmin $tmax $geoSetup $sumCut $aaCut $iEntryStart $iEntryStop $workType $inputType $peakType"
             findVacentThread
             if [ $? -eq 1 ]
             then
@@ -304,80 +313,80 @@ do
             echo "    found new thread available $theConf"
             echo "$tempconfig" > $theConf # send the trigger info to the job
         done
-    done
-    echo "Starting iteration $iter, $Njobs jobs to be finished!"
+        echo "Starting iteration $iter for layer $testLayer, $Njobs jobs to be finished!"
 
-    allfinished=false
-    for (( i=0; i<3600; i++ )) #3600*10 sec = 10 hours running
-    do
+        allfinished=false
+        for (( i=0; i<3600; i++ )) #3600*10 sec = 10 hours running
+        do
+            if [ -e kill.$runNo.$runName ]
+            then
+                echo "Killed by user!"
+                exit 0
+            fi
+            sleep 10
+            echo -n "$i "
+            finished=true
+            thefile=""
+            NjobsFinished=0
+            for file in root/t_${runNo}.${currunname}.*.log
+            do
+                if [ ! -e $file ]
+                then
+                    echo "WARNING: file \"$file\" doesn't exist"
+                    continue
+                fi
+                if ! tail -n 3 $file | grep -q "Good Events"
+                then
+                    finished=false
+                    thefile=$file
+                else
+                    ((NjobsFinished++))
+                fi
+            done
+            if [ $NjobsFinished -lt $Njobs ]
+            then
+                finished=false
+            fi
+            if $finished
+            then
+                echo "#Iteration $iter finished"
+                allfinished=true
+                break
+            else
+                echo -n "$NjobsFinished/$Njobs jobs finihsed, "
+                if [ -z $thefile ]
+                then
+                    echo ""
+                else
+                    echo -n $thefile:
+                    tail -n 1 $thefile
+                fi
+            fi
+        done
+        if [ ! $allfinished ]
+        then
+            echo "ERROR! iteration $iter still not finished after 10 hours!"
+            exit 1
+        fi
+
         if [ -e kill.$runNo.$runName ]
         then
             echo "Killed by user!"
             exit 0
         fi
-        sleep 10
-        echo -n "$i "
-        finished=true
-        thefile=""
-        NjobsFinished=0
-        for file in root/t_${runNo}.${currunname}.*.log
-        do
-            if [ ! -e $file ]
-            then
-                echo "WARNING: file \"$file\" doesn't exist"
-                continue
-            fi
-            if ! tail -n 3 $file | grep -q "Good Events"
-            then
-                finished=false
-                thefile=$file
-            else
-                ((NjobsFinished++))
-            fi
-        done
-        if [ $NjobsFinished -lt $Njobs ]
-        then
-            finished=false
-        fi
-        if $finished
-        then
-            echo "#Iteration $iter finished"
-            allfinished=true
-            break
-        else
-            echo -n "$NjobsFinished/$Njobs jobs finihsed, "
-            if [ -z $thefile ]
-            then
-                echo ""
-            else
-                echo -n $thefile:
-                tail -n 1 $thefile
-            fi
-        fi
+
+        cd root/
+        combine $runNo $currunname $nEvtPerRun h_$runNo.layer${testLayer}.MC.root $testLayer &
+        pids="$!"
+        wait $pids || { echo "there were errors in combining $runNo $currunname" >&2; exit 1; }
+        rm -f t_${runNo}.${currunname}.*-*.*
+        cd ..
     done
-    if [ ! $allfinished ]
-    then
-        echo "ERROR! iteration $iter still not finished after 10 hours!"
-        exit 1
-    fi
-
-    if [ -e kill.$runNo.$runName ]
-    then
-        echo "Killed by user!"
-        exit 0
-    fi
-
-    cd root/
-    combine $runNo $currunname $nEvtPerRun h_$runNo.MC.root &
-    pids="$!"
-    wait $pids || { echo "there were errors in combining $runNo $currunname" >&2; exit 1; }
-    rm -f t_${runNo}.${currunname}.*-*.*
-    cd ..
 
 #   updating
     for testLayer in $layers
     do
         updateRes $runNo $StartName $currunname 0 $averageEtrack $testLayer
     done
-    mv root/h_$runNo.MC.root root/h_$runNo.$prerunname.MC.root
+    mv root/h_$runNo.layer${testLayer}.MC.root root/h_$runNo.layer${testLayer}.$prerunname.MC.root
 done

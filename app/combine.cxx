@@ -25,6 +25,14 @@ int main(int argc, char ** argv){
         iLayerStart = theLayer;
         iLayerStop = theLayer;
     }
+
+    printf("##############%s with %d Parameters##################\n",argv[0],argc);
+    printf("runNo       = %d\n",runNo);
+    printf("runname     = %s\n",runname.Data());
+    printf("nPerRun     = %d\n",nPerRun);
+    printf("original    = %s\n",originalFile.Data());
+    printf("layers      = %d~%d\n",iLayerStart,iLayerStop);
+
     for (int iLayer = iLayerStart; iLayer<=iLayerStop; iLayer++){
         TChain * c = new TChain("t");
         if (nPerRun){

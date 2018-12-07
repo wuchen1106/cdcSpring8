@@ -1,4 +1,5 @@
 #!/bin/bash
+bestRuns="bestRuns"
 
 keyword=""
 if [ $# -gt 0 ]
@@ -57,7 +58,7 @@ do
     runName=`echo $file | sed 's/root\/ana_\(\w*\)\.\(.*\)\.layer\(\w\)\.root/\2/'`
     runNo=`echo $file | sed 's/root\/ana_\(\w*\)\..*a\(\w*\)n\(\w*\).*\.i\w*.layer\(\w\)\.root/\1/'`
     aaCut=`echo $file | sed 's/root\/ana_\(\w*\)\..*a\(\w*\)n\(\w*\).*\.i\w*.layer\(\w\)\.root/\2/'`
-    if grep -q "_$runNo.$runName\." $CDCS8WORKING_DIR/bestRuns
+    if grep -q "_$runNo.$runName\." $CDCS8WORKING_DIR/$bestRuns
     then
         echo "found $runNo.$runName"
     else

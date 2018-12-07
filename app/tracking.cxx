@@ -450,7 +450,9 @@ int main(int argc, char** argv){
 
     //===================Get input ROOT file============================
     TChain * c = new TChain("t","t");
-    if (inputType==2)
+    if (inputType==3)
+        c->Add(HOME+Form("/root/h_%d.layer%d.MC.root",runNo,testlayer));
+    else if (inputType==2)
         c->Add(HOME+Form("/root/h_%d.MC.root",runNo));
     else
         c->Add(HOME+Form("/root/h_%d.root",runNo));
@@ -471,7 +473,7 @@ int main(int argc, char** argv){
     c->SetBranchAddress("nHits",&i_nHits);
     c->SetBranchAddress("driftT",&i_driftT);
     if (inputType) c->SetBranchAddress("driftDmc",&i_driftDmc);
-    if (inputType==2) c->SetBranchAddress("driftD",&i_driftD);
+    if (inputType==2||inputType==3) c->SetBranchAddress("driftD",&i_driftD);
     c->SetBranchAddress("layerID",&i_layerID);
     c->SetBranchAddress("wireID",&i_wireID);
     c->SetBranchAddress("type",&i_type); // 0 center, 1 left, 2 right, 3 guard, 4 dummy
@@ -660,7 +662,7 @@ int main(int argc, char** argv){
                 npoc = 0; // reset npoc
             prevch = mych; // record current channel ID
             int statusl,statusr; // 1:  large t; -1: small t; 0: good t
-            if (inputType!=2){
+            if (inputType!=2&&inputType!=3){
                 (*o_dxl)[ihit] = t2x(dt,lid,wid,-1,statusl);
                 (*o_dxr)[ihit] = t2x(dt,lid,wid,1,statusr);
             }
@@ -672,7 +674,7 @@ int main(int argc, char** argv){
             // R: region
             // keep the original defination
             // T: time
-            if (inputType!=2){
+            if (inputType!=2&&inputType!=3){
                 if (dt<tmin) type+=3*10;
                 else if (dt>tmax) type+=6*10;
                 else{
@@ -981,7 +983,7 @@ int getHitType(int type,bool isRight){ // see if the driftT is really out of ran
 	}
     if (peakType>1) type=type%10000; // ignoring npoc cut and mpi cut, leaving all the peaks over threshold competing
     else if (peakType) type=type%100000; // ignoring npoc cut, leaving all the peaks with mpi==0 over threshold competing
-    if (inputType==2) type==0;
+    if (inputType==2||inputType==3) type==0;
 	return type;
 }
 
@@ -1440,5 +1442,5 @@ double getError(int lid,double dt, bool isR){
 //______________________________________________________________________________
 void print_usage(char* prog_name)
 {
-    fprintf(stderr,"\t%s [runNo] [testlayer] [prerunname] [runname] <[nHitsMax] [t0shift0] [t0shift1] [tmin] [tmax] [geoSetup] [sumCut] [aaCut] [iEntryStart] [iEntryStop] [workType: 0, fr/l_0; 1, even/odd; -1, even/odd reversed; others, all layers] [inputType: 0, Data; 1: MC and use T; 2: MC and use X] [peakType] [debug] [memdebug]>\n",prog_name);
+    fprintf(stderr,"\t%s [runNo] [testlayer] [prerunname] [runname] <[nHitsMax] [t0shift0] [t0shift1] [tmin] [tmax] [geoSetup] [sumCut] [aaCut] [iEntryStart] [iEntryStop] [workType: 0, fr/l_0; 1, even/odd; -1, even/odd reversed; others, all layers] [inputType: 0, Data; 1: MC and use T; 2: MC and use X; 3: MC and use X, with specific test layer] [peakType] [debug] [memdebug]>\n",prog_name);
 }

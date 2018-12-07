@@ -54,9 +54,6 @@ int main(int argc, char** argv){
     double maxchi2 = 2;
     if (argc>=iArg+1)
         {maxchi2 = (double)strtod(argv[iArg],NULL);iArg++;}
-    int defaultLayerID = 4;
-    if (argc>=iArg+1)
-        {defaultLayerID = (int)strtol(argv[iArg],NULL,10);iArg++;}
     int nHitsMax = 0;
     if (argc>=iArg+1)
         {nHitsMax = (int)strtol(argv[iArg],NULL,10);iArg++;}
@@ -80,7 +77,6 @@ int main(int argc, char** argv){
     printf("save slice fittings? \"%s\"\n",saveHists?"yes":"no");
     printf("inputType    = %d, %s\n",inputType,inputType==0?"Real Data":"MC");
     printf("maxchi2      = %.3e\n",maxchi2);
-    printf("default layer: %d\n",defaultLayerID);
     printf("maxNhits     = %d\n",nHitsMax);
     printf("debug        = %d\n",debugLevel);
     printf("Entries:      [%d~%d]\n",iEntryStart,iEntryStop);
@@ -625,5 +621,5 @@ double i2doca(int i){
 }
 
 void printUsage(char * name){
-    fprintf(stderr,"%s [runNo] [originalname] [runname] <[isInitial (0)] [averageEtrack (0)] [testLayer] [geoSetup: (0), normal;1, finger] [xtType: (2) sym; 1 sym+offset; 0 no; 6 sym+offset+first OT peak; 7 sym+offset+first OT peak+2segments] [saveHists: (0);1] [inputType: 0, Real data; 1, MC T; (2), MC X] [maxchi2 (2)] [defaultLayerID (4)] [nHitsMax (0)] [debug: 0;...] [iEntryStart (0)] [iEntryStop (0)]>\n",name);
+    fprintf(stderr,"%s [runNo] [originalname] [runname] <[isInitial (0)] [averageEtrack (0)] [testLayer (4)] [geoSetup: (0), normal;1, finger] [xtType: (2) sym; 1 sym+offset; 0 no; 6 sym+offset+first OT peak; 7 sym+offset+first OT peak+2segments] [saveHists: (0);1] [inputType: 0, Real data; 1, MC T; (2), MC X] [maxchi2 (2)] [nHitsMax (0)] [debug: 0;...] [iEntryStart (0)] [iEntryStop (0)]>\n",name);
 }

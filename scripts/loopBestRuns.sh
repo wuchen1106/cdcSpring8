@@ -28,7 +28,10 @@ for (( i=1; i<=$NRUNS; i++ ))
 do
     runNo=`gawk -v gawk_keyword=$i 'BEGIN{i=1;}{if (i==gawk_keyword) print $3; i++;}' $bestRuns`
     runName=`gawk -v gawk_keyword=$i 'BEGIN{i=1;}{if (i==gawk_keyword) print $4"."$5; i++;}' $bestRuns`
+    runFile=`gawk -v gawk_keyword=$i 'BEGIN{i=1;}{if (i==gawk_keyword) print $6; i++;}' $bestRuns`
+    LAYER=`echo $runFile | sed 's/.*layer\(\w\).*/\1/'`
     NMAX=`echo $runName |  sed 's/.*a\(\w*\)n\(\w*\)\.i\w*/\2/'`
+    runTagthis=${runTag}tl$LAYER
 
     found=false;
     for setuplist in $CDCS8WORKING_DIR/Input/list.C*.*;
@@ -62,7 +65,7 @@ do
         NMIN=7
     fi
 
-    doIter.res.sh $runNo $runTag 0 400 1 5 $runName $averageEtrack $CHI2MAX $NMIN $NMAX $SLZMAX > $CDCS8WORKING_DIR/res.$runNo.$runTag 2>&1 &
+    doIter.res.sh $runNo $runTagthis 0 400 1 5 $runName $averageEtrack $CHI2MAX $NMIN $NMAX $SLZMAX $LAYER > $CDCS8WORKING_DIR/res.$runNo.$runTagthis 2>&1 &
     pids="$!"
-    wait $pids || { echo "there were errors in combining $runNo $currunname $ilayer" >&2; exit 1; }
+    wait $pids || { echo "there were errors in doIter.res.sh $runNo $currunname $ilayer" >&2; exit 1; }
 done
