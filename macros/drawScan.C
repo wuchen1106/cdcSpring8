@@ -1,7 +1,23 @@
 {
+    double m_maxEff[3];
+    double m_minEff[3];
+    double m_maxRes[3];
+    double m_minRes[3];
+    m_maxEff[0] = 1.05;
+    m_minEff[0] = 0.75;
+    m_maxRes[0] = 0.6;
+    m_minRes[0] = 0.;
+    m_maxEff[1] = 1.02;
+    m_minEff[1] = 0.86;
+    m_maxRes[1] = 0.35;
+    m_minRes[1] = 0.1;
+    m_maxEff[2] = 1.0;
+    m_minEff[2] = 0.8;
+    m_maxRes[2] = 0.6;
+    m_minRes[2] = 0.2;
+
 	TChain * ichain = new TChain("t","t");
-	//ichain->Add("result/ResEff/anabest.0507.resx.root");
-	ichain->Add("result/ResEff/anabest.0607.resxAV.root");
+	ichain->Add("result/ResEff/anabest.0614.resxAV.root");
 	double gg;
 	double eff;
 	double rms;
@@ -68,12 +84,12 @@
 		if (!efferr_t) efferr_t = sqrt(eff*(1-eff)/N);
 		gr_eff[gas]->SetPoint(nPoints[gas],hv,eff);
 		gr_eff[gas]->SetPointError(nPoints[gas],hverr,efferr_t);
-		gr_rms[gas]->SetPoint(nPoints[gas],hv,rms);
-		gr_rms[gas]->SetPointError(nPoints[gas],hverr,rmserr);
-		gr_res[gas]->SetPoint(nPoints[gas],hv,res);
-		gr_res[gas]->SetPointError(nPoints[gas],hverr,fabs(res-res0));
-		gr_etrack[gas]->SetPoint(nPoints[gas],hv,etrack);
-		gr_etrack[gas]->SetPointError(nPoints[gas],hverr,fabs(etrack-etrack0));
+		gr_rms[gas]->SetPoint(nPoints[gas],hv,(rms-m_minRes[gas])*(m_maxEff[gas]-m_minEff[gas])/(m_maxRes[gas]-m_minRes[gas])+m_minEff[gas]);
+		gr_rms[gas]->SetPointError(nPoints[gas],hverr,rmserr*(m_maxEff[gas]-m_minEff[gas])/(m_maxRes[gas]-m_minRes[gas]));
+		gr_res[gas]->SetPoint(nPoints[gas],hv,(res-m_minRes[gas])*(m_maxEff[gas]-m_minEff[gas])/(m_maxRes[gas]-m_minRes[gas])+m_minEff[gas]);
+		gr_res[gas]->SetPointError(nPoints[gas],hverr,fabs(res-res0)*(m_maxEff[gas]-m_minEff[gas])/(m_maxRes[gas]-m_minRes[gas]));
+		gr_etrack[gas]->SetPoint(nPoints[gas],hv,(etrack-m_minRes[gas])*(m_maxEff[gas]-m_minEff[gas])/(m_maxRes[gas]-m_minRes[gas])+m_minEff[gas]);
+		gr_etrack[gas]->SetPointError(nPoints[gas],hverr,fabs(etrack-etrack0)*(m_maxEff[gas]-m_minEff[gas])/(m_maxRes[gas]-m_minRes[gas]));
 		gr_gg[gas]->SetPoint(nPoints[gas],hv,gg);
 		gr_gg[gas]->SetPointError(nPoints[gas],hverr,ggerr/sqrt(nEntries));
 		nPoints[gas]++;
@@ -86,12 +102,12 @@
 		gr_res[i]->Set(nPoints[i]);
 		gr_etrack[i]->Set(nPoints[i]);
 		canvas = new TCanvas();
-		gr_eff[i]->SetMarkerStyle(20);
-		gr_rms[i]->SetMarkerStyle(4);
-		gr_res[i]->SetMarkerStyle(4);
-		gr_etrack[i]->SetMarkerStyle(4);
+		gr_eff[i]->SetMarkerStyle(4);
+		gr_rms[i]->SetMarkerStyle(26);
+		gr_res[i]->SetMarkerStyle(26);
+		gr_etrack[i]->SetMarkerStyle(26);
 
-		gr_eff[i]->GetYaxis()->SetRangeUser(0,1);
+		gr_eff[i]->GetYaxis()->SetRangeUser(m_minEff[i],m_maxEff[i]);
 		//gr_eff[i]->GetYaxis()->SetTitle("Hit efficiency (500 um cut)");
 		gr_eff[i]->GetYaxis()->SetTitle("Hit efficiency");
 		gr_eff[i]->GetXaxis()->SetTitle("HV [V]");
@@ -99,14 +115,14 @@
 		gr_eff[i]->Draw("AP");
 
 		double xmax = gr_eff[i]->GetXaxis()->GetXmax();
-		double ymax = 1;
-		double ymin = 0;
-		TGaxis * ax = new TGaxis(xmax,ymin,xmax,ymax,0,1,510,"+L");
+		double ymax = m_maxEff[i];
+		double ymin = m_minEff[i];
+		TGaxis * ax = new TGaxis(xmax,ymin,xmax,ymax,m_minRes[i],m_maxRes[i],510,"+L");
 		ax->SetTitle("#sigma [mm]");
 		int opt;
 		TAxis * yax = gr_eff[i]->GetYaxis();
 		opt = yax->GetTitleFont(); ax->SetTitleFont(opt);
-		//opt = yax->GetTickLength(); ax->SetTickLength(opt);
+		opt = yax->GetTickLength(); ax->SetTickLength(opt);
 		opt = yax->GetLabelFont(); ax->SetLabelFont(opt);
 		double optd;
 		optd = yax->GetTitleSize(); ax->SetTitleSize(optd);
