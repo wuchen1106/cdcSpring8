@@ -1,4 +1,4 @@
-#include "XTAnalyzer.h"
+#include "XTAnalyzer.hxx"
 
 #include "TCanvas.h"
 #include "TF1.h"

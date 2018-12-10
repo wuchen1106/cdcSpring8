@@ -9,7 +9,7 @@
 #include "TGraph.h"
 #include "TH1D.h"
 
-#include "header.h"
+#include "header.hxx"
 
 #define NBIND 17
 #define STEPD 0.5

@@ -1,7 +1,11 @@
 #include <vector>
-#include <stdlib.h>
-#include <stdio.h>
+#include <string>
+#include <map>
 #include <math.h>
+#include <stdio.h>  /* printf, fgets */
+#include <unistd.h> /* getopt */
+#include <stdlib.h> /* atoi, atof */
+#include <iostream> /* cout */
 
 #include "TChain.h"
 #include "TTree.h"
@@ -14,17 +18,34 @@
 #include "TMinuit.h"
 #include "TMath.h"
 
-#include "MyProcessManager.h"
-
-#include "header.h"
+#include "MyProcessManager.hxx"
+#include "MyRuntimeParameters.hxx"
+#include "Log.hxx"
+#include "header.hxx"
 
 #define MAXPICK 8
 
-int workType = 0;
-int inputType = 0;
-int peakType = 0;
-int debug = -1;
-int memdebug = -1;
+//===================Configure Parameter============================
+int m_modulo = 100;
+int m_runNo = 0;
+TString m_prerunname = "prerun";
+TString m_runname = "currun";
+int m_iEntryStart = 0;
+int m_iEntryStop = 0;
+bool m_memdebug = false;
+TString m_configureFile = "";
+int m_testlayer = 0;
+int m_nHitsMax = 0;
+int m_t0shift0 = 0;
+int m_t0shift1 = 0;
+int m_tmin = 0;
+int m_tmax = 0;
+double m_sumCut = 0;
+double m_aaCut = 0;
+int m_geoSetup = 0; // 0: normal; 1: finger
+int m_workType = 0; // fr/l_0; 1, even/odd; -1, even/odd reversed; others, all layers
+int m_inputType = 0; // 1 for MC; 0 for data
+int m_peakType = 0; // 0, only the first peak over threshold; 1, all peaks over threshold; 2, even including shaddowed peaks
 
 //===================Chamber Parameter============================
 double U = 8; // mm
@@ -47,7 +68,6 @@ double mcp_zc[NZXP][NCEL][NCEL]; // z-x planes corresponding to the layerID of t
 double errord[NLAY][NCEL];
 
 //==================About Scintillator======================
-int geoSetup = 0; // 0: normal; 1: finger
 // normal scintillator
 double sciYup = 0;
 double sciYdown = 0;
@@ -107,7 +127,6 @@ double i_slxmc;
 double i_slzmc;
 
 //===================About tracking============================
-int testlayer = 0;
 // for track finding
 TF1 * f_x = new TF1("f_x","pol1",sciYdown,sciYup); // x VS y
 TGraphErrors * g_x = 0; // x VS y
@@ -192,94 +211,221 @@ TGraph * gr_error_left[NLAY+2];
 TGraph * gr_error_right[NLAY+2];
 
 int main(int argc, char** argv){
+    std::map<std::string, Log::ErrorPriority> namedDebugLevel;
+    std::map<std::string, Log::LogPriority> namedLogLevel;
+    int temp_testlayer = 0; bool set_testlayer = false;
+    int temp_nHitsMax = 0; bool set_nHitsMax = false;
+    int temp_t0shift0 = 0; bool set_t0shift0 = false;
+    int temp_t0shift1 = 0; bool set_t0shift1 = false;
+    int temp_tmin = 0; bool set_tmin = false;
+    int temp_tmax = 0; bool set_tmax = false;
+    double temp_sumCut = 0; bool set_sumCut = false;
+    double temp_aaCut = 0; bool set_aaCut = false;
+    int temp_geoSetup = 0; bool set_geoSetup = false;
+    int temp_workType = 0; bool set_workType = false;
+    int temp_inputType = 0; bool set_inputType = false;
+    int temp_peakType = 0; bool set_peakType = false;
+    int    opt_result;
+	while((opt_result=getopt(argc,argv,"M:R:B:E:C:t:n:x:y:l:u:s:a:g:w:i:p:V:D:"))!=-1){
+		switch(opt_result){
+			/* INPUTS */
+			case 'M':
+			    m_modulo = atoi(optarg);
+                printf("Printing modulo set to %d\n",m_modulo);
+			case 'R':
+			    m_runNo = atoi(optarg);
+                printf("Run number set to %d\n",m_runNo);
+			case 'B':
+			    m_iEntryStart = atoi(optarg);
+                printf("Starting entry index set to %d\n",m_iEntryStart);
+			case 'E':
+			    m_iEntryStop = atoi(optarg);
+                printf("Stopping entry index set to %d\n",m_iEntryStop);
+			case 'C':
+				m_configureFile = optarg;
+                printf("Using configure file \"%s\"\n",optarg);
+                break;
+			case 't':
+			    temp_testlayer = atoi(optarg);set_testlayer = true;
+                printf("Test layer set to %d\n",m_testlayer);
+			case 'n':
+			    temp_nHitsMax = atoi(optarg);set_nHitsMax = true;
+                printf("Maximum number of hits cut set to %d\n",m_nHitsMax);
+			case 'x':
+			    temp_t0shift0 = atoi(optarg);set_t0shift0 = true;
+                printf("T0 shift on board 0 set to %d\n",m_t0shift0);
+			case 'y':
+			    temp_t0shift1 = atoi(optarg);set_t0shift1 = true;
+                printf("T0 shift on board 1 set to %d\n",m_t0shift1);
+			case 'l':
+			    temp_tmin = atoi(optarg);set_tmin = true;
+                printf("Minimum time cut set to %d\n",m_tmin);
+			case 'u':
+			    temp_tmax = atoi(optarg);set_tmax = true;
+                printf("Maximum time cut set to %d\n",m_tmax);
+			case 's':
+			    temp_sumCut = atoi(optarg);set_sumCut = true;
+                printf("ADC sum over peak cut set to %d\n",m_sumCut);
+			case 'a':
+			    temp_aaCut = atoi(optarg);set_aaCut = true;
+                printf("ADC sum over all cut set to %d\n",m_aaCut);
+			case 'g':
+			    temp_geoSetup = atoi(optarg);set_geoSetup = true;
+                printf("Geometry setup set to %d\n",m_geoSetup);
+			case 'w':
+			    temp_workType = atoi(optarg);set_workType = true;
+                printf("Work type set to %d\n",m_workType);
+			case 'i':
+			    temp_inputType = atoi(optarg);set_inputType = true;
+                printf("Input type set to %d\n",m_inputType);
+			case 'p':
+			    temp_peakType = atoi(optarg);set_peakType = true;
+                printf("Peak type set to %d\n",m_peakType);
+            case 'D':
+                {
+                    // Set the debug level for a named trace.
+                    std::string arg(optarg);
+                    std::size_t sep = arg.find("=");
+                    if (sep != std::string::npos) {
+                        std::string name = arg.substr(0,sep);
+                        if (name=="Memory"||name=="memory") m_memdebug = true;
+                        std::string levelName = arg.substr(sep+1);
+                        switch (levelName[0]) {
+                            case 'e': case 'E':
+                                namedDebugLevel[name.c_str()] = Log::ErrorLevel;
+                                break;
+                            case 's': case 'S':
+                                namedDebugLevel[name.c_str()] = Log::SevereLevel;
+                                break;
+                            case 'w': case 'W':
+                                namedDebugLevel[name.c_str()] = Log::WarnLevel;
+                                break;
+                            case 'd': case 'D':
+                                namedDebugLevel[name.c_str()] = Log::DebugLevel;
+                                break;
+                            case 't': case 'T':
+                                namedDebugLevel[name.c_str()] = Log::TraceLevel;
+                                break;
+                            default:
+                                print_usage(argv[0]);
+                        }
+                    }
+                    break;
+                }
+            case 'V':
+                {
+                    // Set the debug level for a named trace.
+                    std::string arg(optarg);
+                    std::size_t sep = arg.find("=");
+                    if (sep != std::string::npos) {
+                        std::string name = arg.substr(0,sep);
+                        std::string levelName = arg.substr(sep+1);
+                        switch (levelName[0]) {
+                            case 'q': case 'Q':
+                                namedLogLevel[name.c_str()] = Log::QuietLevel;
+                                break;
+                            case 'l': case 'L':
+                                namedLogLevel[name.c_str()] = Log::LogLevel;
+                                break;
+                            case 'i': case 'I':
+                                namedLogLevel[name.c_str()] = Log::InfoLevel;
+                                break;
+                            case 'v': case 'V':
+                                namedLogLevel[name.c_str()] = Log::VerboseLevel;
+                                break;
+                            default:
+                                print_usage(argv[0]);
+                        }
+                    }
+                    break;
+                }
+			case '?':
+				printf("Wrong option! optopt=%c, optarg=%s\n", optopt, optarg);
+				break;
+			case 'h':
+			default:
+				print_usage(argv[0]);
+				return 1;
+		}
+	}
+    for (std::map<std::string,Log::ErrorPriority>::iterator i 
+            = namedDebugLevel.begin();
+            i != namedDebugLevel.end();
+            ++i) {
+        Log::SetDebugLevel(i->first.c_str(), i->second);
+    }
 
-    if (argc<5){
-        print_usage(argv[0]);
-        return 1;
+    for (std::map<std::string,Log::LogPriority>::iterator i 
+            = namedLogLevel.begin();
+            i != namedLogLevel.end();
+            ++i) {
+        Log::SetLogLevel(i->first.c_str(), i->second);
     }
-    int runNo = (int)strtol(argv[1],NULL,10);
-    testlayer = (int)strtol(argv[2],NULL,10);
-    TString prerunname = argv[3];
-    TString runname = argv[4];
-    int nHitsMax = 10;
-    if (argc>=6){
-        nHitsMax = (int)strtol(argv[5],NULL,10);
+
+    if (m_configureFile!=""){
+        MyRuntimeParameters::Get().ReadParamOverrideFile(m_configureFile);
+        m_geoSetup = MyRuntimeParameters::Get().GetParameterI("tracking.geoSetup");
+        m_testlayer = MyRuntimeParameters::Get().GetParameterI("tracking.testlayer");
+        m_nHitsMax = MyRuntimeParameters::Get().GetParameterI("tracking.nHitsMax");
+        m_t0shift0 = MyRuntimeParameters::Get().GetParameterI("tracking.t0shift0");
+        m_t0shift1 = MyRuntimeParameters::Get().GetParameterI("tracking.t0shift1");
+        m_tmin = MyRuntimeParameters::Get().GetParameterI("tracking.tmin");
+        m_tmax = MyRuntimeParameters::Get().GetParameterI("tracking.tmax");
+        m_sumCut = MyRuntimeParameters::Get().GetParameterD("tracking.sumCut");
+        m_aaCut = MyRuntimeParameters::Get().GetParameterD("tracking.aaCut");
+        m_workType = MyRuntimeParameters::Get().GetParameterI("tracking.workType");;
+        m_inputType = MyRuntimeParameters::Get().GetParameterI("tracking.inputType");
+        m_peakType = MyRuntimeParameters::Get().GetParameterI("tracking.peakType");
     }
-    int t0shift0 = 0;
-    if (argc>=7) t0shift0 = (int)strtol(argv[6],NULL,10);
-    int t0shift1 = 0;
-    if (argc>=8) t0shift1 = (int)strtol(argv[7],NULL,10);
-    int tmin = -10;
-    if (argc>=9){
-        tmin = (int)strtol(argv[8],NULL,10);
+    if (set_geoSetup) m_geoSetup = temp_geoSetup;
+    if (set_testlayer) m_testlayer = temp_testlayer;
+    if (set_nHitsMax) m_nHitsMax = temp_nHitsMax;
+    if (set_t0shift0) m_t0shift0 = temp_t0shift0;
+    if (set_t0shift1) m_t0shift1 = temp_t0shift1;
+    if (set_tmin) m_tmin = temp_tmin;
+    if (set_tmax) m_tmax = temp_tmax;
+    if (set_sumCut) m_sumCut = temp_sumCut;
+    if (set_aaCut) m_aaCut = temp_aaCut;
+    if (set_workType) m_workType = temp_workType;
+    if (set_inputType) m_inputType = temp_inputType;
+    if (set_peakType) m_peakType = temp_peakType;
+
+	if (argc-optind<2){
+	    print_usage(argv[0]);
+		return -1;
     }
-    int tmax = 800;
-    if (argc>=10){
-        tmax = (int)strtol(argv[9],NULL,10);
-    }
-    if (argc>=11){
-        geoSetup = (int)strtol(argv[10],NULL,10);
-    }
-    float sumCut = 0;
-    if (argc>=12){
-        sumCut = (float)atof(argv[11]);
-    }
-    float aaCut = 0;
-    if (argc>=13){
-        aaCut = (float)atof(argv[12]);
-    }
-    int iEntryStart = 0;
-    int iEntryStop = 0;
-    if (argc>=15){
-        iEntryStart = (int)strtol(argv[13],NULL,10);
-        iEntryStop = (int)strtol(argv[14],NULL,10);
-    }
-    if (argc>=16){
-        workType = (int)strtol(argv[15],NULL,10);
-    }
-    if (argc>=17){
-        inputType = (int)strtol(argv[16],NULL,10);
-    }
-    if (argc>=18){
-        peakType = (int)strtol(argv[17],NULL,10);
-    }
-    if (argc>=19){
-        debug = (int)strtol(argv[18],NULL,10);
-    }
-    if (argc>=20){
-        memdebug = (int)strtol(argv[19],NULL,10);
-    }
+    m_prerunname = argv[optind++];
+    m_runname= argv[optind++];
+
     printf("##############%s with %d Parameters##################\n",argv[0],argc);
-    printf("runNo       = %d\n",runNo);
-    printf("test layer  = %d\n",testlayer);
-    printf("prerunname  = \"%s\"\n",prerunname.Data());
-    printf("runname     = \"%s\"\n",runname.Data());
-    printf("nHitsMax    = %d\n",nHitsMax);
-    printf("t0shift b0  = %d\n",t0shift0);
-    printf("t0shift b1  = %d\n",t0shift1);
-    printf("tmin        = %d\n",tmin);
-    printf("tmax        = %d\n",tmax);
-    printf("geoSetup:     %s\n",geoSetup==0?"normal scintillator":"finger scintillator");
-    printf("sumCut      = %f\n",sumCut);
-    printf("aaCut       = %f\n",aaCut);
-    printf("Start Entry = %d\n",iEntryStart);
-    printf("Stop Entry  = %d\n",iEntryStop);
-    printf("workType    = %d, %s\n",workType,workType==0?"all as 0":(workType==1?"even/odd":(workType==-1?"even/odd reversed":"all layers")));
-    printf("inputType   = %d, %s\n",inputType,inputType==0?"Real Data":(inputType==2?"MC X":"MC T"));
-    printf("peakType    = %d, %s\n",peakType,peakType==0?"First peak over threshold":"All peaks over threshold");
-    printf("debug       = %d\n",debug);
-    printf("memdebug    = %d\n",memdebug);
+    printf("runNo       = %d\n",m_runNo);
+    printf("prerunname  = \"%s\"\n",m_prerunname.Data());
+    printf("runname     = \"%s\"\n",m_runname.Data());
+    printf("test layer  = %d\n",m_testlayer);
+    printf("nHitsMax    = %d\n",m_nHitsMax);
+    printf("t0shift b0  = %d\n",m_t0shift0);
+    printf("t0shift b1  = %d\n",m_t0shift1);
+    printf("tmin        = %d\n",m_tmin);
+    printf("tmax        = %d\n",m_tmax);
+    printf("sumCut      = %f\n",m_sumCut);
+    printf("aaCut       = %f\n",m_aaCut);
+    printf("geoSetup:     %s\n",m_geoSetup==0?"normal scintillator":"finger scintillator");
+    printf("workType    = %d, %s\n",m_workType,m_workType==0?"all as 0":(m_workType==1?"even/odd":(m_workType==-1?"even/odd reversed":"all layers")));
+    printf("inputType   = %d, %s\n",m_inputType,m_inputType==0?"Real Data":(m_inputType==2?"MC X":"MC T"));
+    printf("peakType    = %d, %s\n",m_peakType,m_peakType==0?"First peak over threshold":"All peaks over threshold");
+    printf("Start Entry = %d\n",m_iEntryStart);
+    printf("Stop Entry  = %d\n",m_iEntryStop);
 
     TString HOME=getenv("CDCS8WORKING_DIR");
 
-    if (memdebug>0){
+    if (m_memdebug){
         pMyProcessManager = MyProcessManager::GetMyProcessManager();
         if (!pMyProcessManager) return -1;
-        std::cout<<"Memory size @"<<__LINE__<<": "<<pMyProcessManager->GetMemorySize()<<std::endl;
     }
+    MyNamedDebug("Memory","Memory size: @"<<__LINE__<<": "<<pMyProcessManager->GetMemorySize());
 
 	//===================Set scintillator geometry============================
-	if (geoSetup==0){
+	if (m_geoSetup==0){
         // normal scintillator
         sciYup = chamberCY+chamberHH+180; // mm
         sciYdown = chamberCY-chamberHH-180; 
@@ -335,7 +481,7 @@ int main(int argc, char** argv){
     }
 
     //===================Get Wire Position============================
-    TFile * TFile_wirepos = new TFile(Form("%s/info/wire-position.%d.%s.root",HOME.Data(),runNo,prerunname.Data()));
+    TFile * TFile_wirepos = new TFile(Form("%s/info/wire-position.%d.%s.root",HOME.Data(),m_runNo,m_prerunname.Data()));
     TTree * TTree_wirepos = (TTree*) TFile_wirepos->Get("t");
     int     wp_bid;
     int     wp_ch;
@@ -365,7 +511,7 @@ int main(int argc, char** argv){
             map_ch[wp_lid][wp_wid] = wp_ch;
             map_bid[wp_lid][wp_wid] = wp_bid;
             map_theta[wp_lid][wp_wid] = atan(-(wp_xhv-wp_xro)/chamberHL/2); // rotation angle w.r.t the dart plane: read out  plane; positive rotation angle point to -x direction
-            if(debug>0) printf("map_theta[%d][%d] = atan(-(%.3e-%.3e)/%.3e/2) = %.3e\n",wp_lid,wp_wid,wp_xhv,wp_xro,chamberHL,map_theta[wp_lid][wp_wid]);
+            MyNamedInfo("WireMap",Form("map_theta[%d][%d] = atan(-(%.3e-%.3e)/%.3e/2) = %.3e\n",wp_lid,wp_wid,wp_xhv,wp_xro,chamberHL,map_theta[wp_lid][wp_wid]));
         }
         else{
             fprintf(stderr,"WARNING: Entry %d in wiremap file, lid = %d wid = %d out of range (%d,%d)!\n",i,wp_lid,wp_wid,NLAY,NCEL);
@@ -407,8 +553,8 @@ int main(int argc, char** argv){
 
     //===================Prepare XT curves==============================
     printf("##############XT##################\n");
-    printf("Reading from %s/info/xt.%d.%s.root\n",HOME.Data(),runNo,prerunname.Data());
-    TFile * i_xt = new TFile(HOME+Form("/info/xt.%d.",runNo)+prerunname+".root");
+    printf("Reading from %s/info/xt.%d.%s.root\n",HOME.Data(),m_runNo,m_prerunname.Data());
+    TFile * i_xt = new TFile(HOME+Form("/info/xt.%d.",m_runNo)+m_prerunname+".root");
     for (int i = 0; i<NLAY; i++){
         f_left[i] = (TF1*) i_xt->Get(Form("fl_%d",i));
         f_right[i] = (TF1*) i_xt->Get(Form("fr_%d",i));
@@ -450,12 +596,12 @@ int main(int argc, char** argv){
 
     //===================Get input ROOT file============================
     TChain * c = new TChain("t","t");
-    if (inputType==3)
-        c->Add(HOME+Form("/root/h_%d.layer%d.MC.root",runNo,testlayer));
-    else if (inputType==2)
-        c->Add(HOME+Form("/root/h_%d.MC.root",runNo));
+    if (m_inputType==3)
+        c->Add(HOME+Form("/root/h_%d.layer%d.MC.root",m_runNo,m_testlayer));
+    else if (m_inputType==2)
+        c->Add(HOME+Form("/root/h_%d.MC.root",m_runNo));
     else
-        c->Add(HOME+Form("/root/h_%d.root",runNo));
+        c->Add(HOME+Form("/root/h_%d.root",m_runNo));
     int triggerNumber;
     std::vector<int> * i_np = 0;
     std::vector<int> * i_ip = 0;
@@ -472,8 +618,8 @@ int main(int argc, char** argv){
     c->SetBranchAddress("triggerNumber",&triggerNumber);
     c->SetBranchAddress("nHits",&i_nHits);
     c->SetBranchAddress("driftT",&i_driftT);
-    if (inputType) c->SetBranchAddress("driftDmc",&i_driftDmc);
-    if (inputType==2||inputType==3) c->SetBranchAddress("driftD",&i_driftD);
+    if (m_inputType) c->SetBranchAddress("driftDmc",&i_driftDmc);
+    if (m_inputType==2||m_inputType==3) c->SetBranchAddress("driftD",&i_driftD);
     c->SetBranchAddress("layerID",&i_layerID);
     c->SetBranchAddress("wireID",&i_wireID);
     c->SetBranchAddress("type",&i_type); // 0 center, 1 left, 2 right, 3 guard, 4 dummy
@@ -489,7 +635,7 @@ int main(int argc, char** argv){
     c->SetBranchAddress("ped",&i_ped);
     c->SetBranchAddress("sum",&i_sum);
     c->SetBranchAddress("aa",&i_aa);
-    if (inputType){
+    if (m_inputType){
 		c->SetBranchAddress("inxmc",&i_inxmc);
 		c->SetBranchAddress("inzmc",&i_inzmc);
 		c->SetBranchAddress("slxmc",&i_slxmc);
@@ -497,17 +643,17 @@ int main(int argc, char** argv){
     }
 
     //===================Prepare output ROOT file============================
-    printf("Output file: %s/root/t_%d.%s.layer%d.root\n",HOME.Data(),runNo,runname.Data(),testlayer);
-    TFile * of = new TFile(Form("%s/root/t_%d.%s.layer%d.root",HOME.Data(),runNo,runname.Data(),testlayer),"RECREATE"); 
+    printf("Output file: %s/root/t_%d.%s.layer%d.root\n",HOME.Data(),m_runNo,m_runname.Data(),m_testlayer);
+    TFile * of = new TFile(Form("%s/root/t_%d.%s.layer%d.root",HOME.Data(),m_runNo,m_runname.Data(),m_testlayer),"RECREATE"); 
     TTree * ot = new TTree("t","t");
     // from h_XXX
     ot->Branch("triggerNumber",&triggerNumber);
     ot->Branch("driftT",&i_driftT);
-    if (inputType) ot->Branch("driftDmc",&i_driftDmc);
+    if (m_inputType) ot->Branch("driftDmc",&i_driftDmc);
     ot->Branch("nHits",&i_nHits);
     ot->Branch("layerID",&i_layerID);
     ot->Branch("wireID",&i_wireID);
-    ot->Branch("type",&i_type); // in dec, [IMASTR]. I: peak index (only counting peaks over sumCut); M: peak index in a packet; A: smaller than aa cut? S: smaller than sum cut? T: -1 <tmin, 0 good, 1 >tmax; R: 0 center, 1 left, 2 right, 3 guard, 4 dummy
+    ot->Branch("type",&i_type); // in dec, [IMASTR]. I: peak index (only counting peaks over m_sumCut); M: peak index in a packet; A: smaller than aa cut? S: smaller than sum cut? T: -1 <m_tmin, 0 good, 1 >m_tmax; R: 0 center, 1 left, 2 right, 3 guard, 4 dummy
     ot->Branch("np",&i_np);
     ot->Branch("ip",&i_ip);
     ot->Branch("clk",&i_clk);
@@ -553,13 +699,13 @@ int main(int argc, char** argv){
         ot->Branch(Form("chi2a%d",iCand),&(o_chi2a[iCand]));
         ot->Branch(Form("fitD%d",iCand),&(o_fitD[iCand]));
         ot->Branch(Form("nHitsS%d",iCand),&(o_nHitsS[iCand])); // number of hits selected from finding and fed to fitting
-		if (inputType){
+		if (m_inputType){
 			ot->Branch(Form("chi2mc%d",iCand), &(o_chi2mc[iCand]));
 			ot->Branch(Form("chi2pmc%d",iCand),&(o_chi2pmc[iCand]));
 			ot->Branch(Form("chi2amc%d",iCand),&(o_chi2amc[iCand]));
 		}
     }
-	if (inputType){
+	if (m_inputType){
 		ot->Branch("inxmc",&i_inxmc);
 		ot->Branch("inzmc",&i_inzmc);
 		ot->Branch("slxmc",&i_slxmc);
@@ -595,14 +741,15 @@ int main(int argc, char** argv){
 
     //===================Tracking====================================
     Long64_t N = c->GetEntries();
-    if (!iEntryStop&&!iEntryStart){iEntryStart = 0; iEntryStop=N-1;}
-    if (memdebug>0) std::cout<<"Memory size @"<<__LINE__<<": "<<pMyProcessManager->GetMemorySize()<<std::endl;
-    for (Long64_t iEntry = iEntryStart; iEntry<=iEntryStop; iEntry++){
-        if (debug>10) printf("#####################################\n");
-        if (debug>10) printf("Entry %d\n",iEntry);
-        if (memdebug>10) std::cout<<"Memory size in "<<iEntry<<" @"<<__LINE__<<": "<<pMyProcessManager->GetMemorySize()<<std::endl;
-        else if (iEntry%100==0&&memdebug>1) std::cout<<"Memory size in "<<iEntry<<" @"<<__LINE__<<": "<<pMyProcessManager->GetMemorySize()<<std::endl;
-        if (iEntry%100==0) std::cout<<iEntry<<std::endl;
+    if (!m_iEntryStop&&!m_iEntryStart){m_iEntryStart = 0; m_iEntryStop=N-1;}
+    MyNamedDebug("Memory","Memory size: @"<<__LINE__<<": "<<pMyProcessManager->GetMemorySize());
+    for (Long64_t iEntry = m_iEntryStart; iEntry<=m_iEntryStop; iEntry++){
+        MyNamedInfo("Tracking","############ Entry "<<iEntry<<" #############");
+        MyNamedTrace("Memory","Memory size: @"<<__LINE__<<": "<<pMyProcessManager->GetMemorySize());
+        if (iEntry%m_modulo == 0){
+            MyNamedDebug("Memory","Memory size: @"<<__LINE__<<": "<<pMyProcessManager->GetMemorySize());
+            std::cout<<iEntry<<std::endl;
+        }
         c->GetEntry(iEntry);
         N_trigger++; // triggered event
 
@@ -655,14 +802,14 @@ int main(int argc, char** argv){
             int lid = (*i_layerID)[ihit];
             int wid = (*i_wireID)[ihit];
             int bid = map_bid[lid][wid];
-            (*i_driftT)[ihit]+=(bid==0?t0shift0:t0shift1); // fix driftT according to t0shift
+            (*i_driftT)[ihit]+=(bid==0?m_t0shift0:m_t0shift1); // fix driftT according to t0shift
             double dt = (*i_driftT)[ihit];
             int mych = lid*1000+wid;
             if (mych!=prevch) // new channel
                 npoc = 0; // reset npoc
             prevch = mych; // record current channel ID
             int statusl,statusr; // 1:  large t; -1: small t; 0: good t
-            if (inputType!=2&&inputType!=3){
+            if (m_inputType!=2&&m_inputType!=3){
                 (*o_dxl)[ihit] = t2x(dt,lid,wid,-1,statusl);
                 (*o_dxr)[ihit] = t2x(dt,lid,wid,1,statusr);
             }
@@ -674,9 +821,9 @@ int main(int argc, char** argv){
             // R: region
             // keep the original defination
             // T: time
-            if (inputType!=2&&inputType!=3){
-                if (dt<tmin) type+=3*10;
-                else if (dt>tmax) type+=6*10;
+            if (m_inputType!=2&&m_inputType!=3){
+                if (dt<m_tmin) type+=3*10;
+                else if (dt>m_tmax) type+=6*10;
                 else{
                     if (statusl==-1&&statusr==0) type+=1*10;
                     else if (statusl==0&&statusr==-1) type+=2*10;
@@ -690,19 +837,19 @@ int main(int argc, char** argv){
             }
             type+=npoc*100000; // number of peaks above threshold before this peak in this channel
             // S: sum of wave packet
-            if ((*i_sum)[ihit]<sumCut) type+=1*100;
+            if ((*i_sum)[ihit]<m_sumCut) type+=1*100;
             else npoc++; // over sum cut, then increment npoc
             // A: sum of full waveform
-            if ((*i_aa)[ihit]<aaCut) type+=1*1000;
+            if ((*i_aa)[ihit]<m_aaCut) type+=1*1000;
             // M: index of peak in a multi-peak wave packet
             type+=(*i_mpi)[ihit]*10000;
             // I: index of peak over sum cut in the whole waveform
             // added above // type+=npoc*100000; 
             (*i_type)[ihit] = type;
             int ttype = getHitType(type,true);
-            if (lid != testlayer&&ttype<=3){ // good hit
-                if (debug>11) printf("  Entry %d: dxl[%d][%d] = dxl[%d] = t2x(%.3e) = %.3e\n",iEntry,lid,wid,ihit,dt,(*o_dxl)[ihit]);
-                if (debug>11) printf("  Entry %d: dxr[%d][%d] = dxr[%d] = t2x(%.3e) = %.3e\n",iEntry,lid,wid,ihit,dt,(*o_dxr)[ihit]);
+            if (lid != m_testlayer&&ttype<=3){ // good hit
+                MyNamedVerbose("Tracking",Form("  Entry %d: dxl[%d][%d] = dxl[%d] = t2x(%.3e) = %.3e\n",iEntry,lid,wid,ihit,dt,(*o_dxl)[ihit]));
+                MyNamedVerbose("Tracking",Form("  Entry %d: dxr[%d][%d] = dxr[%d] = t2x(%.3e) = %.3e\n",iEntry,lid,wid,ihit,dt,(*o_dxr)[ihit]));
                 v_layer_ihit[lid].push_back(ihit);
                 nHitsG++;
             }
@@ -712,7 +859,7 @@ int main(int argc, char** argv){
         int npairs = 0;
         int prelid = -1;
         for(int lid = 1; lid<NLAY-1; lid++){
-            if (lid==testlayer||lid+1==testlayer) continue;
+            if (lid==m_testlayer||lid+1==m_testlayer) continue;
             if (v_layer_ihit[lid].size()>0&&v_layer_ihit[lid+1].size()>0){// both layers have hits
                 if (prelid+1 != lid)v_pick_lid.push_back(lid);
                 v_pick_lid.push_back(lid+1);
@@ -722,12 +869,12 @@ int main(int argc, char** argv){
             }
         }
         for (int ipick = 0; ipick<v_pick_lid.size(); ipick++){
-            if (debug>11) printf(" pick layer %d\n",v_pick_lid[ipick]);
+            MyNamedVerbose("Tracking",Form(" pick layer %d\n",v_pick_lid[ipick]));
         }
 
         // Do tracking
-        if (debug>11) printf("nHitsG = %d, npairs = %d\n",nHitsG,npairs);
-        if (nHitsG<=nHitsMax&&npairs>=3){ // need at least 3 pairs to do the fitting; number of hits should be small to control the time cost
+        MyNamedVerbose("Tracking",Form("nHitsG = %d, npairs = %d\n",nHitsG,npairs));
+        if (nHitsG<=m_nHitsMax&&npairs>=3){ // need at least 3 pairs to do the fitting; number of hits should be small to control the time cost
             N_found++;
 
             int nSelections = 0;
@@ -737,9 +884,9 @@ int main(int argc, char** argv){
             }
         }
         ot->Fill();
-        if (memdebug>10) std::cout<<"Memory size in "<<iEntry<<" @"<<__LINE__<<": "<<pMyProcessManager->GetMemorySize()<<std::endl;
+        MyNamedTrace("Memory","Memory size: @"<<__LINE__<<": "<<pMyProcessManager->GetMemorySize());
     }// end of event loop
-    if (memdebug>0) std::cout<<"Memory size @"<<__LINE__<<": "<<pMyProcessManager->GetMemorySize()<<std::endl;
+    MyNamedDebug("Memory","Memory size: @"<<__LINE__<<": "<<pMyProcessManager->GetMemorySize());
 
     ot->Write();
     of->Close();
@@ -751,10 +898,10 @@ int main(int argc, char** argv){
 
 int Tracking(int ipick,int & iselection,int iEntry){
     if (ipick == v_pick_lid.size()){ // finished picking hits
-        if (debug>11) printf(" Finished picking selection %d:\n",iselection);
-        if (memdebug>11) std::cout<<"Memory size in "<<iEntry<<" @"<<__LINE__<<": "<<pMyProcessManager->GetMemorySize()<<std::endl;
+        MyNamedVerbose("Tracking",Form(" Finished picking selection %d:\n",iselection));
+        MyNamedTrace("Memory","Memory size: @"<<__LINE__<<": "<<pMyProcessManager->GetMemorySize());
         doFitting(v_pick_lid.size(),iEntry,iselection);
-        if (memdebug>11) std::cout<<"Memory size in "<<iEntry<<" @"<<__LINE__<<": "<<pMyProcessManager->GetMemorySize()<<std::endl;
+        MyNamedTrace("Memory","Memory size: @"<<__LINE__<<": "<<pMyProcessManager->GetMemorySize());
         iselection++;
     }
     else{
@@ -762,7 +909,7 @@ int Tracking(int ipick,int & iselection,int iEntry){
         for (int i = 0; i<v_layer_ihit[lid].size(); i++){
             int ihit = v_layer_ihit[lid][i];
             int wid = (*i_wireID)[ihit];
-            if (debug>11) printf(" => pick # %d, layer %d, wire %d, hit[%d], ihit = %d\n",ipick,lid,wid,i,ihit);
+            MyNamedVerbose("Tracking",Form(" => pick # %d, layer %d, wire %d, hit[%d], ihit = %d\n",ipick,lid,wid,i,ihit));
             pick_ihit[ipick] = v_layer_ihit[lid][i];
             Tracking(ipick+1,iselection,iEntry);
         }
@@ -772,10 +919,10 @@ int Tracking(int ipick,int & iselection,int iEntry){
 
 int doFitting(int nPicks,int iEntry,int iselection){
     int ncombi = pow(2,nPicks);
-    if (debug>11) printf("  %d picked layers -> %d combinations\n",nPicks,ncombi);
+    MyNamedVerbose("Tracking",Form("  %d picked layers -> %d combinations\n",nPicks,ncombi));
     for (int icombi = 0; icombi<ncombi; icombi++){ // each combination corresponds to a unique left/right selection set
     	o_nFind++;
-        if (debug>1) printf("     combi %d\n",icombi);
+        MyNamedVerbose("Tracking",Form("     combi %d\n",icombi));
         t_lr->clear();
         t_lr->resize(i_nHits,0); // 0 is used as a default value to indicate that this hit is not picked, thus left/right unfixed
         setLRdriftD(nPicks,icombi); // for picked hits
@@ -796,7 +943,7 @@ int doFitting(int nPicks,int iEntry,int iselection){
         bool inScint = checkScintillator(2.5,iinx,islx,iinz,islz); // FIXME: need to tune
         bool fromSource = islx>-beamSlxMax&&islx<beamSlxMax&&islz>-beamSlzMax&&islz<beamSlzMax;
         int nGood = getChi2XZ(nPairs,chi2x,chi2z);
-        if (debug>11) printf("       1st RESULT: nGood = %d, inScint? %s; x=%.3e*(y-%.3e)+%.3e, chi2 = %.3e, z=%.3e*(y-%.3e)+%.3e, chi2 = %.3e\n",nGood,inScint?"yes":"no",islx,sciYup,iinx,chi2x,islz,sciYup,iinz,chi2z);
+        MyNamedVerbose("Tracking",Form("       1st RESULT: nGood = %d, inScint? %s; x=%.3e*(y-%.3e)+%.3e, chi2 = %.3e, z=%.3e*(y-%.3e)+%.3e, chi2 = %.3e\n",nGood,inScint?"yes":"no",islx,sciYup,iinx,chi2x,islz,sciYup,iinz,chi2z));
         if (!fromSource||!inScint) {f_x->SetParameters(0,0); f_z->SetParameters(0,0);}
         
         updateHitPositions(nPicks); // fix wy positions
@@ -812,7 +959,7 @@ int doFitting(int nPicks,int iEntry,int iselection){
         inScint = checkScintillator(2.5,iinx,islx,iinz,islz); // FIXME: need to tune
         fromSource = islx>-beamSlxMax&&islx<beamSlxMax&&islz>-beamSlzMax&&islz<beamSlzMax;
         nGood = getChi2XZ(nPairs,chi2x,chi2z);
-        if (debug>11) printf("       2nd RESULT: nGood = %d, inScint? %s; x=%.3e*(y-%.3e)+%.3e, chi2 = %.3e, z=%.3e*(y-%.3e)+%.3e, chi2 = %.3e\n",nGood,inScint?"yes":"no",islx,sciYup,iinx,chi2x,islz,sciYup,iinz,chi2z);
+        MyNamedVerbose("Tracking",Form("       2nd RESULT: nGood = %d, inScint? %s; x=%.3e*(y-%.3e)+%.3e, chi2 = %.3e, z=%.3e*(y-%.3e)+%.3e, chi2 = %.3e\n",nGood,inScint?"yes":"no",islx,sciYup,iinx,chi2x,islz,sciYup,iinz,chi2z));
         if (!fromSource||!inScint) {f_x->SetParameters(0,0); f_z->SetParameters(0,0);}
         
         updateHitPositions(nPicks); // fix wy positions
@@ -828,7 +975,7 @@ int doFitting(int nPicks,int iEntry,int iselection){
         inScint = checkScintillator(2.5,iinx,islx,iinz,islz); // FIXME: need to tune
         fromSource = islx>-beamSlxMax&&islx<beamSlxMax&&islz>-beamSlzMax&&islz<beamSlzMax;
         nGood = getChi2XZ(nPairs,chi2x,chi2z);
-        if (debug>11) printf("       3rd RESULT: nGood = %d, inScint? %s; x=%.3e*(y-%.3e)+%.3e, chi2 = %.3e, z=%.3e*(y-%.3e)+%.3e, chi2 = %.3e\n",nGood,inScint?"yes":"no",islx,sciYup,iinx,chi2x,islz,sciYup,iinz,chi2z);
+        MyNamedVerbose("Tracking",Form("       3rd RESULT: nGood = %d, inScint? %s; x=%.3e*(y-%.3e)+%.3e, chi2 = %.3e, z=%.3e*(y-%.3e)+%.3e, chi2 = %.3e\n",nGood,inScint?"yes":"no",islx,sciYup,iinx,chi2x,islz,sciYup,iinz,chi2z));
 
         if (inScint&&fromSource&&nGood>=3){ // good candidate
             // update calD for all hits and driftD for no-pick hits
@@ -848,7 +995,7 @@ int doFitting(int nPicks,int iEntry,int iselection){
                 double dd = (*t_driftD)[ihit];
                 int selected = 0;
                 int type = getHitType((*i_type)[ihit],calD>=0);
-                if (fabs(calD-dd)<2&&testlayer!=(*i_layerID)[ihit]&&type<=3){ // FIXME: should tune the error limit
+                if (fabs(calD-dd)<2&&m_testlayer!=(*i_layerID)[ihit]&&type<=3){ // FIXME: should tune the error limit
                 	int jhit = getHitIndex(lid,ihit);
                     if (jhit==-1){ // no previous chosen hit yet
                         selected = 1;
@@ -863,7 +1010,7 @@ int doFitting(int nPicks,int iEntry,int iselection){
                 }
                 (*t_sel)[ihit] = selected;
             }
-            if (debug>11) printf("       good! nHitsSel = %d\n",nHitsSel);
+            MyNamedVerbose("Tracking",Form("       good! nHitsSel = %d\n",nHitsSel));
             if (nHitsSel>=5){ // at least 5 hits to fit: NDF of 3-D track without field is 4
             	o_nFit++;
                 // fitting with TMinuit
@@ -890,7 +1037,7 @@ int doFitting(int nPicks,int iEntry,int iselection){
                     double dd = (*t_driftD)[ihit];
                     int selected = 0;
 					int type = getHitType((*i_type)[ihit],fitD>=0);
-                    if (fabs(fitD-dd)<1&&testlayer!=(*i_layerID)[ihit]&&type<=3){ // FIXME: should tune the error limit
+                    if (fabs(fitD-dd)<1&&m_testlayer!=(*i_layerID)[ihit]&&type<=3){ // FIXME: should tune the error limit
 						int jhit = getHitIndex(lid,ihit);
 						if (jhit==-1){ // no previous chosen hit yet
                             selected = 1;
@@ -917,12 +1064,12 @@ int doFitting(int nPicks,int iEntry,int iselection){
                     fromSource = slx>-beamSlxMax&&slx<beamSlxMax&&slz>-beamSlzMax&&slz<beamSlzMax;
                     if (inScint&&fromSource){
                         // update chi2
-                        if (inputType)
+                        if (m_inputType)
 							getchi2(chi2mc,chi2pmc,chi2amc,i_slxmc,i_inxmc,i_slzmc,i_inzmc,true);
                         getchi2(chi2i,chi2pi,chi2ai,islx,iinx,islz,iinz,true);
                         getchi2(chi2,chi2p,chi2a,slx,inx,slz,inz,true);
                         // check chi2 and see where the result fits
-                        if (debug>11) printf("         final RESULT: x=%.3e*(y-%.3e)+%.3e, z=%.3e*(y-%.3e)+%.3e, chi2i = %.3e chi2 = %.3e\n",slx,sciYup,inx,slz,sciYup,inz,chi2i,chi2);
+                        MyNamedVerbose("Tracking",Form("         final RESULT: x=%.3e*(y-%.3e)+%.3e, z=%.3e*(y-%.3e)+%.3e, chi2i = %.3e chi2 = %.3e\n",slx,sciYup,inx,slz,sciYup,inz,chi2i,chi2));
                         // at last, update driftD for unpick and unselected hits
                         for (int ihit = 0; ihit<i_nHits; ihit++){
                             int lid = (*i_layerID)[ihit];
@@ -933,13 +1080,11 @@ int doFitting(int nPicks,int iEntry,int iselection){
                                 if (fitD>0) (*t_driftD)[ihit] = (*o_dxr)[ihit];
                                 else (*t_driftD)[ihit] = (*o_dxl)[ihit];
                             }
-                            if (debug>12){
-								int type = getHitType((*i_type)[ihit],fitD>=0);
-                                if (type<=3)
-                                    printf("        %d (%d,%d) dd %.3e fd %.3e res %.3e\n",ihit,lid,wid,(*t_driftD)[ihit],fitD,fitD-(*t_driftD)[ihit]);
-                                else 
-                                    printf("              # %d (%d,%d) dd %.3e fd %.3e res %.3e\n",ihit,lid,wid,(*t_driftD)[ihit],fitD,fitD-(*t_driftD)[ihit]);
-							}
+                            int type = getHitType((*i_type)[ihit],fitD>=0);
+                            if (type<=3)
+                                MyNamedVerbose("Tracking",Form("        %d (%d,%d) dd %.3e fd %.3e res %.3e\n",ihit,lid,wid,(*t_driftD)[ihit],fitD,fitD-(*t_driftD)[ihit]));
+                            else 
+                                MyNamedVerbose("Tracking",Form("              # %d (%d,%d) dd %.3e fd %.3e res %.3e\n",ihit,lid,wid,(*t_driftD)[ihit],fitD,fitD-(*t_driftD)[ihit]));
                         }
                         checkChi2(nHitsSel,nGood,icombi,iselection);
                     }
@@ -981,9 +1126,9 @@ int getHitType(int type,bool isRight){ // see if the driftT is really out of ran
 	else{
 		if (ttype==2||ttype==5) type-=ttype*10; // r- or r+
 	}
-    if (peakType>1) type=type%10000; // ignoring npoc cut and mpi cut, leaving all the peaks over threshold competing
-    else if (peakType) type=type%100000; // ignoring npoc cut, leaving all the peaks with mpi==0 over threshold competing
-    if (inputType==2||inputType==3) type==0;
+    if (m_peakType>1) type=type%10000; // ignoring npoc cut and mpi cut, leaving all the peaks over threshold competing
+    else if (m_peakType) type=type%100000; // ignoring npoc cut, leaving all the peaks with mpi==0 over threshold competing
+    if (m_inputType==2||m_inputType==3) type==0;
 	return type;
 }
 
@@ -1043,21 +1188,21 @@ int updatePairPositions(int nPicks,int & nPairs){
         pair_wx[nPairs] = xc;
         pair_wy[nPairs] = (pick_wy[ipick+1]+pick_wy[ipick])/2.;
         pair_wz[nPairs] = zc;
-//        if (debug>11) printf("                  xc = %.3e+%.3e*sin(%.3e)/(-sin(%.3e-%.3e))+%.3e*sin(%.3e)/sin(%.3e-%.3e)\n",mcp_xc[lid][wid][wjd],dd1,theta2,theta1,theta2,dd2,theta1,theta1,theta2);
- //       if (debug>11) printf("                  zc = %.3e+%.3e*cos(%.3e)/(-sin(%.3e-%.3e))+%.3e*cos(%.3e)/sin(%.3e-%.3e)+%.3e\n",mcp_zc[lid][wid][wjd],dd1,theta2,theta1,theta2,dd2,theta1,theta1,theta2,zc_fix_slx,zc_fix_slx);
-        if (debug>11) printf("       cp[%d,%d]: w(%d,%d) i(%d,%d) dd(%f,%f) xyz(%f,%f,%f)\n",lid,ljd,wid,wjd,ihit,jhit,dd1,dd2,xc,(pick_wy[ipick+1]+pick_wy[ipick])/2.,zc);
+//      MyNamedVerbose("Tracking",Form("                  xc = %.3e+%.3e*sin(%.3e)/(-sin(%.3e-%.3e))+%.3e*sin(%.3e)/sin(%.3e-%.3e)\n",mcp_xc[lid][wid][wjd],dd1,theta2,theta1,theta2,dd2,theta1,theta1,theta2));
+ //     MyNamedVerbose("Tracking",Form("                  zc = %.3e+%.3e*cos(%.3e)/(-sin(%.3e-%.3e))+%.3e*cos(%.3e)/sin(%.3e-%.3e)+%.3e\n",mcp_zc[lid][wid][wjd],dd1,theta2,theta1,theta2,dd2,theta1,theta1,theta2,zc_fix_slx,zc_fix_slx));
+        MyNamedVerbose("Tracking",Form("       cp[%d,%d]: w(%d,%d) i(%d,%d) dd(%f,%f) xyz(%f,%f,%f)\n",lid,ljd,wid,wjd,ihit,jhit,dd1,dd2,xc,(pick_wy[ipick+1]+pick_wy[ipick])/2.,zc));
         if (zc<-chamberHL||zc>chamberHL){
-            if (debug>11) printf("       bad combination!\n");
+            MyNamedVerbose("Tracking",Form("       bad combination!\n"));
             break;
         }
         nPairs++;
     }
     if (ipick==nPicks-1){
-        if (debug>11) printf("       GOOD!\n");
+        MyNamedVerbose("Tracking",Form("       GOOD!\n"));
         return 0;
     }
     else{
-        if (debug>11) printf("       BAD @ %d!\n",ipick);
+        MyNamedVerbose("Tracking",Form("       BAD @ %d!\n",ipick));
         return 1;
     }
 }
@@ -1099,12 +1244,12 @@ int setErrors(int nPairs, bool noError){
     if (errorzMax0>4) {
         g_z->SetPointError(errorzMax0_i,0,10);
         g_x->SetPointError(errorzMax0_i,0,10);
-        if (debug>=12) printf("           setErrors pair[%d]: error x = ->10, error z = %.3e->10\n",errorzMax0_i,errorzMax0);
+        MyNamedVerbose("Tracking",Form("           setErrors pair[%d]: error x = ->10, error z = %.3e->10\n",errorzMax0_i,errorzMax0));
     }
     if (errorzMax1>4) {
         g_z->SetPointError(errorzMax1_i,0,10);
         g_x->SetPointError(errorzMax1_i,0,10);
-        if (debug>=12) printf("           setErrors pair[%d]: error x = ->10, error z = %.3e->10\n",errorzMax1_i,errorzMax1);
+        MyNamedVerbose("Tracking",Form("           setErrors pair[%d]: error x = ->10, error z = %.3e->10\n",errorzMax1_i,errorzMax1));
     }
     return 0;
 }
@@ -1117,7 +1262,7 @@ int getChi2XZ(int nPairs, double & chi2x, double & chi2z){
     for (int ipair = 0; ipair<nPairs; ipair++){
         double tchi2z = pair_wz[ipair]-f_z->Eval(pair_wy[ipair]);
         double tchi2x = pair_wx[ipair]-f_x->Eval(pair_wy[ipair]);
-        if (debug>=12) printf("           getChi2XZ pair[%d]: error x = %.3e, error z = %.3e\n",ipair,tchi2x,tchi2z);
+        MyNamedVerbose("Tracking",Form("           getChi2XZ pair[%d]: error x = %.3e, error z = %.3e\n",ipair,tchi2x,tchi2z));
 	    if (fabs(tchi2z)<4&&fabs(tchi2x)<1){ // FIXME: error limit should be tuned
             chi2z += pow(tchi2z,2);
             chi2x += pow(tchi2x,2);
@@ -1146,7 +1291,7 @@ bool checkScintillator(double saftyFactor,double inx, double slx, double inz, do
     double xbot = 1/saftyFactor*(inx+slx*(sciYdown-sciYup));
     double ztop = 1/saftyFactor*inz;
     double zbot = 1/saftyFactor*(inz+slz*(sciYdown-sciYup));
-    if (debug>12) printf("              top xz(%.3e, %.3e) bottom xz(%.3e, %.3e)\n",xtop,ztop,xbot,zbot);
+    MyNamedVerbose("Tracking",Form("              top xz(%.3e, %.3e) bottom xz(%.3e, %.3e)\n",xtop,ztop,xbot,zbot));
     if (xtop>sciHW||xtop<-sciHW||xbot>sciHW||xbot<-sciHW||ztop>sciHL||ztop<-sciHL||zbot>sciHL||zbot<-sciHL) return false;
     else return true;
 }
@@ -1157,11 +1302,11 @@ bool checkChi2(int nHitsSel, int nPairs, int icombi, int iselection){
     for (int i = 0; i<NCAND; i++){
     	issame = isSame(i);
     	if (issame){ // yes, there is a candidate with the same hits
-            if (debug>11) printf(" same with Cand#%d where chi2=%.3e\n",i,o_chi2[i]);
+            MyNamedVerbose("Tracking",Form(" same with Cand#%d where chi2=%.3e\n",i,o_chi2[i]));
 //    		if (chi2<o_chi2[i]){// better? then remove the old one
 			// FIXME: WARNING, now we rely on total chi2 including test layer hit, a slight bias
     		if (chi2a<o_chi2a[i]){// better? then remove the old one 
-                if (debug>11) printf("   better than Cand#%d\n",i);
+                MyNamedVerbose("Tracking","   better than Cand#"<<i);
     		    covered = true;
 				for (int j = i; j<NCAND-1; j++){
 					o_iselec[j] = o_iselec[j+1];
@@ -1205,7 +1350,7 @@ bool checkChi2(int nHitsSel, int nPairs, int icombi, int iselection){
 //			if ((chi2<o_chi2[i]&&nHitsSel==o_nHitsS[i])||nHitsSel>o_nHitsS[i]){ // now we only pick up one hit per layer since the XT shape in the corener is very sensitive to position/angle thus less reliable
 			// FIXME: WARNING, now we rely on total chi2 including test layer hit, a slight bias
 			if ((chi2a<o_chi2a[i]&&nHitsSel==o_nHitsS[i])||nHitsSel>o_nHitsS[i]){ // now we only pick up one hit per layer since the XT shape in the corener is very sensitive to position/angle thus less reliable
-			    if (debug>11) printf("better than Cand#%d where chi2=%.3e, nHitsS=%d\n",i,o_chi2[i],o_nHitsS[i]);
+                MyNamedVerbose("Tracking",Form("better than Cand#%d where chi2=%.3e, nHitsS=%d\n",i,o_chi2[i],o_nHitsS[i]));
 				for (int j = NCAND-1; j>i; j--){
 					o_iselec[j] = o_iselec[j-1];
 					o_icombi[j] = o_icombi[j-1];
@@ -1272,9 +1417,9 @@ bool checkChi2(int nHitsSel, int nPairs, int icombi, int iselection){
 double t2x(double time, int lid, int wid, int lr, int & status){ // 1: right; 2: right end; -1: left; -2: left end; 0 out of range
     TF1* f=0;
     int theLayer = lid;
-    if (workType==0) theLayer = 0;
-	else if (workType==1) theLayer = (lid%2==0?NLAY:NLAY+1); // even/odd
-	else if (workType==-1) theLayer = (lid%2==0?NLAY+1:NLAY); // even/odd reversed
+    if (m_workType==0) theLayer = 0;
+	else if (m_workType==1) theLayer = (lid%2==0?NLAY:NLAY+1); // even/odd
+	else if (m_workType==-1) theLayer = (lid%2==0?NLAY+1:NLAY); // even/odd reversed
     if (lr>=0){
         f = f_right[theLayer];
     }
@@ -1286,15 +1431,15 @@ double t2x(double time, int lid, int wid, int lr, int & status){ // 1: right; 2:
         status = -2;
         return 0;
     }
-    double tmax = f->GetXmax();
-    double tmin = f->GetXmin();
+    double m_tmax = f->GetXmax();
+    double m_tmin = f->GetXmin();
     status = 0;
     double dd = 0;
-    if (time>tmax){
+    if (time>m_tmax){
         status = 1;
-        dd = f->Eval(tmax);
+        dd = f->Eval(m_tmax);
     }
-    else if (time<tmin){
+    else if (time<m_tmin){
         status = -1;
         dd = 0;
     }
@@ -1334,7 +1479,7 @@ void do_fit(double sliX, double iniX,double sliZ, double iniZ){
 	arglist[0] = 1;
 	gMinuit->mnexcm("SET ERR", arglist ,1,ierflg);
 
-	//if (inputType){
+	//if (m_inputType){
 	//	iniZ = i_inzmc;
 	//	sliZ = i_slzmc;
 	//	iniX = i_inxmc;
@@ -1391,7 +1536,7 @@ void getchi2(double &f, double & cp, double & ca, double slx, double inx, double
 		double minres = 1e9;
 		bool found = false;
 		for (int ihit=0;ihit<i_nHits; ihit++) {
-			if ((*i_layerID)[ihit]!=testlayer) continue;
+			if ((*i_layerID)[ihit]!=m_testlayer) continue;
 			dfit = get_dist((*i_layerID)[ihit],(*i_wireID)[ihit],slx,inx,slz,inz);
 			int type = getHitType((*i_type)[ihit],dfit>=0);
 			if (type>3) continue;
@@ -1416,9 +1561,9 @@ double getError(int lid,double dt, bool isR){
 	double error = 0.2; // default value 200 um
 	TGraph * gr = 0;
     int theLayer = lid;
-    if (workType==0) theLayer = 0;
-	else if (workType==1) theLayer = (lid%2==0?NLAY:NLAY+1); // even/odd
-	else if (workType==-1) theLayer = (lid%2==0?NLAY+1:NLAY); // even/odd reversed
+    if (m_workType==0) theLayer = 0;
+	else if (m_workType==1) theLayer = (lid%2==0?NLAY:NLAY+1); // even/odd
+	else if (m_workType==-1) theLayer = (lid%2==0?NLAY+1:NLAY); // even/odd reversed
 	if (isR) // right side
 		gr = gr_error_right[theLayer];
 	else
@@ -1442,5 +1587,44 @@ double getError(int lid,double dt, bool isR){
 //______________________________________________________________________________
 void print_usage(char* prog_name)
 {
-    fprintf(stderr,"\t%s [runNo] [testlayer] [prerunname] [runname] <[nHitsMax] [t0shift0] [t0shift1] [tmin] [tmax] [geoSetup] [sumCut] [aaCut] [iEntryStart] [iEntryStop] [workType: 0, fr/l_0; 1, even/odd; -1, even/odd reversed; others, all layers] [inputType: 0, Data; 1: MC and use T; 2: MC and use X; 3: MC and use X, with specific test layer] [peakType] [debug] [memdebug]>\n",prog_name);
+	fprintf(stderr,"Usage %s [options] prerunname runname\n",prog_name);
+	fprintf(stderr,"[options]\n");
+	fprintf(stderr,"\t -D <name>=[error,severe,warn,debug,trace]\n");
+	fprintf(stderr,"\t\t Change the named debug level\n");
+	fprintf(stderr,"\t -V <name>=[quiet,log,info,verbose]\n");
+	fprintf(stderr,"\t\t Change the named log level\n");
+	fprintf(stderr,"\t -C <file>\n");
+	fprintf(stderr,"\t\t Set the configure file\n");
+	fprintf(stderr,"\t -M <n>\n");
+	fprintf(stderr,"\t\t Printing modulo set to n\n");
+	fprintf(stderr,"\t -R <run>\n");
+	fprintf(stderr,"\t\t Run number set to run\n");
+	fprintf(stderr,"\t -B <n>\n");
+	fprintf(stderr,"\t\t Starting entry index set to n\n");
+	fprintf(stderr,"\t -E <n>\n");
+	fprintf(stderr,"\t\t Stopping entry index set to n\n");
+    fprintf(stderr,"\t -t <t>\n");
+    fprintf(stderr,"\t\t Test layer set to t\n");
+    fprintf(stderr,"\t -n <n>\n");
+    fprintf(stderr,"\t\t Maximum number of hits cut set to n\n");
+    fprintf(stderr,"\t -x <x>\n");
+    fprintf(stderr,"\t\t T0 shift on board 0 set to x\n");
+    fprintf(stderr,"\t -y <y>\n");
+    fprintf(stderr,"\t\t T0 shift on board 1 set to y\n");
+    fprintf(stderr,"\t -l <l>\n");
+    fprintf(stderr,"\t\t Minimum time cut set to l\n");
+    fprintf(stderr,"\t -u <u>\n");
+    fprintf(stderr,"\t\t Maximum time cut set to u\n");
+    fprintf(stderr,"\t -s <s>\n");
+    fprintf(stderr,"\t\t ADC sum over peak cut set to s\n");
+    fprintf(stderr,"\t -a <a>\n");
+    fprintf(stderr,"\t\t ADC sum over all cut set to a\n");
+    fprintf(stderr,"\t -g <g>\n");
+    fprintf(stderr,"\t\t Geometry setup set to g\n");
+    fprintf(stderr,"\t -w <w>\n");
+    fprintf(stderr,"\t\t Work type set to w\n");
+    fprintf(stderr,"\t -i <i>\n");
+    fprintf(stderr,"\t\t Input type set to i\n");
+    fprintf(stderr,"\t -p <p>\n");
+    fprintf(stderr,"\t\t Peak type set to p\n");
 }

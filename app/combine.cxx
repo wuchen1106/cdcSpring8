@@ -3,7 +3,7 @@
 #include "TChain.h"
 #include "TString.h"
 
-#include "header.h"
+#include "header.hxx"
 
 int main(int argc, char ** argv){
     if (argc<3) return -1;

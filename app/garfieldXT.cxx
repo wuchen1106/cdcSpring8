@@ -6,9 +6,9 @@
 #include "TChain.h"
 #include "TFile.h"
 
-#include "XTAnalyzer.h"
+#include "XTAnalyzer.hxx"
 
-#include "header.h"
+#include "header.hxx"
 
 void printUsage(char * name);
 

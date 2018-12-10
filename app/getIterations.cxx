@@ -5,7 +5,7 @@
 #include <vector>
 #include <math.h>
 
-#include "header.h"
+#include "header.hxx"
 
 void printUsage(char * name);
 

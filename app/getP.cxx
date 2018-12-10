@@ -8,7 +8,7 @@
 #include "TString.h"
 #include "TROOT.h"
 
-#include "header.h"
+#include "header.hxx"
 
 int power2_15 = pow(2,15);
 

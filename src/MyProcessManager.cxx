@@ -1,4 +1,4 @@
-#include "MyProcessManager.h"
+#include "MyProcessManager.hxx"
 
 #include <unistd.h>
 #include <stdlib.h>

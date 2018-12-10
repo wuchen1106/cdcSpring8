@@ -1,0 +1,16 @@
+*******************************************************************************                                                                   
+tracking parameters
+*******************************************************************************                                                                   
+
+    < tracking.testlayer = 4 >
+    < tracking.nHitsMax = 30 >
+    < tracking.t0shift0 = 0  >
+    < tracking.t0shift1 = 0 >
+    < tracking.tmin = -20 >
+    < tracking.tmax = -800 >
+    < tracking.sumCut = -10 >
+    < tracking.aaCut = 0 >
+    < tracking.geoSetup = 0 > 0: normal; 1: finger
+    < tracking.workType = 0 > fr/l_0; 1, even/odd; -1, even/odd reversed; others, all layers
+    < tracking.inputType = 0 > 1 for MC; 0 for data
+    < tracking.peakType = 0 > 0, only the first peak over threshold; 1, all peaks over threshold; 2, even including shaddowed peaks

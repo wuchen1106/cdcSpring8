@@ -16,7 +16,7 @@
 #include <math.h>
 #include <stdlib.h>
 
-#include "header.h"
+#include "header.hxx"
 
 //#define PRINT_CROSSPOINTS
 

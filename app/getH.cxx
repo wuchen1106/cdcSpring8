@@ -14,7 +14,7 @@
 #include "TLine.h"
 #include "TLatex.h"
 
-#include "header.h"
+#include "header.hxx"
 
 double tscale = 0.96;
 

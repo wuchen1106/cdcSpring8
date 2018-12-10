@@ -7,9 +7,9 @@
 #include "TFile.h"
 #include "TH1D.h"
 
-#include "XTAnalyzer.h"
+#include "XTAnalyzer.hxx"
 
-#include "header.h"
+#include "header.hxx"
 
 void printUsage(char * name);
 int getHitType(int type,bool isRight);

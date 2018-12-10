@@ -20,7 +20,7 @@
 #include "TLine.h"
 #include "TLatex.h"
 
-#include "header.h"
+#include "header.hxx"
 
 #define NBINS    20
 #define MAXTRANC 5

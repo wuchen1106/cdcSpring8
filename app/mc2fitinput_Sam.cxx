@@ -8,7 +8,7 @@
 #include "TVector3.h"
 #include "TRandom1.h"
 
-#include "header.h"
+#include "header.hxx"
 
 //===================Chamber Parameter============================
 double chamberHL = 599.17/2; // mm
