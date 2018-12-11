@@ -26,26 +26,26 @@
 #define MAXPICK 8
 
 //===================Configure Parameter============================
-int m_modulo = 100;
 int m_runNo = 0;
 TString m_prerunname = "prerun";
 TString m_runname = "currun";
 int m_iEntryStart = 0;
 int m_iEntryStop = 0;
+int m_modulo = 100;
 bool m_memdebug = false;
+int m_testlayer = 4;
 TString m_configureFile = "";
-int m_testlayer = 0;
-int m_nHitsMax = 0;
+int m_nHitsMax = 30;
 int m_t0shift0 = 0;
 int m_t0shift1 = 0;
-int m_tmin = 0;
-int m_tmax = 0;
-double m_sumCut = 0;
+int m_tmin = -20;
+int m_tmax = 800;
+double m_sumCut = -10;
 double m_aaCut = 0;
 int m_geoSetup = 0; // 0: normal; 1: finger
-int m_workType = 0; // fr/l_0; 1, even/odd; -1, even/odd reversed; others, all layers
 int m_inputType = 0; // 1 for MC; 0 for data
 int m_peakType = 0; // 0, only the first peak over threshold; 1, all peaks over threshold; 2, even including shaddowed peaks
+int m_workType = 0; // fr/l_0; 1, even/odd; -1, even/odd reversed; others, all layers
 
 //===================Chamber Parameter============================
 double U = 8; // mm
@@ -211,9 +211,6 @@ TGraph * gr_error_left[NLAY+2];
 TGraph * gr_error_right[NLAY+2];
 
 int main(int argc, char** argv){
-    std::map<std::string, Log::ErrorPriority> namedDebugLevel;
-    std::map<std::string, Log::LogPriority> namedLogLevel;
-    int temp_testlayer = 0; bool set_testlayer = false;
     int temp_nHitsMax = 0; bool set_nHitsMax = false;
     int temp_t0shift0 = 0; bool set_t0shift0 = false;
     int temp_t0shift1 = 0; bool set_t0shift1 = false;
@@ -222,11 +219,14 @@ int main(int argc, char** argv){
     double temp_sumCut = 0; bool set_sumCut = false;
     double temp_aaCut = 0; bool set_aaCut = false;
     int temp_geoSetup = 0; bool set_geoSetup = false;
-    int temp_workType = 0; bool set_workType = false;
     int temp_inputType = 0; bool set_inputType = false;
     int temp_peakType = 0; bool set_peakType = false;
+    int temp_workType = 0; bool set_workType = false;
+
+    std::map<std::string, Log::ErrorPriority> namedDebugLevel;
+    std::map<std::string, Log::LogPriority> namedLogLevel;
     int    opt_result;
-	while((opt_result=getopt(argc,argv,"M:R:B:E:C:t:n:x:y:l:u:s:a:g:w:i:p:V:D:"))!=-1){
+	while((opt_result=getopt(argc,argv,"M:R:B:E:L:C:n:x:y:l:u:s:a:g:i:p:w:D:V:"))!=-1){
 		switch(opt_result){
 			/* INPUTS */
 			case 'M':
@@ -241,46 +241,46 @@ int main(int argc, char** argv){
 			case 'E':
 			    m_iEntryStop = atoi(optarg);
                 printf("Stopping entry index set to %d\n",m_iEntryStop);
+			case 'L':
+			    m_testlayer = atoi(optarg);
+                printf("Test layer set to %d\n",m_testlayer);
 			case 'C':
 				m_configureFile = optarg;
                 printf("Using configure file \"%s\"\n",optarg);
                 break;
-			case 't':
-			    temp_testlayer = atoi(optarg);set_testlayer = true;
-                printf("Test layer set to %d\n",m_testlayer);
 			case 'n':
 			    temp_nHitsMax = atoi(optarg);set_nHitsMax = true;
-                printf("Maximum number of hits cut set to %d\n",m_nHitsMax);
+                printf("Maximum number of hits cut set to %d\n",temp_nHitsMax);
 			case 'x':
 			    temp_t0shift0 = atoi(optarg);set_t0shift0 = true;
-                printf("T0 shift on board 0 set to %d\n",m_t0shift0);
+                printf("T0 shift on board 0 set to %d\n",temp_t0shift0);
 			case 'y':
 			    temp_t0shift1 = atoi(optarg);set_t0shift1 = true;
-                printf("T0 shift on board 1 set to %d\n",m_t0shift1);
+                printf("T0 shift on board 1 set to %d\n",temp_t0shift1);
 			case 'l':
 			    temp_tmin = atoi(optarg);set_tmin = true;
-                printf("Minimum time cut set to %d\n",m_tmin);
+                printf("Minimum time cut set to %d\n",temp_tmin);
 			case 'u':
 			    temp_tmax = atoi(optarg);set_tmax = true;
-                printf("Maximum time cut set to %d\n",m_tmax);
+                printf("Maximum time cut set to %d\n",temp_tmax);
 			case 's':
 			    temp_sumCut = atoi(optarg);set_sumCut = true;
-                printf("ADC sum over peak cut set to %d\n",m_sumCut);
+                printf("ADC sum over peak cut set to %d\n",temp_sumCut);
 			case 'a':
 			    temp_aaCut = atoi(optarg);set_aaCut = true;
-                printf("ADC sum over all cut set to %d\n",m_aaCut);
+                printf("ADC sum over all cut set to %d\n",temp_aaCut);
 			case 'g':
 			    temp_geoSetup = atoi(optarg);set_geoSetup = true;
-                printf("Geometry setup set to %d\n",m_geoSetup);
-			case 'w':
-			    temp_workType = atoi(optarg);set_workType = true;
-                printf("Work type set to %d\n",m_workType);
+                printf("Geometry setup set to %d\n",temp_geoSetup);
 			case 'i':
 			    temp_inputType = atoi(optarg);set_inputType = true;
-                printf("Input type set to %d\n",m_inputType);
+                printf("Input type set to %d\n",temp_inputType);
 			case 'p':
 			    temp_peakType = atoi(optarg);set_peakType = true;
-                printf("Peak type set to %d\n",m_peakType);
+                printf("Peak type set to %d\n",temp_peakType);
+			case 'w':
+			    temp_workType = atoi(optarg);set_workType = true;
+                printf("Work type set to %d\n",temp_workType);
             case 'D':
                 {
                     // Set the debug level for a named trace.
@@ -364,8 +364,9 @@ int main(int argc, char** argv){
 
     if (m_configureFile!=""){
         MyRuntimeParameters::Get().ReadParamOverrideFile(m_configureFile);
-        m_geoSetup = MyRuntimeParameters::Get().GetParameterI("tracking.geoSetup");
-        m_testlayer = MyRuntimeParameters::Get().GetParameterI("tracking.testlayer");
+        m_inputType = MyRuntimeParameters::Get().GetParameterI("inputType");
+        m_geoSetup = MyRuntimeParameters::Get().GetParameterI("geoSetup");
+        m_peakType = MyRuntimeParameters::Get().GetParameterI("peakType");
         m_nHitsMax = MyRuntimeParameters::Get().GetParameterI("tracking.nHitsMax");
         m_t0shift0 = MyRuntimeParameters::Get().GetParameterI("tracking.t0shift0");
         m_t0shift1 = MyRuntimeParameters::Get().GetParameterI("tracking.t0shift1");
@@ -374,11 +375,8 @@ int main(int argc, char** argv){
         m_sumCut = MyRuntimeParameters::Get().GetParameterD("tracking.sumCut");
         m_aaCut = MyRuntimeParameters::Get().GetParameterD("tracking.aaCut");
         m_workType = MyRuntimeParameters::Get().GetParameterI("tracking.workType");;
-        m_inputType = MyRuntimeParameters::Get().GetParameterI("tracking.inputType");
-        m_peakType = MyRuntimeParameters::Get().GetParameterI("tracking.peakType");
     }
     if (set_geoSetup) m_geoSetup = temp_geoSetup;
-    if (set_testlayer) m_testlayer = temp_testlayer;
     if (set_nHitsMax) m_nHitsMax = temp_nHitsMax;
     if (set_t0shift0) m_t0shift0 = temp_t0shift0;
     if (set_t0shift1) m_t0shift1 = temp_t0shift1;
@@ -1603,8 +1601,8 @@ void print_usage(char* prog_name)
 	fprintf(stderr,"\t\t Starting entry index set to n\n");
 	fprintf(stderr,"\t -E <n>\n");
 	fprintf(stderr,"\t\t Stopping entry index set to n\n");
-    fprintf(stderr,"\t -t <t>\n");
-    fprintf(stderr,"\t\t Test layer set to t\n");
+    fprintf(stderr,"\t -L <l>\n");
+    fprintf(stderr,"\t\t Test layer set to l\n");
     fprintf(stderr,"\t -n <n>\n");
     fprintf(stderr,"\t\t Maximum number of hits cut set to n\n");
     fprintf(stderr,"\t -x <x>\n");
@@ -1621,10 +1619,10 @@ void print_usage(char* prog_name)
     fprintf(stderr,"\t\t ADC sum over all cut set to a\n");
     fprintf(stderr,"\t -g <g>\n");
     fprintf(stderr,"\t\t Geometry setup set to g\n");
-    fprintf(stderr,"\t -w <w>\n");
-    fprintf(stderr,"\t\t Work type set to w\n");
     fprintf(stderr,"\t -i <i>\n");
     fprintf(stderr,"\t\t Input type set to i\n");
     fprintf(stderr,"\t -p <p>\n");
     fprintf(stderr,"\t\t Peak type set to p\n");
+    fprintf(stderr,"\t -w <w>\n");
+    fprintf(stderr,"\t\t Work type set to w\n");
 }

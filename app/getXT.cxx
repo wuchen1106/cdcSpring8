@@ -1,74 +1,222 @@
 #include <vector>
-#include <stdlib.h>
+#include <string>
+#include <map>
 #include <math.h>
+#include <stdio.h>  /* printf, fgets */
+#include <unistd.h> /* getopt */
+#include <stdlib.h> /* atoi, atof */
+#include <iostream> /* cout */
 
 #include "TString.h"
 #include "TChain.h"
 #include "TFile.h"
 
 #include "XTAnalyzer.hxx"
-
+#include "MyProcessManager.hxx"
+#include "MyRuntimeParameters.hxx"
+#include "Log.hxx"
 #include "header.hxx"
 
-void printUsage(char * name);
+void print_usage(char * prog_name);
 int getHitType(int type,bool isRight);
 
-int main(int argc, char** argv){
+MyProcessManager * pMyProcessManager;
 
-	//=================================================Get options========================================================
-	if (argc<4){
-	    printUsage(argv[0]);
-		return 1;
+int main(int argc, char** argv){
+	int m_runNo = 0;
+    TString m_prerunname  = "prerun";
+    TString m_runname = "currun";
+    int m_iEntryStart = 0;
+    int m_iEntryStop = 0;
+    int m_debugLevel = 0;
+    int m_modulo = 10000;
+    bool m_memdebug = false;
+    int m_saveHists = 0;
+    int m_defaultLayerID = 4;
+    TString m_configureFile = "";
+    int m_nHitsMax = 30;
+    double m_maxchi2 = 2;
+	int m_geoSetup = 0; // 0: normal scintillator; 1: finger scintillator
+    int m_inputType = 0; // 1 for MC; 0 for data
+	int m_peakType = 2; // 0, only the first peak over threshold; 1, all peaks over threshold; 2, even including shaddowed peaks
+	int m_xtType = 2;
+
+    double temp_maxchi2 = 0; bool set_maxchi2 = false;
+    int temp_nHitsMax = 0; bool set_nHitsMax = false;
+	int temp_geoSetup = 0; bool set_geoSetup = false;
+    int temp_inputType = 0; bool set_inputType = false;
+	int temp_peakType = 0; bool set_peakType = false;
+	int temp_xtType = 0; bool set_xtType = false;
+
+    std::map<std::string, Log::ErrorPriority> namedDebugLevel;
+    std::map<std::string, Log::LogPriority> namedLogLevel;
+    int    opt_result;
+	while((opt_result=getopt(argc,argv,"M:R:B:E:L:C:n:c:g:i:p:x:D:V:"))!=-1){
+		switch(opt_result){
+			/* INPUTS */
+			case 'M':
+			    m_modulo = atoi(optarg);
+                printf("Printing modulo set to %d\n",m_modulo);
+			case 'R':
+			    m_runNo = atoi(optarg);
+                printf("Run number set to %d\n",m_runNo);
+			case 'B':
+			    m_iEntryStart = atoi(optarg);
+                printf("Starting entry index set to %d\n",m_iEntryStart);
+			case 'E':
+			    m_iEntryStop = atoi(optarg);
+                printf("Stopping entry index set to %d\n",m_iEntryStop);
+			case 'L':
+			    m_defaultLayerID = atoi(optarg);
+                printf("Test layer set to %d\n",m_defaultLayerID);
+			case 'C':
+				m_configureFile = optarg;
+                printf("Using configure file \"%s\"\n",optarg);
+                break;
+			case 'n':
+			    temp_nHitsMax = atoi(optarg);set_nHitsMax = true;
+                printf("Maximum number of hits cut set to %d\n",temp_nHitsMax);
+			case 'c':
+			    temp_maxchi2 = atof(optarg);set_maxchi2 = true;
+                printf("Maximum chi2 cut set to %d\n",temp_maxchi2);
+			case 'g':
+			    temp_geoSetup = atoi(optarg);set_geoSetup = true;
+                printf("Geometry setup set to %d\n",temp_geoSetup);
+			case 'i':
+			    temp_inputType = atoi(optarg);set_inputType = true;
+                printf("Input type set to %d\n",temp_inputType);
+			case 'p':
+			    temp_peakType = atoi(optarg);set_peakType = true;
+                printf("Peak type set to %d\n",temp_peakType);
+			case 'x':
+			    temp_xtType = atoi(optarg);set_xtType = true;
+                printf("XT type set to %d\n",temp_xtType);
+            case 'D':
+                {
+                    // Set the debug level for a named trace.
+                    std::string arg(optarg);
+                    std::size_t sep = arg.find("=");
+                    if (sep != std::string::npos) {
+                        std::string name = arg.substr(0,sep);
+                        if (name=="Memory"||name=="memory") m_memdebug = true;
+                        std::string levelName = arg.substr(sep+1);
+                        switch (levelName[0]) {
+                            case 'e': case 'E':
+                                namedDebugLevel[name.c_str()] = Log::ErrorLevel;
+                                break;
+                            case 's': case 'S':
+                                namedDebugLevel[name.c_str()] = Log::SevereLevel;
+                                break;
+                            case 'w': case 'W':
+                                namedDebugLevel[name.c_str()] = Log::WarnLevel;
+                                break;
+                            case 'd': case 'D':
+                                namedDebugLevel[name.c_str()] = Log::DebugLevel;
+                                break;
+                            case 't': case 'T':
+                                namedDebugLevel[name.c_str()] = Log::TraceLevel;
+                                break;
+                            default:
+                                print_usage(argv[0]);
+                        }
+                    }
+                    break;
+                }
+            case 'V':
+                {
+                    // Set the debug level for a named trace.
+                    std::string arg(optarg);
+                    std::size_t sep = arg.find("=");
+                    if (sep != std::string::npos) {
+                        std::string name = arg.substr(0,sep);
+                        std::string levelName = arg.substr(sep+1);
+                        switch (levelName[0]) {
+                            case 'q': case 'Q':
+                                namedLogLevel[name.c_str()] = Log::QuietLevel;
+                                break;
+                            case 'l': case 'L':
+                                namedLogLevel[name.c_str()] = Log::LogLevel;
+                                break;
+                            case 'i': case 'I':
+                                namedLogLevel[name.c_str()] = Log::InfoLevel;
+                                break;
+                            case 'v': case 'V':
+                                namedLogLevel[name.c_str()] = Log::VerboseLevel;
+                                break;
+                            default:
+                                print_usage(argv[0]);
+                        }
+                    }
+                    break;
+                }
+			case '?':
+				printf("Wrong option! optopt=%c, optarg=%s\n", optopt, optarg);
+				break;
+			case 'h':
+			default:
+				print_usage(argv[0]);
+				return 1;
+		}
 	}
-	int runNo = (int)strtol(argv[1],NULL,10);
-    TString prerunname  = argv[2];
-    TString runname = argv[3];
-	int xtType = 2;
-    if (argc>=5)
-		xtType = (int)strtol(argv[4],NULL,10);
-	int geoSetup = 0; // 0: normal scintillator; 1: finger scintillator
-    if (argc>=6)
-        geoSetup = (int)strtol(argv[5],NULL,10);
-    int saveHists = 0;
-    if (argc>=7)
-        saveHists = (int)strtol(argv[6],NULL,10);
-    int inputType = 0; // by defualt it's data
-    if (argc>=8)
-        inputType = (int)strtol(argv[7],NULL,10);
-    double maxchi2 = 2;
-    if (argc>=9)
-        maxchi2 = (double)strtod(argv[8],NULL);
-    int defaultLayerID = 4;
-    if (argc>=10)
-        defaultLayerID = (int)strtol(argv[9],NULL,10);
-    int nHitsMax = 0;
-    if (argc>=11)
-        nHitsMax = (int)strtol(argv[10],NULL,10);
-    int debugLevel = 0;
-    if (argc>=12)
-        debugLevel = (int)strtol(argv[11],NULL,10);
-    int iEntryStart = 0;
-    if (argc>=13)
-        iEntryStart = (int)strtol(argv[12],NULL,10);
-    int iEntryStop = 0;
-    if (argc>=14)
-        iEntryStop = (int)strtol(argv[13],NULL,10);
+    for (std::map<std::string,Log::ErrorPriority>::iterator i 
+            = namedDebugLevel.begin();
+            i != namedDebugLevel.end();
+            ++i) {
+        Log::SetDebugLevel(i->first.c_str(), i->second);
+    }
+
+    for (std::map<std::string,Log::LogPriority>::iterator i 
+            = namedLogLevel.begin();
+            i != namedLogLevel.end();
+            ++i) {
+        Log::SetLogLevel(i->first.c_str(), i->second);
+    }
+
+    if (m_configureFile!=""){
+        MyRuntimeParameters::Get().ReadParamOverrideFile(m_configureFile);
+        m_nHitsMax = MyRuntimeParameters::Get().GetParameterI("getXT.nHitsMax");
+        m_maxchi2 = MyRuntimeParameters::Get().GetParameterD("getXT.maxchi2");
+        m_geoSetup = MyRuntimeParameters::Get().GetParameterI("geoSetup");
+        m_inputType = MyRuntimeParameters::Get().GetParameterI("inputType");
+        m_peakType = MyRuntimeParameters::Get().GetParameterI("peakType");
+        m_xtType = MyRuntimeParameters::Get().GetParameterI("getXT.xtType");;
+    }
+    if (set_nHitsMax) m_nHitsMax = temp_nHitsMax;
+    if (set_maxchi2) m_maxchi2 = temp_maxchi2;
+    if (set_geoSetup) m_geoSetup = temp_geoSetup;
+    if (set_inputType) m_inputType = temp_inputType;
+    if (set_peakType) m_peakType = temp_peakType;
+    if (set_xtType) m_xtType = temp_xtType;
+
+	if (argc-optind<2){
+	    print_usage(argv[0]);
+		return -1;
+    }
+    m_prerunname = argv[optind++];
+    m_runname= argv[optind++];
     printf("##############%s with %d Parameters##################\n",argv[0],argc);
-    printf("runNo       = %d\n",runNo);
-    printf("prerunname  = \"%s\"\n",prerunname.Data());
-    printf("runname     = \"%s\"\n",runname.Data());
-    printf("geoSetup:     %s\n",geoSetup==0?"normal scintillator":"finger scintillator");
-    printf("xtType:       %d\n",xtType);
-    printf("save slice fittings? \"%s\"\n",saveHists?"yes":"no");
-    printf("inputType   = %d, %s\n",inputType,inputType==0?"Real Data":"MC");
-    printf("maxchi2     = %.3e\n",maxchi2);
-    printf("default layer: %d\n",defaultLayerID);
-    printf("maxNhits    = %d\n",nHitsMax);
-    printf("debug       = %d\n",debugLevel);
-    printf("Entries:     [%d~%d]\n",iEntryStart,iEntryStop);
+    printf("runNo       = %d\n",m_runNo);
+    printf("prerunname  = \"%s\"\n",m_prerunname.Data());
+    printf("runname     = \"%s\"\n",m_runname.Data());
+    printf("default layer: %d\n",m_defaultLayerID);
+    printf("maxchi2     = %.3e\n",m_maxchi2);
+    printf("maxNhits    = %d\n",m_nHitsMax);
+    printf("geoSetup:     %s\n",m_geoSetup==0?"normal scintillator":"finger scintillator");
+    printf("xtType:       %d\n",m_xtType);
+    printf("inputType   = %d, %s\n",m_inputType,m_inputType==0?"Real Data":"MC");
+    printf("debug       = %d\n",m_debugLevel);
+    printf("print modulo= %d\n",m_modulo);
+    printf("save slice fittings? \"%s\"\n",m_saveHists?"yes":"no");
+    printf("Entries:     [%d~%d]\n",m_iEntryStart,m_iEntryStop);
     fflush(stdout);
 
     TString HOME=getenv("CDCS8WORKING_DIR");
+
+    if (m_memdebug){
+        pMyProcessManager = MyProcessManager::GetMyProcessManager();
+        if (!pMyProcessManager) return -1;
+    }
+    MyNamedDebug("Memory","Memory size: @"<<__LINE__<<": "<<pMyProcessManager->GetMemorySize());
 
 	//=================================================Get related info========================================================
 	// get run info
@@ -89,7 +237,7 @@ int main(int argc, char** argv){
 	t_run->SetBranchAddress("sum",&sumcut);
 	for(int i = 0; i<t_run->GetEntries(); i++){
 		t_run->GetEntry(i);
-		if (i_runNo == runNo) break;
+		if (i_runNo == m_runNo) break;
 	}
 	double npair = 17.96;
 	TString gastype = "He:C_{2}H_{4}(50:50)";
@@ -111,7 +259,7 @@ int main(int argc, char** argv){
 		timeunit/=60;
 		durationSep = strtok(NULL,sep);
 	}
-	printf("runNo#%d: %s, %d, %s, %d V, %d mV, %.0f sec\n",runNo,gastype.Data(),runGr,duration.Data(),HV,THR,durationTime);
+	printf("runNo#%d: %s, %d, %s, %d V, %d mV, %.0f sec\n",m_runNo,gastype.Data(),runGr,duration.Data(),HV,THR,durationTime);
 
 	// get offset
 	double off[NLAY][NCEL];
@@ -120,9 +268,9 @@ int main(int argc, char** argv){
 			off[lid][wid] = 0;
 		}
 	}
-	if (xtType==1||xtType==6||xtType==7){
+	if (m_xtType==1||m_xtType==6||m_xtType==7){
 		TChain * iChain_off = new TChain("t","t");
-		iChain_off->Add(Form("%s/info/offset.%d.%s.root",HOME.Data(),runNo,runname.Data()));
+		iChain_off->Add(Form("%s/info/offset.%d.%s.root",HOME.Data(),m_runNo,m_runname.Data()));
 		double i_off_delta;
 		int i_off_lid;
 		int i_off_wid;
@@ -146,7 +294,7 @@ int main(int argc, char** argv){
         	map_bid[lid][wid] = -1;
 		}
 	}
-    TFile * TFile_wirepos = new TFile(Form("%s/info/wire-position.%d.%s.root",HOME.Data(),runNo,runname.Data()));
+    TFile * TFile_wirepos = new TFile(Form("%s/info/wire-position.%d.%s.root",HOME.Data(),m_runNo,m_runname.Data()));
     TTree * TTree_wirepos = (TTree*) TFile_wirepos->Get("t");
     int     wp_bid;
     int     wp_ch;
@@ -166,10 +314,10 @@ int main(int argc, char** argv){
     TFile_wirepos->Close();
 
     // get XT file of the previous run
-    TFile * preXTFile = new TFile(Form("%s/info/xt.%d.%s.root",HOME.Data(),runNo,prerunname.Data()));
+    TFile * preXTFile = new TFile(Form("%s/info/xt.%d.%s.root",HOME.Data(),m_runNo,m_prerunname.Data()));
 
     // prepare new XT file for this run
-    TFile * newXTFile = new TFile(Form("%s/info/xt.%d.%s.root",HOME.Data(),runNo,runname.Data()),"RECREATE");
+    TFile * newXTFile = new TFile(Form("%s/info/xt.%d.%s.root",HOME.Data(),m_runNo,m_runname.Data()),"RECREATE");
     TTree * newXTTree = new TTree("t","t");
 	double mX;
 	double mT;
@@ -278,17 +426,17 @@ int main(int argc, char** argv){
 
 	//=================================================Start to get XT====================================================
 	// Prepare XTAnalyzer
-	XTAnalyzer * fXTAnalyzer = new XTAnalyzer(gasID,debugLevel);
+	XTAnalyzer * fXTAnalyzer = new XTAnalyzer(gasID,m_debugLevel);
     // Loop in layers
 	for (int testLayer = 0; testLayer<NLAY; testLayer++){
 		//----------------------------------Set input file--------------------------------------------
-        if (debugLevel>0) {printf("In Layer %d: preparing input TChain\n",testLayer);fflush(stdout);}
+        if (m_debugLevel>0) {printf("In Layer %d: preparing input TChain\n",testLayer);fflush(stdout);}
 		TChain * ichain = new TChain("t","t");
-		ichain->Add(Form("%s/root/t_%d.%s.layer%d.root",HOME.Data(),runNo,runname.Data(),testLayer));
+		ichain->Add(Form("%s/root/t_%d.%s.layer%d.root",HOME.Data(),m_runNo,m_runname.Data(),testLayer));
         ichain->GetEntries();
         Long64_t N = ichain->GetEntries();
         if (N==0){
-            fprintf(stderr,"WARNING: \"%s/root/t_%d.%s.layer%d.root\" is empty! Will ignore this layer.\n",HOME.Data(),runNo,runname.Data(),testLayer);
+            fprintf(stderr,"WARNING: \"%s/root/t_%d.%s.layer%d.root\" is empty! Will ignore this layer.\n",HOME.Data(),m_runNo,m_runname.Data(),testLayer);
             continue;
         }
         ichain->SetBranchAddress("triggerNumber",&triggerNumber);
@@ -297,7 +445,7 @@ int main(int argc, char** argv){
         ichain->SetBranchAddress("layerID",&i_layerID);
         ichain->SetBranchAddress("wireID",&i_wireID);
         ichain->SetBranchAddress("driftT",&i_driftT);
-        if (inputType) ichain->SetBranchAddress("driftDmc",&i_driftDmc);
+        if (m_inputType) ichain->SetBranchAddress("driftDmc",&i_driftDmc);
         ichain->SetBranchAddress("type",&i_type);
         ichain->SetBranchAddress("np",&i_np);
         ichain->SetBranchAddress("ip",&i_ip);
@@ -332,7 +480,7 @@ int main(int argc, char** argv){
 			ichain->SetBranchAddress(Form("chi2%d",iCand),&(chi2[iCand]));
 			ichain->SetBranchAddress(Form("chi2p%d",iCand),&(chi2p[iCand]));
 			ichain->SetBranchAddress(Form("chi2a%d",iCand),&(chi2a[iCand]));
-			if (inputType){
+			if (m_inputType){
                 ichain->SetBranchAddress(Form("chi2mc%d",iCand),&(chi2mc[iCand]));
                 ichain->SetBranchAddress(Form("chi2pmc%d",iCand),&(chi2pmc[iCand]));
                 ichain->SetBranchAddress(Form("chi2amc%d",iCand),&(chi2amc[iCand]));
@@ -340,7 +488,7 @@ int main(int argc, char** argv){
 			ichain->SetBranchAddress(Form("fitD%d",iCand),&(i_fitD[iCand]));
 			ichain->SetBranchAddress(Form("sel%d",iCand),&(i_sel[iCand]));
 		}
-		if (inputType){
+		if (m_inputType){
 			ichain->SetBranchAddress("slxmc",&slxmc);
 			ichain->SetBranchAddress("slzmc",&slzmc);
 			ichain->SetBranchAddress("inxmc",&inxmc);
@@ -349,26 +497,26 @@ int main(int argc, char** argv){
 
 		//----------------------------------Initialize the analyzer--------------------------------------------
 		int saveEvenOdd = 0; if (testLayer==4) saveEvenOdd = 1; else if (testLayer==5) saveEvenOdd = -1;
-		int statusInitialize = fXTAnalyzer->Initialize(Form("%d.%s.layer%d",runNo,runname.Data(),testLayer),testLayer,preXTFile,newXTFile,newXTTree,xtType,saveHists, testLayer==defaultLayerID, saveEvenOdd, testLayer!=0);
+		int statusInitialize = fXTAnalyzer->Initialize(Form("%d.%s.layer%d",m_runNo,m_runname.Data(),testLayer),testLayer,preXTFile,newXTFile,newXTTree,m_xtType,m_saveHists, testLayer==m_defaultLayerID, saveEvenOdd, testLayer!=0);
 		if (statusInitialize){
 			fprintf(stderr,"WARNING: something wrong with initializing XTAnalyzer for layer[%d], will ignore this layer!\n",testLayer);
 			continue;
 		}
 
 		//----------------------------------Loop in events--------------------------------------------
-        if (!iEntryStart&&!iEntryStop){
-        	iEntryStart = 0;
-        	iEntryStop = N-1;
+        if (!m_iEntryStart&&!m_iEntryStop){
+        	m_iEntryStart = 0;
+        	m_iEntryStop = N-1;
         }
-        if (debugLevel>0) {printf("Processing %d events\n",N);fflush(stdout);}
-        for ( int iEntry = iEntryStart ; iEntry<=iEntryStop; iEntry++){
-            if (iEntry%10000==0) printf("%d\n",iEntry);
-            if (debugLevel>=20) printf("Entry%d: \n",iEntry);
+        if (m_debugLevel>0) {printf("Processing %d events\n",N);fflush(stdout);}
+        for ( int iEntry = m_iEntryStart ; iEntry<=m_iEntryStop; iEntry++){
+            if (iEntry%m_modulo==0) printf("%d\n",iEntry);
+            if (m_debugLevel>=20) printf("Entry%d: \n",iEntry);
             ichain->GetEntry(iEntry);
 
 			// decide which candidate to use
 			int theCand = 0;
-			if (xtType==3){
+			if (m_xtType==3){
 				int nLateHitsMin = 1e9;
 				for (int iCand = 0; iCand<NCAND; iCand++){
 					nLateHits = 0;
@@ -390,18 +538,18 @@ int main(int argc, char** argv){
 					}
 				}
 			}
-            else if (xtType==4||xtType==5){
+            else if (m_xtType==4||m_xtType==5){
                 double minchi2 = 1e9;
                 int minNhitsS = 0;
 				for (int iCand = 0; iCand<NCAND; iCand++){
-                    if (xtType==4){
+                    if (m_xtType==4){
                         if ((minchi2>chi2a[iCand]&&minNhitsS==nHitsS[iCand])||minNhitsS<nHitsS[iCand]){
                             theCand = iCand;
                             minchi2 = chi2a[iCand];
                             minNhitsS = nHitsS[iCand];
                         }
                     }
-                    else if (xtType==5){
+                    else if (m_xtType==5){
                         if ((minchi2>chi2[iCand]&&minNhitsS==nHitsS[iCand])||minNhitsS<nHitsS[iCand]){
                             theCand = iCand;
                             minchi2 = chi2[iCand];
@@ -413,17 +561,17 @@ int main(int argc, char** argv){
 
             // ignore events with bad fitting
             if (nHitsS[theCand]<7) continue;
-			if (chi2[theCand]>maxchi2) continue;
+			if (chi2[theCand]>m_maxchi2) continue;
             //if (nHitsG>nHitsS[theCand]) continue;
-            if (geoSetup==1){
+            if (m_geoSetup==1){
                 if (fabs(inz[theCand])>24) continue;
             }
             else{
                 if (fabs(slz[theCand])>0.11) continue;
             }
-            if (nHitsMax&&nHits>nHitsMax) continue;
+            if (m_nHitsMax&&nHits>m_nHitsMax) continue;
 
-            if (debugLevel>=20) printf("  Good Event! Looping in %d hits\n",nHits);
+            if (m_debugLevel>=20) printf("  Good Event! Looping in %d hits\n",nHits);
             // find the closest hit in the test layer
             double minres = 1e9;
             bool has = false;
@@ -439,7 +587,7 @@ int main(int argc, char** argv){
             	if ((*i_sel[theCand])[ihit]==1&&(fabs(tdriftD)<0.5||fabs(tdriftD)>7.5)) hasBadHit = true;
                 if (tlayerID!=testLayer) continue;
 				int ttype = getHitType((*i_type)[ihit],tfitD>=0);
-                if ((ttype<100&&(xtType==7||xtType==6)||(xtType!=6&&xtType!=7))&&fabs(tfitD-tdriftD)<fabs(minres)){ // Should have cut for test layer! otherwise XT will not be well tuned
+                if ((ttype<100&&(m_xtType==7||m_xtType==6)||(m_xtType!=6&&m_xtType!=7))&&fabs(tfitD-tdriftD)<fabs(minres)){ // Should have cut for test layer! otherwise XT will not be well tuned
                 //if (fabs(tfitD-tdriftD)<fabs(minres)){ // no cut for test layer!
                     minres = tfitD-tdriftD;
                     wireID = (*i_wireID)[ihit];
@@ -451,16 +599,16 @@ int main(int argc, char** argv){
             if (!has) continue; // no hits found in test layer
             //if (hasBadHit) continue;
 
-            if (debugLevel>=20) printf("  Found hit! pushing to XTAnalyzer\n");
+            if (m_debugLevel>=20) printf("  Found hit! pushing to XTAnalyzer\n");
 			// tell analyzer a new data point
             fXTAnalyzer->Push(driftT,fitD);
         }
-        if (debugLevel>0) printf("Starting XT analysis\n");
+        if (m_debugLevel>0) printf("Starting XT analysis\n");
         // fit histograms/graphs, make plots, and save new xt file
         fXTAnalyzer->Process();
 
 		//----------------------------------prepare for output ROOT file--------------------------------------------
-        TFile * ofile = new TFile(Form("%s/root/ana_%d.%s.layer%d.root",HOME.Data(),runNo,runname.Data(),testLayer),"RECREATE");
+        TFile * ofile = new TFile(Form("%s/root/ana_%d.%s.layer%d.root",HOME.Data(),m_runNo,m_runname.Data(),testLayer),"RECREATE");
         TTree * otree = new TTree("t","t");
         otree->Branch("triggerNumber",&triggerNumber);
         otree->Branch("res",&minres);
@@ -498,7 +646,7 @@ int main(int argc, char** argv){
         otree->Branch("channelID",&o_channelID);
         otree->Branch("boardID",&o_boardID);
         otree->Branch("driftT",&i_driftT);
-        if (inputType) otree->Branch("driftDmc",&i_driftDmc);
+        if (m_inputType) otree->Branch("driftDmc",&i_driftDmc);
         otree->Branch("type",&i_type);
         otree->Branch("np",&i_np);
         otree->Branch("ip",&i_ip);
@@ -534,7 +682,7 @@ int main(int argc, char** argv){
         otree->Branch("chi2",&(chi2[0]));
         otree->Branch("chi2p",&(chi2p[0]));
         otree->Branch("chi2a",&(chi2a[0]));
-        if (inputType){
+        if (m_inputType){
             otree->Branch("chi2mc",&(chi2mc[0]));
             otree->Branch("chi2pmc",&(chi2pmc[0]));
             otree->Branch("chi2amc",&(chi2amc[0]));
@@ -551,14 +699,14 @@ int main(int argc, char** argv){
         o_boardID = new std::vector<int>;
 
 		//----------------------------------Loop in events--------------------------------------------
-        for ( int iEntry = iEntryStart ; iEntry<=iEntryStop; iEntry++){
+        for ( int iEntry = m_iEntryStart ; iEntry<=m_iEntryStop; iEntry++){
             if (iEntry%10000==0) printf("%d\n",iEntry);
-            if (debugLevel>=20) printf("Entry%d: \n",iEntry);
+            if (m_debugLevel>=20) printf("Entry%d: \n",iEntry);
             ichain->GetEntry(iEntry);
 
 			// decide which candidate to use
 			theCand = 0;
-			if (xtType==3){
+			if (m_xtType==3){
 				int nLateHitsMin = 1e9;
 				for (int iCand = 0; iCand<NCAND; iCand++){
 					nLateHits = 0;
@@ -599,7 +747,7 @@ int main(int argc, char** argv){
                 otree->SetBranchAddress("chi2",&(chi2[theCand]));
                 otree->SetBranchAddress("chi2p",&(chi2p[theCand]));
                 otree->SetBranchAddress("chi2a",&(chi2a[theCand]));
-                if (inputType){
+                if (m_inputType){
                     otree->SetBranchAddress("chi2mc",&(chi2mc[theCand]));
                     otree->SetBranchAddress("chi2pmc",&(chi2pmc[theCand]));
                     otree->SetBranchAddress("chi2amc",&(chi2amc[theCand]));
@@ -611,18 +759,18 @@ int main(int argc, char** argv){
                 otree->SetBranchAddress("fitD",&(i_fitD[theCand]));
                 otree->SetBranchAddress("sel",&(i_sel[theCand]));
 			}
-            else if (xtType==4||xtType==5){
+            else if (m_xtType==4||m_xtType==5){
                 double minchi2 = 1e9;
                 int minNhitsS = 0;
 				for (int iCand = 0; iCand<NCAND; iCand++){
-                    if (xtType==4){
+                    if (m_xtType==4){
                         if ((minchi2>chi2a[iCand]&&minNhitsS==nHitsS[iCand])||minNhitsS<nHitsS[iCand]){
                             theCand = iCand;
                             minchi2 = chi2a[iCand];
                             minNhitsS = nHitsS[iCand];
                         }
                     }
-                    else if (xtType==5){
+                    else if (m_xtType==5){
                         if ((minchi2>chi2[iCand]&&minNhitsS==nHitsS[iCand])||minNhitsS<nHitsS[iCand]){
                             theCand = iCand;
                             minchi2 = chi2[iCand];
@@ -718,7 +866,7 @@ int main(int argc, char** argv){
 				(*i_fitD[theCand])[ihit]=fitD;
 
 				// check the closest peak
-                if (lid==testLayer&&((type<100&&xtType==6)||xtType!=6)&&status==0&&fabs(fitD-dd)<fabs(minres)){ // Should have cut for test layer! otherwise XT will not be well tuned
+                if (lid==testLayer&&((type<100&&m_xtType==6)||m_xtType!=6)&&status==0&&fabs(fitD-dd)<fabs(minres)){ // Should have cut for test layer! otherwise XT will not be well tuned
                     minres = fitD-dd;
                     theDD = dd;
                     theDT = dt;
@@ -767,7 +915,7 @@ int main(int argc, char** argv){
 		otree->Write();
         ofile->Close();
 
-        if (debugLevel>=20) printf("Finished!\n");
+        if (m_debugLevel>=20) printf("Finished!\n");
 	}
 
     return 0;
@@ -784,6 +932,37 @@ int getHitType(int type,bool isRight){
 	return type;
 }
 
-void printUsage(char * name){
-    fprintf(stderr,"%s [runNo] [prerunname] [runname] <[xtType: (2) sym; 1 sym+offset; 0 no; 6 sym+offset+first OT peak; 7 sym+offset+first OT peak+2segments] [geoSetup: (0), normal;1, finger] [saveHists: (0);1] [inputType: (0), Real data; 1, MC] [maxchi2 (2)] [defaultLayerID (4)] [nHitsMax (0)] [debug: 0;...] [iEntryStart (0)] [iEntryStop (0)]>\n",name);
+void print_usage(char * prog_name){
+	fprintf(stderr,"Usage %s [options] prerunname runname\n",prog_name);
+	fprintf(stderr,"[options]\n");
+	fprintf(stderr,"\t -D <name>=[error,severe,warn,debug,trace]\n");
+	fprintf(stderr,"\t\t Change the named debug level\n");
+	fprintf(stderr,"\t -V <name>=[quiet,log,info,verbose]\n");
+	fprintf(stderr,"\t\t Change the named log level\n");
+	fprintf(stderr,"\t -C <file>\n");
+	fprintf(stderr,"\t\t Set the configure file\n");
+	fprintf(stderr,"\t -M <n>\n");
+	fprintf(stderr,"\t\t Printing modulo set to n\n");
+	fprintf(stderr,"\t -R <run>\n");
+	fprintf(stderr,"\t\t Run number set to run\n");
+	fprintf(stderr,"\t -B <n>\n");
+	fprintf(stderr,"\t\t Starting entry index set to n\n");
+	fprintf(stderr,"\t -E <n>\n");
+	fprintf(stderr,"\t\t Stopping entry index set to n\n");
+    fprintf(stderr,"\t -L <l>\n");
+    fprintf(stderr,"\t\t Default layer set to l\n");
+    fprintf(stderr,"\t -n <n>\n");
+    fprintf(stderr,"\t\t Maximum number of hits cut set to n\n");
+    fprintf(stderr,"\t -c <c>\n");
+    fprintf(stderr,"\t\t Maximum chi2 cut set to c\n");
+    fprintf(stderr,"\t -g <g>\n");
+    fprintf(stderr,"\t\t Geometry setup set to g\n");
+    fprintf(stderr,"\t -w <w>\n");
+    fprintf(stderr,"\t\t Work type set to w\n");
+    fprintf(stderr,"\t -i <i>\n");
+    fprintf(stderr,"\t\t Input type set to i\n");
+    fprintf(stderr,"\t -p <p>\n");
+    fprintf(stderr,"\t\t Peak type set to p\n");
+    fprintf(stderr,"\t -x <x>\n");
+    fprintf(stderr,"\t\t xt type set to x\n");
 }
