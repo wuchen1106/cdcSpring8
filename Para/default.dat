@@ -3,8 +3,7 @@ general parameters
 *******************************************************************************                                                                   
 
     < geoSetup = 0 > 0: normal; 1: finger
-    < inputType = 0 > 0 for data; 1 for MC
-    < peakType = 0 > 0, only the first peak over threshold; 1, all peaks over threshold; 2, even including shaddowed peaks
+    < inputType = 0 > 0 for data; 1 for MC; 2 for MC with real driftD information    < peakType = 0 > 0, only the first peak over threshold; 1, all peaks over threshold; 2, even including shaddowed peaks
     < nHitsMax = 30 >
 
 *******************************************************************************                                                                   
@@ -20,14 +19,14 @@ tracking parameters
     < tracking.workType = 0 > 0, fr/l_0; 1, even/odd; -1, even/odd reversed; others, all layers
 
 *******************************************************************************                                                                   
-XT parameters
+getXT parameters
 *******************************************************************************                                                                   
 
     < getXT.maxchi2 = 2 >
     < getXT.xtType = 0 > 2 sym; 1 sym+offset; 0 no; 6 sym+offset+first OT peak; 7 sym+offset+first OT peak+2segments
 
 *******************************************************************************                                                                   
-XT parameters
+ana parameters
 *******************************************************************************                                                                   
 
     < ana.nHitsMax = 0 >
@@ -46,3 +45,12 @@ XT parameters
     < ana.NbinRes = 256 >
     < ana.minchi2p = 1 >
     < ana.maxRes = 2 >
+
+*******************************************************************************                                                                   
+updateRes parameters
+*******************************************************************************                                                                   
+
+    < updateRes.xtType = 2 > 2 sym; 1 sym+offset; 0 no; 6 sym+offset+first OT peak; 7 sym+offset+first OT peak+2segments
+    < updateRes.nHitsMax = 30 >
+    < updateRes.maxchi2 = 2 >
+    < updateRes.maxFD= 6 >

@@ -243,7 +243,6 @@ int main(int argc, char** argv){
 			case 'C':
 				m_configureFile = optarg;
                 printf("Using configure file \"%s\"\n",optarg);
-                break;
 			case 'n':
 			    temp_nHitsMax = atoi(optarg);set_nHitsMax = true;
                 printf("Maximum number of hits cut set to %d\n",temp_nHitsMax);

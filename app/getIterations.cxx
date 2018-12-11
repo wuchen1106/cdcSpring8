@@ -7,19 +7,48 @@
 
 #include "header.hxx"
 
-void printUsage(char * name);
+void print_usage(char * prog_name);
 
 int main(int argc, char** argv){
-	if (argc<7){
-	    printUsage(argv[0]);
-		return 1;
+	int m_runNo = 0;
+    TString m_runname = "currun";
+    TString m_orirunname = "ori";
+    int m_Niters = 0;
+	int m_geoSetup = 0;
+    bool m_isMC = false;
+
+    int    opt_result;
+	while((opt_result=getopt(argc,argv,"R:I:G:M"))!=-1){
+		switch(opt_result){
+			/* INPUTS */
+			case 'R':
+			    m_runNo = atoi(optarg);
+                printf("Run number set to %d\n",m_runNo);
+			case 'I':
+			    m_Niters = atoi(optarg);
+                printf("Number of iterations set to %d\n",m_Niters);
+			case 'G':
+			    m_geoSetup = atoi(optarg);
+                printf("Geometry set to %d\n",m_geoSetup);
+			case 'M':
+			    m_isMC = true;
+                printf("Turn to use MC mode\n");
+			case '?':
+				printf("Wrong option! optopt=%c, optarg=%s\n", optopt, optarg);
+				break;
+			case 'h':
+			default:
+				print_usage(argv[0]);
+				return 1;
+		}
 	}
-	int runNo = (int)strtol(argv[1],NULL,10);
-    TString runname = argv[2];
-    TString original = argv[3];
-    int Niters = (int)strtol(argv[4],NULL,10);
-	int geoSetup = (int)strtol(argv[5],NULL,10);
-    int isMC = (int)strtol(argv[6],NULL,10);
+
+	if (argc-optind<2){
+	    print_usage(argv[0]);
+		return -1;
+    }
+    m_orirunname = argv[optind++];
+    m_runname= argv[optind++];
 
 	// what do we want
     double iter_slx[NITERSMAX][NLAY][NCEL]; // mean slx of chosen events of each iteration in each layer run of each wire 
@@ -51,7 +80,7 @@ int main(int argc, char** argv){
             x[lid][wid] = 0;
         }
     }
-    for (int iter = 0; iter<=Niters; iter++){
+    for (int iter = 0; iter<=m_Niters; iter++){
         for (int lid = 0; lid<NLAY; lid++){
             for (int wid = 0; wid<NCEL; wid++){
                 iter_slx[iter][lid][wid] = 0;
@@ -85,11 +114,11 @@ int main(int argc, char** argv){
             off[lid][wid] = 0;
         }
 	}
-	if (isMC){
+	if (m_isMC){
 		TChain * ichain_off = new TChain("t","t");
-		ichain_off->Add(Form("Input/wire-offset.%d.root",runNo));
+		ichain_off->Add(Form("Input/wire-offset.%d.root",m_runNo));
 		if (!ichain_off->GetEntries()) {
-		    printf("Cannot find Input/wire-offset.%d.root\n",runNo);
+		    printf("Cannot find Input/wire-offset.%d.root\n",m_runNo);
 		    return -1;
         }
 		double off_delta;
@@ -107,9 +136,9 @@ int main(int argc, char** argv){
 
 	// get wire positions
 	TChain * ichain_wp = new TChain("t","t");
-	ichain_wp->Add(Form("info/wire-position.%d.%s.root",runNo,original.Data()));
+	ichain_wp->Add(Form("info/wire-position.%d.%s.root",m_runNo,m_orirunname.Data()));
     if (!ichain_wp->GetEntries()) {
-        printf("Cannot find info/wire-position.%d.%s.root\n",runNo,original.Data());
+        printf("Cannot find info/wire-position.%d.%s.root\n",m_runNo,m_orirunname.Data());
         return -1;
     }
 	double wp_x;
@@ -126,14 +155,14 @@ int main(int argc, char** argv){
 	delete ichain_wp;
 
 	// check which wire is changed
-	for (int iter = 1; iter<=Niters; iter++){
+	for (int iter = 1; iter<=m_Niters; iter++){
 		ichain_wp = new TChain("t","t");
-		ichain_wp->Add(Form("info/wire-position.%d.%s.i%d.root",runNo,runname.Data(),iter));
+		ichain_wp->Add(Form("info/wire-position.%d.%s.i%d.root",m_runNo,m_runname.Data(),iter));
 		if (!ichain_wp->GetEntries()) {
-            printf("Cannot find info/wire-position.%d.%s.i%d.root, will use original one\n",runNo,runname.Data(),iter);
-		    ichain_wp->Add(Form("info/wire-position.%d.%s.root",runNo,original.Data()));
+            printf("Cannot find info/wire-position.%d.%s.i%d.root, will use original one\n",m_runNo,m_runname.Data(),iter);
+		    ichain_wp->Add(Form("info/wire-position.%d.%s.root",m_runNo,m_orirunname.Data()));
             if (!ichain_wp->GetEntries()) {
-                printf("Cannot find info/wire-position.%d.%s.root\n",runNo,original.Data());
+                printf("Cannot find info/wire-position.%d.%s.root\n",m_runNo,m_orirunname.Data());
                 return -1;
             }
         }
@@ -153,17 +182,17 @@ int main(int argc, char** argv){
 	}
 
 	// get delta X
-	for (int iter = 0; iter<=Niters; iter++){
+	for (int iter = 0; iter<=m_Niters; iter++){
 		ichain_wp = new TChain("t","t");
 		if (iter==0)
-            ichain_wp->Add(Form("info/wire-position.%d.%s.root",runNo,original.Data()));
+            ichain_wp->Add(Form("info/wire-position.%d.%s.root",m_runNo,m_orirunname.Data()));
         else
-            ichain_wp->Add(Form("info/wire-position.%d.%s.i%d.root",runNo,runname.Data(),iter));
+            ichain_wp->Add(Form("info/wire-position.%d.%s.i%d.root",m_runNo,m_runname.Data(),iter));
 		if (!ichain_wp->GetEntries()) {
-            printf("Cannot find info/wire-position.%d.%s.i%d.root, will use original one\n",runNo,runname.Data(),iter);
-		    ichain_wp->Add(Form("info/wire-position.%d.%s.root",runNo,original.Data()));
+            printf("Cannot find info/wire-position.%d.%s.i%d.root, will use original one\n",m_runNo,m_runname.Data(),iter);
+		    ichain_wp->Add(Form("info/wire-position.%d.%s.root",m_runNo,m_orirunname.Data()));
             if (!ichain_wp->GetEntries()) {
-                printf("Cannot find info/wire-position.%d.%s.root\n",runNo,original.Data());
+                printf("Cannot find info/wire-position.%d.%s.root\n",m_runNo,m_orirunname.Data());
                 return -1;
             }
         }
@@ -182,11 +211,11 @@ int main(int argc, char** argv){
 	}
 
 	// get offset
-	for (int iter = 1; iter<=Niters; iter++){
+	for (int iter = 1; iter<=m_Niters; iter++){
 		TChain * ichain_off = new TChain("t","t");
-		ichain_off->Add(Form("info/offset.%d.%s.i%d.root",runNo,runname.Data(),iter));
+		ichain_off->Add(Form("info/offset.%d.%s.i%d.root",m_runNo,m_runname.Data(),iter));
 		if (!ichain_off->GetEntries()){
-		    printf("Cannot find info/offset.%d.%s.i%d.root, will assume 0\n",runNo,runname.Data(),iter);
+		    printf("Cannot find info/offset.%d.%s.i%d.root, will assume 0\n",m_runNo,m_runname.Data(),iter);
 		    continue;
 		}
 		double off_d;
@@ -209,12 +238,12 @@ int main(int argc, char** argv){
     TGraph * gr_dxLid = new TGraph();
     TF1    * f_dxLid = new TF1("f_dxLid","pol1",0,NLAY);
     // get chi2, efficiency and Nothers
-	for (int iter = 1; iter<=Niters; iter++){
+	for (int iter = 1; iter<=m_Niters; iter++){
 	    for (int lid = 1; lid<NLAY; lid++){
             TChain * ichain_ana = new TChain("t","t");
-            ichain_ana->Add(Form("root/t_%d.%s.i%d.layer%d.root",runNo,runname.Data(),iter,lid));
+            ichain_ana->Add(Form("root/t_%d.%s.i%d.layer%d.root",m_runNo,m_runname.Data(),iter,lid));
             if (!ichain_ana->GetEntries()){
-                printf("Cannot find root/t_%d.%s.i%d.layer%d.root\n",runNo,runname.Data(),iter,lid);
+                printf("Cannot find root/t_%d.%s.i%d.layer%d.root\n",m_runNo,m_runname.Data(),iter,lid);
                 continue;
             }
             double chi2;
@@ -237,20 +266,20 @@ int main(int argc, char** argv){
             ichain_ana->SetBranchAddress("nHitsS0",&nHitsS);
             ichain_ana->SetBranchAddress("slz0",&slz);
             ichain_ana->SetBranchAddress("inz0",&inz);
-            if (isMC) ichain_ana->SetBranchAddress("slzmc",&slzmc);
-            if (isMC) ichain_ana->SetBranchAddress("inzmc",&inzmc);
+            if (m_isMC) ichain_ana->SetBranchAddress("slzmc",&slzmc);
+            if (m_isMC) ichain_ana->SetBranchAddress("inzmc",&inzmc);
             ichain_ana->SetBranchAddress("slx0",&slx);
             ichain_ana->SetBranchAddress("inx0",&inx);
-            if (isMC) ichain_ana->SetBranchAddress("slxmc",&slxmc);
-            if (isMC) ichain_ana->SetBranchAddress("inxmc",&inxmc);
+            if (m_isMC) ichain_ana->SetBranchAddress("slxmc",&slxmc);
+            if (m_isMC) ichain_ana->SetBranchAddress("inxmc",&inxmc);
             ichain_ana->SetBranchAddress("layerID",&layerID);
             ichain_ana->SetBranchAddress("wireID",&wireID);
             ichain_ana->SetBranchAddress("sel0",&sel);
-            if (isMC) ichain_ana->SetBranchAddress("driftDmc",&driftDmc);
+            if (m_isMC) ichain_ana->SetBranchAddress("driftDmc",&driftDmc);
             ichain_ana->SetBranchAddress("driftD0",&driftD);
             ichain_ana->SetBranchAddress("fitD0",&fitD);
             int nEntries = ichain_ana->GetEntries();
-            printf("Loading file root/t_%d.%s.i%d.layer%d.root, %d Entries\n",runNo,runname.Data(),iter,lid,nEntries);
+            printf("Loading file root/t_%d.%s.i%d.layer%d.root, %d Entries\n",m_runNo,m_runname.Data(),iter,lid,nEntries);
             for (int iEntry = 0; iEntry<nEntries; iEntry++){
                 ichain_ana->GetEntry(iEntry);
                 int nHits = layerID->size();
@@ -259,8 +288,8 @@ int main(int argc, char** argv){
                     fflush(stdout);
                 }
                 if (chi2>0.5||nHitsS<6) continue;
-                if (geoSetup==0&&fabs(slz)>0.15) continue;
-                if (geoSetup==1&&fabs(inz)>24) continue;
+                if (m_geoSetup==0&&fabs(slz)>0.15) continue;
+                if (m_geoSetup==1&&fabs(inz)>24) continue;
                 double minres = 1e9;
                 int has = 0;
                 int theWid = 0;
@@ -274,7 +303,7 @@ int main(int argc, char** argv){
                     double tfitD = (*fitD)[ihit];
                     double tdriftD = (*driftD)[ihit];
                     double tdriftDmc = 0;
-                    if (isMC) tdriftDmc = (*driftDmc)[ihit];
+                    if (m_isMC) tdriftDmc = (*driftDmc)[ihit];
                     if (fabs(tfitD-tdriftD)<fabs(minres)){ // no cut for test layer!
                         minres = tfitD-tdriftD;
                         theWid = twireID;
@@ -341,7 +370,7 @@ int main(int argc, char** argv){
         for (int wid = 0; wid<NCEL; wid++){
             if (!changed[lid][wid]) continue;
             printf("[%d,%d]:\n",lid,wid);
-            for (int iter = 1; iter<=Niters; iter++){
+            for (int iter = 1; iter<=m_Niters; iter++){
                 printf("  =>%d %d %d %.5e %.5e %.5e %.5e %.5e %.5e %.5e %.5e %.5e %.5e %.5e %.5e %.5e %.5e %.5e %d\n",
                         iter,
                         lid,wid,
@@ -378,6 +407,15 @@ int main(int argc, char** argv){
     return 0;
 }
 
-void printUsage(char * name){
-    fprintf(stderr,"%s [runNo] [runname] [originalName] [Niter] [geoSetup: 0, normal;1, finger] [isMC]\n",name);
+void print_usage(char * prog_name){
+	fprintf(stderr,"Usage %s [options] orirunname runname\n",prog_name);
+	fprintf(stderr,"[options]\n");
+	fprintf(stderr,"\t -R <run>\n");
+	fprintf(stderr,"\t\t Run number set to run\n");
+	fprintf(stderr,"\t -I <Niter>\n");
+	fprintf(stderr,"\t\t Number of iterations set to Niter\n");
+	fprintf(stderr,"\t -G <geo>\n");
+	fprintf(stderr,"\t\t Geometry set to geo\n");
+	fprintf(stderr,"\t -M\n");
+	fprintf(stderr,"\t\t Turn to MC mode (by default it's data mode)\n");
 }

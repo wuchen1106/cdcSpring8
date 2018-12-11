@@ -28,7 +28,7 @@ int main(int argc, char** argv){
     TString m_runname = "currun";
     int m_iEntryStart = 0;
     int m_iEntryStop = 0;
-    int m_debugLevel = 0;
+    int m_verboseLevel = 0;
     int m_modulo = 10000;
     bool m_memdebug = false;
     int m_saveHists = 0;
@@ -51,7 +51,7 @@ int main(int argc, char** argv){
     std::map<std::string, Log::ErrorPriority> namedDebugLevel;
     std::map<std::string, Log::LogPriority> namedLogLevel;
     int    opt_result;
-	while((opt_result=getopt(argc,argv,"M:R:B:E:L:C:n:c:g:i:p:x:D:V:"))!=-1){
+	while((opt_result=getopt(argc,argv,"M:R:B:E:L:H:C:n:c:g:i:p:x:D:V:"))!=-1){
 		switch(opt_result){
 			/* INPUTS */
 			case 'M':
@@ -69,10 +69,12 @@ int main(int argc, char** argv){
 			case 'L':
 			    m_defaultLayerID = atoi(optarg);
                 printf("Test layer set to %d\n",m_defaultLayerID);
+			case 'H':
+			    m_saveHists = atoi(optarg);
+                printf("Histogram saving level set to %d\n",m_saveHists);
 			case 'C':
 				m_configureFile = optarg;
                 printf("Using configure file \"%s\"\n",optarg);
-                break;
 			case 'n':
 			    temp_nHitsMax = atoi(optarg);set_nHitsMax = true;
                 printf("Maximum number of hits cut set to %d\n",temp_nHitsMax);
@@ -147,6 +149,9 @@ int main(int argc, char** argv){
                                 print_usage(argv[0]);
                         }
                     }
+                    else{
+                        m_verboseLevel = atoi(optarg);
+                    }
                     break;
                 }
 			case '?':
@@ -174,11 +179,11 @@ int main(int argc, char** argv){
 
     if (m_configureFile!=""){
         MyRuntimeParameters::Get().ReadParamOverrideFile(m_configureFile);
-        m_nHitsMax = MyRuntimeParameters::Get().GetParameterI("getXT.nHitsMax");
-        m_maxchi2 = MyRuntimeParameters::Get().GetParameterD("getXT.maxchi2");
         m_geoSetup = MyRuntimeParameters::Get().GetParameterI("geoSetup");
         m_inputType = MyRuntimeParameters::Get().GetParameterI("inputType");
         m_peakType = MyRuntimeParameters::Get().GetParameterI("peakType");
+        m_nHitsMax = MyRuntimeParameters::Get().GetParameterI("getXT.nHitsMax");
+        m_maxchi2 = MyRuntimeParameters::Get().GetParameterD("getXT.maxchi2");
         m_xtType = MyRuntimeParameters::Get().GetParameterI("getXT.xtType");;
     }
     if (set_nHitsMax) m_nHitsMax = temp_nHitsMax;
@@ -204,9 +209,9 @@ int main(int argc, char** argv){
     printf("geoSetup:     %s\n",m_geoSetup==0?"normal scintillator":"finger scintillator");
     printf("xtType:       %d\n",m_xtType);
     printf("inputType   = %d, %s\n",m_inputType,m_inputType==0?"Real Data":"MC");
-    printf("debug       = %d\n",m_debugLevel);
+    printf("debug       = %d\n",m_verboseLevel);
     printf("print modulo= %d\n",m_modulo);
-    printf("save slice fittings? \"%s\"\n",m_saveHists?"yes":"no");
+    printf("save slice fittings at level %d\n",m_saveHists);
     printf("Entries:     [%d~%d]\n",m_iEntryStart,m_iEntryStop);
     fflush(stdout);
 
@@ -426,11 +431,11 @@ int main(int argc, char** argv){
 
 	//=================================================Start to get XT====================================================
 	// Prepare XTAnalyzer
-	XTAnalyzer * fXTAnalyzer = new XTAnalyzer(gasID,m_debugLevel);
+	XTAnalyzer * fXTAnalyzer = new XTAnalyzer(gasID,m_verboseLevel);
     // Loop in layers
 	for (int testLayer = 0; testLayer<NLAY; testLayer++){
 		//----------------------------------Set input file--------------------------------------------
-        if (m_debugLevel>0) {printf("In Layer %d: preparing input TChain\n",testLayer);fflush(stdout);}
+        if (m_verboseLevel>0) {printf("In Layer %d: preparing input TChain\n",testLayer);fflush(stdout);}
 		TChain * ichain = new TChain("t","t");
 		ichain->Add(Form("%s/root/t_%d.%s.layer%d.root",HOME.Data(),m_runNo,m_runname.Data(),testLayer));
         ichain->GetEntries();
@@ -508,10 +513,10 @@ int main(int argc, char** argv){
         	m_iEntryStart = 0;
         	m_iEntryStop = N-1;
         }
-        if (m_debugLevel>0) {printf("Processing %d events\n",N);fflush(stdout);}
+        if (m_verboseLevel>0) {printf("Processing %d events\n",N);fflush(stdout);}
         for ( int iEntry = m_iEntryStart ; iEntry<=m_iEntryStop; iEntry++){
             if (iEntry%m_modulo==0) printf("%d\n",iEntry);
-            if (m_debugLevel>=20) printf("Entry%d: \n",iEntry);
+            if (m_verboseLevel>=20) printf("Entry%d: \n",iEntry);
             ichain->GetEntry(iEntry);
 
 			// decide which candidate to use
@@ -571,7 +576,7 @@ int main(int argc, char** argv){
             }
             if (m_nHitsMax&&nHits>m_nHitsMax) continue;
 
-            if (m_debugLevel>=20) printf("  Good Event! Looping in %d hits\n",nHits);
+            if (m_verboseLevel>=20) printf("  Good Event! Looping in %d hits\n",nHits);
             // find the closest hit in the test layer
             double minres = 1e9;
             bool has = false;
@@ -599,11 +604,11 @@ int main(int argc, char** argv){
             if (!has) continue; // no hits found in test layer
             //if (hasBadHit) continue;
 
-            if (m_debugLevel>=20) printf("  Found hit! pushing to XTAnalyzer\n");
+            if (m_verboseLevel>=20) printf("  Found hit! pushing to XTAnalyzer\n");
 			// tell analyzer a new data point
             fXTAnalyzer->Push(driftT,fitD);
         }
-        if (m_debugLevel>0) printf("Starting XT analysis\n");
+        if (m_verboseLevel>0) printf("Starting XT analysis\n");
         // fit histograms/graphs, make plots, and save new xt file
         fXTAnalyzer->Process();
 
@@ -701,7 +706,7 @@ int main(int argc, char** argv){
 		//----------------------------------Loop in events--------------------------------------------
         for ( int iEntry = m_iEntryStart ; iEntry<=m_iEntryStop; iEntry++){
             if (iEntry%10000==0) printf("%d\n",iEntry);
-            if (m_debugLevel>=20) printf("Entry%d: \n",iEntry);
+            if (m_verboseLevel>=20) printf("Entry%d: \n",iEntry);
             ichain->GetEntry(iEntry);
 
 			// decide which candidate to use
@@ -915,7 +920,7 @@ int main(int argc, char** argv){
 		otree->Write();
         ofile->Close();
 
-        if (m_debugLevel>=20) printf("Finished!\n");
+        if (m_verboseLevel>=20) printf("Finished!\n");
 	}
 
     return 0;
@@ -939,6 +944,7 @@ void print_usage(char * prog_name){
 	fprintf(stderr,"\t\t Change the named debug level\n");
 	fprintf(stderr,"\t -V <name>=[quiet,log,info,verbose]\n");
 	fprintf(stderr,"\t\t Change the named log level\n");
+	fprintf(stderr,"\t\t If equal sign is not found, set verbose level to the given value\n");
 	fprintf(stderr,"\t -C <file>\n");
 	fprintf(stderr,"\t\t Set the configure file\n");
 	fprintf(stderr,"\t -M <n>\n");
@@ -951,6 +957,8 @@ void print_usage(char * prog_name){
 	fprintf(stderr,"\t\t Stopping entry index set to n\n");
     fprintf(stderr,"\t -L <l>\n");
     fprintf(stderr,"\t\t Default layer set to l\n");
+	fprintf(stderr,"\t -H <h>\n");
+	fprintf(stderr,"\t\t Histogram saving level set to h\n");
     fprintf(stderr,"\t -n <n>\n");
     fprintf(stderr,"\t\t Maximum number of hits cut set to n\n");
     fprintf(stderr,"\t -c <c>\n");
