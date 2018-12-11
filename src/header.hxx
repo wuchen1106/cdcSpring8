@@ -1,3 +1,10 @@
+// Chamber parameters
+double CELLH = 16; // mm
+double CELLW = 16.8; // mm
+double chamberHL = 599.17/2; // mm
+double chamberHH = 170.05/2; // mm
+double chamberCY = 572; // mm
+
 // Single board parameters
 #define NSAM 32
 #define NCHS 48

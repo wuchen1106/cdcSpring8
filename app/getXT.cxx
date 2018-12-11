@@ -194,7 +194,7 @@ int main(int argc, char** argv){
     }
     m_prerunname = argv[optind++];
     m_runname= argv[optind++];
-    printf("##############%s with %d Parameters##################\n",argv[0],argc);
+    printf("##############%s##################\n",argv[0]);
     printf("runNo       = %d\n",m_runNo);
     printf("prerunname  = \"%s\"\n",m_prerunname.Data());
     printf("runname     = \"%s\"\n",m_runname.Data());
@@ -957,12 +957,14 @@ void print_usage(char * prog_name){
     fprintf(stderr,"\t\t Maximum chi2 cut set to c\n");
     fprintf(stderr,"\t -g <g>\n");
     fprintf(stderr,"\t\t Geometry setup set to g\n");
-    fprintf(stderr,"\t -w <w>\n");
-    fprintf(stderr,"\t\t Work type set to w\n");
+    fprintf(stderr,"\t\t (0): normal; 1: finger\n");
     fprintf(stderr,"\t -i <i>\n");
     fprintf(stderr,"\t\t Input type set to i\n");
+    fprintf(stderr,"\t\t (0) for data; 1 for MC\n");
     fprintf(stderr,"\t -p <p>\n");
     fprintf(stderr,"\t\t Peak type set to p\n");
+    fprintf(stderr,"\t\t (0) only the first peak over threshold; 1, all peaks over threshold; 2, even including shaddowed peaks\n");
     fprintf(stderr,"\t -x <x>\n");
     fprintf(stderr,"\t\t xt type set to x\n");
+    fprintf(stderr,"\t\t (2) sym; 1 sym+offset; 0 no; 6 sym+offset+first OT peak; 7 sym+offset+first OT peak+2segments\n");
 }

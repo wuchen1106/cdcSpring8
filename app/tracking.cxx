@@ -48,10 +48,6 @@ int m_peakType = 0; // 0, only the first peak over threshold; 1, all peaks over 
 int m_workType = 0; // fr/l_0; 1, even/odd; -1, even/odd reversed; others, all layers
 
 //===================Chamber Parameter============================
-double U = 8; // mm
-double chamberHL = 599.17/2; // mm
-double chamberHH = 170.05/2; // mm
-double chamberCY = 572; // mm
 // map for wire position
 double  map_x[NLAY][NCEL][2];
 double  map_y[NLAY][NCEL][2];
@@ -395,7 +391,7 @@ int main(int argc, char** argv){
     m_prerunname = argv[optind++];
     m_runname= argv[optind++];
 
-    printf("##############%s with %d Parameters##################\n",argv[0],argc);
+    printf("##############%s##################\n",argv[0]);
     printf("runNo       = %d\n",m_runNo);
     printf("prerunname  = \"%s\"\n",m_prerunname.Data());
     printf("runname     = \"%s\"\n",m_runname.Data());
@@ -1619,10 +1615,14 @@ void print_usage(char* prog_name)
     fprintf(stderr,"\t\t ADC sum over all cut set to a\n");
     fprintf(stderr,"\t -g <g>\n");
     fprintf(stderr,"\t\t Geometry setup set to g\n");
+    fprintf(stderr,"\t\t (0): normal; 1: finger\n");
     fprintf(stderr,"\t -i <i>\n");
     fprintf(stderr,"\t\t Input type set to i\n");
+    fprintf(stderr,"\t\t (0) for data; 1 for MC\n");
     fprintf(stderr,"\t -p <p>\n");
     fprintf(stderr,"\t\t Peak type set to p\n");
+    fprintf(stderr,"\t\t (0) only the first peak over threshold; 1, all peaks over threshold; 2, even including shaddowed peaks\n");
     fprintf(stderr,"\t -w <w>\n");
     fprintf(stderr,"\t\t Work type set to w\n");
+    fprintf(stderr,"\t\t 0, fr/l_0; 1, even/odd; -1, even/odd reversed; others, all layers\n");
 }
