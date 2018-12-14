@@ -11,12 +11,8 @@
 #include "header.hxx"
 
 //===================Chamber Parameter============================
-double chamberHL = 599.17/2; // mm
-double chamberHH = 170.05/2; // mm
-double chamberCY = 572; // mm
 double sciYup = 0;
 double sciYdown = 0;
-
 // map for wire position
 double  map_x[NLAY][NCEL][2];
 double  map_y[NLAY][NCEL][2];

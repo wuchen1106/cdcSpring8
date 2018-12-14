@@ -26,12 +26,6 @@
 #define MAXTRANC 5
 
 //===================Chamber Parameter============================
-double CELLH = 16; // mm
-double CELLW = 16.8; // mm
-double chamberHL = 599.17/2; // mm
-double chamberHH = 170.05/2; // mm
-double chamberCY = 572; // mm
-
 double  npair_per_cm = 0;
 TF1 * f_left0 = 0;
 TF1 * f_right0 = 0;
