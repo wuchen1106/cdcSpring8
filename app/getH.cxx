@@ -36,7 +36,7 @@ int main(int argc, char** argv){
     TString HOME=getenv("CDCS8WORKING_DIR");
 
 	//===================Get channel map============================
-	TFile * TFile_wirepos = new TFile(HOME+"/info/wire-position.root");
+	TFile * TFile_wirepos = new TFile(HOME+"/Input/wire-position.root");
 	TTree * TTree_wirepos = (TTree*) TFile_wirepos->Get("t");
 	int wp_bid;
 	int wp_wid;

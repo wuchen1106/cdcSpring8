@@ -93,10 +93,10 @@ std::vector<double> * o_driftD[NCAND] = {0};
 int o_icombi[NCAND];
 int o_iselec[NCAND];
 int o_npairs[NCAND];
-double o_islx[NCAND];
 double o_iinx[NCAND];
-double o_islz[NCAND];
 double o_iinz[NCAND];
+double o_islx[NCAND];
+double o_islz[NCAND];
 double o_chi2x[NCAND];
 double o_chi2z[NCAND];
 double o_chi2i[NCAND];
@@ -110,10 +110,10 @@ int o_nHitsS[NCAND];
 double o_chi2[NCAND];
 double o_chi2p[NCAND];
 double o_chi2a[NCAND];
-double o_slx[NCAND];
 double o_inx[NCAND];
-double o_slz[NCAND];
 double o_inz[NCAND];
+double o_slx[NCAND];
+double o_slz[NCAND];
 double o_chi2mc[NCAND];
 double o_chi2pmc[NCAND];
 double o_chi2amc[NCAND];
@@ -129,11 +129,11 @@ TGraphErrors * g_x = 0; // x VS y
 TF1 * f_z = new TF1("f_z","pol1",sciYdown,sciYup); // z VS y
 TGraphErrors * g_z = 0; // z VS y
 double chi2z = 0;
-double iinz = 0;
-double islz = 0;
 double chi2x = 0;
 double iinx = 0;
+double iinz = 0;
 double islx = 0;
+double islz = 0;
 double chi2i = 0;
 double chi2pi = 0;
 double chi2ai = 0;
@@ -154,10 +154,10 @@ int nvpar,nparx,icstat;
 double chi2 = 0;
 double chi2p = 0;
 double chi2a = 0;
-double inz = 0;
-double slz = 0;
 double inx = 0;
+double inz = 0;
 double slx = 0;
+double slz = 0;
 // for get dist
 TVector3 vTrackU, vTrackD, vTrack;
 TVector3 vWireHV, vWireRO, vWire;
@@ -475,6 +475,8 @@ int main(int argc, char** argv){
 
     //===================Get Wire Position============================
     TFile * TFile_wirepos = new TFile(Form("%s/info/wire-position.%d.%s.root",HOME.Data(),m_runNo,m_prerunname.Data()));
+    if (!TFile_wirepos||TFile_wirepos->IsZombie())
+        TFile_wirepos = new TFile(HOME+"/Input/wire-position.root");
     TTree * TTree_wirepos = (TTree*) TFile_wirepos->Get("t");
     int     wp_bid;
     int     wp_ch;
@@ -672,10 +674,10 @@ int main(int argc, char** argv){
         ot->Branch(Form("icom%d",iCand),&(o_icombi[iCand]));
         ot->Branch(Form("isel%d",iCand),&(o_iselec[iCand]));
         ot->Branch(Form("npairs%d",iCand),&(o_npairs[iCand]));
-        ot->Branch(Form("islx%d",iCand),&(o_islx[iCand]));
         ot->Branch(Form("iinx%d",iCand),&(o_iinx[iCand]));
-        ot->Branch(Form("islz%d",iCand),&(o_islz[iCand]));
         ot->Branch(Form("iinz%d",iCand),&(o_iinz[iCand]));
+        ot->Branch(Form("islx%d",iCand),&(o_islx[iCand]));
+        ot->Branch(Form("islz%d",iCand),&(o_islz[iCand]));
         ot->Branch(Form("chi2x%d",iCand),&(o_chi2x[iCand]));
         ot->Branch(Form("chi2z%d",iCand),&(o_chi2z[iCand]));
         ot->Branch(Form("chi2i%d",iCand),&(o_chi2i[iCand]));
@@ -683,10 +685,10 @@ int main(int argc, char** argv){
         ot->Branch(Form("chi2ai%d",iCand),&(o_chi2ai[iCand]));
         ot->Branch(Form("sel%d",iCand),&(o_sel[iCand]));
         ot->Branch(Form("calD%d",iCand),&(o_calD[iCand]));
-        ot->Branch(Form("slx%d",iCand),&(o_slx[iCand]));
         ot->Branch(Form("inx%d",iCand),&(o_inx[iCand]));
-        ot->Branch(Form("slz%d",iCand),&(o_slz[iCand]));
         ot->Branch(Form("inz%d",iCand),&(o_inz[iCand]));
+        ot->Branch(Form("slx%d",iCand),&(o_slx[iCand]));
+        ot->Branch(Form("slz%d",iCand),&(o_slz[iCand]));
         ot->Branch(Form("chi2%d",iCand),&(o_chi2[iCand]));
         ot->Branch(Form("chi2p%d",iCand),&(o_chi2p[iCand]));
         ot->Branch(Form("chi2a%d",iCand),&(o_chi2a[iCand]));
@@ -752,10 +754,10 @@ int main(int argc, char** argv){
         o_dxl->resize(i_nHits);
         o_dxr->resize(i_nHits);
         for (int iCand = 0; iCand<NCAND; iCand++){
-            o_islx[iCand] = 0;
             o_iinx[iCand] = 0;
-            o_islz[iCand] = 0;
             o_iinz[iCand] = 0;
+            o_islx[iCand] = 0;
+            o_islz[iCand] = 0;
             o_chi2x[iCand] = 1e9;
             o_chi2z[iCand] = 1e9;
             o_chi2i[iCand] = 1e9;
@@ -769,10 +771,10 @@ int main(int argc, char** argv){
             o_sel[iCand]->resize(i_nHits);
             o_driftD[iCand]->resize(i_nHits);
             o_nHitsS[iCand] = 0;
-            o_slx[iCand] = 0;
             o_inx[iCand] = 0;
-            o_slz[iCand] = 0;
             o_inz[iCand] = 0;
+            o_slx[iCand] = 0;
+            o_slz[iCand] = 0;
             o_chi2[iCand] = 1e9;
             o_chi2p[iCand] = 1e9;
             o_chi2a[iCand] = 1e9;
@@ -929,10 +931,10 @@ int doFitting(int nPicks,int iEntry,int iselection){
         setErrors(nPairs,true);
         fityz(nPairs);
         fityx(nPairs);
-        iinz = f_z->Eval(sciYup);
-        islz = f_z->GetParameter(1);
         iinx = f_x->Eval(sciYup);
+        iinz = f_z->Eval(sciYup);
         islx = f_x->GetParameter(1);
+        islz = f_z->GetParameter(1);
         bool inScint = checkScintillator(2.5,iinx,islx,iinz,islz); // FIXME: need to tune
         bool fromSource = islx>-beamSlxMax&&islx<beamSlxMax&&islz>-beamSlzMax&&islz<beamSlzMax;
         int nGood = getChi2XZ(nPairs,chi2x,chi2z);
@@ -945,10 +947,10 @@ int doFitting(int nPicks,int iEntry,int iselection){
         setErrors(nPairs,false);
         fityz(nPairs);
         fityx(nPairs);
-        iinz = f_z->Eval(sciYup);
-        islz = f_z->GetParameter(1);
         iinx = f_x->Eval(sciYup);
+        iinz = f_z->Eval(sciYup);
         islx = f_x->GetParameter(1);
+        islz = f_z->GetParameter(1);
         inScint = checkScintillator(2.5,iinx,islx,iinz,islz); // FIXME: need to tune
         fromSource = islx>-beamSlxMax&&islx<beamSlxMax&&islz>-beamSlzMax&&islz<beamSlzMax;
         nGood = getChi2XZ(nPairs,chi2x,chi2z);
@@ -961,10 +963,10 @@ int doFitting(int nPicks,int iEntry,int iselection){
         setErrors(nPairs,false);
         fityz(nPairs);
         fityx(nPairs);
-        iinz = f_z->Eval(sciYup);
-        islz = f_z->GetParameter(1);
         iinx = f_x->Eval(sciYup);
+        iinz = f_z->Eval(sciYup);
         islx = f_x->GetParameter(1);
+        islz = f_z->GetParameter(1);
         inScint = checkScintillator(2.5,iinx,islx,iinz,islz); // FIXME: need to tune
         fromSource = islx>-beamSlxMax&&islx<beamSlxMax&&islz>-beamSlzMax&&islz<beamSlzMax;
         nGood = getChi2XZ(nPairs,chi2x,chi2z);
@@ -1305,20 +1307,20 @@ bool checkChi2(int nHitsSel, int nPairs, int icombi, int iselection){
 					o_iselec[j] = o_iselec[j+1];
 					o_icombi[j] = o_icombi[j+1];
 					o_npairs[j] = o_npairs[j+1];
-					o_islx[j] = o_islx[j+1];
 					o_iinx[j] = o_iinx[j+1];
-					o_islz[j] = o_islz[j+1];
 					o_iinz[j] = o_iinz[j+1];
+					o_islx[j] = o_islx[j+1];
+					o_islz[j] = o_islz[j+1];
 					o_chi2x[j] = o_chi2x[j+1];
 					o_chi2z[j] = o_chi2z[j+1];
 					o_chi2i[j] = o_chi2i[j+1];
 					o_chi2pi[j] = o_chi2pi[j+1];
 					o_chi2ai[j] = o_chi2ai[j+1];
 					o_nHitsS[j] = o_nHitsS[j+1];
-					o_slx[j] = o_slx[j+1];
 					o_inx[j] = o_inx[j+1];
-					o_slz[j] = o_slz[j+1];
 					o_inz[j] = o_inz[j+1];
+					o_slx[j] = o_slx[j+1];
+					o_slz[j] = o_slz[j+1];
 					o_chi2[j] = o_chi2[j+1];
 					o_chi2p[j] = o_chi2p[j+1];
 					o_chi2a[j] = o_chi2a[j+1];
@@ -1348,20 +1350,20 @@ bool checkChi2(int nHitsSel, int nPairs, int icombi, int iselection){
 					o_iselec[j] = o_iselec[j-1];
 					o_icombi[j] = o_icombi[j-1];
 					o_npairs[j] = o_npairs[j-1];
-					o_islx[j] = o_islx[j-1];
 					o_iinx[j] = o_iinx[j-1];
-					o_islz[j] = o_islz[j-1];
 					o_iinz[j] = o_iinz[j-1];
+					o_islx[j] = o_islx[j-1];
+					o_islz[j] = o_islz[j-1];
 					o_chi2x[j] = o_chi2x[j-1];
 					o_chi2z[j] = o_chi2z[j-1];
 					o_chi2i[j] = o_chi2i[j-1];
 					o_chi2pi[j] = o_chi2pi[j-1];
 					o_chi2ai[j] = o_chi2ai[j-1];
 					o_nHitsS[j] = o_nHitsS[j-1];
-					o_slx[j] = o_slx[j-1];
 					o_inx[j] = o_inx[j-1];
-					o_slz[j] = o_slz[j-1];
 					o_inz[j] = o_inz[j-1];
+					o_slx[j] = o_slx[j-1];
+					o_slz[j] = o_slz[j-1];
 					o_chi2[j] = o_chi2[j-1];
 					o_chi2p[j] = o_chi2p[j-1];
 					o_chi2a[j] = o_chi2a[j-1];
@@ -1375,20 +1377,20 @@ bool checkChi2(int nHitsSel, int nPairs, int icombi, int iselection){
 				o_iselec[i] = iselection;
 				o_icombi[i] = icombi;
 				o_npairs[i] = nPairs;
-				o_islx[i] = islx;
 				o_iinx[i] = iinx;
-				o_islz[i] = islz;
 				o_iinz[i] = iinz;
+				o_islx[i] = islx;
+				o_islz[i] = islz;
 				o_chi2z[i] = chi2z;
 				o_chi2x[i] = chi2x;
 				o_chi2i[i] = chi2i;
 				o_chi2ai[i] = chi2ai;
 				o_chi2pi[i] = chi2pi;
 				o_nHitsS[i] = nHitsSel;
-				o_slx[i] = slx;
 				o_inx[i] = inx;
-				o_slz[i] = slz;
 				o_inz[i] = inz;
+				o_slx[i] = slx;
+				o_slz[i] = slz;
 				o_chi2[i] = chi2;
 				o_chi2p[i] = chi2p;
 				o_chi2a[i] = chi2a;
