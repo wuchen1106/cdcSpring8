@@ -10,17 +10,60 @@ Should follow the format of `run_XXXXXX.root`
 
 #### Perform wave analysis
 
+Input file:
+
+`root/run_XXXXXX_built.root`
+
+Output file:
+
+`root/p_XXXX.root`
+
+Usage:
+
 ```
 getP runNo
 ```
 
 #### Perform peak selection
 
+Input file:
+
+`Input/run-info.root`  
+`Input/wire-position.root`  
+`root/run_XXXXXX_built.root`  
+`root/p_XXXX.root`  
+
+Output file:
+
+`root/h_XXXX.root`  
+and histograms
+
+Usage:
+
 ```
 getH runNo
 ```
 
 #### Do the tracking
+
+Input file:
+
+`Input/run-info.root`  
+`Input/crosspoint.root`  
+`info/wire-position.XXXX.PRERUNNAME.root` or `Input/wire-position.root`  
+`info/xt.XXXX.PRERUNNAME.root`  
+`info/offset.XXXX.RUNNAME.root` if it exists  
+* inputType=1: `root/h_XXXX.root`
+* inputType=2: `root/h_XXXX.MC.root`
+* inputType=3: `root/h_XXXX.layerX.MC.root`
+
+Output file:
+
+`root/t_XXXX.RUNNAME.layerX.root`  
+`info/xt.XXXX.RUNNAME.root`  
+`root/ana_XXXX.layerX.MC.root`  
+
+Usage:
 
 ```
 Usage ./BinaryFiles/bin/tracking [options] prerunname runname
@@ -70,6 +113,21 @@ Usage ./BinaryFiles/bin/tracking [options] prerunname runname
 ```
 
 #### analyze the reconstructed tracks and get XT relations
+
+Input file:
+
+`info/wire-position.XXXX.PRERUNNAME.root` or `Input/wire-position.root`
+`Input/crosspoint.root`
+`info/xt.XXXX.PRERUNNAME.root`
+* inputType=1: `root/h_XXXX.root`
+* inputType=2: `root/h_XXXX.MC.root`
+* inputType=3: `root/h_XXXX.layerX.MC.root`
+
+Output file:
+
+``
+
+Usage:
 
 ```
 Usage ./BinaryFiles/bin/getXT [options] prerunname runname
