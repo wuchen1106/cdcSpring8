@@ -5,6 +5,7 @@ general parameters
     < geoSetup = 0 > 0: normal; 1: finger
     < inputType = 0 > 0 for data; 1 for MC; 2 for MC with real driftD information    < peakType = 0 > 0, only the first peak over threshold; 1, all peaks over threshold; 2, even including shaddowed peaks
     < nHitsMax = 30 >
+    < xtType = 0 > 2 sym; 1 sym+offset; 0 no; 6 sym+offset+first OT peak; 7 sym+offset+first OT peak+2segments
 
 *******************************************************************************                                                                   
 tracking parameters
@@ -17,13 +18,6 @@ tracking parameters
     < tracking.sumCut = -10 >
     < tracking.aaCut = 0 >
     < tracking.workType = 0 > 0, fr/l_0; 1, even/odd; -1, even/odd reversed; others, all layers
-
-*******************************************************************************                                                                   
-getXT parameters
-*******************************************************************************                                                                   
-
-    < getXT.maxchi2 = 2 >
-    < getXT.xtType = 0 > 2 sym; 1 sym+offset; 0 no; 6 sym+offset+first OT peak; 7 sym+offset+first OT peak+2segments
 
 *******************************************************************************                                                                   
 ana parameters
