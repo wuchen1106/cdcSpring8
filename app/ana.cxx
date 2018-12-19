@@ -1402,8 +1402,10 @@ int main(int argc, char** argv){
 
             // Count number of layers used for charge on track
             nLayersOnTrack = 0;
+            double totalCharge = 0;
             for (int lid = 1; lid<NLAY; lid++){
                 if (chargeOnTrack[lid]) nLayersOnTrack++;
+                totalCharge+=chargeOnTrack[lid];
             }
 
             // sort the layers by charge from small to large
@@ -1420,17 +1422,6 @@ int main(int argc, char** argv){
                         chargeOnTrackIndex[lid] = chargeOnTrackIndex[ljd];
                         chargeOnTrackIndex[ljd] = tempi;
                     }
-                }
-            }
-            // get the truncated charge
-            double totalCharge = 0;
-            for (int itrunc = 0; itrunc < MAXTRUNC; itrunc++){
-                trackCharge[itrunc] = 0;
-            }
-            for (int lid = 1; lid<NLAY; lid++){
-                totalCharge+=chargeOnTrack[lid];
-                if (NLAY-1-lid>=0&&NLAY-1-lid<MAXTRUNC){
-                    trackCharge[NLAY-1-lid] = totalCharge;
                 }
             }
 
