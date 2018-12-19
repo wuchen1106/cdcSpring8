@@ -423,7 +423,13 @@ Output file:
 `info/reso.XXXX.RUNNAME.layerX.root`  
 `root/anamc_XXXX.layerX.MC.root`  
 
-#### To do the iteration
+#### To do the iteration on real data
+
+```
+doIter.h runNo runTag iThreadStart nThreads iIterStart iIterStop [aaCut(0) isLast(0) nHitsMaxIni(0)]
+```
+
+#### To do the iteration to get spatial resolution with MC
 
 ```
 doIter.res.sh runNo runTag iThreadStart nThreads iIterStart iIterStop runName [averageEtrack(1) maxChi2(2) minNhitsS(7) maxNhitsG(0) maxSlz(0.1)]
