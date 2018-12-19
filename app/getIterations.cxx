@@ -24,18 +24,21 @@ int main(int argc, char** argv){
 			case 'R':
 			    m_runNo = atoi(optarg);
                 printf("Run number set to %d\n",m_runNo);
+				break;
 			case 'I':
 			    m_Niters = atoi(optarg);
                 printf("Number of iterations set to %d\n",m_Niters);
+				break;
 			case 'G':
 			    m_geoSetup = atoi(optarg);
                 printf("Geometry set to %d\n",m_geoSetup);
+				break;
 			case 'M':
 			    m_isMC = true;
                 printf("Turn to use MC mode\n");
+				break;
 			case '?':
 				printf("Wrong option! optopt=%c, optarg=%s\n", optopt, optarg);
-				break;
 			case 'h':
 			default:
 				print_usage(argv[0]);

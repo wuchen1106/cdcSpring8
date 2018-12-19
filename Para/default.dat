@@ -14,9 +14,10 @@ tracking parameters
     < tracking.t0shift0 = 0  >
     < tracking.t0shift1 = 0 >
     < tracking.tmin = -20 >
-    < tracking.tmax = -800 >
+    < tracking.tmax = 800 >
     < tracking.sumCut = -10 >
     < tracking.aaCut = 0 >
+    < tracking.nHitsMax = 30 > If this value is too large, track finding will take a long time.
     < tracking.workType = 0 > 0, fr/l_0; 1, even/odd; -1, even/odd reversed; others, all layers
 
 *******************************************************************************                                                                   
@@ -47,4 +48,4 @@ updateRes parameters
     < updateRes.xtType = 2 > 2 sym; 1 sym+offset; 0 no; 6 sym+offset+first OT peak; 7 sym+offset+first OT peak+2segments
     < updateRes.nHitsMax = 30 >
     < updateRes.maxchi2 = 2 >
-    < updateRes.maxFD= 6 >
+    < updateRes.maxFD = 6 >

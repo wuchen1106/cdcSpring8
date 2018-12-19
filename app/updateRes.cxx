@@ -59,45 +59,59 @@ int main(int argc, char** argv){
 			case 'M':
 			    m_modulo = atoi(optarg);
                 printf("Printing modulo set to %d\n",m_modulo);
+				break;
 			case 'R':
 			    m_runNo = atoi(optarg);
                 printf("Run number set to %d\n",m_runNo);
+				break;
 			case 'B':
 			    m_iEntryStart = atoi(optarg);
                 printf("Starting entry index set to %d\n",m_iEntryStart);
+				break;
 			case 'E':
 			    m_iEntryStop = atoi(optarg);
                 printf("Stopping entry index set to %d\n",m_iEntryStop);
+				break;
 			case 'L':
 			    m_testlayer = atoi(optarg);
                 printf("Test layer set to %d\n",m_testlayer);
+				break;
 			case 'A':
 			    m_averageEtrack = true;
                 printf("Use averaged tracking error\n");
+				break;
 			case 'I':
 			    m_isInitial = true;
                 printf("This is the initial iteration step\n");
+				break;
 			case 'C':
 				m_configureFile = optarg;
                 printf("Using configure file \"%s\"\n",optarg);
+				break;
 			case 'n':
 			    temp_nHitsMax = atoi(optarg);set_nHitsMax = true;
                 printf("Maximum number of hits cut set to %d\n",temp_nHitsMax);
+				break;
 			case 'c':
 			    temp_maxchi2 = atof(optarg);set_maxchi2 = true;
                 printf("Maximum chi2 cut set to %d\n",temp_maxchi2);
+				break;
 			case 'd':
 			    temp_maxFD = atof(optarg);set_maxFD = true;
                 printf("Maximum fitD cut set to %d\n",temp_maxFD);
+				break;
 			case 'g':
 			    temp_geoSetup = atoi(optarg);set_geoSetup = true;
                 printf("Geometry setup set to %d\n",temp_geoSetup);
+				break;
 			case 'i':
 			    temp_inputType = atoi(optarg);set_inputType = true;
                 printf("Input type set to %d\n",temp_inputType);
+				break;
 			case 'x':
 			    temp_xtType = atoi(optarg);set_xtType = true;
                 printf("XT type set to %d\n",temp_xtType);
+				break;
             case 'D':
                 {
                     // Set the debug level for a named trace.
@@ -158,7 +172,6 @@ int main(int argc, char** argv){
                 }
 			case '?':
 				printf("Wrong option! optopt=%c, optarg=%s\n", optopt, optarg);
-				break;
 			case 'h':
 			default:
 				print_usage(argv[0]);
@@ -233,15 +246,15 @@ int main(int argc, char** argv){
     f_r->SetName("fr_0");
 
     // get res file of the original run
-    TFile * oriResoFile = new TFile(Form("%s/root/res_%d.%s.layer%d.root",HOME.Data(),m_runNo,m_orirunname.Data(),m_testlayer));
+    TFile * oriResoFile = new TFile(Form("%s/info/resi_%d.%s.layer%d.root",HOME.Data(),m_runNo,m_orirunname.Data(),m_testlayer));
     if (!oriResoFile){
-        fprintf(stderr,"ERROR: Cannot the original resolution file!\n");
+        fprintf(stderr,"ERROR: Cannot the original residual file!\n");
         return 1;
     }
     TGraph * gr_resTotx = (TGraph*) oriResoFile->Get("gxrms");
     TGraph * gr_resTotd = (TGraph*) oriResoFile->Get("gdrms");
     if (!gr_resTotd){
-        fprintf(stderr,"ERROR: Cannot find error graph in the original resolution file!\n");
+        fprintf(stderr,"ERROR: Cannot find error graph in the original residual file!\n");
         return 1;
     }
     gr_resTotx->SetName("gr_resTotx");
@@ -709,7 +722,7 @@ int main(int argc, char** argv){
     printf("avresInix: %.3e, avresInid: %.3e\n",avresInix,avresInid);
 
     // save the new tracking resolution
-    TFile * ofileRes = new TFile(Form("%s/info/res.%d.layer%d.%s.root",HOME.Data(),m_runNo,m_testlayer,m_runname.Data()),"RECREATE");
+    TFile * ofileRes = new TFile(Form("%s/info/reso.%d.layer%d.%s.root",HOME.Data(),m_runNo,m_testlayer,m_runname.Data()),"RECREATE");
     f_r->Write();
     f_l->Write();
     // FIXME: choose ini VS d or ini VS x for smearing?

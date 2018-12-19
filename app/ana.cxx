@@ -149,81 +149,107 @@ int main(int argc, char** argv){
             case 'M':
                 m_modulo = atoi(optarg);
                 printf("Printing modulo set to %d\n",m_modulo);
+				break;
             case 'R':
                 m_runNo = atoi(optarg);
                 printf("Run number set to %d\n",m_runNo);
+				break;
             case 'B':
                 m_iEntryStart = atoi(optarg);
                 printf("Starting entry index set to %d\n",m_iEntryStart);
+				break;
             case 'E':
                 m_iEntryStop = atoi(optarg);
                 printf("Stopping entry index set to %d\n",m_iEntryStop);
+				break;
             case 'L':
                 m_defaultLayerID = atoi(optarg);
                 printf("Test layer set to %d\n",m_defaultLayerID);
+				break;
             case 'H':
                 m_saveHists = atoi(optarg);
                 printf("Histogram saving level set to %d\n",m_saveHists);
+				break;
             case 'C':
                 m_configureFile = optarg;
                 printf("Using configure file \"%s\"\n",optarg);
+				break;
             case 'n':
                 temp_nHitsMax = atoi(optarg);set_nHitsMax = true;
                 printf("Maximum number of hits cut set to %d\n",temp_nHitsMax);
+				break;
             case 'f':
                 temp_nHitsSmin = atoi(optarg);set_nHitsSmin = true;
                 printf("Minimum number of selected hits cut set to %d\n",temp_nHitsSmin);
+				break;
             case 'c':
                 temp_maxchi2 = atof(optarg);set_maxchi2 = true;
                 printf("Maximum chi2 cut set to %d\n",temp_maxchi2);
+				break;
             case 'v':
                 temp_minchi2p = atof(optarg);set_minchi2p = true;
                 printf("Minimum p-value cut set to %d\n",temp_minchi2p);
+				break;
             case 'r':
                 temp_maxRes = atof(optarg);set_maxRes = true;
                 printf("Maximum resolution cut set to %d\n",temp_maxRes);
+				break;
             case 'z':
                 temp_maxslz = atof(optarg);set_maxslz = true;
                 printf("Maximum y-z slope cut set to %d\n",temp_maxslz);
+				break;
             case 'd':
                 temp_maxFD = atof(optarg);set_maxFD = true;
                 printf("Maximum fitD cut set to %d\n",temp_maxFD);
+				break;
             case 'o':
                 temp_tmaxSet = atoi(optarg);set_tmaxSet = true;
                 printf("Maximum time range set to %d\n",temp_tmaxSet);
+				break;
             case 's':
                 temp_sumCut = atoi(optarg);set_sumCut = true;
                 printf("ADC sum over peak cut set to %d\n",temp_sumCut);
+				break;
             case 'a':
                 temp_aaCut = atoi(optarg);set_aaCut = true;
                 printf("ADC sum over all cut set to %d\n",temp_aaCut);
+				break;
             case 'l':
                 temp_tmin = atof(optarg);set_tmin = true;
                 printf("Minimum time on axis set to %d\n",temp_tmin);
+				break;
             case 'u':
                 temp_tmax = atof(optarg);set_tmax = true;
                 printf("Maximum time on axis set to %d\n",temp_tmax);
+				break;
             case 't':
                 temp_NbinT = atoi(optarg);set_NbinT = true;
                 printf("Number of bins on time axis set to %d\n",temp_NbinT);
+				break;
             case 'm':
                 temp_NbinX = atoi(optarg);set_NbinX = true;
                 printf("Number of bins on space axis set to %d\n",temp_NbinX);
+				break;
             case 'y':
                 temp_NbinRes = atoi(optarg);set_NbinRes = true;
                 printf("Number of bins on resolution axis set to %d\n",temp_NbinRes);
+				break;
             case 'g':
                 temp_geoSetup = atoi(optarg);set_geoSetup = true;
                 printf("Geometry setup set to %d\n",temp_geoSetup);
+				break;
             case 'i':
                 temp_inputType = atoi(optarg);set_inputType = true;
                 printf("Input type set to %d\n",temp_inputType);
+				break;
             case 'p':
                 temp_peakType = atoi(optarg);set_peakType = true;
                 printf("Peak type set to %d\n",temp_peakType);
+				break;
             case 'x':
                 temp_xtType = atoi(optarg);set_xtType = true;
                 printf("XT type set to %d\n",temp_xtType);
+				break;
             case 'D':
                 {
                     // Set the debug level for a named trace.
@@ -287,7 +313,6 @@ int main(int argc, char** argv){
                 }
             case '?':
                 printf("Wrong option! optopt=%c, optarg=%s\n", optopt, optarg);
-                break;
             case 'h':
             default:
                 print_usage(argv[0]);
@@ -1482,7 +1507,7 @@ int main(int argc, char** argv){
         ofile->Close();
 
         //=================================================Get bin by bin information====================================================
-        ofile = new TFile(Form("%s/info/res_%d.%s.layer%d.root",HOME.Data(),m_runNo,m_runname.Data(),testLayer),"RECREATE");
+        ofile = new TFile(Form("%s/info/resi_%d.%s.layer%d.root",HOME.Data(),m_runNo,m_runname.Data(),testLayer),"RECREATE");
         otree = new TTree("t","t");
         int o_ibin;
         double o_xmin;
