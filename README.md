@@ -290,12 +290,12 @@ Output file:
     double                highAA;
     double                highDT;
     // dE/dX related
-    nLayers; // number of layers used for chage on track
-    chargeOnTrack[NLAY]; // charge along the track
-    adcsumOnTrack[NLAY]; // ADC sum along the track
-    chargeOnTrackIndex[NLAY]; // index of the corresponding hit along the track
-    theGG;
-    trackGG;
+    int                   nLayers; // number of layers used for chage on track
+    double                chargeOnTrack[NLAY]; // charge along the track
+    double                adcsumOnTrack[NLAY]; // ADC sum along the track
+    double                chargeOnTrackIndex[NLAY]; // index of the corresponding hit along the track
+    double                theGG;
+    double                trackGG;
     // special hits count
     int                   nHitsSmallAll;
     int                   nHitsSmallSASD;
@@ -423,10 +423,7 @@ Output file:
 `info/reso.XXXX.RUNNAME.layerX.root`  
 `root/anamc_XXXX.layerX.MC.root`  
 
-```
-loopBestRuns.sh list runTag [averageEtrack(1) maxChi2(2) maxSlz(0.1)]
-```
-which will loop in runNo and runName in list and do the following (`maxNhitsG` is taken from runName "XXX.sXaXnX.iX", while `minNhitsS` is by default 7 for good runs and 5 fow low energy runs)
+#### To do the iteration
 
 ```
 doIter.res.sh runNo runTag iThreadStart nThreads iIterStart iIterStop runName [averageEtrack(1) maxChi2(2) minNhitsS(7) maxNhitsG(0) maxSlz(0.1)]
@@ -435,7 +432,7 @@ doIter.res.sh runNo runTag iThreadStart nThreads iIterStart iIterStop runName [a
 which generate an initial resolution file (`info/res.XXX`) first:
 
 ```
-updateRes runNo StartName preRunName 1 averageEtrack
+updateRes -R runNo -A -I averageEtrack StartName preRunName
 ```
 
 and then loop from `iIterStart` to `iIterStop` to do:
@@ -445,6 +442,16 @@ mc2fitinput_Chen root/ana_XXX info/res.XXX root/h_XXX.MC.root 0 0 0 nLayers 1 1 
 hadd root/h_runNo.MC.root root/h_runNo.iStart-iStop.MC.root ...
 tracking
 combine runNo currunname nEvtPerRun h_runNo.MC.root
-updateRes runNo StartName preRunName 0 averageEtrack
+updateRes -R runNo -A StartName preRunName
 mv root/h_runNo.MC.root root/h_runNo.prerunname.MC.root
+```
+#### To loop in a list of runs
+
+```
+loopBestRuns.sh list runTag [averageEtrack(1) maxChi2(2) maxSlz(0.1)]
+```
+which will loop in runNo and runName in list and do the following (`maxNhitsG` is taken from runName "XXX.sXaXnX.iX", while `minNhitsS` is by default 7 for good runs and 5 fow low energy runs)
+
+```
+doIter.res.sh runNo runTag iThreadStart nThreads iIterStart iIterStop runName [averageEtrack(1) maxChi2(2) minNhitsS(7) maxNhitsG(0) maxSlz(0.1)]
 ```
