@@ -97,7 +97,7 @@ int main(int argc, char** argv){
     int m_geoSetup = 0; // 0: normal scintillator; 1: finger scintillator
     int m_inputType = 0; // 1 for MC; 0 for data
     int m_peakType = 2; // 0, only the first peak over threshold; 1, all peaks over threshold; 2, even including shaddowed peaks
-    int m_xtType = 2;
+    int m_xtType = 2; // 2 sym; 1 sym+offset; 0 no; 6 sym+offset+first OT peak; 7 sym+offset+first OT peak+2segments
     // for cutting
     int m_nHitsMax = 30;
     int m_nHitsSmin = 7;
@@ -659,7 +659,7 @@ int main(int argc, char** argv){
     double highAA = 0;
     double highDT = 0;
     // dE/dX related
-    int nLayers = 0; // number of layers used for chage on track
+    int nLayersOnTrack = 0; // number of layers used for chage on track
     double chargeOnTrack[NLAY]; // charge along the track
     double adcsumOnTrack[NLAY]; // ADC sum along the track
     int    chargeOnTrackIndex[NLAY]; // index of the corresponding hit along the track
@@ -743,7 +743,7 @@ int main(int argc, char** argv){
     int N_CUT5 = 0;
     int N_BIN[NBINS] = {0};
 
-    //=================================================Start to get XT====================================================
+    //=================================================Loop in layers====================================================
     // Prepare XTAnalyzer
     XTAnalyzer * fXTAnalyzer = new XTAnalyzer(gasID,m_verboseLevel);
     // Loop in layers
@@ -822,7 +822,7 @@ int main(int argc, char** argv){
             continue;
         }
 
-        //----------------------------------Loop in events--------------------------------------------
+        //----------------------------------Start to get XT--------------------------------------------
         if (!m_iEntryStart&&!m_iEntryStop){
             m_iEntryStart = 0;
             m_iEntryStop = N-1;
@@ -835,8 +835,9 @@ int main(int argc, char** argv){
         double averageGG = 0;
         double averageGGErr = 0;
         double trackCharge[MAXTRUNC] = {0};
-        if (m_verboseLevel>0) {printf("Processing %d events\n",N);fflush(stdout);}
-        for ( int iEntry = m_iEntryStart ; iEntry<=m_iEntryStop; iEntry++){
+        MyNamedVerbose("Ana","##############The fisrt loop starts: "<<N<<" entries#############");
+        //for ( int iEntry = m_iEntryStart ; iEntry<=m_iEntryStop; iEntry++){
+        for ( int iEntry = 0; iEntry<N; iEntry++){ // better not to skip anything before we get the XT file
             if (iEntry%m_modulo==0) printf("%d\n",iEntry);
             if (m_verboseLevel>=20) printf("Entry%d: \n",iEntry);
             ichain->GetEntry(iEntry);
@@ -901,7 +902,7 @@ int main(int argc, char** argv){
             if (m_verboseLevel>=20) printf("  Good Event! Looping in %d hits\n",nHits);
             // find the closest hit in the test layer
             double res_temp = 1e9;
-            bool hashit = false;
+            bool foundhit = false;
             int wireID;
             double driftD, driftT, fitD;
             // FIXME: test more cut
@@ -920,10 +921,10 @@ int main(int argc, char** argv){
                     wireID = (*i_wireID)[ihit];
                     fitD = tfitD;
                     driftT = (*i_driftT)[ihit];
-                    hashit = true;
+                    foundhit = true;
                 }
             }
-            if (!hashit) continue; // no hits found in test layer
+            if (!foundhit) continue; // no hits found in test layer
             //if (hasBadHit) continue;
 
             if (m_verboseLevel>=20) printf("  Found hit! pushing to XTAnalyzer\n");
@@ -1021,6 +1022,7 @@ int main(int argc, char** argv){
         }
         otree->Branch("theGG",&theGG);
         otree->Branch("trackGG",&trackGG);
+        otree->Branch("nLayers",&nLayersOnTrack);
         otree->Branch("nHitsSmallAll",&nHitsSmallAll);
         otree->Branch("nHitsSmallSASD",&nHitsSmallSASD);
         otree->Branch("nSHits",&nShadowedHits);
@@ -1087,7 +1089,8 @@ int main(int argc, char** argv){
         o_channelID = new std::vector<int>;
         o_boardID = new std::vector<int>;
 
-        //----------------------------------Loop in events--------------------------------------------
+        MyNamedVerbose("Ana","##############The Second loop starts#############");
+        //----------------------------------Start the analysis to get residual and etc--------------------------------------------
         double closestchi2 = 1e9;
         for ( int iEntry = m_iEntryStart ; iEntry<=m_iEntryStop; iEntry++){
             if (iEntry%10000==0) printf("%d\n",iEntry);
@@ -1191,7 +1194,6 @@ int main(int argc, char** argv){
             if (isGood) h_slz->Fill(slz[theCand]);
             if (fabs(slz[theCand])>m_maxslz) isGood = false;
             if (isGood) N_CUT4++;
-            MyNamedVerbose("Ana","  Good Event");
 
             // get closest wires
             closeFD = 1e3;
@@ -1211,6 +1213,7 @@ int main(int argc, char** argv){
                     closeFD2 = fitD;
                 }
             }
+            MyNamedVerbose("Ana","  iEntry = "<<iEntry<<", theCand = "<<theCand<<", "<<(isGood?"Good":"Bad")<<" event, closeWid = "<<closeWid<<", closeWid2 = "<<closeWid2<<", nHits = "<<nHits);
             theFD[0] = closeFD;
             int ibinX = fabs(closeFD)/m_xmax*NBINS; // bin index for DOCA
             if (ibinX>=NBINS) isGood = false; // too far away from any cell
@@ -1281,8 +1284,7 @@ int main(int argc, char** argv){
                 double dt = (*i_driftT)[ihit];
                 double dd;
                 double dd0 = (*i_driftD[theCand])[ihit];
-                int status = fXTAnalyzer->t2d(dt,dd,dd0>0);
-                // int status = t2d(dt,dd,fd>0); // TODO: check importance2
+                int status = t2d(dt,dd,fitD>0);
                 o_driftD->push_back(dd);
                 o_driftDs->push_back(status);
                 o_channelID->push_back(ch);
@@ -1399,9 +1401,9 @@ int main(int argc, char** argv){
             }
 
             // Count number of layers used for charge on track
-            nLayers = 0;
+            nLayersOnTrack = 0;
             for (int lid = 1; lid<NLAY; lid++){
-                if (chargeOnTrack[lid]) nLayers++;
+                if (chargeOnTrack[lid]) nLayersOnTrack++;
             }
 
             // sort the layers by charge from small to large
@@ -1443,10 +1445,11 @@ int main(int argc, char** argv){
                     h_ggVSX->Fill(theFD[isig],gg); // only record the gas gain VS x in the test layer
                     if (gg>theGG) theGG = gg;
                 }
-                double gg = getGG(trackCharge[0]/nLayers,slx[theCand],slz[theCand]);
+                double gg = getGG(totalCharge/nLayersOnTrack,slx[theCand],slz[theCand]);
                 h_ggall->Fill(gg);
                 trackGG = gg;
             }
+            otree->Fill();
         }
         // get averageGG
         //averageGG = h_ggVSX->GetMean(2);
@@ -1454,9 +1457,11 @@ int main(int argc, char** argv){
         averageGG = h_ggall->GetMean();
         averageGGErr = h_ggall->GetRMS();
 
-        // loop again for filling histograms
+        MyNamedVerbose("Ana","##############The Third loop starts#############");
+        //----------------------------------loop again for filling histograms--------------------------------------------
         for ( int iEntry = m_iEntryStart ; iEntry<=m_iEntryStop; iEntry++){
             otree->GetEntry(iEntry);
+            MyNamedVerbose("Ana","  iEntry = "<<iEntry<<", "<<(isGood?"Good":"Bad")<<" event, nHits = "<<nHits<<", "<<nHitsT<<" hits in the test layer on track path");
             if (!isGood) continue; // not successfully reconstructed
             // get the truncated charge
             double totalCharge = 0;
@@ -1473,7 +1478,7 @@ int main(int argc, char** argv){
             for (int itrunc = 0; itrunc < MAXTRUNC; itrunc++){
                 if (!trackCharge[itrunc]) continue;
                 double theDE = trackCharge[itrunc]*1e-15/averageGG/1.6e-19*W;
-                double theDX = (nLayers-itrunc)*CELLH*sqrt(1+slx[theCand]*slx[theCand]+slz[theCand]*slz[theCand]);
+                double theDX = (nLayersOnTrack-itrunc)*CELLH*sqrt(1+slx[theCand]*slx[theCand]+slz[theCand]*slz[theCand]);
                 h_dedx[itrunc]->Fill(theDE/1000/(theDX/10));
             }
             for (int i = 0; i<nHitsT; i++){
@@ -1483,7 +1488,7 @@ int main(int argc, char** argv){
                 double dd = theDD[i];
                 double dt = theDT[i];
                 double aa = theAA[i];
-                if (!status) continue; // out of range
+                if (status) continue; // out of range
                 // if (aa<m_aaCut) continue; // too small
                 h_DriftD->Fill(dd);
                 h_DriftDb->Fill(fabs(dd));
@@ -2225,16 +2230,16 @@ int t2d(double t, double & d, bool isRight, double tmaxSet){
     }
 
     if (t<tmin){
-        status = 0;
+        status = -1;
         d = 0;
     }
     else if (t>tmax){
-        status = 0;
+        status = 1;
         if (t>tRight) d = f->Eval(tRight);
         else d = f->Eval(t);
     }
     else{
-        status = 1;
+        status = 0;
         d = f->Eval(t);
     }
 
