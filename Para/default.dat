@@ -5,7 +5,7 @@ general parameters
     < geoSetup = 0 > 0: normal; 1: finger
     < inputType = 0 > 0 for data; 1 for MC; 2 for MC with real driftD information    < peakType = 0 > 0, only the first peak over threshold; 1, all peaks over threshold; 2, even including shaddowed peaks
     < nHitsMax = 30 >
-    < xtType = 2 > 2 sym; 1 sym+offset; 0 no; 6 sym+offset+first OT peak; 7 sym+offset+first OT peak+2segments
+    < xtType = 55 >  XYZ means polX for center, polY for middle and polZ for tail. If X is 0 then let middle function fit the center region.
 
 *******************************************************************************                                                                   
 tracking parameters

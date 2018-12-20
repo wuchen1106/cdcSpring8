@@ -38,21 +38,8 @@ bool    map_has[NLAY][NCEL];
 int     map_ch[NLAY][NCEL];
 int     map_bid[NLAY][NCEL];
 double  npair_per_cm = 0;
-TF1 * f_left0 = 0;
-TF1 * f_right0 = 0;
 TF1 * f_left = 0;
 TF1 * f_right = 0;
-TF1 * f_left_mid = 0;
-TF1 * f_right_mid = 0;
-TF1 * f_left_cent = 0;
-TF1 * f_right_cent = 0;
-TF1 * f_left_end = 0;
-TF1 * f_right_end = 0;
-int m_xtType = 0;
-double t7l = 0;
-double t8l = 0;
-double t7r = 0;
-double t8r = 0;
 
 //==================About RECBE======================
 TF1 * fADC2ChargeFunction = 0;
@@ -78,6 +65,7 @@ double findFirstX(TF1 * f, double val, double xmin, double xmax, double delta);
 void doFit(TH1D * h,double leftRatio = 1/3., double rightRatio = 1/3., double leftEnd = -2, double rightEnd = 2);
 void print_usage(char * prog_name);
 int getHitType(int type,bool isRight);
+int GetCandidate(TString & candSelBy, std::vector<int> * layerID, std::vector<int> * type, std::vector<double> * fitD[NCAND], std::vector<int> * sel[NCAND], int * nHitsS, double * chi2, double * chi2a);
 
 MyProcessManager * pMyProcessManager;
 
@@ -97,11 +85,14 @@ int main(int argc, char** argv){
     int m_geoSetup = 0; // 0: normal scintillator; 1: finger scintillator
     int m_inputType = 0; // 1 for MC; 0 for data
     int m_peakType = 2; // 0, only the first peak over threshold; 1, all peaks over threshold; 2, even including shaddowed peaks
-    int m_xtType = 2; // 2 sym; 1 sym+offset; 0 no; 6 sym+offset+first OT peak; 7 sym+offset+first OT peak+2segments
+    int m_xtType = 55; // XYZ means polX for center, polY for middle and polZ for tail. If X is 0 then let middle function fit the center region.
+    bool m_AsymXT = false; // use asymmetric xt curve or not
+    TString m_CandSelBy = "Original"; // find the candidate with the smallest chi2 without the testlayer; otherwise use chi2 wit the testlayer (default order from tracking);
+    bool m_ClosestPeak = false; // To get XT: find the peak with the smallest residual. Otherwise choose the first one over threshold; NOTE: in analysis part, it's always the closest peak chosen to get efficiency and residual
     // for cutting
     int m_nHitsMax = 30;
     int m_nHitsSmin = 7;
-    int m_sumCut = 0;
+    int m_sumCut = -30;
     int m_aaCut = 0;
     double m_maxchi2 = 2;
     double m_maxslz = 0.1;
@@ -139,11 +130,14 @@ int main(int argc, char** argv){
     int    temp_NbinT = 0; bool set_NbinT = false;
     int    temp_NbinX = 0; bool set_NbinX = false;
     int    temp_NbinRes = 0; bool set_NbinRes = false;
+    bool temp_AsymXT = false; bool set_AsymXT = false;
+    TString temp_CandSelBy = "Original"; bool set_CandSelBy = false;
+    bool temp_ClosestPeak = false; bool set_ClosestPeak = false;
 
     std::map<std::string, Log::ErrorPriority> namedDebugLevel;
     std::map<std::string, Log::LogPriority> namedLogLevel;
     int    opt_result;
-    while((opt_result=getopt(argc,argv,"M:R:B:E:L:H:C:n:f:c:v:r:z:d:o:s:a:l:u:t:m:y:g:i:p:x:D:V:"))!=-1){
+    while((opt_result=getopt(argc,argv,"M:R:B:E:L:H:C:n:f:c:v:r:z:d:o:s:a:l:u:t:m:y:g:i:p:x:AS:PD:V:"))!=-1){
         switch(opt_result){
             /* INPUTS */
             case 'M':
@@ -249,6 +243,22 @@ int main(int argc, char** argv){
             case 'x':
                 temp_xtType = atoi(optarg);set_xtType = true;
                 printf("XT type set to %d\n",temp_xtType);
+				break;
+            case 'A':
+                temp_AsymXT = true; set_AsymXT = true;
+                printf("Use asymmetric XT\n");
+				break;
+            case 'S':
+                temp_CandSelBy = optarg; set_CandSelBy = true;
+                if (temp_CandSelBy!="Original"&&temp_CandSelBy!="FittingChi2"&&temp_CandSelBy!="GlobalChi2"&&temp_CandSelBy!="LeastLatePeak"){
+                    MyNamedWarn("XT","The option \""<<temp_CandSelBy<<" is not known. Will choose Original");
+                    temp_CandSelBy = "Original";
+                }
+                printf("Choose the candidate by %s\n",temp_CandSelBy.Data());
+				break;
+            case 'P':
+                temp_ClosestPeak = true; set_ClosestPeak = true;
+                printf("Use the peak with smallest residual to get driftT. Otherwise just use the first one\n");
 				break;
             case 'D':
                 {
@@ -362,6 +372,9 @@ int main(int argc, char** argv){
     if (set_inputType) m_inputType = temp_inputType;
     if (set_peakType) m_peakType = temp_peakType;
     if (set_xtType) m_xtType = temp_xtType;
+    if (set_AsymXT) m_AsymXT = temp_AsymXT;
+    if (set_CandSelBy) m_CandSelBy = temp_CandSelBy;
+    if (set_ClosestPeak) m_ClosestPeak = temp_ClosestPeak;
     // for cutting
     if (set_nHitsMax) m_nHitsMax = temp_nHitsMax;
     if (set_nHitsSmin) m_nHitsSmin = temp_nHitsSmin;
@@ -395,6 +408,9 @@ int main(int argc, char** argv){
     printf("default layer: %d\n",m_defaultLayerID);
     printf("geoSetup:     %s\n",m_geoSetup==0?"normal scintillator":"finger scintillator");
     printf("xtType:       %d\n",m_xtType);
+    printf("Asymmetric XT? %s\n",m_AsymXT?"yes":"no");
+    printf("Candidate selected by? %s\n",m_CandSelBy.Data());
+    printf("Choose Closest peak? %s\n",m_ClosestPeak?"yes":"no");
     printf("inputType   = %d, %s\n",m_inputType,m_inputType==0?"Real Data":"MC");
     printf("maxchi2     = %.3e\n",m_maxchi2);
     printf("maxslz      = %.3e\n",m_maxslz);
@@ -816,7 +832,7 @@ int main(int argc, char** argv){
 
         //----------------------------------Initialize the analyzer--------------------------------------------
         int saveEvenOdd = 0; if (testLayer==4) saveEvenOdd = 1; else if (testLayer==5) saveEvenOdd = -1;
-        int statusInitialize = fXTAnalyzer->Initialize(Form("%d.%s.layer%d",m_runNo,m_runname.Data(),testLayer),testLayer,preXTFile,newXTFile,newXTTree,m_xtType,m_saveHists, testLayer==m_defaultLayerID, saveEvenOdd, testLayer!=0);
+        int statusInitialize = fXTAnalyzer->Initialize(Form("%d.%s.layer%d",m_runNo,m_runname.Data(),testLayer),testLayer,preXTFile,newXTFile,newXTTree,m_xtType,!m_AsymXT,m_saveHists, testLayer==m_defaultLayerID, saveEvenOdd, testLayer!=0);
         if (statusInitialize){
             fprintf(stderr,"WARNING: something wrong with initializing XTAnalyzer for layer[%d], will ignore this layer!\n",testLayer);
             continue;
@@ -843,49 +859,7 @@ int main(int argc, char** argv){
             ichain->GetEntry(iEntry);
 
             // decide which candidate to use
-            int theCand = 0;
-            if (m_xtType==3){
-                int nLateHitsMin = 1e9;
-                for (int iCand = 0; iCand<NCAND; iCand++){
-                    nLateHits = 0;
-                    for (int ihit = 0; ihit<nHits; ihit++){
-                        int ip = 0;
-                        for (int jhit = ihit-1; jhit>0; jhit--){
-                            if ((*i_layerID)[jhit]!=(*i_layerID)[ihit]) break;
-                            int type = getHitType((*i_type)[jhit],(*i_fitD[iCand])[jhit]>=0);
-                            if (type<100) ip++;
-                        }
-                        if ((*i_sel[iCand])[ihit]==1){
-                            if(ip!=0)
-                                nLateHits++;
-                        }
-                    }
-                    if (nLateHits<nLateHitsMin){
-                        nLateHitsMin = nLateHits;
-                        theCand = iCand;
-                    }
-                }
-            }
-            else if (m_xtType==4||m_xtType==5){
-                double minchi2 = 1e9;
-                int minNhitsS = 0;
-                for (int iCand = 0; iCand<NCAND; iCand++){
-                    if (m_xtType==4){
-                        if ((minchi2>chi2a[iCand]&&minNhitsS==nHitsS[iCand])||minNhitsS<nHitsS[iCand]){
-                            theCand = iCand;
-                            minchi2 = chi2a[iCand];
-                            minNhitsS = nHitsS[iCand];
-                        }
-                    }
-                    else if (m_xtType==5){
-                        if ((minchi2>chi2[iCand]&&minNhitsS==nHitsS[iCand])||minNhitsS<nHitsS[iCand]){
-                            theCand = iCand;
-                            minchi2 = chi2[iCand];
-                            minNhitsS = nHitsS[iCand];
-                        }
-                    }
-                }
-            }
+            theCand = GetCandidate(m_CandSelBy, i_layerID, i_type, i_fitD, i_sel, nHitsS, chi2, chi2a);
 
             // ignore events with bad fitting
             if (nHitsS[theCand]<7) continue;
@@ -905,22 +879,25 @@ int main(int argc, char** argv){
             bool foundhit = false;
             int wireID;
             double driftD, driftT, fitD;
-            // FIXME: test more cut
             bool hasBadHit = false;
+            bool wireChecked[NCEL] = {false};
             for (int ihit = 0; ihit<nHits; ihit++){
                 int tlayerID = (*i_layerID)[ihit];
                 int twireID = (*i_wireID)[ihit];
                 double tfitD = (*i_fitD[theCand])[ihit]-map_off[tlayerID][twireID];
                 double tdriftD = (*i_driftD[theCand])[ihit];
+                double tsum = (*i_sum)[ihit];
+                double taa = (*i_aa)[ihit];
                 if ((*i_sel[theCand])[ihit]==1&&(fabs(tdriftD)<0.5||fabs(tdriftD)>7.5)) hasBadHit = true;
                 if (tlayerID!=testLayer) continue;
-                int ttype = getHitType((*i_type)[ihit],tfitD>=0);
-                if ((ttype<100&&(m_xtType==7||m_xtType==6)||(m_xtType!=6&&m_xtType!=7))&&fabs(tfitD-tdriftD)<fabs(res_temp)){ // Should have cut for test layer! otherwise XT will not be well tuned
-                //if (fabs(tfitD-tdriftD)<fabs(res_temp)){ // no cut for test layer!
+                if (tsum<m_sumCut||taa<m_aaCut) continue;
+                if (m_ClosestPeak&&twireID<NCEL&&wireChecked[twireID]) continue; // for each cell only get the first peak over the threshold
+                if (fabs(tfitD-tdriftD)<fabs(res_temp)){ // Get the one with smallest residual
                     res_temp = tfitD-tdriftD;
                     wireID = (*i_wireID)[ihit];
                     fitD = tfitD;
                     driftT = (*i_driftT)[ihit];
+                    if (twireID<NCEL) wireChecked[twireID] = true;
                     foundhit = true;
                 }
             }
@@ -937,52 +914,21 @@ int main(int argc, char** argv){
 
         // get XT file
         TFile * XTFile = newXTFile;
-        f_left0 = (TF1*) XTFile->Get("fl_0");
-        f_right0 = (TF1*) XTFile->Get("fr_0");
         f_left = (TF1*) XTFile->Get(Form("flc_%d",testLayer));
         f_right = (TF1*) XTFile->Get(Form("frc_%d",testLayer));
-        f_left_cent = (TF1*) XTFile->Get(Form("flce_%d",testLayer));
-        f_right_cent = (TF1*) XTFile->Get(Form("frce_%d",testLayer));
-        f_left_mid = (TF1*) XTFile->Get(Form("flm_%d",testLayer));
-        f_right_mid = (TF1*) XTFile->Get(Form("frm_%d",testLayer));
-        f_left_end = (TF1*) XTFile->Get(Form("fle_%d",testLayer));
-        f_right_end = (TF1*) XTFile->Get(Form("fre_%d",testLayer));
-        if (!f_left||!f_right|!f_left0||!f_right0||!f_left_mid||!f_right_mid||!f_left_cent||!f_right_cent||!f_left_end||!f_right_end){
-            fprintf(stderr,"Cannot find XT functions!\n");
-            return 0;
+        if (!f_left||!f_right){
+            MyWarn("Cannot find the xt curves of this layer. Will load the default ones.");
+            f_left = (TF1*) XTFile->Get("fl_0");
+            f_right = (TF1*) XTFile->Get("fr_0");
         }
-        if (m_xtType%10==0||m_xtType%10==1){
-            t7r = findFirstX(f_right,7,-10,800,10);
-            t8r = findFirstX(f_right,8,-10,800,10);
-            t7l = findFirstX(f_left,-7,-10,800,10);
-            t8l = findFirstX(f_left,-8,-10,800,10);
+        if (!f_left||!f_right){
+            MyError("Cannot find the default xt curves!");
+            return 1;
         }
-        else{
-            t7r = findFirstX(f_right_mid,7,-10,800,10);
-            t8r = findFirstX(f_right_mid,8,-10,800,10);
-            t7l = findFirstX(f_left_mid,-7,-10,800,10);
-            t8l = findFirstX(f_left_mid,-8,-10,800,10);
-        }
-        double minDT = 0;
-        if (m_xtType%10==3)
-            minDT = f_left_mid->GetXmin()>f_right_mid->GetXmin()?f_right_mid->GetXmin():f_left_mid->GetXmin();
-        else
-            minDT = f_left->GetXmin()>f_right->GetXmin()?f_right->GetXmin():f_left->GetXmin();
-        double maxDT = 0;
-        if (m_xtType/10==0){
-            if (m_xtType%10==0)
-                maxDT = f_left0->GetXmax()<f_right0->GetXmax()?f_right0->GetXmax():f_left0->GetXmax();
-            else if (m_xtType%10==1)
-                maxDT = f_left->GetXmax()<f_right->GetXmax()?f_right->GetXmax():f_left->GetXmax();
-            else
-                maxDT = f_left_mid->GetXmax()<f_right_mid->GetXmax()?f_right_mid->GetXmax():f_left_mid->GetXmax();
-        }
-        else{
-            if (m_tmaxSet)
-                maxDT = m_tmaxSet;
-            else
-                maxDT = t8l<t8r?t8r:t8l;
-        }
+        double minDT = f_left->GetXmin()>f_right->GetXmin()?f_right->GetXmin():f_left->GetXmin();
+        double maxDT =  f_left->GetXmax()<f_right->GetXmax()?f_right->GetXmax():f_left->GetXmax();
+        if (m_tmaxSet)
+            maxDT = m_tmaxSet;
 
         //----------------------------------prepare for output ROOT file--------------------------------------------
         TFile * ofile = new TFile(Form("%s/root/ana_%d.%s.layer%d.root",HOME.Data(),m_runNo,m_runname.Data(),testLayer),"RECREATE");
@@ -1090,6 +1036,7 @@ int main(int argc, char** argv){
         o_boardID = new std::vector<int>;
 
         MyNamedVerbose("Ana","##############The Second loop starts#############");
+        int prevTheCand = 0;
         //----------------------------------Start the analysis to get residual and etc--------------------------------------------
         double closestchi2 = 1e9;
         for ( int iEntry = m_iEntryStart ; iEntry<=m_iEntryStop; iEntry++){
@@ -1098,28 +1045,9 @@ int main(int argc, char** argv){
             ichain->GetEntry(iEntry);
 
             // decide which candidate to use
-            theCand = 0;
-            if (m_xtType==3){
-                int nLateHitsMin = 1e9;
-                for (int iCand = 0; iCand<NCAND; iCand++){
-                    nLateHits = 0;
-                    for (int ihit = 0; ihit<nHits; ihit++){
-                        int ip = 0;
-                        for (int jhit = ihit-1; jhit>0; jhit--){
-                            if ((*i_layerID)[jhit]!=(*i_layerID)[ihit]) break;
-                            int type = getHitType((*i_type)[jhit],(*i_fitD[iCand])[jhit]>=0);
-                            if (type<100) ip++;
-                        }
-                        if ((*i_sel[iCand])[ihit]==1){
-                            if(ip!=0)
-                                nLateHits++;
-                        }
-                    }
-                    if (nLateHits<nLateHitsMin){
-                        nLateHitsMin = nLateHits;
-                        theCand = iCand;
-                    }
-                }
+            theCand = GetCandidate(m_CandSelBy, i_layerID, i_type, i_fitD, i_sel, nHitsS, chi2, chi2a);
+            if (theCand!=prevTheCand){
+                prevTheCand = theCand;
                 otree->SetBranchAddress("driftD",&(i_driftD[theCand]));
                 otree->SetBranchAddress("npairs",&(npairs[theCand]));
                 otree->SetBranchAddress("isel",&(isel[theCand]));
@@ -1151,26 +1079,6 @@ int main(int argc, char** argv){
                 }
                 otree->SetBranchAddress("fitD",&(i_fitD[theCand]));
                 otree->SetBranchAddress("sel",&(i_sel[theCand]));
-            }
-            else if (m_xtType==4||m_xtType==5){
-                double minchi2 = 1e9;
-                int minNhitsS = 0;
-                for (int iCand = 0; iCand<NCAND; iCand++){
-                    if (m_xtType==4){
-                        if ((minchi2>chi2a[iCand]&&minNhitsS==nHitsS[iCand])||minNhitsS<nHitsS[iCand]){
-                            theCand = iCand;
-                            minchi2 = chi2a[iCand];
-                            minNhitsS = nHitsS[iCand];
-                        }
-                    }
-                    else if (m_xtType==5){
-                        if ((minchi2>chi2[iCand]&&minNhitsS==nHitsS[iCand])||minNhitsS<nHitsS[iCand]){
-                            theCand = iCand;
-                            minchi2 = chi2[iCand];
-                            minNhitsS = nHitsS[iCand];
-                        }
-                    }
-                }
             }
 
             // update m_minchi2p
@@ -1263,13 +1171,6 @@ int main(int argc, char** argv){
             nSmallBoundaryHits = 0;
             nBoundaryHits = 0;
             for (int ihit = 0; ihit<nHits; ihit++){
-                //int ip = 0;
-                //for (int jhit = ihit-1; jhit>=0; jhit--){
-                //    if ((*i_layerID)[jhit]!=(*i_layerID)[ihit]||(*i_wireID)[jhit]!=(*i_wireID)[ihit]) break;
-                //    //int type = getHitType((*i_type)[jhit],(*i_fitD[theCand])[jhit]>=0);
-                //    //if (type<100) ip++;
-                //    ip++;
-                //}
                 // get hit info updated
                 int lid = (*i_layerID)[ihit];
                 int wid = (*i_wireID)[ihit];
@@ -1326,7 +1227,7 @@ int main(int argc, char** argv){
                     else if (wid==closeWid2&&nHitsT==2) isig = 1;
                     if (isig>=0){
                         double resi = fabs(dd)-fabs(fd);
-                        if (((type<100&&m_xtType==6)||m_xtType!=6)&&status==0&&fabs(resi)<fabs(minRes[isig])){ // Should have cut for test layer! otherwise XT will not be well tuned
+                        if (status==0&&fabs(resi)<fabs(minRes[isig])){ // Should have cut for test layer! otherwise XT will not be well tuned
                             hashit[isig] = true;
                             theFD[isig] = fd;
                             theDD[isig] = dd;
@@ -1342,7 +1243,7 @@ int main(int argc, char** argv){
                             theMpi[isig] = mpi;
                             if (fabs(resi)<fabs(res)) res = resi;
                         }
-                        if (ip==0){
+                        if (ip==0){ // record the ADC sum and the drift time for the first peak in the on track cell in the test layer
                             sum1st[isig] = sum;
                             dt1st[isig] = dt;
                         }
@@ -1871,28 +1772,8 @@ int main(int argc, char** argv){
         gPad->SetGridy(1);
         h_xt->Draw("COLZ");
         h_xt->GetXaxis()->SetRangeUser(minDT,maxDT);
-        if (m_xtType%10==0){
-            f_left0->Draw("SAME");
-            f_right0->Draw("SAME");
-        }
-        else if (m_xtType%10==1){
-            f_left->Draw("SAME");
-            f_right->Draw("SAME");
-        }
-        else if (m_xtType%10==3){
-            f_left_mid->Draw("SAME");
-            f_right_mid->Draw("SAME");
-        }
-        else{ // fxc_4|fxm_4
-            f_left_mid->SetRange(t7l,maxDT);
-            f_left_mid->Draw("SAME");
-            f_left->SetRange(minDT,t7l);
-            f_left->Draw("SAME");
-            f_right_mid->SetRange(t7r,maxDT);
-            f_right_mid->Draw("SAME");
-            f_right->SetRange(minDT,t7r);
-            f_right->Draw("SAME");
-        }
+        f_left->Draw("SAME");
+        f_right->Draw("SAME");
         canv_XT->SaveAs(Form("XT_%d.%s.layer%d.pdf",m_runNo,m_runname.Data(),testLayer));
         canv_XT->SaveAs(Form("XT_%d.%s.layer%d.png",m_runNo,m_runname.Data(),testLayer));
 
@@ -2171,54 +2052,13 @@ int t2d(double t, double & d, bool isRight, double tmaxSet){
     int status = 0;
     TF1 * f = 0; // body
 
-    if (m_xtType%10==0){ // fx_0
-        if (isRight) f = f_right0;
-        else f = f_left0;
-    }
-    else if (m_xtType%10==1){ // fxc_4
-        if (isRight) f = f_right;
-        else f = f_left;
-    }
-    else if (m_xtType%10==2){ // fxc_4|fxm_4
-        if (isRight){
-            if (t>t7r&&t<t8r)
-                f = f_right_mid;
-            else
-                f = f_right;
-        }
-        else{
-            if (t>t7l&&t<t8r)
-                f = f_left_mid;
-            else
-                f = f_left;
-        }
-    }
-    else{ // fxm_4
-        if (isRight){
-            if (t<t8r)
-                f = f_right_mid;
-            else
-                f = f_right;
-        }
-        else{
-            if (t<t8r)
-                f = f_left_mid;
-            else
-                f = f_left;
-        }
-    }
+    if (isRight) f = f_right;
+    else f = f_left;
 
     double tRight = f->GetXmax();
+    double tmax = tRight;
+    if (tmaxSet&&tmax>tmaxSet) tmax = tmaxSet;
     double tmin = f->GetXmin();
-    double tmax = 0;
-    if (m_xtType/10==0){
-        tmax = tRight;
-    }
-    else{
-        if (isRight) tmax = t8r;
-        else tmax = t8l;
-        if (tmaxSet) tmax = tmaxSet;
-    }
 
     if (t<tmin){
         status = -1;
@@ -2276,6 +2116,7 @@ void doFit(TH1D * h,double leftRatio, double rightRatio, double leftEnd, double 
 }
 
 int getHitType(int type,bool isRight){
+    // Original type is in decimal: [IMASTR]. I: peak index (only counting peaks over m_sumCut); M: peak index in a packet; A: smaller than aa cut? S: smaller than sum cut? T: 0 good, 3/6/7 very bad, 1/2/4/5 partly bad; R: 0 center, 1 left, 2 right, 3 guard, 4 dummy
     int ttype = (type/10)%10;
     if (isRight){
         if (ttype==1||ttype==4) type-=ttype*10; // l- or l+
@@ -2284,6 +2125,59 @@ int getHitType(int type,bool isRight){
         if (ttype==2||ttype==5) type-=ttype*10; // r- or r+
     }
     return type;
+}
+
+int GetCandidate(TString & candSelBy, std::vector<int> * layerID, std::vector<int> * type, std::vector<double> * fitD[NCAND], std::vector<int> * sel[NCAND], int * nHitsS, double * chi2, double * chi2a){
+    int cand = 0;
+    if (candSelBy=="Original"){
+        cand = 0;
+    }
+    else if (candSelBy=="LeastLatePeak"){
+        int nLateHitsMin = 1e9;
+        for (int iCand = 0; iCand<NCAND; iCand++){
+            int nLateHits = 0;
+            for (int ihit = 0; ihit<layerID->size(); ihit++){
+                int ip = 0;
+                for (int jhit = ihit-1; jhit>0; jhit--){
+                    if ((*layerID)[jhit]!=(*layerID)[ihit]) break;
+                    int ttype = getHitType((*type)[jhit],(*fitD[iCand])[jhit]>=0);
+                    if (ttype<100) ip++;
+                }
+                if ((*sel[iCand])[ihit]==1){
+                    if(ip!=0)
+                        nLateHits++;
+                }
+            }
+            if (nLateHits<nLateHitsMin){
+                nLateHitsMin = nLateHits;
+                cand = iCand;
+            }
+        }
+    }
+    else if (candSelBy=="FittingChi2"||candSelBy=="GlobalChi2"){
+        double minchi2 = 1e9;
+        int minNhitsS = 0;
+        for (int iCand = 0; iCand<NCAND; iCand++){
+            if (candSelBy=="GlobalChi2"){
+                if ((minchi2>chi2a[iCand]&&minNhitsS==nHitsS[iCand])||minNhitsS<nHitsS[iCand]){
+                    cand = iCand;
+                    minchi2 = chi2a[iCand];
+                    minNhitsS = nHitsS[iCand];
+                }
+            }
+            else if (candSelBy=="FittingChi2"){
+                if ((minchi2>chi2[iCand]&&minNhitsS==nHitsS[iCand])||minNhitsS<nHitsS[iCand]){
+                    cand = iCand;
+                    minchi2 = chi2[iCand];
+                    minNhitsS = nHitsS[iCand];
+                }
+            }
+        }
+    }
+    else{
+        cand = 0;
+    }
+    return cand;
 }
 
 void print_usage(char * prog_name){
@@ -2349,5 +2243,15 @@ void print_usage(char * prog_name){
     fprintf(stderr,"\t\t (0) only the first peak over threshold; 1, all peaks over threshold; 2, even including shaddowed peaks\n");
     fprintf(stderr,"\t -x <x>\n");
     fprintf(stderr,"\t\t xt type set to x\n");
-    fprintf(stderr,"\t\t (2) sym; 1 sym+offset; 0 no; 6 sym+offset+first OT peak; 7 sym+offset+first OT peak+2segments\n");
+    fprintf(stderr,"\t\t XYZ (055) means polX for center, polY for middle and polZ for tail. If X is 0 then let middle function fit the center region.\n");
+    fprintf(stderr,"\t -A\n");
+    fprintf(stderr,"\t\t Use asymmetric XT\n");
+    fprintf(stderr,"\t -S\n");
+    fprintf(stderr,"\t\t Select candidate by:\n");
+    fprintf(stderr,"\t\t ((O)riginal): the first one given by tracking (global chi2)\n");
+    fprintf(stderr,"\t\t (G)lobalChi2: find the candidate with the smallest global chi2 including the test layer\n");
+    fprintf(stderr,"\t\t (F)ittingChi2: find the candidate with the smallest fitting chi2\n");
+    fprintf(stderr,"\t\t (L)eastLatePeak: find the candidate with the least late arrival peaks\n");
+    fprintf(stderr,"\t -P\n");
+    fprintf(stderr,"\t\t Use the peak with smallest residual to get driftT. By default just use the first one\n");
 }

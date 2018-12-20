@@ -11,10 +11,104 @@
 #include "TLine.h"
 #include "TStyle.h"
 
+#include "Log.hxx"
+
 #include <math.h>
 
 XTAnalyzer::XTAnalyzer(int gasID, int debug)
-	:mGasID(gasID), mDebugLevel(debug), mSaveXT0(false), mSaveXTEO(0), mUpdateXT(true)
+	:mGasID(gasID), mDebugLevel(debug), mSaveXT0(false), mSaveXTEO(0), mUpdateXT(true), mSymmetric(true),
+	mXTType(55), mCentPolN(0), mMidPolN(5), mEndPolN(5),
+	mRunName(""), mEOsuffix("even"),
+	mEntriesMin(0), mSigXmax(0.5), mSigTmax(20),
+		mX(0), mT(0), mLayerID(0), mSig(0), mChi2(0), mEntries(0), mType(0), 
+        mBWT(0), mBWX(0), mXLEFT(0), mXRIGHT(0), mTLEFT(0), mTRIGHT(0), 
+        mTmin(0), mTmax(0), mNbint(0), mXmin(0), mXmax(0), mNbinx(0), 
+        m_sig_sel(0), m_t_sel(0), m_n_sel(0), m_i_sel(0), 
+        m_RLmB_dx_max(0), m_TmL_LR_max(0), m_TmL_B_max(0), 
+        mInFile(0), 
+        mOutFile(0), 
+        mOutTree(0), 
+        h2_xt(0), 
+        h2_xtn(0), 
+        f_gaus(0), 
+        f_land(0), 
+        f_2gaus(0), 
+        l_left(0), 
+        l_center(0), 
+        l_right(0), 
+        gr_xt_slicet(0), 
+        gr_xt_slicex(0), 
+        gr_xn_slicex(0), 
+        gr_xsig_slicex(0), 
+        gr_xchi2_slicex(0), 
+        gr_nt_slicetl(0), 
+        gr_sigt_slicetl(0), 
+        gr_chi2t_slicetl(0), 
+        gr_nt_slicetr(0), 
+        gr_sigt_slicetr(0), 
+        gr_chi2t_slicetr(0), 
+        gr_xt_slicetn(0), 
+        gr_xt_slicexn(0), 
+        gr_xn_slicexn(0), 
+        gr_xsig_slicexn(0), 
+        gr_xchi2_slicexn(0), 
+        gr_nt_slicetn(0), 
+        gr_sigt_slicetn(0), 
+        gr_chi2t_slicetn(0), 
+        gr_sigts_slicetl(0), 
+        gr_sigts_slicetr(0), 
+        gr_sigts_slicetl0(0), 
+        gr_sigts_slicetr0(0), 
+        gr_sigts_slicetlEO(0), 
+        gr_sigts_slicetrEO(0), 
+        gr_right_cen(0), 
+        gr_left_cen(0), 
+        gr_both_cen(0), 
+        gr_bothL_cen(0), 
+        gr_right_mid(0), 
+        gr_left_mid(0), 
+        gr_both_mid(0), 
+        gr_bothL_mid(0), 
+        gr_right_end(0), 
+        gr_left_end(0), 
+        gr_both_end(0), 
+        gr_bothL_end(0), 
+        gr_RmB_func(0), 
+        gr_LmB_func(0), 
+        gr_TmL_left(0), 
+        gr_TmL_right(0), 
+        gr_TmL_both(0), 
+        gr_SmF_left(0), 
+        gr_SmF_right(0), 
+        gr_SmF_both(0), 
+        f_right_cen(0), 
+        f_left_cen(0), 
+        f_both_cen(0), 
+        f_right_mid(0), 
+        f_left_mid(0), 
+        f_both_mid(0), 
+        f_right_end(0), 
+        f_left_end(0), 
+        f_both_end(0), 
+        f_left_deltac(0), 
+        f_right_deltac(0), 
+        f_both_deltac(0), 
+        f_left_delta(0), 
+        f_right_delta(0), 
+        f_both_delta(0), 
+        f_left_com(0), 
+        f_right_com(0), 
+        f_both_com(0), 
+        f_bothL_com(0), 
+        fo_right(0), 
+        fo_left(0), 
+        fo_both(0), 
+        f_right(0), 
+        f_left(0), 
+        f_right0(0), 
+        f_left0(0), 
+        f_rightEO(0), 
+        f_leftEO(0)
 {
 	v_x_slicex.resize(NSLICEX);
 	v_t_slicex.resize(NSLICEX);
@@ -36,27 +130,49 @@ XTAnalyzer::XTAnalyzer(int gasID, int debug)
 	v_sig_slicetn.resize(NSLICET);
 	v_n_slicetn.resize(NSLICET);
 	v_chi2_slicetn.resize(NSLICET);
+	for (int islice = 0; islice<NSLICEX; islice++){
+		h_t[islice] = 0;
+		h_tn[islice] = 0;
+		h_t_xsum[islice] = 0;
+		h_tn_xsum[islice] = 0;
+	}
+	for (int islice = 0; islice<NSLICET; islice++){
+		h_x[islice] = 0;
+		h_mx[islice] = 0;
+		h_xn[islice] = 0;
+		h_mxn[islice] = 0;
+		h_x_tsum[islice] = 0;
+		h_xn_tsum[islice] = 0;
+    }
 }
 
 XTAnalyzer::~XTAnalyzer(void){
 }
 
 void XTAnalyzer::SetXTType(int type){
+	if ((type%100)/10==0||type%10==0){
+	    MyWarn("XTType "<<type<<" is not valid! The last 2 digit denotes the order of middle part and end part. They cannot be 0.");
+	}
 	mXTType = type;
+	if (type<0) type*=1; // negative value means this is MC
+	mCentPolN = type/100;
+	mMidPolN = (type%100)/10;
+	mEndPolN = type%10;
 }
 
 void XTAnalyzer::SetSaveHists(int save){
 	mSaveHists = save;
 }
 
-int XTAnalyzer::Initialize(TString runname, int lid, TFile * infile, TFile * outfile, TTree * otree, int xttype, int savehists, bool saveXT0, int saveOddEven, bool updateXT){
+int XTAnalyzer::Initialize(TString runname, int lid, TFile * infile, TFile * outfile, TTree * otree, int xttype, bool sym, int savehists, bool saveXT0, int saveOddEven, bool updateXT){
 	// Set options
 	mRunName = runname;
 	mLayerID = lid;
 	mInFile = infile;
 	mOutFile = outfile;
 	mOutTree = otree;
-	mXTType = xttype;
+	SetXTType(xttype);
+	mSymmetric = sym;
 	mSaveHists = savehists;
 	mSaveXT0 = saveXT0;
 	mSaveXTEO = saveOddEven;
@@ -69,7 +185,7 @@ int XTAnalyzer::Initialize(TString runname, int lid, TFile * infile, TFile * out
 	mSigXmax = 0.5;
 
 	// in case it's a real run (not garfield simulation), load previous xt curves
-	if (mXTType!=-1){
+	if (mXTType>0){
         if (!mInFile) {
             fprintf(stderr,"ERROR: input XT file is not valid\n");
             return 1;
@@ -214,22 +330,15 @@ int XTAnalyzer::Initialize(TString runname, int lid, TFile * infile, TFile * out
 	m_TmL_B_max = 0;
 
 	// prepare new XT functions
-	f_left_cen = myNewTF1(Form("flce_%d",mLayerID),"pol5",mTmin,mTmax);
-	f_right_cen = myNewTF1(Form("frce_%d",mLayerID),"pol5",mTmin,mTmax);
-	f_both_cen = myNewTF1(Form("fbce_%d",mLayerID),"pol5",mTmin,mTmax);
-	if (mXTType==7){
-		f_left_mid = myNewTF1(Form("flm_%d",mLayerID),"pol9",mTmin,mTmax);
-		f_right_mid = myNewTF1(Form("frm_%d",mLayerID),"pol9",mTmin,mTmax);
-		f_both_mid = myNewTF1(Form("fbm_%d",mLayerID),"pol9",mTmin,mTmax);
-	}
-	else{
-		f_left_mid = myNewTF1(Form("flm_%d",mLayerID),"pol5",mTmin,mTmax);
-		f_right_mid = myNewTF1(Form("frm_%d",mLayerID),"pol5",mTmin,mTmax);
-		f_both_mid = myNewTF1(Form("fbm_%d",mLayerID),"pol5",mTmin,mTmax);
-	}
-	f_left_end = myNewTF1(Form("fle_%d",mLayerID),"pol3",mTmin,mTmax);
-	f_right_end = myNewTF1(Form("fre_%d",mLayerID),"pol3",mTmin,mTmax);
-	f_both_end = myNewTF1(Form("fbe_%d",mLayerID),"pol3",mTmin,mTmax);
+    f_left_cen = myNewTF1(Form("flce_%d",mLayerID),Form("pol%d",mCentPolN),mTmin,mTmax);
+    f_right_cen = myNewTF1(Form("frce_%d",mLayerID),Form("pol%d",mCentPolN),mTmin,mTmax);
+    f_both_cen = myNewTF1(Form("fbce_%d",mLayerID),Form("pol%d",mCentPolN),mTmin,mTmax);
+    f_left_mid = myNewTF1(Form("flm_%d",mLayerID),Form("pol%d",mMidPolN),mTmin,mTmax);
+    f_right_mid = myNewTF1(Form("frm_%d",mLayerID),Form("pol%d",mMidPolN),mTmin,mTmax);
+    f_both_mid = myNewTF1(Form("fbm_%d",mLayerID),Form("pol%d",mMidPolN),mTmin,mTmax);
+	f_left_end = myNewTF1(Form("fle_%d",mLayerID),Form("pol%d",mEndPolN),mTmin,mTmax);
+	f_right_end = myNewTF1(Form("fre_%d",mLayerID),Form("pol%d",mEndPolN),mTmin,mTmax);
+	f_both_end = myNewTF1(Form("fbe_%d",mLayerID),Form("pol%d",mEndPolN),mTmin,mTmax);
 
 	if (mDebugLevel>=1) {printf("XTAnalyzer successfully initialized!\n");fflush(stdout);}
 	return 0;
@@ -426,9 +535,9 @@ void XTAnalyzer::Process(void){
 	//==========================Select Samples==============================
 	// select sample points and make graphs
 	// FIXME: Currently seperate the mid/end graphs by 8 mm line, and search for the real one from 7 mm line.
-	// FIXME: Currently seperate the cen/mid graphs by 1 mm line, and search for the real one from mTmin.
+	// FIXME: Currently seperate the cen/mid graphs by 1.5 mm line, and search for the real one from mTmin.
 	double xCenter2Mid = 1.5;
-	if (mXTType==7) xCenter2Mid = 0;
+	if (mCentPolN==0) xCenter2Mid = 0;
 	double xStart2Turn = 7;
 	double xMargin = 0.2;
 	double t8Left = v_t_slicex[0];
@@ -636,7 +745,7 @@ void XTAnalyzer::Process(void){
 	double tZeroLeft = 0;
 	double tZeroRight = 0;
 	double tZeroBoth = 0;
-	if (mXTType==7){
+	if (mCentPolN==0){
 		tZeroLeft = findFirstZero(f_left_mid,mTmin,mTmax,1);
 		tZeroRight = findFirstZero(f_right_mid,mTmin,mTmax,1);
 		tZeroBoth = findFirstZero(f_both_mid,mTmin,mTmax,1);
@@ -664,7 +773,7 @@ void XTAnalyzer::Process(void){
 	}
 
 	// combine functions
-	if (mXTType==7){
+	if (mCentPolN==0){
 		f_left_com = combinePolN(Form("flc_%d",mLayerID),f_left_mid,f_left_end,tZeroLeft,tTurnLeft,tEndLeft,mTmin,tEndLeft);
 		f_right_com = combinePolN(Form("frc_%d",mLayerID),f_right_mid,f_right_end,tZeroRight,tTurnRight,tEndRight,mTmin,tEndRight);
 		f_both_com = combinePolN(Form("fbc_%d",mLayerID),f_both_mid,f_both_end,tZeroBoth,tTurnBoth,tEndBoth,mTmin,tEndBoth);
@@ -681,7 +790,7 @@ void XTAnalyzer::Process(void){
 	f_bothL_com->SetLineColor(kBlack);
 
 	// get the final xt functions
-	if (mXTType==0){ // use Left/Right case
+	if (!mSymmetric){ // use Left/Right case
 		f_left = combinePolN(Form("fl_%d",mLayerID),f_left_cen,f_left_mid,f_left_end,tZeroLeft,tCentLeft,tTurnLeft,tEndLeft,mTmin,tEndLeft);
 		f_right = combinePolN(Form("fr_%d",mLayerID),f_right_cen,f_right_mid,f_right_end,tZeroRight,tCentRight,tTurnRight,tEndRight,mTmin,tEndRight);
 		if (mSaveXT0){
@@ -694,7 +803,7 @@ void XTAnalyzer::Process(void){
 		}
 	}
 	else{ // use Both-Side case
-		if (mXTType==7){
+		if (mCentPolN==0){
 			f_left = combinePolN(Form("fl_%d",mLayerID),scalePolN(f_both_mid,-1),scalePolN(f_both_end,-1),tZeroBoth,tTurnBoth,tEndBoth,mTmin,tEndBoth);
 			f_right = combinePolN(Form("fr_%d",mLayerID),f_both_mid,f_both_end,tZeroBoth,tTurnBoth,tEndBoth,mTmin,tEndBoth);
 			if (mSaveXT0){
@@ -737,7 +846,7 @@ void XTAnalyzer::Process(void){
 		}
 	}
 	// get this/last xt difference by functions
-	if (mXTType!=-1){
+	if (mXTType>0){
         double tEndLeftPre = fo_left->GetXmax();
         double tEndRightPre = fo_right->GetXmax();
         double tEndBothPre = fo_both->GetXmax();
@@ -1335,7 +1444,7 @@ void XTAnalyzer::createGraphs(){
 	if (v_bothL_end_x.size()) gr_bothL_end = myNewTGraph(Form("gr_xt_ble_%d",mLayerID),v_bothL_end_x.size(),&(v_both_end_t[0]),&(v_bothL_end_x[0]),
 			"XT Relation","T [ns]","X [mm]",20,0.3,kBlack,0.3,kBlack);
 	// selected graphs for error reference
-	if (mXTType==0){
+	if (!mSymmetric){
 		if (v_t_slicetls.size()) gr_sigts_slicetl = myNewTGraph(Form("gr_sigts_slicetl_%d",mLayerID),v_t_slicetls.size(),&(v_t_slicetls[0]),&(v_sig_slicetls[0]),
 				"Sigma of X in each T slice","T [ns]","#sigma_{X} [mm]",
 				20,0.5,kMagenta,0.5,kMagenta);
@@ -1729,7 +1838,7 @@ void XTAnalyzer::drawIteration(){
 	pad_IterN[0]->cd();
 	h2_xtn->Draw("COLZ");
 	f_both_com->Draw("SAME");
-	if (mXTType!=-1){
+	if (mXTType>0){
         fo_both->SetLineColor(kRed);
         fo_both->SetLineStyle(2);
         fo_both->SetLineWidth(0.3);
@@ -1763,7 +1872,7 @@ void XTAnalyzer::drawIteration(){
 	h2_xt->Draw("COLZ");
 	f_left_com->Draw("SAME");
 	f_right_com->Draw("SAME");
-	if (mXTType!=-1){
+	if (mXTType>0){
         fo_left->SetLineColor(kBlack);
         fo_right->SetLineColor(kBlack);
         fo_left->SetLineStyle(2);
