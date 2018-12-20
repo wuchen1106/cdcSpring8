@@ -73,6 +73,7 @@ int main(int argc, char** argv){
     int m_runNo = 0;
     TString m_prerunname  = "prerun";
     TString m_runname = "currun";
+    TString m_suffix = "";
     int m_iEntryStart = 0;
     int m_iEntryStop = 0;
     int m_verboseLevel = 0;
@@ -107,6 +108,8 @@ int main(int argc, char** argv){
     int    m_NbinRes = 256;
     double m_minchi2p = 1;
     double m_maxRes = 2;
+    // for ADC2Charge
+    TString m_adc2charge = "2.0158464*x";
 
     int temp_geoSetup = 0; bool set_geoSetup = false;
     int temp_inputType = 0; bool set_inputType = false;
@@ -143,111 +146,111 @@ int main(int argc, char** argv){
             case 'M':
                 m_modulo = atoi(optarg);
                 printf("Printing modulo set to %d\n",m_modulo);
-				break;
+                break;
             case 'R':
                 m_runNo = atoi(optarg);
                 printf("Run number set to %d\n",m_runNo);
-				break;
+                break;
             case 'B':
                 m_iEntryStart = atoi(optarg);
                 printf("Starting entry index set to %d\n",m_iEntryStart);
-				break;
+                break;
             case 'E':
                 m_iEntryStop = atoi(optarg);
                 printf("Stopping entry index set to %d\n",m_iEntryStop);
-				break;
+                break;
             case 'L':
                 m_defaultLayerID = atoi(optarg);
                 printf("Test layer set to %d\n",m_defaultLayerID);
-				break;
+                break;
             case 'H':
                 m_saveHists = atoi(optarg);
                 printf("Histogram saving level set to %d\n",m_saveHists);
-				break;
+                break;
             case 'C':
                 m_configureFile = optarg;
                 printf("Using configure file \"%s\"\n",optarg);
-				break;
+                break;
             case 'n':
                 temp_nHitsMax = atoi(optarg);set_nHitsMax = true;
                 printf("Maximum number of hits cut set to %d\n",temp_nHitsMax);
-				break;
+                break;
             case 'f':
                 temp_nHitsSmin = atoi(optarg);set_nHitsSmin = true;
                 printf("Minimum number of selected hits cut set to %d\n",temp_nHitsSmin);
-				break;
+                break;
             case 'c':
                 temp_maxchi2 = atof(optarg);set_maxchi2 = true;
                 printf("Maximum chi2 cut set to %d\n",temp_maxchi2);
-				break;
+                break;
             case 'v':
                 temp_minchi2p = atof(optarg);set_minchi2p = true;
                 printf("Minimum p-value cut set to %d\n",temp_minchi2p);
-				break;
+                break;
             case 'r':
                 temp_maxRes = atof(optarg);set_maxRes = true;
                 printf("Maximum resolution cut set to %d\n",temp_maxRes);
-				break;
+                break;
             case 'z':
                 temp_maxslz = atof(optarg);set_maxslz = true;
                 printf("Maximum y-z slope cut set to %d\n",temp_maxslz);
-				break;
+                break;
             case 'd':
                 temp_maxFD = atof(optarg);set_maxFD = true;
                 printf("Maximum fitD cut set to %d\n",temp_maxFD);
-				break;
+                break;
             case 'o':
                 temp_tmaxSet = atoi(optarg);set_tmaxSet = true;
                 printf("Maximum time range set to %d\n",temp_tmaxSet);
-				break;
+                break;
             case 's':
                 temp_sumCut = atoi(optarg);set_sumCut = true;
                 printf("ADC sum over peak cut set to %d\n",temp_sumCut);
-				break;
+                break;
             case 'a':
                 temp_aaCut = atoi(optarg);set_aaCut = true;
                 printf("ADC sum over all cut set to %d\n",temp_aaCut);
-				break;
+                break;
             case 'l':
                 temp_tmin = atof(optarg);set_tmin = true;
                 printf("Minimum time on axis set to %d\n",temp_tmin);
-				break;
+                break;
             case 'u':
                 temp_tmax = atof(optarg);set_tmax = true;
                 printf("Maximum time on axis set to %d\n",temp_tmax);
-				break;
+                break;
             case 't':
                 temp_NbinT = atoi(optarg);set_NbinT = true;
                 printf("Number of bins on time axis set to %d\n",temp_NbinT);
-				break;
+                break;
             case 'm':
                 temp_NbinX = atoi(optarg);set_NbinX = true;
                 printf("Number of bins on space axis set to %d\n",temp_NbinX);
-				break;
+                break;
             case 'y':
                 temp_NbinRes = atoi(optarg);set_NbinRes = true;
                 printf("Number of bins on resolution axis set to %d\n",temp_NbinRes);
-				break;
+                break;
             case 'g':
                 temp_geoSetup = atoi(optarg);set_geoSetup = true;
                 printf("Geometry setup set to %d\n",temp_geoSetup);
-				break;
+                break;
             case 'i':
                 temp_inputType = atoi(optarg);set_inputType = true;
                 printf("Input type set to %d\n",temp_inputType);
-				break;
+                break;
             case 'p':
                 temp_peakType = atoi(optarg);set_peakType = true;
                 printf("Peak type set to %d\n",temp_peakType);
-				break;
+                break;
             case 'x':
                 temp_xtType = atoi(optarg);set_xtType = true;
                 printf("XT type set to %d\n",temp_xtType);
-				break;
+                break;
             case 'A':
                 temp_AsymXT = true; set_AsymXT = true;
                 printf("Use asymmetric XT\n");
-				break;
+                break;
             case 'S':
                 temp_CandSelBy = optarg; set_CandSelBy = true;
                 if (temp_CandSelBy!="Original"&&temp_CandSelBy!="FittingChi2"&&temp_CandSelBy!="GlobalChi2"&&temp_CandSelBy!="LeastLatePeak"){
@@ -255,11 +258,11 @@ int main(int argc, char** argv){
                     temp_CandSelBy = "Original";
                 }
                 printf("Choose the candidate by %s\n",temp_CandSelBy.Data());
-				break;
+                break;
             case 'P':
                 temp_ClosestPeak = true; set_ClosestPeak = true;
                 printf("Use the peak with smallest residual to get driftT. Otherwise just use the first one\n");
-				break;
+                break;
             case 'D':
                 {
                     // Set the debug level for a named trace.
@@ -349,6 +352,9 @@ int main(int argc, char** argv){
         m_inputType = MyRuntimeParameters::Get().GetParameterI("inputType");
         m_peakType = MyRuntimeParameters::Get().GetParameterI("peakType");
         m_xtType = MyRuntimeParameters::Get().GetParameterI("xtType");;
+        m_AsymXT = MyRuntimeParameters::Get().GetParameterI("ana.AsymXT");
+        m_CandSelBy = MyRuntimeParameters::Get().GetParameterS("ana.CandSelBy");
+        m_ClosestPeak = MyRuntimeParameters::Get().GetParameterI("ana.ClosestPeak");
         //for cutting
         m_nHitsMax = MyRuntimeParameters::Get().GetParameterI("ana.nHitsMax");
         m_nHitsSmin = MyRuntimeParameters::Get().GetParameterI("ana.nHitsSmin");
@@ -400,11 +406,17 @@ int main(int argc, char** argv){
     }
     m_prerunname = argv[optind++];
     m_runname= argv[optind++];
+    TString m_runnameout = m_runname;
+    if (argc-optind>0){
+        m_suffix = argv[optind++];
+        m_runnameout=m_runname+"."+m_suffix;
+    }
 
     printf("##############%s##################\n",argv[0]);
     printf("runNo       = %d\n",m_runNo);
     printf("prerunname  = \"%s\"\n",m_prerunname.Data());
     printf("runname     = \"%s\"\n",m_runname.Data());
+    printf("suffix      = \"%s\"\n",m_suffix.Data());
     printf("default layer: %d\n",m_defaultLayerID);
     printf("geoSetup:     %s\n",m_geoSetup==0?"normal scintillator":"finger scintillator");
     printf("xtType:       %d\n",m_xtType);
@@ -423,6 +435,7 @@ int main(int argc, char** argv){
     printf("save fitting histograms at level %d\n",m_saveHists);
     printf("output EventTree? %s\n",m_outputEventTree?"yes":"no");
     printf("Entries:     [%d~%d]\n",m_iEntryStart,m_iEntryStop);
+    printf("ADC -> Charge: %s\n",m_adc2charge.Data());
     fflush(stdout);
 
     TString HOME=getenv("CDCS8WORKING_DIR");
@@ -547,7 +560,7 @@ int main(int argc, char** argv){
     TFile * preXTFile = new TFile(Form("%s/info/xt.%d.%s.root",HOME.Data(),m_runNo,m_prerunname.Data()));
 
     // prepare new XT file for this run
-    TFile * newXTFile = new TFile(Form("%s/info/xt.%d.%s.root",HOME.Data(),m_runNo,m_runname.Data()),"RECREATE");
+    TFile * newXTFile = new TFile(Form("%s/info/xt.%d.%s.root",HOME.Data(),m_runNo,m_runnameout.Data()),"RECREATE");
     TTree * newXTTree = new TTree("t","t");
     double mX;
     double mT;
@@ -586,9 +599,7 @@ int main(int argc, char** argv){
     printf("    sciHW       = %.3e\n",sciHW);
 
     // set RECBE ADC function
-    //fADC2ChargeFunction = new TF1("a2c","5.98739+2.6652*x+0.000573394*x*x-5.21769e-05*x*x*x+3.05897e-07*x*x*x*x-7.54057e-10*x*x*x*x*x+8.60252e-13*x*x*x*x*x*x-3.68603e-16*x*x*x*x*x*x*x",-10,800);
-    //fADC2ChargeFunction = new TF1("a2c","5.98739+2.6652*x",-10,800);
-    fADC2ChargeFunction = new TF1("a2c","2.0158464*x",-10,800);
+    fADC2ChargeFunction = new TF1("a2c",m_adc2charge,-10,800);
 
     //==============================================Prepare input file & output variables=================================================
     // input file
@@ -832,7 +843,7 @@ int main(int argc, char** argv){
 
         //----------------------------------Initialize the analyzer--------------------------------------------
         int saveEvenOdd = 0; if (testLayer==4) saveEvenOdd = 1; else if (testLayer==5) saveEvenOdd = -1;
-        int statusInitialize = fXTAnalyzer->Initialize(Form("%d.%s.layer%d",m_runNo,m_runname.Data(),testLayer),testLayer,preXTFile,newXTFile,newXTTree,m_xtType,!m_AsymXT,m_saveHists, testLayer==m_defaultLayerID, saveEvenOdd, testLayer!=0);
+        int statusInitialize = fXTAnalyzer->Initialize(Form("%d.%s.layer%d",m_runNo,m_runnameout.Data(),testLayer),testLayer,preXTFile,newXTFile,newXTTree,m_xtType,!m_AsymXT,m_saveHists, testLayer==m_defaultLayerID, saveEvenOdd, testLayer!=0);
         if (statusInitialize){
             fprintf(stderr,"WARNING: something wrong with initializing XTAnalyzer for layer[%d], will ignore this layer!\n",testLayer);
             continue;
@@ -862,7 +873,7 @@ int main(int argc, char** argv){
             theCand = GetCandidate(m_CandSelBy, i_layerID, i_type, i_fitD, i_sel, nHitsS, chi2, chi2a);
 
             // ignore events with bad fitting
-            if (nHitsS[theCand]<7) continue;
+            if (nHitsS[theCand]<m_nHitsSmin) continue;
             if (chi2[theCand]>m_maxchi2) continue;
             //if (nHitsG>nHitsS[theCand]) continue;
             if (m_geoSetup==1){
@@ -931,7 +942,7 @@ int main(int argc, char** argv){
             maxDT = m_tmaxSet;
 
         //----------------------------------prepare for output ROOT file--------------------------------------------
-        TFile * ofile = new TFile(Form("%s/root/ana_%d.%s.layer%d.root",HOME.Data(),m_runNo,m_runname.Data(),testLayer),"RECREATE");
+        TFile * ofile = new TFile(Form("%s/root/ana_%d.%s.layer%d.root",HOME.Data(),m_runNo,m_runnameout.Data(),testLayer),"RECREATE");
         TTree * otree = new TTree("t","t");
         otree->Branch("triggerNumber",&triggerNumber);
         otree->Branch("isGood",&isGood);
@@ -1404,7 +1415,7 @@ int main(int argc, char** argv){
         ofile->Close();
 
         //=================================================Get bin by bin information====================================================
-        ofile = new TFile(Form("%s/info/resi_%d.%s.layer%d.root",HOME.Data(),m_runNo,m_runname.Data(),testLayer),"RECREATE");
+        ofile = new TFile(Form("%s/info/resi_%d.%s.layer%d.root",HOME.Data(),m_runNo,m_runnameout.Data(),testLayer),"RECREATE");
         otree = new TTree("t","t");
         int o_ibin;
         double o_xmin;
@@ -1556,7 +1567,7 @@ int main(int argc, char** argv){
                 o_xeff1mm = h_resX[ibin]->Integral(ibinl,ibinr)/o_nx;
                 if (m_saveHists){
                     h_resX[ibin]->Draw();
-                    canv_bin->SaveAs(Form("resX%d_%d.%s.layer%d.png",ibin,m_runNo,m_runname.Data(),testLayer));
+                    canv_bin->SaveAs(Form("resX%d_%d.%s.layer%d.png",ibin,m_runNo,m_runnameout.Data(),testLayer));
                 }
             }
             else{
@@ -1592,7 +1603,7 @@ int main(int argc, char** argv){
                 o_deff1mm = h_resD[ibin]->Integral(ibinl,ibinr)/o_nd;
                 if (m_saveHists){
                     h_resD[ibin]->Draw();
-                    canv_bin->SaveAs(Form("resD%d_%d.%s.layer%d.png",ibin,m_runNo,m_runname.Data(),testLayer));
+                    canv_bin->SaveAs(Form("resD%d_%d.%s.layer%d.png",ibin,m_runNo,m_runnameout.Data(),testLayer));
                 }
             }
             else{
@@ -1733,8 +1744,8 @@ int main(int argc, char** argv){
         text_slz->SetTextColor(kRed);
         text_slz->SetTextSize(0.04);
         text_slz->Draw("SAME");
-        canv_tracking->SaveAs(Form("track_%d.%s.layer%d.pdf",m_runNo,m_runname.Data(),testLayer));
-        canv_tracking->SaveAs(Form("track_%d.%s.layer%d.png",m_runNo,m_runname.Data(),testLayer));
+        canv_tracking->SaveAs(Form("track_%d.%s.layer%d.pdf",m_runNo,m_runnameout.Data(),testLayer));
+        canv_tracking->SaveAs(Form("track_%d.%s.layer%d.png",m_runNo,m_runnameout.Data(),testLayer));
 
         TCanvas * canv_DOCA = new TCanvas("canv_DOCA","canv_DOCA",600,800);
         gStyle->SetPalette(1);
@@ -1752,16 +1763,16 @@ int main(int argc, char** argv){
         gPad->SetGridy(1);
         h_DOCAb->GetYaxis()->SetRangeUser(0,h_DOCAb->GetMaximum()*1.1);
         h_DOCAb->Draw();
-        canv_DOCA->SaveAs(Form("DOCA_%d.%s.layer%d.pdf",m_runNo,m_runname.Data(),testLayer));
-        canv_DOCA->SaveAs(Form("DOCA_%d.%s.layer%d.png",m_runNo,m_runname.Data(),testLayer));
+        canv_DOCA->SaveAs(Form("DOCA_%d.%s.layer%d.pdf",m_runNo,m_runnameout.Data(),testLayer));
+        canv_DOCA->SaveAs(Form("DOCA_%d.%s.layer%d.png",m_runNo,m_runnameout.Data(),testLayer));
         canv_DOCA->cd(1);
         h_DriftD->GetYaxis()->SetRangeUser(0,h_DriftD->GetMaximum()*1.1);
         h_DriftD->Draw();
         canv_DOCA->cd(2);
         h_DriftDb->GetYaxis()->SetRangeUser(0,h_DriftDb->GetMaximum()*1.1);
         h_DriftDb->Draw();
-        canv_DOCA->SaveAs(Form("DriftD_%d.%s.layer%d.pdf",m_runNo,m_runname.Data(),testLayer));
-        canv_DOCA->SaveAs(Form("DriftD_%d.%s.layer%d.png",m_runNo,m_runname.Data(),testLayer));
+        canv_DOCA->SaveAs(Form("DriftD_%d.%s.layer%d.pdf",m_runNo,m_runnameout.Data(),testLayer));
+        canv_DOCA->SaveAs(Form("DriftD_%d.%s.layer%d.png",m_runNo,m_runnameout.Data(),testLayer));
 
         TCanvas * canv_XT = new TCanvas("canv_XT","canv_XT",800,600);
         gStyle->SetPalette(1);
@@ -1774,8 +1785,8 @@ int main(int argc, char** argv){
         h_xt->GetXaxis()->SetRangeUser(minDT,maxDT);
         f_left->Draw("SAME");
         f_right->Draw("SAME");
-        canv_XT->SaveAs(Form("XT_%d.%s.layer%d.pdf",m_runNo,m_runname.Data(),testLayer));
-        canv_XT->SaveAs(Form("XT_%d.%s.layer%d.png",m_runNo,m_runname.Data(),testLayer));
+        canv_XT->SaveAs(Form("XT_%d.%s.layer%d.pdf",m_runNo,m_runnameout.Data(),testLayer));
+        canv_XT->SaveAs(Form("XT_%d.%s.layer%d.png",m_runNo,m_runnameout.Data(),testLayer));
 
         TCanvas * canv_TX = new TCanvas("canv_TX","canv_TX",600,800);
         gStyle->SetPalette(1);
@@ -1787,8 +1798,8 @@ int main(int argc, char** argv){
         h_tx->Draw("COLZ");
         h_tx->Draw("COLZ");
         h_tx->GetYaxis()->SetRangeUser(minDT,maxDT);
-        canv_TX->SaveAs(Form("TX_%d.%s.layer%d.pdf",m_runNo,m_runname.Data(),testLayer));
-        canv_TX->SaveAs(Form("TX_%d.%s.layer%d.png",m_runNo,m_runname.Data(),testLayer));
+        canv_TX->SaveAs(Form("TX_%d.%s.layer%d.pdf",m_runNo,m_runnameout.Data(),testLayer));
+        canv_TX->SaveAs(Form("TX_%d.%s.layer%d.png",m_runNo,m_runnameout.Data(),testLayer));
 
         TCanvas * canv_general = new TCanvas("canv_general","canv_general",1024,768);
         gStyle->SetPalette(1);
@@ -1798,30 +1809,30 @@ int main(int argc, char** argv){
         gPad->SetGridx(1);
         gPad->SetGridy(1);
         h_resVSX->Draw("COLZ");
-        canv_general->SaveAs(Form("resVSX_%d.%s.layer%d.pdf",m_runNo,m_runname.Data(),testLayer));
-        canv_general->SaveAs(Form("resVSX_%d.%s.layer%d.png",m_runNo,m_runname.Data(),testLayer));
+        canv_general->SaveAs(Form("resVSX_%d.%s.layer%d.pdf",m_runNo,m_runnameout.Data(),testLayer));
+        canv_general->SaveAs(Form("resVSX_%d.%s.layer%d.png",m_runNo,m_runnameout.Data(),testLayer));
 
         h_resVSD->Draw("COLZ");
-        canv_general->SaveAs(Form("resVSD_%d.%s.layer%d.pdf",m_runNo,m_runname.Data(),testLayer));
-        canv_general->SaveAs(Form("resVSD_%d.%s.layer%d.png",m_runNo,m_runname.Data(),testLayer));
+        canv_general->SaveAs(Form("resVSD_%d.%s.layer%d.pdf",m_runNo,m_runnameout.Data(),testLayer));
+        canv_general->SaveAs(Form("resVSD_%d.%s.layer%d.png",m_runNo,m_runnameout.Data(),testLayer));
 
         h_aaVST->Draw("COLZ");
         TLine * line_aaVST = new TLine(m_tmin,m_aaCut,m_tmax,m_aaCut);
         line_aaVST->SetLineColor(kRed);
         line_aaVST->Draw("SAME");
-        canv_general->SaveAs(Form("aaVST_%d.%s.layer%d.pdf",m_runNo,m_runname.Data(),testLayer));
-        canv_general->SaveAs(Form("aaVST_%d.%s.layer%d.png",m_runNo,m_runname.Data(),testLayer));
+        canv_general->SaveAs(Form("aaVST_%d.%s.layer%d.pdf",m_runNo,m_runnameout.Data(),testLayer));
+        canv_general->SaveAs(Form("aaVST_%d.%s.layer%d.png",m_runNo,m_runnameout.Data(),testLayer));
 
         h_aaVSD->Draw("COLZ");
         TLine * line_aaVSD = new TLine(0,m_aaCut,m_xmax,m_aaCut);
         line_aaVSD->SetLineColor(kRed);
         line_aaVSD->Draw("SAME");
-        canv_general->SaveAs(Form("aaVSD_%d.%s.layer%d.pdf",m_runNo,m_runname.Data(),testLayer));
-        canv_general->SaveAs(Form("aaVSD_%d.%s.layer%d.png",m_runNo,m_runname.Data(),testLayer));
+        canv_general->SaveAs(Form("aaVSD_%d.%s.layer%d.pdf",m_runNo,m_runnameout.Data(),testLayer));
+        canv_general->SaveAs(Form("aaVSD_%d.%s.layer%d.png",m_runNo,m_runnameout.Data(),testLayer));
 
         h_ggVSX->Draw("COLZ");
-        canv_general->SaveAs(Form("ggVSX_%d.%s.layer%d.pdf",m_runNo,m_runname.Data(),testLayer));
-        canv_general->SaveAs(Form("ggVSX_%d.%s.layer%d.png",m_runNo,m_runname.Data(),testLayer));
+        canv_general->SaveAs(Form("ggVSX_%d.%s.layer%d.pdf",m_runNo,m_runnameout.Data(),testLayer));
+        canv_general->SaveAs(Form("ggVSX_%d.%s.layer%d.png",m_runNo,m_runnameout.Data(),testLayer));
 
         TLegend* leg_dedx = new TLegend(0.7,0.7,0.9,0.9);
         leg_dedx->AddEntry(h_dedx[0],Form("All hits used"));
@@ -1839,8 +1850,8 @@ int main(int argc, char** argv){
             h_dedx[i]->Draw("SAME");
         }
         leg_dedx->Draw();
-        canv_general->SaveAs(Form("dedx_%d.%s.layer%d.pdf",m_runNo,m_runname.Data(),testLayer));
-        canv_general->SaveAs(Form("dedx_%d.%s.layer%d.png",m_runNo,m_runname.Data(),testLayer));
+        canv_general->SaveAs(Form("dedx_%d.%s.layer%d.pdf",m_runNo,m_runnameout.Data(),testLayer));
+        canv_general->SaveAs(Form("dedx_%d.%s.layer%d.png",m_runNo,m_runnameout.Data(),testLayer));
 
         TGraphErrors * g_xeff = new TGraphErrors(v_xx.size(),&(v_xx[0]),&(v_xeff[0]));
         TGraphErrors * g_xeff3s = new TGraphErrors(v_xx.size(),&(v_xx[0]),&(v_xeff3s[0]));
@@ -1869,8 +1880,8 @@ int main(int argc, char** argv){
         leg_xeff->AddEntry(g_xeff3s,Form("Efficiency with 3#sigma cut %.1f%%",averageEff3sX*100),"PL");
         leg_xeff->AddEntry(g_xeff500,Form("Efficiency with 500 um cut %.1f%%",averageEffX*100),"PL");
         leg_xeff->Draw("SAME");
-        canv_general->SaveAs(Form("effx_%d.%s.layer%d.pdf",m_runNo,m_runname.Data(),testLayer));
-        canv_general->SaveAs(Form("effx_%d.%s.layer%d.png",m_runNo,m_runname.Data(),testLayer));
+        canv_general->SaveAs(Form("effx_%d.%s.layer%d.pdf",m_runNo,m_runnameout.Data(),testLayer));
+        canv_general->SaveAs(Form("effx_%d.%s.layer%d.png",m_runNo,m_runnameout.Data(),testLayer));
 
         TGraphErrors * g_deff3s = new TGraphErrors(v_dx.size(),&(v_dx[0]),&(v_deff3s[0]));
         TGraphErrors * g_deff500 = new TGraphErrors(v_dx.size(),&(v_dx[0]),&(v_deff500um[0]));
@@ -1892,8 +1903,8 @@ int main(int argc, char** argv){
         leg_deff->AddEntry(g_deff3s,Form("Efficiency with 3#sigma cut %.1f%%",averageEff3sD*100),"PL");
         leg_deff->AddEntry(g_deff500,Form("Efficiency with 500 um cut %.1f%%",averageEffD*100),"PL");
         leg_deff->Draw("SAME");
-        canv_general->SaveAs(Form("effd_%d.%s.layer%d.pdf",m_runNo,m_runname.Data(),testLayer));
-        canv_general->SaveAs(Form("effd_%d.%s.layer%d.png",m_runNo,m_runname.Data(),testLayer));
+        canv_general->SaveAs(Form("effd_%d.%s.layer%d.pdf",m_runNo,m_runnameout.Data(),testLayer));
+        canv_general->SaveAs(Form("effd_%d.%s.layer%d.png",m_runNo,m_runnameout.Data(),testLayer));
 
         TGraphErrors * g_xres = new TGraphErrors(v_xx.size(),&(v_xx[0]),&(v_xres[0]),&(v_xxerr[0]),&(v_xreserr[0]));
         g_xres->SetName("gxres");
@@ -1904,8 +1915,8 @@ int main(int argc, char** argv){
         g_xres->SetMarkerColor(kBlack);
         g_xres->SetLineColor(kBlack);
         g_xres->Draw("APL");
-        canv_general->SaveAs(Form("resx_%d.%s.layer%d.pdf",m_runNo,m_runname.Data(),testLayer));
-        canv_general->SaveAs(Form("resx_%d.%s.layer%d.png",m_runNo,m_runname.Data(),testLayer));
+        canv_general->SaveAs(Form("resx_%d.%s.layer%d.pdf",m_runNo,m_runnameout.Data(),testLayer));
+        canv_general->SaveAs(Form("resx_%d.%s.layer%d.png",m_runNo,m_runnameout.Data(),testLayer));
 
         TGraphErrors * g_dres = new TGraphErrors(v_dx.size(),&(v_dx[0]),&(v_dres[0]),&(v_dxerr[0]),&(v_dreserr[0]));
         g_dres->SetName("gdres");
@@ -1916,8 +1927,8 @@ int main(int argc, char** argv){
         g_dres->SetMarkerColor(kBlack);
         g_dres->SetLineColor(kBlack);
         g_dres->Draw("APL");
-        canv_general->SaveAs(Form("resd_%d.%s.layer%d.pdf",m_runNo,m_runname.Data(),testLayer));
-        canv_general->SaveAs(Form("resd_%d.%s.layer%d.png",m_runNo,m_runname.Data(),testLayer));
+        canv_general->SaveAs(Form("resd_%d.%s.layer%d.pdf",m_runNo,m_runnameout.Data(),testLayer));
+        canv_general->SaveAs(Form("resd_%d.%s.layer%d.png",m_runNo,m_runnameout.Data(),testLayer));
 
         TGraphErrors * g_xrms = new TGraphErrors(v_xx.size(),&(v_xx[0]),&(v_xrms[0]),&(v_xxerr[0]),&(v_xrmserr[0]));
         g_xrms->SetName("gxrms");
@@ -1928,8 +1939,8 @@ int main(int argc, char** argv){
         g_xrms->SetMarkerColor(kBlack);
         g_xrms->SetLineColor(kBlack);
         g_xrms->Draw("APL");
-        canv_general->SaveAs(Form("rmsx_%d.%s.layer%d.pdf",m_runNo,m_runname.Data(),testLayer));
-        canv_general->SaveAs(Form("rmsx_%d.%s.layer%d.png",m_runNo,m_runname.Data(),testLayer));
+        canv_general->SaveAs(Form("rmsx_%d.%s.layer%d.pdf",m_runNo,m_runnameout.Data(),testLayer));
+        canv_general->SaveAs(Form("rmsx_%d.%s.layer%d.png",m_runNo,m_runnameout.Data(),testLayer));
 
         TGraphErrors * g_drms = new TGraphErrors(v_dx.size(),&(v_dx[0]),&(v_drms[0]),&(v_dxerr[0]),&(v_drmserr[0]));
         g_drms->SetName("gdrms");
@@ -1940,8 +1951,8 @@ int main(int argc, char** argv){
         g_drms->SetMarkerColor(kBlack);
         g_drms->SetLineColor(kBlack);
         g_drms->Draw("APL");
-        canv_general->SaveAs(Form("rmsd_%d.%s.layer%d.pdf",m_runNo,m_runname.Data(),testLayer));
-        canv_general->SaveAs(Form("rmsd_%d.%s.layer%d.png",m_runNo,m_runname.Data(),testLayer));
+        canv_general->SaveAs(Form("rmsd_%d.%s.layer%d.pdf",m_runNo,m_runnameout.Data(),testLayer));
+        canv_general->SaveAs(Form("rmsd_%d.%s.layer%d.png",m_runNo,m_runnameout.Data(),testLayer));
 
         TGraphErrors * g_xoff = new TGraphErrors(v_xx.size(),&(v_xx[0]),&(v_xoff[0]));
         g_xoff->SetName("gxoff");
@@ -1952,8 +1963,8 @@ int main(int argc, char** argv){
         g_xoff->SetMarkerColor(kBlack);
         g_xoff->SetLineColor(kBlack);
         g_xoff->Draw("APL");
-        canv_general->SaveAs(Form("offx_%d.%s.layer%d.pdf",m_runNo,m_runname.Data(),testLayer));
-        canv_general->SaveAs(Form("offx_%d.%s.layer%d.png",m_runNo,m_runname.Data(),testLayer));
+        canv_general->SaveAs(Form("offx_%d.%s.layer%d.pdf",m_runNo,m_runnameout.Data(),testLayer));
+        canv_general->SaveAs(Form("offx_%d.%s.layer%d.png",m_runNo,m_runnameout.Data(),testLayer));
 
         TGraphErrors * g_doff = new TGraphErrors(v_dx.size(),&(v_dx[0]),&(v_doff[0]));
         g_doff->SetName("gdoff");
@@ -1964,8 +1975,8 @@ int main(int argc, char** argv){
         g_doff->SetMarkerColor(kBlack);
         g_doff->SetLineColor(kBlack);
         g_doff->Draw("APL");
-        canv_general->SaveAs(Form("offd_%d.%s.layer%d.pdf",m_runNo,m_runname.Data(),testLayer));
-        canv_general->SaveAs(Form("offd_%d.%s.layer%d.png",m_runNo,m_runname.Data(),testLayer));
+        canv_general->SaveAs(Form("offd_%d.%s.layer%d.pdf",m_runNo,m_runnameout.Data(),testLayer));
+        canv_general->SaveAs(Form("offd_%d.%s.layer%d.png",m_runNo,m_runnameout.Data(),testLayer));
 
         //=================================================Save====================================================
         for (int i = 0; i<NBINS; i++){
@@ -2181,7 +2192,7 @@ int GetCandidate(TString & candSelBy, std::vector<int> * layerID, std::vector<in
 }
 
 void print_usage(char * prog_name){
-    fprintf(stderr,"Usage %s [options] prerunname runname\n",prog_name);
+    fprintf(stderr,"Usage %s [options] prerunname runname [suffix]\n",prog_name);
     fprintf(stderr,"[options]\n");
     fprintf(stderr,"\t -D <name>=[error,severe,warn,debug,trace]\n");
     fprintf(stderr,"\t\t Change the named debug level\n");

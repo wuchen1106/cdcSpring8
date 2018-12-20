@@ -1077,7 +1077,7 @@ void XTAnalyzer::fitSliceHistFloat(TH1D * h, double ratio, double & mean, double
 }
 
 TF1 * XTAnalyzer::fitSliceGaus(TH1D * h, double & mean, double & sigma, double & chi2, double & left, double & right){
-	if (mDebugLevel>3) printf("in fitSliceGaus: \"%s\" has %d(%d) entries\n",h->GetName(),h->GetEntries(),h->Integral());
+	if (mDebugLevel>3) printf("in fitSliceGaus: \"%s\" has %d(%d) entries\n",h->GetName(),(int)h->GetEntries(),(int)h->Integral());
 	TF1 * f = f_gaus;
 	int bmax = h->GetMaximumBin();
 	mean = h->GetBinCenter(bmax);
@@ -1103,7 +1103,7 @@ TF1 * XTAnalyzer::fitSliceGaus(TH1D * h, double & mean, double & sigma, double &
 }
 
 TF1 * XTAnalyzer::fitSliceLand(TH1D * h, double & mean, double & sigma, double & chi2, double & left, double & right){
-	if (mDebugLevel>3) printf("in fitSliceLand: \"%s\" has %d(%d) entries\n",h->GetName(),h->GetEntries(),h->Integral());
+	if (mDebugLevel>3) printf("in fitSliceLand: \"%s\" has %d(%d) entries\n",h->GetName(),(int)h->GetEntries(),(int)h->Integral());
 	TF1 * f = f_land;
 	int bmax = h->GetMaximumBin();
 	mean = h->GetBinCenter(bmax);
@@ -1346,6 +1346,7 @@ TF1 * XTAnalyzer::combinePolN(TString name, TF1 * f1, TF1 * f2, TF1 * f3, double
 	f->SetNpx(1024);
 	f->SetNumberFitPoints(1024);
 	f->SetLineWidth(0.3);
+	return f;
 }
 
 TString XTAnalyzer::formPolN(int start,int n){

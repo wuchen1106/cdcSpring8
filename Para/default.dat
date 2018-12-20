@@ -5,7 +5,7 @@ general parameters
     < geoSetup = 0 > 0: normal; 1: finger
     < inputType = 0 > 0 for data; 1 for MC; 2 for MC with real driftD information    < peakType = 0 > 0, only the first peak over threshold; 1, all peaks over threshold; 2, even including shaddowed peaks
     < nHitsMax = 30 >
-    < xtType = 55 >  XYZ means polX for center, polY for middle and polZ for tail. If X is 0 then let middle function fit the center region.
+    < xtType = 055 >  XYZ means polX for center, polY for middle and polZ for tail. If X is 0 then let middle function fit the center region.
 
 *******************************************************************************                                                                   
 tracking parameters
@@ -24,6 +24,9 @@ tracking parameters
 ana parameters
 *******************************************************************************                                                                   
 
+    < ana.AsymXT = 0 >
+    < ana.CandSelBy = Original >
+    < ana.ClosestPeak = 0 >
     < ana.nHitsMax = 0 >
     < ana.nHitsSmin = 7 >
     < ana.sumCut = 0 >
@@ -40,6 +43,8 @@ ana parameters
     < ana.NbinRes = 256 >
     < ana.minchi2p = 1 >
     < ana.maxRes = 2 >
+      ana.adc2charge = 5.98739+2.6652*x+0.000573394*x*x-5.21769e-05*x*x*x+3.05897e-07*x*x*x*x-7.54057e-10*x*x*x*x*x+8.60252e-13*x*x*x*x*x*x-3.68603e-16*x*x*x*x*x*x*x >
+    < ana.adc2charge = 2.0158464*x > Use the linear one as default
 
 *******************************************************************************                                                                   
 updateRes parameters
