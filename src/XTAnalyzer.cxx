@@ -1161,10 +1161,17 @@ TF1 * XTAnalyzer::fitSlice2Gaus(TH1D * h, double & mean, double & sigma, double 
 
 double XTAnalyzer::findFirstZero(TF1 * f, double xmin, double xmax, double delta){
 	double theX = 0;
+	double theXprime = 0;
+	double theXprimeAtXmin = f->Derivative(xmin);
 	for (double x = xmin+delta; x<xmax; x+=delta){ // At least two solutions. Scan to find the smallest one
 		theX = f->GetX(0,xmin,x);
 		if (fabs(theX-x)>delta/10.&&fabs(theX-xmin)>delta/10.&&fabs(f->Eval(theX))<1e-5){
 			break;
+		}
+		theXprime = f->Derivative(x);
+		if (theXprime*theXprimeAtXmin<0){
+		    theX = x;
+		    break;
 		}
 	}
 	if (mDebugLevel>=3) printf("findFirstZero: theX = %.2f from [%.2f,%.2f]\n",theX,xmin,xmax);

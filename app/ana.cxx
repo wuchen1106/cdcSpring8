@@ -1339,7 +1339,7 @@ int main(int argc, char** argv){
 
             // get gg
             theGG = 0;
-            if (isGood){
+            if (isGood&&theCharge){
                 int isig = -1;
                 if (hashit[0]) isig = 0;
                 else if (hashit[1]) isig = 1;
