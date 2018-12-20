@@ -10,6 +10,12 @@ Should follow the format of `run_XXXXXX.root`
 
 #### Perform wave analysis
 
+Usage:
+
+```
+getP runNo
+```
+
 Input file:
 
 `root/run_XXXXXX_built.root`
@@ -18,13 +24,30 @@ Output file:
 
 `root/p_XXXX.root`
 
-Usage:
-
+Tree structure of output file:
 ```
-getP runNo
+int triggerNumber;
+int nh;
+int np[NCHT];
+double ped[NCHT];
+double aa[NCHT];
+std::vector<std::vector<int> > * clk; // the first level of vector has the same size as NCHT (total number of channels). The second level of vector has the size of number of TDCs in this channel in this event.
+std::vector<std::vector<int> > * tdc;
+std::vector<std::vector<int> > * peak;
+std::vector<std::vector<double> > * sum;
+std::vector<std::vector<int> > * width;
+std::vector<std::vector<int> > * height;
+std::vector<std::vector<int> > * mpn;
+std::vector<std::vector<int> > * mpi;
 ```
 
 #### Perform peak selection
+
+Usage:
+
+```
+getH runNo
+```
 
 Input file:
 
@@ -38,10 +61,27 @@ Output file:
 `root/h_XXXX.root`  
 and histograms
 
-Usage:
-
+Tree structure of output file:  
 ```
-getH runNo
+int triggerNumber;
+int nHits; // number of hits. Size is the sum of TDC numbers in all channels
+int nLayers; // number of layers with at least one hit
+std::vector<int> * layerID; // vector of hits. Sequence decided by DAQ.
+std::vector<int> * wireID;
+std::vector<int> * type; // denotes the region (R) in the chamber of the cell: 1: 4 dummy; 3 guard; 2 right boundary; 1 left boundary; 0 center part
+std::vector<int> * np;
+std::vector<int> * ip;
+std::vector<int> * clk;
+std::vector<int> * width;
+std::vector<int> * peak;
+std::vector<int> * height;
+std::vector<int> * mpn;
+std::vector<int> * mpi;
+std::vector<int> * rank;
+std::vector<double> * ped;
+std::vector<double> * sum;
+std::vector<double> * aa;
+std::vector<double> * driftT;
 ```
 
 #### Do the tracking
@@ -119,7 +159,13 @@ Tree structure of output file:
     std::vector<int> *    wireID;
     std::vector<double> * driftT; 
     std::vector<double> * driftDmc; // if MC sample
-    std::vector<int> *    type; // in dec, [IMASTR]. I: peak index (only counting peaks over m_sumCut); M: peak index in a packet; A: smaller than aa cut? S: smaller than sum cut? T: -1 <m_tmin, 0 good, 1 >m_tmax; R: 0 center, 1 left, 2 right, 3 guard, 4 dummy
+    std::vector<int> *    type; // in dec, [IMASTR].
+    // I: peak index (only counting peaks over m_sumCut);
+    // M: peak index in a packet;
+    // A: smaller than aa cut?
+    // S: smaller than sum cut?
+    // T: 0 good; 1 l-r0; 2 l0r-; 3 l-r-; 4 l+r0; 5 l0r+; 6 l+r+; 7 else; l/r means left/right XT function. "-/+" means drift time is lower/upper to the limited region. "0" means in the region.
+    // R: 0 center, 1 left, 2 right, 3 guard, 4 dummy
     std::vector<int> *    np;
     std::vector<int> *    ip;
     std::vector<int> *    clk;
