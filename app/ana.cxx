@@ -85,7 +85,6 @@ int main(int argc, char** argv){
     TString m_configureFile = "";
     int m_geoSetup = 0; // 0: normal scintillator; 1: finger scintillator
     int m_inputType = 0; // 1 for MC; 0 for data
-    int m_peakType = 2; // 0, only the first peak over threshold; 1, all peaks over threshold; 2, even including shaddowed peaks
     int m_xtType = 55; // XYZ means polX for center, polY for middle and polZ for tail. If X is 0 then let middle function fit the center region.
     bool m_AsymXT = false; // use asymmetric xt curve or not
     TString m_CandSelBy = "Original"; // find the candidate with the smallest chi2 without the testlayer; otherwise use chi2 wit the testlayer (default order from tracking);
@@ -113,7 +112,6 @@ int main(int argc, char** argv){
 
     int temp_geoSetup = 0; bool set_geoSetup = false;
     int temp_inputType = 0; bool set_inputType = false;
-    int temp_peakType = 0; bool set_peakType = false;
     int temp_xtType = 0; bool set_xtType = false;
     //for cutting
     int temp_nHitsMax = 0; bool set_nHitsMax = false;
@@ -140,7 +138,7 @@ int main(int argc, char** argv){
     std::map<std::string, Log::ErrorPriority> namedDebugLevel;
     std::map<std::string, Log::LogPriority> namedLogLevel;
     int    opt_result;
-    while((opt_result=getopt(argc,argv,"M:R:B:E:L:H:C:n:f:c:v:r:z:d:o:s:a:l:u:t:m:y:g:i:p:x:AS:PD:V:"))!=-1){
+    while((opt_result=getopt(argc,argv,"M:R:B:E:L:H:C:n:f:c:v:r:z:d:o:s:a:l:u:t:m:y:g:i:x:AS:PD:V:"))!=-1){
         switch(opt_result){
             /* INPUTS */
             case 'M':
@@ -181,23 +179,23 @@ int main(int argc, char** argv){
                 break;
             case 'c':
                 temp_maxchi2 = atof(optarg);set_maxchi2 = true;
-                printf("Maximum chi2 cut set to %d\n",temp_maxchi2);
+                printf("Maximum chi2 cut set to %.3e\n",temp_maxchi2);
                 break;
             case 'v':
                 temp_minchi2p = atof(optarg);set_minchi2p = true;
-                printf("Minimum p-value cut set to %d\n",temp_minchi2p);
+                printf("Minimum p-value cut set to %.3e\n",temp_minchi2p);
                 break;
             case 'r':
                 temp_maxRes = atof(optarg);set_maxRes = true;
-                printf("Maximum resolution cut set to %d\n",temp_maxRes);
+                printf("Maximum resolution cut set to %.3e\n",temp_maxRes);
                 break;
             case 'z':
                 temp_maxslz = atof(optarg);set_maxslz = true;
-                printf("Maximum y-z slope cut set to %d\n",temp_maxslz);
+                printf("Maximum y-z slope cut set to %.3e\n",temp_maxslz);
                 break;
             case 'd':
                 temp_maxFD = atof(optarg);set_maxFD = true;
-                printf("Maximum fitD cut set to %d\n",temp_maxFD);
+                printf("Maximum fitD cut set to %.3e\n",temp_maxFD);
                 break;
             case 'o':
                 temp_tmaxSet = atoi(optarg);set_tmaxSet = true;
@@ -213,11 +211,11 @@ int main(int argc, char** argv){
                 break;
             case 'l':
                 temp_tmin = atof(optarg);set_tmin = true;
-                printf("Minimum time on axis set to %d\n",temp_tmin);
+                printf("Minimum time on axis set to %.3e\n",temp_tmin);
                 break;
             case 'u':
                 temp_tmax = atof(optarg);set_tmax = true;
-                printf("Maximum time on axis set to %d\n",temp_tmax);
+                printf("Maximum time on axis set to %.3e\n",temp_tmax);
                 break;
             case 't':
                 temp_NbinT = atoi(optarg);set_NbinT = true;
@@ -238,10 +236,6 @@ int main(int argc, char** argv){
             case 'i':
                 temp_inputType = atoi(optarg);set_inputType = true;
                 printf("Input type set to %d\n",temp_inputType);
-                break;
-            case 'p':
-                temp_peakType = atoi(optarg);set_peakType = true;
-                printf("Peak type set to %d\n",temp_peakType);
                 break;
             case 'x':
                 temp_xtType = atoi(optarg);set_xtType = true;
@@ -350,7 +344,6 @@ int main(int argc, char** argv){
         MyRuntimeParameters::Get().ReadParamOverrideFile(m_configureFile);
         m_geoSetup = MyRuntimeParameters::Get().GetParameterI("geoSetup");
         m_inputType = MyRuntimeParameters::Get().GetParameterI("inputType");
-        m_peakType = MyRuntimeParameters::Get().GetParameterI("peakType");
         m_xtType = MyRuntimeParameters::Get().GetParameterI("xtType");;
         m_AsymXT = MyRuntimeParameters::Get().GetParameterI("ana.AsymXT");
         m_CandSelBy = MyRuntimeParameters::Get().GetParameterS("ana.CandSelBy");
@@ -376,7 +369,6 @@ int main(int argc, char** argv){
     }
     if (set_geoSetup) m_geoSetup = temp_geoSetup;
     if (set_inputType) m_inputType = temp_inputType;
-    if (set_peakType) m_peakType = temp_peakType;
     if (set_xtType) m_xtType = temp_xtType;
     if (set_AsymXT) m_AsymXT = temp_AsymXT;
     if (set_CandSelBy) m_CandSelBy = temp_CandSelBy;
@@ -888,8 +880,7 @@ int main(int argc, char** argv){
             // find the closest hit in the test layer
             double res_temp = 1e9;
             bool foundhit = false;
-            int wireID;
-            double driftD, driftT, fitD;
+            double driftT, fitD;
             bool hasBadHit = false;
             bool wireChecked[NCEL] = {false};
             for (int ihit = 0; ihit<nHits; ihit++){
@@ -905,7 +896,6 @@ int main(int argc, char** argv){
                 if (m_ClosestPeak&&twireID<NCEL&&wireChecked[twireID]) continue; // for each cell only get the first peak over the threshold
                 if (fabs(tfitD-tdriftD)<fabs(res_temp)){ // Get the one with smallest residual
                     res_temp = tfitD-tdriftD;
-                    wireID = (*i_wireID)[ihit];
                     fitD = tfitD;
                     driftT = (*i_driftT)[ihit];
                     if (twireID<NCEL) wireChecked[twireID] = true;
@@ -2015,11 +2005,11 @@ int main(int argc, char** argv){
         ofile->Close();
 
         printf("All events %d\n",N_ALL);
-        printf("nHits<=%d: %d (%.1f%)\n",m_nHitsMax,N_CUT1,(double)N_CUT1/N_ALL*100);
-        printf("nHitsS>=%d: %d (%.1f%)\n",m_nHitsSmin,N_CUT2,(double)N_CUT2/N_ALL*100);
-        printf("chi2<%.1f (pvalue>%.1f): %d (%.1f%)\n",m_maxchi2,m_minchi2p,N_CUT3,(double)N_CUT3/N_ALL*100);
-        printf("|slz|<=%.1f: %d (%.1f%)\n",m_maxslz,N_CUT4,(double)N_CUT4/N_ALL*100);
-        printf("DOCA<=%.1f: %d (%.1f%)\n",m_xmax,N_CUT5,(double)N_CUT5/N_ALL*100);
+        printf("nHits<=%d: %d (%.1f%%)\n",m_nHitsMax,N_CUT1,(double)N_CUT1/N_ALL*100);
+        printf("nHitsS>=%d: %d (%.1f%%)\n",m_nHitsSmin,N_CUT2,(double)N_CUT2/N_ALL*100);
+        printf("chi2<%.1f (pvalue>%.1f): %d (%.1f%%)\n",m_maxchi2,m_minchi2p,N_CUT3,(double)N_CUT3/N_ALL*100);
+        printf("|slz|<=%.1f: %d (%.1f%%)\n",m_maxslz,N_CUT4,(double)N_CUT4/N_ALL*100);
+        printf("DOCA<=%.1f: %d (%.1f%%)\n",m_xmax,N_CUT5,(double)N_CUT5/N_ALL*100);
 
             if (m_verboseLevel>=20) printf("Finished!\n");
         }
@@ -2249,9 +2239,6 @@ void print_usage(char * prog_name){
     fprintf(stderr,"\t -i <i>\n");
     fprintf(stderr,"\t\t Input type set to i\n");
     fprintf(stderr,"\t\t (0) for data; 1 for MC\n");
-    fprintf(stderr,"\t -p <p>\n");
-    fprintf(stderr,"\t\t Peak type set to p\n");
-    fprintf(stderr,"\t\t (0) only the first peak over threshold; 1, all peaks over threshold; 2, even including shaddowed peaks\n");
     fprintf(stderr,"\t -x <x>\n");
     fprintf(stderr,"\t\t xt type set to x\n");
     fprintf(stderr,"\t\t XYZ (055) means polX for center, polY for middle and polZ for tail. If X is 0 then let middle function fit the center region.\n");
