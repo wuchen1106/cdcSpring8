@@ -51,10 +51,13 @@ maxinx=0 # min inx cut for mean inx value in each sample of events in wiremap ca
 maxchi2=2
 scale=1 # move scale*offset on wiremap for fitting in the next round
 
-# for getXT
+# for ana
 UPDATEXT=1
 DEFAULTLAYER=4 # use this layer to generate fl(r)_0 and so on
-XTTYPE=7 # 2 for symmetrical; 1 for symmetrical + offset loading; 0 for no constraints; 6 for symmetrical + offset loading + only first over threshold peak; 7 for symmetrical + offset loading + only first over threshold peak + 2 segments
+if [ $# -gt 9 ]
+then
+    XTTYPE=$10
+fi
 NHITSMAXini=30
 if [ $# -gt 8 ]
 then
@@ -70,7 +73,7 @@ threadlistfile=threadlist.$runName.$runNo
 lastxtfile=""
 
 echo "You are going to start iteration ${IterStart}~${IterEnd} for run$runNo using threads \"$threadName\" $thread_iStart~$thread_iStop"
-echo "StartName is $StartName, runName = $runName, layers for tracking \"$layers\", layers for getXT \"$LAYERS\", wires to calibrate \"$wires\""
+echo "StartName is $StartName, runName = $runName, layers for tracking \"$layers\", layers for ana \"$LAYERS\", wires to calibrate \"$wires\""
 echo "Is this the last iteration? $isLast"
 echo "Tracking Parameters are:"
 echo "        geoSetup = $geoSetup;  0 for general; 1 for finger"
@@ -93,10 +96,10 @@ echo "        mininx = $mininx;  min inx cut for mean inx value in each sample o
 echo "        maxinx = $maxinx;  min inx cut for mean inx value in each sample of events in wiremap calibration. mininx==maxinx==0 means no cut"
 echo "        maxchi2 = $maxchi2; "
 echo "        scale = $scale;  move scale*offset on wiremap for fitting in the next round"
-echo "getXT Parameters are:"
+echo "ana Parameters are:"
 echo "        UPDATEXT = $UPDATEXT; "
 echo "        DEFAULTLAYER = $DEFAULTLAYER;  use this layer to generate fl(r)_0 and so on"
-echo "        XTTYPE = $XTTYPE;  2 for symmetrical; 1 for symmetrical + offset loading; 0 for no constraints; 6 for symmetrical + offset loading + only first over threshold peak"
+echo "        XTTYPE = $XTTYPE;"
 echo "        NHITSMAXini = $NHITSMAXini; "
 echo "        SAVEHISTS = $SAVEHISTS; "
 
@@ -329,7 +332,9 @@ do
                 echo "  logfile \"$file\" doesn't exist, so generate a new job!"
             fi
             temprunname="${currunname}.$iEntryStart-$iEntryStop"
-            tempconfig="    $runNo $testlayer $prerunname $temprunname $nHitsGMax $t0shift0 $t0shift1 $tmin $tmax $geoSetup $sumCut $aaCut $iEntryStart $iEntryStop $workType $inputType $peakType"
+            logtemp="$CDCS8WORKING_DIR/root/t_${runNo}.${temprunname}.layer${testlayer}.log"
+            errtemp="$CDCS8WORKING_DIR/root/t_${runNo}.${temprunname}.layer${testlayer}.err"
+            tempconfig="tracking -R $runNo -L $testlayer -n $nHitsGMax -x $t0shift0 -y $t0shift1 -l $tmin -u $tmax -g $geoSetup -s $sumCut -a $aaCut -B $iEntryStart -E $iEntryStop -w $workType -i $inputType -p $peakType $prerunname $temprunname > $logtemp 2> $errtemp"
             findVacentThread
             if [ $? -eq 1 ]
             then
@@ -425,12 +430,6 @@ do
     fi
 
 #   upgrading wireposition?
-    if [ ! $WPTYPE -eq 1 ] # ! 1 for not changing wiremap
-    then
-        cd info
-        ln -s wire-position.${runNo}.${StartName}.root wire-position.${runNo}.${currunname}.root
-        cd ..
-    fi
     getOffset $runNo $prerunname $currunname $geoSetup $WPTYPE $scale $stepSize $minslz $maxslz $mininx $maxinx $maxchi2 -1 $wires
     if [ ! $UPDATEXT -eq 1 ] # ! 1 for not updating xt
     then
@@ -442,7 +441,7 @@ do
         ln -s $lastxtfile xt.${runNo}.${currunname}.root
         cd ..
     else
-        getXT $runNo $prerunname $currunname $XTTYPE $geoSetup $SAVEHISTS $inputType $maxchi2 $DEFAULTLAYER $NHITSMAX
+        ana -R $runNo -x $XTTYPE -g $geoSetup -H $SAVEHISTS -i $inputType -c $maxchi2 -L $DEFAULTLAYER -n $NHITSMAX $prerunname $currunname
         lastxtfile=xt.${runNo}.${currunname}.root
     fi
 done
