@@ -1,27 +1,36 @@
 #!/bin/bash
+THISCMD=$(basename $0)
+echo $THISCMD $@ >> cmdlog
+
+# about thread
+threadName="job"
+threadLists=""
+threadlistfile=threadlist.$runName.$runNo
+
+# about this job
 StartName="Garfield"
 layers="4" # layers to be reconstructed and [analyzed (in case of layers is not 0)]
 wires="" # wires to be calibrated (position)
 isLast=false
-
-# configure file
-CONFIGTABLE="Para/default.dat"
+CONFIGTABLE="$CDCS8WORKING_DIR/Para/default.dat"
 
 # for tracking
 geoSetup=0 # 0 for general; 1 for finger
 inputType=0 # 1 for MC; 0 for data
 workTypeini=0 # 0, fr/l_0; 1, even/odd; -1, even/odd reversed; others, all layers
-nHitsGMaxini=15
-t0shift0=0
-t0shift1=0
-tmin=-10
-tmax=800
+nHitsGMax=15
 sumCut=-10
 aaCut=0
 peakType=0 # 0, only the first peak over threshold; 1, all peaks over threshold; 2, even including shaddowed peaks
 
+t0shift0=0
+t0shift1=0
+tmin=-10
+tmax=800
+
 # for getOffset
-WPTYPE=0 # 0 for changing wiremap; 1 for not changing it;
+WPTYPE=0 # 1 for changing wiremap; 0 for not changing it;
+
 stepSize=0 # maximum step size for each movement in wire position calibration; 0 means no limit
 minslz=0 # min slz cut for mean slz value in each sample of events in wiremap calibration. minslz==maxslz==0 means no cut
 maxslz=0 # min slz cut for mean slz value in each sample of events in wiremap calibration. minslz==maxslz==0 means no cut
@@ -31,20 +40,47 @@ maxchi2=2
 scale=1 # move scale*offset on wiremap for fitting in the next round
 
 # for ana
-UPDATEXT=1
+DONTUPDATEXT=false
 DEFAULTLAYER=4 # use this layer to generate fl(r)_0 and so on
 XTTYPE=055
-NHITSMAXini=30
+NHITSMAX=30
 SAVEHISTS=0
 
-threadName="job"
+usages() {
+cat << EOF
+$THISCMD:  do the iteration!
+Syntax:
+    $THISCMD [options] runname
+    [options]
+    -h     display this help and exit
+    -R [R] the run number
+    -T [T] the staring thread index
+    -N [N] the number of threads to ask for
+    -I [I] start from iteration I
+    -J [J] stop at iteration J
+    -H [h] save histograms at this level ($SAVEHISTS)
+    -L     (false) Take the last iteration as the final step and do the default complete checkings
+    -W [w] update the wire position map in type ($WPTYPE). 1: chagne wire map; 0: don't change wire map
+    -U     (false) keep the xt curves unchanged.
+    -S [S] set the start name ($StartName)
+    -D [D] set this layer ($DEFAULTLAYER) as the default layer to save in XT file as fr/l_0
+    -l [l1 (l2 ...)] Do the training of the given layers ($layers)
+    -w [w1 (w2 ...)] Do the calibration of the given wires ($wires) in the ubove given layers ($layers)
+    -c [c] Set the configure file as C ($CONFIGTABLE)
+    -g [g] geometry setup ($geoSetup). 0 ordinary scintillator; 1 finger scintillator
+    -t [t] work type ($workTypeini) for tracking. 0, fr/l_0; 1, even/odd; -1, even/odd reversed; others, all layers
+    -a [a] aa cut ($aaCut)
+    -s [s] sum cut ($sumCut)
+    -p [p] set peak type ($peakType) for tracking. 0, only the first peak over threshold; 1, all peaks over threshold; 2, even including shaddowed peaks
+    -x [XYZ] xt type. XYZ ($XTTYPE) means polX for center, polY for middle and polZ for tail. If X is 0 then let middle function fit the center region.
+    -n [n] maximum number ($NHITSMAX) of hits to be used in ana
+    -m [m] maximum number ($nHitsGMax) of good hits to be used in tracking
 
-threadLists=""
-threadlistfile=threadlist.$runName.$runNo
+Report bugs to <wuchen@ihep.ac.cn>.
+EOF
+}
 
-lastxtfile=""
-
-while getopts ':hR:T:N:I:J:LC:g:w:a:x:n:' optname
+while getopts ':hR:T:N:I:J:LH:W:US:D:l:w:c:g:t:a:s:p:x:n:m:' optname
 do
     case "$optname" in
     'h')
@@ -69,13 +105,34 @@ do
     'L')
         isLast=true;
         ;;
-    'C')
+    'H')
+        SAVEHISTS="$OPTARG";
+        ;;
+    'W')
+        WPTYPE="$OPTARG";
+        ;;
+    'U')
+        DONTUPDATEXT=true;
+        ;;
+    'S')
+        StartName="$OPTARG";
+        ;;
+    'D')
+        DEFAULTLAYER="$OPTARG";
+        ;;
+    'l')
+        layers="$OPTARG";
+        ;;
+    'w')
+        wires="$OPTARG";
+        ;;
+    'c')
         CONFIGTABLE="$OPTARG";
         ;;
     'g')
         geoSetup="$OPTARG";
         ;;
-    'w')
+    't')
         workTypeini="$OPTARG";
         ;;
     'i')
@@ -84,11 +141,20 @@ do
     'a')
         aaCut="$OPTARG"
         ;;
+    's')
+        sumCut="$OPTARG"
+        ;;
+    'p')
+        peakType="$OPTARG"
+        ;;
     'x')
-        XTTYPE='Yes'
+        XTTYPE="$OPTARG"
         ;;
     'n')
-        NHITSMAXini="$OPTARG"
+        NHITSMAX="$OPTARG"
+        ;;
+    'm')
+        nHitsGMax="$OPTARG"
         ;;
     '?')
         echo "Unknown option $OPTARG"
@@ -109,19 +175,20 @@ do
 done
 
 case "$(($#+1-$OPTIND))" in
-	0)
-	echo You have to intput a run name!
-	exit -1
-	;;
-	1)
-	runName=
-	runName="${@:$OPTIND:1}"
-	exit -1
-	;;
-	*)
-	echo 'Too many jobs. Only 1 job permitted'
-	exit -1
-	;;
+0)
+    echo You have to intput a run name!
+    usages
+    exit -1
+    ;;
+1)
+    runName=
+    runName="${@:$OPTIND:1}"
+    ;;
+*)
+    echo 'Too many jobs. Only 1 job permitted'
+    usages
+    exit -1
+    ;;
 esac
 
 echo "You are going to start iteration ${IterStart}~${IterEnd} for run$runNo using threads \"$threadName\" $thread_iStart~$thread_iStop"
@@ -132,7 +199,7 @@ echo "Tracking Parameters are:"
 echo "        geoSetup = $geoSetup;  0 for general; 1 for finger"
 echo "        inputType = $inputType;  1 for MC; 0 for data"
 echo "        workTypeini = $workTypeini;  0, fr/l_0; 1, even/odd; -1, even/odd reversed; others, all layers"
-echo "        nHitsGMaxini = $nHitsGMaxini; "
+echo "        nHitsGMax = $nHitsGMax; "
 echo "        t0shift0 = $t0shift0; "
 echo "        t0shift1 = $t0shift1; "
 echo "        tmin = $tmin; "
@@ -141,7 +208,7 @@ echo "        sumCut = $sumCut; "
 echo "        aaCut = $aaCut; "
 echo "        peakType = $peakType;  0, only the first peak over threshold; 1, all peaks over threshold; 2, even including shaddowed peaks"
 echo "getOffset Parameters are:"
-echo "        WPTYPE = $WPTYPE;  0 for changing wiremap; 1 for not changing it;"
+echo "        WPTYPE = $WPTYPE;  1 for changing wiremap; 0 for not changing it;"
 echo "        stepSize = $stepSize;  maximum step size for each movement in wire position calibration; 0 means no limit"
 echo "        minslz = $minslz;  min slz cut for mean slz value in each sample of events in wiremap calibration. minslz==maxslz==0 means no cut"
 echo "        maxslz = $maxslz;  min slz cut for mean slz value in each sample of events in wiremap calibration. minslz==maxslz==0 means no cut"
@@ -150,10 +217,10 @@ echo "        maxinx = $maxinx;  min inx cut for mean inx value in each sample o
 echo "        maxchi2 = $maxchi2; "
 echo "        scale = $scale;  move scale*offset on wiremap for fitting in the next round"
 echo "ana Parameters are:"
-echo "        UPDATEXT = $UPDATEXT; "
+echo "        DONTUPDATEXT = $DONTUPDATEXT; "
 echo "        DEFAULTLAYER = $DEFAULTLAYER;  use this layer to generate fl(r)_0 and so on"
 echo "        XTTYPE = $XTTYPE;"
-echo "        NHITSMAXini = $NHITSMAXini; "
+echo "        NHITSMAX = $NHITSMAX; "
 echo "        SAVEHISTS = $SAVEHISTS; "
 
 read -p 'You are going to do the job above, is that right? (Y/n):'
@@ -182,7 +249,13 @@ then
     ls -ltr $CDCS8WORKING_DIR/info/wire-position.$runNo.$prerunname.root
 else
     echo "$CDCS8WORKING_DIR/info/wire-position.$runNo.$prerunname.root doesn't exist!"
-    exit 1
+    if [ -e $CDCS8WORKING_DIR/Input/wire-position.root ]
+    then
+        echo "Will use $CDCS8WORKING_DIR/Input/wire-position.root by default"
+    else
+        echo "Event $CDCS8WORKING_DIR/Input/wire-position.root doesn't exist!"
+        exit 1
+    fi
 fi
 if [ -e $CDCS8WORKING_DIR/info/xt.$runNo.$prerunname.root ]
 then
@@ -260,6 +333,7 @@ findVacentThread(){
     return 1 # cannot find any vacent slots in 10 hours
 }
 
+lastxtfile=""
 for (( iter=IterStart; iter<=IterEnd; iter++ ))
 do
     if [ -e kill.$runNo.$runName ]
@@ -287,13 +361,8 @@ do
 
     if [ $iter -eq $IterEnd ] && $isLast
     then
-        nHitsGMax=$nHitsGMaxini
-        NHITSMAX=0
         layers="1 2 3 4 5 6 7 8"
 #        layers="0"
-    else
-        nHitsGMax=$nHitsGMaxini
-        NHITSMAX=$NHITSMAXini
     fi
 
     echo "#Iteration $iter started"
@@ -319,7 +388,7 @@ do
     echo "  scale = $scale"
     echo "  XTTYPE = $XTTYPE"
     echo "  WPTYPE = $WPTYPE"
-    echo "  UPDATEXT = $UPDATEXT"
+    echo "  DONTUPDATEXT = $DONTUPDATEXT"
     echo "  DEFAULTLAYER = $DEFAULTLAYER"
     echo "  NHITSMAX = $NHITSMAX"
     echo "  SAVEHISTS = $SAVEHISTS"
@@ -482,9 +551,9 @@ do
 
 #   upgrading wireposition?
     getOffset $runNo $prerunname $currunname $geoSetup $WPTYPE $scale $stepSize $minslz $maxslz $mininx $maxinx $maxchi2 -1 $wires
-    if [ ! $UPDATEXT -eq 1 ] # ! 1 for not updating xt
+    if $DONTUPDATEXT
     then
-        if [ -z $lastxtfile ]
+        if [ -z "$lastxtfile" ]
         then
             lastxtfile=xt.${runNo}.${prerunname}.root
         fi
@@ -492,7 +561,7 @@ do
         ln -s $lastxtfile xt.${runNo}.${currunname}.root
         cd ..
     else
-        ana -C$CONFIGTABLE -R $runNo -x $XTTYPE -g $geoSetup -H $SAVEHISTS -i $inputType -c $maxchi2 -L $DEFAULTLAYER -n $NHITSMAX $prerunname $currunname
+        ana -C $CONFIGTABLE -R $runNo -x $XTTYPE -g $geoSetup -H $SAVEHISTS -i $inputType -c $maxchi2 -L $DEFAULTLAYER -n $NHITSMAX $prerunname $currunname
         lastxtfile=xt.${runNo}.${currunname}.root
     fi
 done
