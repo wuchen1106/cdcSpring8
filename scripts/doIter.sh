@@ -1,28 +1,11 @@
 #!/bin/bash
-
-if [ $# -lt 6 ]
-then
-    echo $0 runNo runName thread_iStart nThreads iStart iStop [aaCut isLast NHITSMAX] 
-    exit 0
-fi
-
-runNo="$1"
-runName="$2"
-thread_iStart=$3
-nThreads=$4
-thread_iStop=`echo "$thread_iStart+$nThreads-1"|bc`
-IterStart=$5
-IterEnd=$6
-isLast=false
-if [ $# -gt 7 ]
-then
-    isLast=$8
-fi
-
 StartName="Garfield"
 layers="4" # layers to be reconstructed and [analyzed (in case of layers is not 0)]
-LAYERS="4" # layers to be analyzed (in case of layers is 0)
 wires="" # wires to be calibrated (position)
+isLast=false
+
+# configure file
+CONFIGTABLE="Para/default.dat"
 
 # for tracking
 geoSetup=0 # 0 for general; 1 for finger
@@ -35,10 +18,6 @@ tmin=-10
 tmax=800
 sumCut=-10
 aaCut=0
-if [ $# -gt 6 ]
-then
-    aaCut=$7
-fi
 peakType=0 # 0, only the first peak over threshold; 1, all peaks over threshold; 2, even including shaddowed peaks
 
 # for getOffset
@@ -54,15 +33,8 @@ scale=1 # move scale*offset on wiremap for fitting in the next round
 # for ana
 UPDATEXT=1
 DEFAULTLAYER=4 # use this layer to generate fl(r)_0 and so on
-if [ $# -gt 9 ]
-then
-    XTTYPE=$10
-fi
+XTTYPE=055
 NHITSMAXini=30
-if [ $# -gt 8 ]
-then
-    NHITSMAXini=$9
-fi
 SAVEHISTS=0
 
 threadName="job"
@@ -72,9 +44,90 @@ threadlistfile=threadlist.$runName.$runNo
 
 lastxtfile=""
 
+while getopts ':hR:T:N:I:J:LC:g:w:a:x:n:' optname
+do
+    case "$optname" in
+    'h')
+        usages
+        exit 0
+        ;;
+    'R')
+        runNo="$OPTARG"
+        ;;
+    'T')
+        thread_iStart="$OPTARG"
+        ;;
+    'N')
+        thread_iStop=`echo "$thread_iStart+$OPTARG-1"|bc`
+        ;;
+    'I')
+        IterStart="$OPTARG"
+        ;;
+    'J')
+        IterEnd="$OPTARG"
+        ;;
+    'L')
+        isLast=true;
+        ;;
+    'C')
+        CONFIGTABLE="$OPTARG";
+        ;;
+    'g')
+        geoSetup="$OPTARG";
+        ;;
+    'w')
+        workTypeini="$OPTARG";
+        ;;
+    'i')
+        inputType="$OPTARG";
+        ;;
+    'a')
+        aaCut="$OPTARG"
+        ;;
+    'x')
+        XTTYPE='Yes'
+        ;;
+    'n')
+        NHITSMAXini="$OPTARG"
+        ;;
+    '?')
+        echo "Unknown option $OPTARG"
+        echo "Try \"$THISCMD -h\" for more infomation"
+        exit -1
+        ;;
+    ':')
+        echo "Need argument value for option $OPTARG"
+        echo "Try \"$THISCMD -h\" for more infomation"
+        exit -1
+        ;;
+    *)
+        # Should not occur
+        echo 'Unknown error while processing options'
+        exit -1
+        ;;
+    esac
+done
+
+case "$(($#+1-$OPTIND))" in
+	0)
+	echo You have to intput a run name!
+	exit -1
+	;;
+	1)
+	runName=
+	runName="${@:$OPTIND:1}"
+	exit -1
+	;;
+	*)
+	echo 'Too many jobs. Only 1 job permitted'
+	exit -1
+	;;
+esac
+
 echo "You are going to start iteration ${IterStart}~${IterEnd} for run$runNo using threads \"$threadName\" $thread_iStart~$thread_iStop"
-echo "StartName is $StartName, runName = $runName, layers for tracking \"$layers\", layers for ana \"$LAYERS\", wires to calibrate \"$wires\""
+echo "StartName is $StartName, runName = $runName, layers for tracking \"$layers\", wires to calibrate \"$wires\""
 echo "Is this the last iteration? $isLast"
+echo "Configure file for general: $CONFIGTABLE"
 echo "Tracking Parameters are:"
 echo "        geoSetup = $geoSetup;  0 for general; 1 for finger"
 echo "        inputType = $inputType;  1 for MC; 0 for data"
@@ -238,16 +291,14 @@ do
         NHITSMAX=0
         layers="1 2 3 4 5 6 7 8"
 #        layers="0"
-#        LAYERS="1 2 3 4 5 6 7 8"
     else
         nHitsGMax=$nHitsGMaxini
         NHITSMAX=$NHITSMAXini
     fi
 
     echo "#Iteration $iter started"
-    echo "  layers = $layers"
-    echo "  LAYERS = $LAYERS"
-    echo "  wires = $wires"
+    echo "  layers = \"$layers\""
+    echo "  wires = \"$wires\""
     echo "  geoSetup = $geoSetup"
     echo "  inputType = $inputType"
     echo "  workType = $workType"
@@ -334,7 +385,7 @@ do
             temprunname="${currunname}.$iEntryStart-$iEntryStop"
             logtemp="$CDCS8WORKING_DIR/root/t_${runNo}.${temprunname}.layer${testlayer}.log"
             errtemp="$CDCS8WORKING_DIR/root/t_${runNo}.${temprunname}.layer${testlayer}.err"
-            tempconfig="tracking -R $runNo -L $testlayer -n $nHitsGMax -x $t0shift0 -y $t0shift1 -l $tmin -u $tmax -g $geoSetup -s $sumCut -a $aaCut -B $iEntryStart -E $iEntryStop -w $workType -i $inputType -p $peakType $prerunname $temprunname > $logtemp 2> $errtemp"
+            tempconfig="tracking -C $CONFIGTABLE -R $runNo -L $testlayer -n $nHitsGMax -x $t0shift0 -y $t0shift1 -l $tmin -u $tmax -g $geoSetup -s $sumCut -a $aaCut -B $iEntryStart -E $iEntryStop -w $workType -i $inputType -p $peakType $prerunname $temprunname > $logtemp 2> $errtemp"
             findVacentThread
             if [ $? -eq 1 ]
             then
@@ -422,7 +473,7 @@ do
     if [ "$layers" == "0" ]
     then
         cd root
-        for lid in $LAYERS
+        for lid in $layers
         do
             ln -s t_${runNo}.${currunname}.layer0.root t_${runNo}.${currunname}.layer${lid}.root
         done
@@ -441,7 +492,7 @@ do
         ln -s $lastxtfile xt.${runNo}.${currunname}.root
         cd ..
     else
-        ana -R $runNo -x $XTTYPE -g $geoSetup -H $SAVEHISTS -i $inputType -c $maxchi2 -L $DEFAULTLAYER -n $NHITSMAX $prerunname $currunname
+        ana -C$CONFIGTABLE -R $runNo -x $XTTYPE -g $geoSetup -H $SAVEHISTS -i $inputType -c $maxchi2 -L $DEFAULTLAYER -n $NHITSMAX $prerunname $currunname
         lastxtfile=xt.${runNo}.${currunname}.root
     fi
 done
