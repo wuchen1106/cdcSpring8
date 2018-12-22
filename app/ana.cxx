@@ -30,6 +30,58 @@
 #define NBINS    20
 #define MAXTRUNC 6
 
+// run time parameters
+int m_runNo = 0;
+TString m_prerunname  = "prerun";
+TString m_runname = "currun";
+TString m_suffix = "";
+int m_iEntryStart = 0;
+int m_iEntryStop = 0;
+int m_verboseLevel = 0;
+int m_modulo = 10000;
+bool m_memdebug = false;
+int m_saveHists = 0;
+bool m_outputEventTree = false;
+int m_defaultLayerID = 4;
+int m_geoSetup = 0; // 0: normal scintillator; 1: finger scintillator
+int m_inputType = 0; // 1 for MC; 0 for data
+int m_xtType = 55; // XYZ means polX for center, polY for middle and polZ for tail. If X is 0 then let middle function fit the center region.
+bool m_AsymXT = false; // use asymmetric xt curve or not
+TString m_CandSelBy = "Original"; // find the candidate with the smallest chi2 without the testlayer; otherwise use chi2 wit the testlayer (default order from tracking);
+bool m_ClosestPeak = false; // To get XT: find the peak with the smallest residual. Otherwise choose the first one over threshold; NOTE: in analysis part, it's always the closest peak chosen to get efficiency and residual
+bool m_UpdateWireMap = false; // by default don't update the wire map (i.e. no calibration of wire position)
+TString m_ExternalXT = ""; // if this is not an empty string, then skip generating xt file but use this one as external XTs
+// for updating wiremap
+double m_scale = 1; // normalize the step size with this scale when updating wiremap
+double m_stepSize = 0;
+double m_minDeltaSlz = 0;
+double m_maxDeltaSlz = 0;
+double m_minDeltaInx = 0;
+double m_maxDeltaInx = 0;
+std::map<int,bool> m_wireIDWhiteList; // a list of wire IDs to be updated in new wire map
+// for cutting
+bool m_RequireInTriggerCounter = true;
+bool m_RequireAllGoldenHits = false;
+int m_nHitsMax = 30;
+int m_nHitsSmin = 7;
+int m_sumCut = -30;
+int m_aaCut = 0;
+double m_maxchi2 = 2;
+double m_maxslz = 0.1;
+double m_maxFD = 6; // only count hits with DOCA smaller than 6 mm
+int    m_tmaxSet = 0;
+//for binning
+double m_tmin = -25-1/0.96/2; // t range for one x bin
+double m_tmax = 800+1/0.96/2;
+double m_xmax = 10; // x range for one t bin
+int    m_NbinT = 792+1;
+int    m_NbinX = 256;
+int    m_NbinRes = 256;
+double m_minchi2p = 1;
+double m_maxRes = 2;
+// for ADC2Charge
+TString m_adc2charge = "2.0158464*x";
+
 // map for wire position
 double  map_x[NLAY][NCEL][2];
 double  map_y[NLAY][NCEL][2];
@@ -71,62 +123,11 @@ void print_usage(char * prog_name);
 int getHitType(int type,bool isRight);
 int GetCandidate(TString & candSelBy, std::vector<int> * layerID, std::vector<int> * type, std::vector<double> * fitD[NCAND], std::vector<int> * sel[NCAND], int * nHitsS, double * chi2, double * chi2a);
 bool isInTriggerCounter(int geoSetup, double tinz, double tslz);
+void getRunTimeParameters(TString configureFile);
 
 MyProcessManager * pMyProcessManager;
 
 int main(int argc, char** argv){
-    int m_runNo = 0;
-    TString m_prerunname  = "prerun";
-    TString m_runname = "currun";
-    TString m_suffix = "";
-    int m_iEntryStart = 0;
-    int m_iEntryStop = 0;
-    int m_verboseLevel = 0;
-    int m_modulo = 10000;
-    bool m_memdebug = false;
-    int m_saveHists = 0;
-    bool m_outputEventTree = false;
-    int m_defaultLayerID = 4;
-    TString m_configureFile = "";
-    int m_geoSetup = 0; // 0: normal scintillator; 1: finger scintillator
-    int m_inputType = 0; // 1 for MC; 0 for data
-    int m_xtType = 55; // XYZ means polX for center, polY for middle and polZ for tail. If X is 0 then let middle function fit the center region.
-    bool m_AsymXT = false; // use asymmetric xt curve or not
-    TString m_CandSelBy = "Original"; // find the candidate with the smallest chi2 without the testlayer; otherwise use chi2 wit the testlayer (default order from tracking);
-    bool m_ClosestPeak = false; // To get XT: find the peak with the smallest residual. Otherwise choose the first one over threshold; NOTE: in analysis part, it's always the closest peak chosen to get efficiency and residual
-    bool m_UpdateWireMap = false; // by default don't update the wire map (i.e. no calibration of wire position)
-    TString m_ExternalXT = ""; // if this is not an empty string, then skip generating xt file but use this one as external XTs
-    // for updating wiremap
-    double m_scale = 1; // normalize the step size with this scale when updating wiremap
-    double m_stepSize = 0;
-    double m_minDeltaSlz = 0;
-    double m_maxDeltaSlz = 0;
-    double m_minDeltaInx = 0;
-    double m_maxDeltaInx = 0;
-    std::map<int,bool> m_wireIDWhiteList; // a list of wire IDs to be updated in new wire map
-    // for cutting
-    bool m_RequireInTriggerCounter = true;
-    bool m_RequireAllGoldenHits = false;
-    int m_nHitsMax = 30;
-    int m_nHitsSmin = 7;
-    int m_sumCut = -30;
-    int m_aaCut = 0;
-    double m_maxchi2 = 2;
-    double m_maxslz = 0.1;
-    double m_maxFD = 6; // only count hits with DOCA smaller than 6 mm
-    int    m_tmaxSet = 0;
-    //for binning
-    double m_tmin = -25-1/0.96/2; // t range for one x bin
-    double m_tmax = 800+1/0.96/2;
-    double m_xmax = 10; // x range for one t bin
-    int    m_NbinT = 792+1;
-    int    m_NbinX = 256;
-    int    m_NbinRes = 256;
-    double m_minchi2p = 1;
-    double m_maxRes = 2;
-    // for ADC2Charge
-    TString m_adc2charge = "2.0158464*x";
-
     int temp_geoSetup = 0; bool set_geoSetup = false;
     int temp_inputType = 0; bool set_inputType = false;
     int temp_xtType = 0; bool set_xtType = false;
@@ -183,7 +184,7 @@ int main(int argc, char** argv){
                 printf("Histogram saving level set to %d\n",m_saveHists);
                 break;
             case 'C':
-                m_configureFile = optarg;
+                getRunTimeParameters(optarg);
                 printf("Using configure file \"%s\"\n",optarg);
                 break;
             case 'T':
@@ -375,40 +376,6 @@ int main(int argc, char** argv){
         Log::SetLogLevel(i->first.c_str(), i->second);
     }
 
-    if (m_configureFile!=""){
-        MyRuntimeParameters::Get().ReadParamOverrideFile(m_configureFile);
-        m_geoSetup = MyRuntimeParameters::Get().GetParameterI("geoSetup");
-        m_inputType = MyRuntimeParameters::Get().GetParameterI("inputType");
-        m_xtType = MyRuntimeParameters::Get().GetParameterI("xtType");;
-        m_AsymXT = MyRuntimeParameters::Get().GetParameterI("ana.AsymXT");
-        m_CandSelBy = MyRuntimeParameters::Get().GetParameterS("ana.CandSelBy");
-        m_ClosestPeak = MyRuntimeParameters::Get().GetParameterI("ana.ClosestPeak");
-        //for cutting
-        m_nHitsMax = MyRuntimeParameters::Get().GetParameterI("ana.nHitsMax");
-        m_nHitsSmin = MyRuntimeParameters::Get().GetParameterI("ana.nHitsSmin");
-        m_sumCut = MyRuntimeParameters::Get().GetParameterI("ana.sumCut");
-        m_aaCut = MyRuntimeParameters::Get().GetParameterI("ana.aaCut");
-        m_maxchi2 = MyRuntimeParameters::Get().GetParameterD("ana.maxchi2");
-        m_maxslz = MyRuntimeParameters::Get().GetParameterD("ana.maxslz");
-        m_maxFD = MyRuntimeParameters::Get().GetParameterD("ana.maxFD");
-        m_tmaxSet = MyRuntimeParameters::Get().GetParameterI("ana.tmaxSet");
-        //for binning
-        m_tmin = MyRuntimeParameters::Get().GetParameterD("ana.tmin");
-        m_tmax = MyRuntimeParameters::Get().GetParameterD("ana.tmax");
-        m_xmax = MyRuntimeParameters::Get().GetParameterD("ana.xmax");
-        m_NbinT = MyRuntimeParameters::Get().GetParameterI("ana.NbinT");
-        m_NbinX = MyRuntimeParameters::Get().GetParameterI("ana.NbinX");
-        m_NbinRes = MyRuntimeParameters::Get().GetParameterI("ana.NbinRes");
-        m_minchi2p = MyRuntimeParameters::Get().GetParameterD("ana.minchi2p");
-        m_maxRes = MyRuntimeParameters::Get().GetParameterD("ana.maxRes");
-        //for wire position calibration
-        m_scale = MyRuntimeParameters::Get().GetParameterD("ana.scale");
-        m_stepSize = MyRuntimeParameters::Get().GetParameterD("ana.stepSize");
-        m_minDeltaSlz = MyRuntimeParameters::Get().GetParameterD("ana.minDeltaSlz");
-        m_maxDeltaSlz = MyRuntimeParameters::Get().GetParameterD("ana.maxDeltaSlz");
-        m_minDeltaInx = MyRuntimeParameters::Get().GetParameterD("ana.minDeltaInx");
-        m_maxDeltaInx = MyRuntimeParameters::Get().GetParameterD("ana.maxDeltaInx");
-    }
     if (set_geoSetup) m_geoSetup = temp_geoSetup;
     if (set_inputType) m_inputType = temp_inputType;
     if (set_xtType) m_xtType = temp_xtType;
@@ -2419,6 +2386,43 @@ bool isInTriggerCounter(int geoSetup, double tinz, double tslz){
         if (fabs(tslz)>0.11) isIn = false;
     }
     return isIn;
+}
+
+void getRunTimeParameters(TString configureFile){
+    if (configureFile!=""){
+        MyRuntimeParameters::Get().ReadParamOverrideFile(configureFile);
+        if (MyRuntimeParameters::Get().HasParameter("geoSetup")) m_geoSetup = MyRuntimeParameters::Get().GetParameterI("geoSetup");
+        if (MyRuntimeParameters::Get().HasParameter("inputType")) m_inputType = MyRuntimeParameters::Get().GetParameterI("inputType");
+        if (MyRuntimeParameters::Get().HasParameter("xtType")) m_xtType = MyRuntimeParameters::Get().GetParameterI("xtType");
+        if (MyRuntimeParameters::Get().HasParameter("ana.AsymXT")) m_AsymXT = MyRuntimeParameters::Get().GetParameterI("ana.AsymXT");
+        if (MyRuntimeParameters::Get().HasParameter("ana.CandSelBy")) m_CandSelBy = MyRuntimeParameters::Get().GetParameterS("ana.CandSelBy");
+        if (MyRuntimeParameters::Get().HasParameter("ana.ClosestPeak")) m_ClosestPeak = MyRuntimeParameters::Get().GetParameterI("ana.ClosestPeak");
+        //for cutting
+        if (MyRuntimeParameters::Get().HasParameter("ana.nHitsMax")) m_nHitsMax = MyRuntimeParameters::Get().GetParameterI("ana.nHitsMax");
+        if (MyRuntimeParameters::Get().HasParameter("ana.nHitsSmin")) m_nHitsSmin = MyRuntimeParameters::Get().GetParameterI("ana.nHitsSmin");
+        if (MyRuntimeParameters::Get().HasParameter("ana.sumCut")) m_sumCut = MyRuntimeParameters::Get().GetParameterI("ana.sumCut");
+        if (MyRuntimeParameters::Get().HasParameter("ana.aaCut")) m_aaCut = MyRuntimeParameters::Get().GetParameterI("ana.aaCut");
+        if (MyRuntimeParameters::Get().HasParameter("ana.maxchi2")) m_maxchi2 = MyRuntimeParameters::Get().GetParameterD("ana.maxchi2");
+        if (MyRuntimeParameters::Get().HasParameter("ana.maxslz")) m_maxslz = MyRuntimeParameters::Get().GetParameterD("ana.maxslz");
+        if (MyRuntimeParameters::Get().HasParameter("ana.maxFD")) m_maxFD = MyRuntimeParameters::Get().GetParameterD("ana.maxFD");
+        if (MyRuntimeParameters::Get().HasParameter("ana.tmaxSet")) m_tmaxSet = MyRuntimeParameters::Get().GetParameterI("ana.tmaxSet");
+        //for binning
+        if (MyRuntimeParameters::Get().HasParameter("ana.tmin")) m_tmin = MyRuntimeParameters::Get().GetParameterD("ana.tmin");
+        if (MyRuntimeParameters::Get().HasParameter("ana.tmax")) m_tmax = MyRuntimeParameters::Get().GetParameterD("ana.tmax");
+        if (MyRuntimeParameters::Get().HasParameter("ana.xmax")) m_xmax = MyRuntimeParameters::Get().GetParameterD("ana.xmax");
+        if (MyRuntimeParameters::Get().HasParameter("ana.NbinT")) m_NbinT = MyRuntimeParameters::Get().GetParameterI("ana.NbinT");
+        if (MyRuntimeParameters::Get().HasParameter("ana.NbinX")) m_NbinX = MyRuntimeParameters::Get().GetParameterI("ana.NbinX");
+        if (MyRuntimeParameters::Get().HasParameter("ana.NbinRes")) m_NbinRes = MyRuntimeParameters::Get().GetParameterI("ana.NbinRes");
+        if (MyRuntimeParameters::Get().HasParameter("ana.minchi2p")) m_minchi2p = MyRuntimeParameters::Get().GetParameterD("ana.minchi2p");
+        if (MyRuntimeParameters::Get().HasParameter("ana.maxRes")) m_maxRes = MyRuntimeParameters::Get().GetParameterD("ana.maxRes");
+        //for wire position calibration
+        if (MyRuntimeParameters::Get().HasParameter("ana.scale")) m_scale = MyRuntimeParameters::Get().GetParameterD("ana.scale");
+        if (MyRuntimeParameters::Get().HasParameter("ana.stepSize")) m_stepSize = MyRuntimeParameters::Get().GetParameterD("ana.stepSize");
+        if (MyRuntimeParameters::Get().HasParameter("ana.minDeltaSlz")) m_minDeltaSlz = MyRuntimeParameters::Get().GetParameterD("ana.minDeltaSlz");
+        if (MyRuntimeParameters::Get().HasParameter("ana.maxDeltaSlz")) m_maxDeltaSlz = MyRuntimeParameters::Get().GetParameterD("ana.maxDeltaSlz");
+        if (MyRuntimeParameters::Get().HasParameter("ana.minDeltaInx")) m_minDeltaInx = MyRuntimeParameters::Get().GetParameterD("ana.minDeltaInx");
+        if (MyRuntimeParameters::Get().HasParameter("ana.maxDeltaInx")) m_maxDeltaInx = MyRuntimeParameters::Get().GetParameterD("ana.maxDeltaInx");
+    }
 }
 
 void print_usage(char * prog_name){
