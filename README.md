@@ -18,11 +18,11 @@ getP runNo
 
 Input file:
 
-`root/run_XXXXXX_built.root`
+`root/raw/run_XXXXXX_built.root`
 
 Output file:
 
-`root/p_XXXX.root`
+`root/peaks/p_XXXX.root`
 
 Tree structure of output file:
 ```
@@ -53,12 +53,12 @@ Input file:
 
 `Input/run-info.root`  
 `Input/wire-position.root`  
-`root/run_XXXXXX_built.root`  
-`root/p_XXXX.root`  
+`root/raw/run_XXXXXX_built.root`  
+`root/peaks/p_XXXX.root`  
 
 Output file:
 
-`root/h_XXXX.root`  
+`root/hits/h_XXXX.root`  
 and histograms
 
 Tree structure of output file:  
@@ -148,7 +148,7 @@ Input file:
 
 Output file:
 
-`root/t_XXXX.RUNNAME.layerX.root`  
+`root/tracks/t_XXXX.RUNNAME.layerX.root`  
 
 Tree structure of output file:
 ```
@@ -311,7 +311,7 @@ Input file:
 `info/wire-position.XXXX.PRERUNNAME.root` or `Input/wire-position.root`
 `Input/crosspoint.root`
 `info/xt.XXXX.PRERUNNAME.root`  
-`root/t_XXXX.RUNNAME.layerX.root`  
+`root/tracks/t_XXXX.RUNNAME.layerX.root`  
 
 Output file:
 
@@ -319,7 +319,7 @@ Output file:
 `info/offset.XXXX.RUNNAME.layerX.root`  
 `info/wire-position.XXXX.RUNNAME.layerX.root` if the `m_UpdateWireMap` option is set  
 `info/xt.XXXX.RUNNAME.root` if the `m_ExternalXT` option is not set  
-`root/anamc_XXXX.layerX.MC.root`  
+`root/ana/ana_XXXX.layerX.root`  
  
  with branch structure
  ```
@@ -475,12 +475,12 @@ Input file:
 
 `info/resi.XXXX.RUNNAME.layerX.root`  
 `info/xt.XXXX.ORIRUNNAME.root`  
-`root/t_XXXX.RUNNAME.layerX.root`  
+`root/tracks/t_XXXX.RUNNAME.layerX.root`  
 
 Output file:
 
 `info/reso.XXXX.RUNNAME.layerX.root`  
-`root/anamc_XXXX.layerX.MC.root`  
+`root/anamc/anamc_XXXX.layerX.MC.root`  
 
 #### To do the iteration on real data
 
@@ -529,12 +529,12 @@ updateRes -R runNo -A -I averageEtrack StartName preRunName
 and then loop from `iIterStart` to `iIterStop` to do:
 
 ```
-mc2fitinput_Chen root/ana_XXX info/res.XXX root/h_XXX.MC.root 0 0 0 nLayers 1 1 iStart iStop maxChi2 minNhitsS maxNhitsG maxSlz
-hadd root/h_runNo.MC.root root/h_runNo.iStart-iStop.MC.root ...
+mc2fitinput_Chen root/ana/ana_XXX info/res.XXX root/hits/h_XXX.MC.root 0 0 0 nLayers 1 1 iStart iStop maxChi2 minNhitsS maxNhitsG maxSlz
+hadd root/hits/h_runNo.MC.root root/hits/h_runNo.iStart-iStop.MC.root ...
 tracking
 combine runNo currunname nEvtPerRun h_runNo.MC.root
 updateRes -R runNo -A StartName preRunName
-mv root/h_runNo.MC.root root/h_runNo.prerunname.MC.root
+mv root/hits/h_runNo.MC.root root/hits/h_runNo.prerunname.MC.root
 ```
 #### To loop in a list of runs
 
