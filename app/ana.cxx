@@ -833,11 +833,11 @@ int main(int argc, char** argv){
         //----------------------------------Set input file--------------------------------------------
         if (m_verboseLevel>0) {printf("In Layer %d: preparing input TChain\n",testLayer);fflush(stdout);}
         TChain * ichain = new TChain("t","t");
-        ichain->Add(Form("%s/root/t_%d.%s.layer%d.root",HOME.Data(),m_runNo,m_runname.Data(),testLayer));
+        ichain->Add(Form("%s/root/tracks/t_%d.%s.layer%d.root",HOME.Data(),m_runNo,m_runname.Data(),testLayer));
         ichain->GetEntries();
         Long64_t N = ichain->GetEntries();
         if (N==0){
-            fprintf(stderr,"WARNING: \"%s/root/t_%d.%s.layer%d.root\" is empty! Will ignore this layer.\n",HOME.Data(),m_runNo,m_runname.Data(),testLayer);
+            fprintf(stderr,"WARNING: \"%s/root/tracks/t_%d.%s.layer%d.root\" is empty! Will ignore this layer.\n",HOME.Data(),m_runNo,m_runname.Data(),testLayer);
             continue;
         }
         ichain->SetBranchAddress("triggerNumber",&triggerNumber);
@@ -1040,7 +1040,7 @@ int main(int argc, char** argv){
             maxDT = m_tmaxSet;
 
         //----------------------------------prepare for output ROOT file--------------------------------------------
-        TFile * ofile = new TFile(Form("%s/root/ana_%d.%s.layer%d.root",HOME.Data(),m_runNo,m_runnameout.Data(),testLayer),"RECREATE");
+        TFile * ofile = new TFile(Form("%s/root/ana/ana_%d.%s.layer%d.root",HOME.Data(),m_runNo,m_runnameout.Data(),testLayer),"RECREATE");
         TTree * otree = new TTree("t","t");
         otree->Branch("triggerNumber",&triggerNumber);
         otree->Branch("isGood",&isGood);

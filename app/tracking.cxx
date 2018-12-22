@@ -594,11 +594,11 @@ int main(int argc, char** argv){
     //===================Get input ROOT file============================
     TChain * c = new TChain("t","t");
     if (m_inputType==3)
-        c->Add(HOME+Form("/root/h_%d.layer%d.MC.root",m_runNo,m_testlayer));
+        c->Add(HOME+Form("/root/hits/h_%d.layer%d.MC.root",m_runNo,m_testlayer));
     else if (m_inputType==2)
-        c->Add(HOME+Form("/root/h_%d.MC.root",m_runNo));
+        c->Add(HOME+Form("/root/hits/h_%d.MC.root",m_runNo));
     else
-        c->Add(HOME+Form("/root/h_%d.root",m_runNo));
+        c->Add(HOME+Form("/root/hits/h_%d.root",m_runNo));
     int triggerNumber;
     std::vector<int> * i_np = 0;
     std::vector<int> * i_ip = 0;
@@ -640,8 +640,8 @@ int main(int argc, char** argv){
     }
 
     //===================Prepare output ROOT file============================
-    printf("Output file: %s/root/t_%d.%s.layer%d.root\n",HOME.Data(),m_runNo,m_runname.Data(),m_testlayer);
-    TFile * of = new TFile(Form("%s/root/t_%d.%s.layer%d.root",HOME.Data(),m_runNo,m_runname.Data(),m_testlayer),"RECREATE"); 
+    printf("Output file: %s/root/tracks/t_%d.%s.layer%d.root\n",HOME.Data(),m_runNo,m_runname.Data(),m_testlayer);
+    TFile * of = new TFile(Form("%s/root/tracks/t_%d.%s.layer%d.root",HOME.Data(),m_runNo,m_runname.Data(),m_testlayer),"RECREATE"); 
     TTree * ot = new TTree("t","t");
     // from h_XXX
     ot->Branch("triggerNumber",&triggerNumber);

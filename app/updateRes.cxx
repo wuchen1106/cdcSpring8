@@ -340,12 +340,12 @@ int main(int argc, char** argv){
         std::vector<double> * i_fitD[NCAND] = {0};
         std::vector<int> * i_sel[NCAND] = {0};
         TChain * ichain = new TChain("t","t");
-        ichain->Add(Form("%s/root/t_%d.%s.layer%d.root",HOME.Data(),m_runNo,m_runname.Data(),m_testlayer));
+        ichain->Add(Form("%s/root/tracks/t_%d.%s.layer%d.root",HOME.Data(),m_runNo,m_runname.Data(),m_testlayer));
         ichain->GetEntries();
         Long64_t nEntries = ichain->GetEntries();
         if (nEntries==0){
             //        fprintf(stderr,"WARNING: \"%s/root/t_%d.%s.layer%d.root\" is empty! Will ignore this layer.\n",HOME.Data(),m_runNo,m_runname.Data(),m_testlayer);
-            fprintf(stderr,"ERROR: \"%s/root/t_%d.%s.layer%d.root\" is empty!\n",HOME.Data(),m_runNo,m_runname.Data(),m_testlayer);
+            fprintf(stderr,"ERROR: \"%s/root/tracks/t_%d.%s.layer%d.root\" is empty!\n",HOME.Data(),m_runNo,m_runname.Data(),m_testlayer);
             return 0;
         }
         ichain->SetBranchAddress("triggerNumber",&triggerNumber);
@@ -441,7 +441,7 @@ int main(int argc, char** argv){
         double highSum = 0;
         double highAA = 0;
         double highDT = 0;
-        TFile * ofile = new TFile(Form("%s/root/anamc_%d.%s.layer%d.root",HOME.Data(),m_runNo,m_runname.Data(),m_testlayer),"RECREATE");
+        TFile * ofile = new TFile(Form("%s/root/anamc/anamc_%d.%s.layer%d.root",HOME.Data(),m_runNo,m_runname.Data(),m_testlayer),"RECREATE");
         TTree * otree = new TTree("t","t");
         otree->Branch("triggerNumber",&triggerNumber);
         otree->Branch("res",&minres);

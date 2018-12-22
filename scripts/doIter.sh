@@ -5,8 +5,6 @@ echo $theDate $THISCMD $@ >> cmdlog
 
 # about thread
 threadName="job"
-threadLists=""
-threadlistfile=threadlist.$runName.$runNo
 
 # about this job
 StartName="Garfield"
@@ -239,11 +237,11 @@ else
     im1=$((IterStart-1))
     prerunname="${runName}.i${im1}"
 fi
-if [ -e $CDCS8WORKING_DIR/root/h_$runNo.root ]
+if [ -e $CDCS8WORKING_DIR/root/hits/h_$runNo.root ]
 then
-    ls -ltr $CDCS8WORKING_DIR/root/h_$runNo.root
+    ls -ltr $CDCS8WORKING_DIR/root/hits/h_$runNo.root
 else
-    echo "$CDCS8WORKING_DIR/root/h_$runNo.root doesn't exist!"
+    echo "$CDCS8WORKING_DIR/root/hits/h_$runNo.root doesn't exist!"
     exit 1
 fi
 if [ -e $CDCS8WORKING_DIR/info/wire-position.$runNo.$prerunname.root ]
@@ -282,8 +280,6 @@ isReady(){ # make sure this thread is not processing any job (the conf is emtpy)
     fi
 }
 
-prev_ithread=$thread_iStart
-prev_occupied=false
 findVacentThread(){
     for (( i=0; i<3600; i++ )) #3600*10 sec = 10 hours running
     do
@@ -335,6 +331,10 @@ findVacentThread(){
     return 1 # cannot find any vacent slots in 10 hours
 }
 
+prev_ithread=$thread_iStart
+prev_occupied=false
+threadLists=""
+threadlistfile=threadlist.$runName.$runNo
 lastxtfile=""
 for (( iter=IterStart; iter<=IterEnd; iter++ ))
 do
@@ -457,7 +457,7 @@ EOF
             fi
         fi
     done
-    nEvents=`GetEntries $CDCS8WORKING_DIR/root/h_$runNo.root`
+    nEvents=`GetEntries $CDCS8WORKING_DIR/root/hits/h_$runNo.root`
     nEvtPerRun=`echo "$nEvents/($nThreads)+1" | bc`
 
     Njobs=0
@@ -474,7 +474,7 @@ EOF
             fi
             jobname="${runNo}.${currunname}.$iEntryStart-$iEntryStop.layer${testlayer}"
             echo "checking job \"$jobname\""
-            file="root/t_${jobname}.log"
+            file="root/tracks/t_${jobname}.log"
             if [ -e $file ]
             then # log file already exists??
                 if tail -n 3 $file | grep -q "Good Events" # finished
@@ -490,8 +490,8 @@ EOF
                 echo "  logfile \"$file\" doesn't exist, so generate a new job!"
             fi
             temprunname="${currunname}.$iEntryStart-$iEntryStop"
-            logtemp="$CDCS8WORKING_DIR/root/t_${runNo}.${temprunname}.layer${testlayer}.log"
-            errtemp="$CDCS8WORKING_DIR/root/t_${runNo}.${temprunname}.layer${testlayer}.err"
+            logtemp="$CDCS8WORKING_DIR/root/tracks/t_${runNo}.${temprunname}.layer${testlayer}.log"
+            errtemp="$CDCS8WORKING_DIR/root/tracks/t_${runNo}.${temprunname}.layer${testlayer}.err"
             tempconfig="tracking -C $CONFIGTABLEDEFAULT $arg_configure -R $runNo -L $testlayer -n $nHitsGMax -x $t0shift0 -y $t0shift1 -l $tmin -u $tmax -g $geoSetup -s $sumCut -a $aaCut -B $iEntryStart -E $iEntryStop -w $workType -i $inputType -p $peakType $prerunname $temprunname > $logtemp 2> $errtemp"
             findVacentThread
             if [ $? -eq 1 ]
@@ -569,22 +569,22 @@ EOF
         exit 0
     fi
 
-    cd root/
+    cd root/tracks
     combine $runNo $currunname $nEvtPerRun &
     pids="$!"
     wait $pids || { echo "there were errors in combining $runNo $currunname $ilayer" >&2; exit 1; }
     rm -f t_${runNo}.${currunname}.*-*.*
-    cd ..
+    cd ../..
 
 #   using layer0?
     if [ "$layers" == "0" ]
     then
-        cd root
+        cd root/tracks
         for lid in $layers
         do
             ln -s t_${runNo}.${currunname}.layer0.root t_${runNo}.${currunname}.layer${lid}.root
         done
-        cd ..
+        cd ../..
     fi
 
     ana -C $CONFIGTABLEDEFAULT $arg_configure -R $runNo -x $XTTYPE -g $geoSetup -H $SAVEHISTS -i $inputType -c $maxchi2 -L $DEFAULTLAYER -n $NHITSMAX $arg_wiremap $arg_xtfile $prerunname $currunname $wires

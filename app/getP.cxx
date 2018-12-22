@@ -26,7 +26,7 @@ int main(int argc, char** argv){
 
 	//===================Get input ROOT file============================
 	TChain * c = new TChain("tree","tree");
-	c->Add(HOME+Form("/root/run_%0.6d_built.root",runNo));
+	c->Add(HOME+Form("/root/raw/run_%0.6d_built.root",runNo));
 	int tdcNhit[NCHT];
 	int clockNumberDriftTime[NCHT][NSAM];
 	int adc[NCHT][NSAM];
@@ -53,7 +53,7 @@ int main(int argc, char** argv){
 	std::vector<std::vector<int> > * o_height = 0;
 	std::vector<std::vector<int> > * o_mpn = 0;
 	std::vector<std::vector<int> > * o_mpi = 0;
-	TFile * f = new TFile(HOME+Form("/root/p_%d.root",runNo),"RECREATE");
+	TFile * f = new TFile(HOME+Form("/root/peaks/p_%d.root",runNo),"RECREATE");
 	TTree * t = new TTree("t","t");
 //	t->Branch("adc",adc,Form("adc[%d][%d]/I",NCHT,NSAM));
 	t->Branch("triggerNumber",&triggerNumber);

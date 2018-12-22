@@ -110,13 +110,13 @@ int main(int argc, char** argv){
 
 	//===================Get raw input ROOT file============================
 	TChain * c_raw = new TChain("tree","tree");
-	c_raw->Add(HOME+Form("/root/run_%0.6d_built.root",runNo));
+	c_raw->Add(HOME+Form("/root/raw/run_%0.6d_built.root",runNo));
 	int i_adc[NCHT][NSAM];
 	c_raw->SetBranchAddress("adc",i_adc);
 
 	//===================Get peak input ROOT file============================
 	TChain * c_peak = new TChain("t","t");
-	c_peak->Add(HOME+Form("/root/p_%d.root",runNo));
+	c_peak->Add(HOME+Form("/root/peaks/p_%d.root",runNo));
 	int triggerNumber;
 	int i_nh;
 	int i_np[NCHT];
@@ -163,7 +163,7 @@ int main(int argc, char** argv){
 	std::vector<double> * o_sum = 0;
 	std::vector<double> * o_aa = 0;
 	std::vector<double> * o_driftT = 0;
-	TFile * f = new TFile(HOME+Form("/root/h_%d.",runNo)+suffix+"root","RECREATE");
+	TFile * f = new TFile(HOME+Form("/root/hits/h_%d.",runNo)+suffix+"root","RECREATE");
 	TTree * t = new TTree("t","t");
 	t->Branch("triggerNumber",&triggerNumber);
 	t->Branch("nHits",&o_nHits);

@@ -244,9 +244,9 @@ int main(int argc, char** argv){
 	for (int iter = 1; iter<=m_Niters; iter++){
 	    for (int lid = 1; lid<NLAY; lid++){
             TChain * ichain_ana = new TChain("t","t");
-            ichain_ana->Add(Form("root/t_%d.%s.i%d.layer%d.root",m_runNo,m_runname.Data(),iter,lid));
+            ichain_ana->Add(Form("root/tracks/t_%d.%s.i%d.layer%d.root",m_runNo,m_runname.Data(),iter,lid));
             if (!ichain_ana->GetEntries()){
-                printf("Cannot find root/t_%d.%s.i%d.layer%d.root\n",m_runNo,m_runname.Data(),iter,lid);
+                printf("Cannot find root/tracks/t_%d.%s.i%d.layer%d.root\n",m_runNo,m_runname.Data(),iter,lid);
                 continue;
             }
             double chi2;
@@ -282,7 +282,7 @@ int main(int argc, char** argv){
             ichain_ana->SetBranchAddress("driftD0",&driftD);
             ichain_ana->SetBranchAddress("fitD0",&fitD);
             int nEntries = ichain_ana->GetEntries();
-            printf("Loading file root/t_%d.%s.i%d.layer%d.root, %d Entries\n",m_runNo,m_runname.Data(),iter,lid,nEntries);
+            printf("Loading file root/tracks/t_%d.%s.i%d.layer%d.root, %d Entries\n",m_runNo,m_runname.Data(),iter,lid,nEntries);
             for (int iEntry = 0; iEntry<nEntries; iEntry++){
                 ichain_ana->GetEntry(iEntry);
                 int nHits = layerID->size();
