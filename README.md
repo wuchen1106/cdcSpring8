@@ -318,7 +318,7 @@ Output file:
 `info/resi.XXXX.RUNNAME.layerX.root`  
 `info/offset.XXXX.RUNNAME.layerX.root`  
 `info/wire-position.XXXX.RUNNAME.layerX.root` if the `m_UpdateWireMap` option is set  
-`info/xt.XXXX.RUNNAME.root` if the `m_ExternalXT` option is not set
+`info/xt.XXXX.RUNNAME.root` if the `m_ExternalXT` option is not set  
 `root/anamc_XXXX.layerX.MC.root`  
  
  with branch structure
