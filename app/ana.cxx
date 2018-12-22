@@ -612,9 +612,9 @@ int main(int argc, char** argv){
         preXTFile = new TFile(Form("%s/info/xt.%d.%s.root",HOME.Data(),m_runNo,m_prerunname.Data()));
         if (!preXTFile||preXTFile->IsZombie()){
             MyWarn("Cannot find xt file according to the given prerunname. Will use garfield xt instead.");
-            preXTFile = new TFile(HOME+Form("/Input/xt.%s.%d.root",gastypeshort,HV));
+            preXTFile = new TFile(HOME+Form("/info/xt.%s.%d.root",gastypeshort.Data(),HV));
             if (!preXTFile||preXTFile->IsZombie()){
-                MyError("Cannot find the default garfield xt!");
+                MyError("Cannot find the default garfield xt: "<<HOME+Form("/info/xt.%s.%d.root",gastypeshort.Data(),HV));
                 return -1;
             }
         }

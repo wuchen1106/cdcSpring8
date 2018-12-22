@@ -261,7 +261,7 @@ else
     then
         echo "Will use $CDCS8WORKING_DIR/Input/wire-position.root by default"
     else
-        echo "Event $CDCS8WORKING_DIR/Input/wire-position.root doesn't exist!"
+        echo "Even $CDCS8WORKING_DIR/Input/wire-position.root doesn't exist!"
         exit 1
     fi
 fi
@@ -270,7 +270,7 @@ then
     ls -ltr $CDCS8WORKING_DIR/info/xt.$runNo.$prerunname.root
 else
     echo "$CDCS8WORKING_DIR/info/xt.$runNo.$prerunname.root doesn't exist!"
-    exit 1
+    echo "Will use default garfield xt"
 fi
 
 updateThreadLists(){
@@ -530,7 +530,7 @@ EOF
         finished=true
         thefile=""
         NjobsFinished=0
-        for file in root/t_${runNo}.${currunname}.*.log
+        for file in root/tracks/t_${runNo}.${currunname}.*.log
         do
             if [ ! -e $file ]
             then

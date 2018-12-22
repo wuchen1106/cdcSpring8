@@ -10,7 +10,7 @@ do
     then
         time bash $theConf &
         pid=" $!"
-        wait $pid || { echo "there were errors" >&2; exit 1; }
+        wait $pid || { echo "there were errors" >&2; }
         echo "Scan$iScan: Finished!" >> $theLog
         echo "" > $theConf # make sure to reset the configure file so that this job will sleep and wait for the next trigger
     fi
