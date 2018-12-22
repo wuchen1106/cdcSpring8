@@ -193,7 +193,7 @@ void do_fit(double slix, double inix,double sliz, double iniz);
 int getHitIndex(int lid, int nHits);
 int getHitType(int type,bool isRight);
 bool isSame(int iCand);
-double getError(int lid,double dt, bool isR);
+double getError(double dd);
 void getRunTimeParameters(TString configureFile);
 
 MyProcessManager * pMyProcessManager;
@@ -203,8 +203,7 @@ TF1 * f_left[NLAY+2];
 TF1 * f_right[NLAY+2];
 // for error function
 TF1 * funcErr;
-TGraph * gr_error_left[NLAY+2];
-TGraph * gr_error_right[NLAY+2];
+TGraph * gr_error;
 
 int main(int argc, char** argv){
     int temp_nHitsMax = 0; bool set_nHitsMax = false;
@@ -612,8 +611,6 @@ int main(int argc, char** argv){
     for (int i = 0; i<NLAY; i++){
         f_left[i] = (TF1*) i_xt->Get(Form("fl_%d",i));
         f_right[i] = (TF1*) i_xt->Get(Form("fr_%d",i));
-		gr_error_left[i] = (TGraph*)i_xt->Get(Form("gr_sigts_slicetl_%d",i));
-		gr_error_right[i] = (TGraph*)i_xt->Get(Form("gr_sigts_slicetr_%d",i));
         double tmaxl = 0;
         double tmaxr = 0;
         double tminl = 0;
@@ -636,17 +633,24 @@ int main(int argc, char** argv){
         }
         if (f_left[i]||f_right[i]){
         	printf("  XT in layer[%d]: (%.3e,%.3e)-(%.3e,%.3e)-(%.3e,%.3e)-(%.3e,%.3e)\n",i,tmaxl,xmaxl,tminl,xminl,tminr,xminr,tmaxr,xmaxr);
-			if (!gr_error_left[i]||!gr_error_right[i]) fprintf(stderr,"Cannot find gr_error_l/r[%d]! Would assume default error 0.2 mm\n",i);
 		}
     }
 	f_left[NLAY] = (TF1*) i_xt->Get("fl_even");
 	f_right[NLAY] = (TF1*) i_xt->Get("fr_even");
-	gr_error_left[NLAY] = (TGraph*)i_xt->Get("gr_sigts_slicetl_even");
-	gr_error_right[NLAY] = (TGraph*)i_xt->Get("gr_sigts_slicetr_even");
 	f_left[NLAY+1] = (TF1*) i_xt->Get("fl_odd");
 	f_right[NLAY+1] = (TF1*) i_xt->Get("fr_odd");
-	gr_error_left[NLAY+1] = (TGraph*)i_xt->Get("gr_sigts_slicetl_odd");
-	gr_error_right[NLAY+1] = (TGraph*)i_xt->Get("gr_sigts_slicetr_odd");
+
+    //===================Prepare error function==============================
+    TFile * i_error = new TFile(HOME+Form("/info/reso.%d.",m_runNo)+m_prerunname+".root");
+    if (!i_error||i_error->IsZombie()){
+        MyWarn("Cannot find reso file according to the given prerunname. Will use default reso instead.");
+        i_error = new TFile(HOME+Form("/info/reso.%s.%d.root",gastypeshort.Data(),HV));
+        if (!i_error||i_error->IsZombie()){
+            MyError("Cannot find the default reso: "<<HOME+Form("/info/reso.%s.%d.root",gastypeshort.Data(),HV));
+            return -1;
+        }
+    }
+	gr_error = (TGraph*)i_error->Get("gr_resIni");
 
     //===================Get input ROOT file============================
     TChain * c = new TChain("t","t");
@@ -1603,7 +1607,7 @@ void getchi2(double &f, double & cp, double & ca, double slx, double inx, double
 		if ((*t_sel)[ihit]==0) continue;
 		dfit = get_dist((*i_layerID)[ihit],(*i_wireID)[ihit],slx,inx,slz,inz);
 		double dd = (*t_driftD)[ihit];
-		double error = getError((*i_layerID)[ihit],(*i_driftT)[ihit],dd>0);
+		double error = getError(fabs(dd));
         delta  = (dfit-dd)/error;
 		chisq += delta*delta;
 		N++;
@@ -1637,28 +1641,21 @@ void getchi2(double &f, double & cp, double & ca, double slx, double inx, double
 	}
 }
 
-double getError(int lid,double dt, bool isR){
+double getError(double dd){
 	double error = 0.2; // default value 200 um
-	TGraph * gr = 0;
-    int theLayer = lid;
-    if (m_workType==0) theLayer = 0;
-	else if (m_workType==1) theLayer = (lid%2==0?NLAY:NLAY+1); // even/odd
-	else if (m_workType==-1) theLayer = (lid%2==0?NLAY+1:NLAY); // even/odd reversed
-	if (isR) // right side
-		gr = gr_error_right[theLayer];
-	else
-		gr = gr_error_left[theLayer];
-	if (!gr){
-	    return error;
-	}
-	int N = gr->GetN();
+	int N = gr_error->GetN();
 	for (int i = 0; i<N-1; i++){
-		double t1,sig1;
-		double t2,sig2;
-		gr->GetPoint(i,t1,sig1);
-		gr->GetPoint(i+1,t2,sig2);
-		if (t1<dt&&t2>=dt){
-			error = (sig1+sig2)/2.;
+		double d1,sig1;
+		double d2,sig2;
+		gr_error->GetPoint(i,d1,sig1);
+		gr_error->GetPoint(i+1,d2,sig2);
+		if (d2>7){
+		    error = sig1;
+			break;
+		}
+        else if (d1<dd&&d2>=dd){
+			error = (sig1*(d2-dd)+sig2*(dd-d1))/(d2-d1);
+			break;
 		}
 	}
 	return error;
