@@ -1,6 +1,7 @@
 #!/bin/bash
 THISCMD=$(basename $0)
-echo $THISCMD $@ >> cmdlog
+theDate=`date`
+echo $theDate $THISCMD $@ >> cmdlog
 
 # about thread
 threadName="job"
