@@ -1587,7 +1587,7 @@ double get_dist(int lid, int wid, double slx, double inx, double slz, double inz
 }
 
 //______________________________________________________________________________
-void do_fit(double sliX, double iniX,double sliZ, double iniZ, double t0){
+void do_fit(double sliX, double iniX,double sliZ, double iniZ){
 	if(gMinuit) delete gMinuit;
 	if (m_t0error)
         gMinuit = new TMinuit(6);  //initialize TMinuit with a maximum of 5 params
@@ -1614,7 +1614,7 @@ void do_fit(double sliX, double iniX,double sliZ, double iniZ, double t0){
 	gMinuit->mnparm(2, "slopeZ", sliZ, beamSlzMax/1.e4, -beamSlzMax,beamSlzMax,ierflg);
 	gMinuit->mnparm(3, "interceptZ", iniZ, beamInzMax/1.e4, -beamInzMax,beamInzMax,ierflg);
 	if (m_t0error)
-        gMinuit->mnparm(4, "t0", t0, 1, -m_t0error,m_t0error,ierflg);
+        gMinuit->mnparm(4, "t0", 0, 1, -m_t0error,m_t0error,ierflg);
 
 	// Now ready for minimization step
 	arglist[0] = 5000.0;

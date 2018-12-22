@@ -702,7 +702,6 @@ int main(int argc, char** argv){
     double iinz[NCAND];
     double islx[NCAND];
     double islz[NCAND];
-    double it0off[NCAND];
     double chi2x[NCAND];
     double chi2z[NCAND];
     double chi2i[NCAND];
