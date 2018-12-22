@@ -13,7 +13,9 @@ StartName="Garfield"
 layers="4" # layers to be reconstructed and [analyzed (in case of layers is not 0)]
 wires="" # wires to be calibrated (position)
 isLast=false
-CONFIGTABLE="$CDCS8WORKING_DIR/Para/default.dat"
+CONFIGTABLEDEFAULT="$CDCS8WORKING_DIR/Para/default.dat"
+CONFIGTABLE_wireposition="$CDCS8WORKING_DIR/Para/wirepos.temp.dat"
+CONFIGTABLE=""
 
 # for tracking
 geoSetup=0 # 0 for general; 1 for finger
@@ -30,8 +32,7 @@ tmin=-10
 tmax=800
 
 # for getOffset
-WPTYPE=0 # 1 for changing wiremap; 0 for not changing it;
-
+UpdateWireMap=false
 stepSize=0 # maximum step size for each movement in wire position calibration; 0 means no limit
 minslz=0 # min slz cut for mean slz value in each sample of events in wiremap calibration. minslz==maxslz==0 means no cut
 maxslz=0 # min slz cut for mean slz value in each sample of events in wiremap calibration. minslz==maxslz==0 means no cut
@@ -61,13 +62,13 @@ Syntax:
     -J [J] stop at iteration J
     -H [h] save histograms at this level ($SAVEHISTS)
     -L     (false) Take the last iteration as the final step and do the default complete checkings
-    -W [w] update the wire position map in type ($WPTYPE). 1: chagne wire map; 0: don't change wire map
+    -W     (false) update the wire position map
     -U     (false) keep the xt curves unchanged.
     -S [S] set the start name ($StartName)
     -D [D] set this layer ($DEFAULTLAYER) as the default layer to save in XT file as fr/l_0
     -l [l1 (l2 ...)] Do the training of the given layers ($layers)
     -w [w1 (w2 ...)] Do the calibration of the given wires ($wires) in the ubove given layers ($layers)
-    -c [c] Set the configure file as C ($CONFIGTABLE)
+    -c [c] Add configure file as C (default one \"$CONFIGTABLE\" is always loaded first)
     -g [g] geometry setup ($geoSetup). 0 ordinary scintillator; 1 finger scintillator
     -t [t] work type ($workTypeini) for tracking. 0, fr/l_0; 1, even/odd; -1, even/odd reversed; others, all layers
     -a [a] aa cut ($aaCut)
@@ -110,7 +111,7 @@ do
         SAVEHISTS="$OPTARG";
         ;;
     'W')
-        WPTYPE="$OPTARG";
+        UpdateWireMap=true;
         ;;
     'U')
         DONTUPDATEXT=true;
@@ -209,7 +210,7 @@ echo "        sumCut = $sumCut; "
 echo "        aaCut = $aaCut; "
 echo "        peakType = $peakType;  0, only the first peak over threshold; 1, all peaks over threshold; 2, even including shaddowed peaks"
 echo "getOffset Parameters are:"
-echo "        WPTYPE = $WPTYPE;  1 for changing wiremap; 0 for not changing it;"
+echo "        UpdateWireMap = $UpdateWireMap;"
 echo "        stepSize = $stepSize;  maximum step size for each movement in wire position calibration; 0 means no limit"
 echo "        minslz = $minslz;  min slz cut for mean slz value in each sample of events in wiremap calibration. minslz==maxslz==0 means no cut"
 echo "        maxslz = $maxslz;  min slz cut for mean slz value in each sample of events in wiremap calibration. minslz==maxslz==0 means no cut"
@@ -366,6 +367,39 @@ do
 #        layers="0"
     fi
 
+#   tune arguments
+    arg_configure=""
+    if [ ! -z "$CONFIGTABLE" ]
+    then
+        arg_configure="-C $CONFIGTABLE"
+    fi
+    arg_wiremap=""
+    if $UpdateWireMap
+    then
+        arg_wiremap="-W"
+    fi
+    arg_xtfile=""
+    if $DONTUPDATEXT
+    then
+        if [ -z "$lastxtfile" ]
+        then
+            lastxtfile=xt.${runNo}.${prerunname}.root
+        fi
+        arg_xtfile="-X $lastxtfile"
+    else
+        lastxtfile=xt.${runNo}.${currunname}.root
+    fi
+
+#   update the configure file
+    cat << EOF > $CONFIGTABLE_wireposition
+    < ana.scale = $scale>
+    < ana.stepSize = $stepSize>
+    < ana.minDeltaSlz = $minslz>
+    < ana.maxDeltaSlz = $maxslz>
+    < ana.minDeltaInx = $mininx>
+    < ana.maxDeltaInx = $maxinx>
+EOF
+
     echo "#Iteration $iter started"
     echo "  layers = \"$layers\""
     echo "  wires = \"$wires\""
@@ -388,11 +422,14 @@ do
     echo "  maxchi2 = $maxchi2"
     echo "  scale = $scale"
     echo "  XTTYPE = $XTTYPE"
-    echo "  WPTYPE = $WPTYPE"
+    echo "  UpdateWireMap = $UpdateWireMap"
     echo "  DONTUPDATEXT = $DONTUPDATEXT"
     echo "  DEFAULTLAYER = $DEFAULTLAYER"
     echo "  NHITSMAX = $NHITSMAX"
     echo "  SAVEHISTS = $SAVEHISTS"
+    echo "  arg_configure = $arg_configure"
+    echo "  arg_xtfile = $arg_xtfile"
+    echo "  arg_wiremap = $arg_wiremap"
 
     threadLists=`updateThreadLists`
     if [ ! $? -eq 0 ]
@@ -455,7 +492,7 @@ do
             temprunname="${currunname}.$iEntryStart-$iEntryStop"
             logtemp="$CDCS8WORKING_DIR/root/t_${runNo}.${temprunname}.layer${testlayer}.log"
             errtemp="$CDCS8WORKING_DIR/root/t_${runNo}.${temprunname}.layer${testlayer}.err"
-            tempconfig="tracking -C $CONFIGTABLE -R $runNo -L $testlayer -n $nHitsGMax -x $t0shift0 -y $t0shift1 -l $tmin -u $tmax -g $geoSetup -s $sumCut -a $aaCut -B $iEntryStart -E $iEntryStop -w $workType -i $inputType -p $peakType $prerunname $temprunname > $logtemp 2> $errtemp"
+            tempconfig="tracking -C $CONFIGTABLEDEFAULT $arg_configure -R $runNo -L $testlayer -n $nHitsGMax -x $t0shift0 -y $t0shift1 -l $tmin -u $tmax -g $geoSetup -s $sumCut -a $aaCut -B $iEntryStart -E $iEntryStop -w $workType -i $inputType -p $peakType $prerunname $temprunname > $logtemp 2> $errtemp"
             findVacentThread
             if [ $? -eq 1 ]
             then
@@ -550,19 +587,5 @@ do
         cd ..
     fi
 
-#   upgrading wireposition?
-    getOffset $runNo $prerunname $currunname $geoSetup $WPTYPE $scale $stepSize $minslz $maxslz $mininx $maxinx $maxchi2 -1 $wires
-    if $DONTUPDATEXT
-    then
-        if [ -z "$lastxtfile" ]
-        then
-            lastxtfile=xt.${runNo}.${prerunname}.root
-        fi
-        cd info
-        ln -s $lastxtfile xt.${runNo}.${currunname}.root
-        cd ..
-    else
-        ana -C $CONFIGTABLE -R $runNo -x $XTTYPE -g $geoSetup -H $SAVEHISTS -i $inputType -c $maxchi2 -L $DEFAULTLAYER -n $NHITSMAX $prerunname $currunname
-        lastxtfile=xt.${runNo}.${currunname}.root
-    fi
+    ana -C $CONFIGTABLEDEFAULT $arg_configure -R $runNo -x $XTTYPE -g $geoSetup -H $SAVEHISTS -i $inputType -c $maxchi2 -L $DEFAULTLAYER -n $NHITSMAX $arg_wiremap $arg_xtfile $prerunname $currunname $wires
 done

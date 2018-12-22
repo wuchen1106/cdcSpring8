@@ -30,10 +30,66 @@
 #define NBINS    20
 #define MAXTRUNC 6
 
+// run time parameters
+int m_runNo = 0;
+TString m_prerunname  = "prerun";
+TString m_runname = "currun";
+TString m_suffix = "";
+int m_iEntryStart = 0;
+int m_iEntryStop = 0;
+int m_verboseLevel = 0;
+int m_modulo = 10000;
+bool m_memdebug = false;
+int m_saveHists = 0;
+bool m_outputEventTree = false;
+int m_defaultLayerID = 4;
+int m_geoSetup = 0; // 0: normal scintillator; 1: finger scintillator
+int m_inputType = 0; // 1 for MC; 0 for data
+int m_xtType = 55; // XYZ means polX for center, polY for middle and polZ for tail. If X is 0 then let middle function fit the center region.
+bool m_AsymXT = false; // use asymmetric xt curve or not
+TString m_CandSelBy = "Original"; // find the candidate with the smallest chi2 without the testlayer; otherwise use chi2 wit the testlayer (default order from tracking);
+bool m_ClosestPeak = false; // To get XT: find the peak with the smallest residual. Otherwise choose the first one over threshold; NOTE: in analysis part, it's always the closest peak chosen to get efficiency and residual
+bool m_UpdateWireMap = false; // by default don't update the wire map (i.e. no calibration of wire position)
+TString m_ExternalXT = ""; // if this is not an empty string, then skip generating xt file but use this one as external XTs
+// for updating wiremap
+double m_scale = 1; // normalize the step size with this scale when updating wiremap
+double m_stepSize = 0;
+double m_minDeltaSlz = 0;
+double m_maxDeltaSlz = 0;
+double m_minDeltaInx = 0;
+double m_maxDeltaInx = 0;
+std::map<int,bool> m_wireIDWhiteList; // a list of wire IDs to be updated in new wire map
+// for cutting
+bool m_RequireInTriggerCounter = true;
+bool m_RequireAllGoldenHits = false;
+int m_nHitsMax = 30;
+int m_nHitsSmin = 7;
+int m_sumCut = -30;
+int m_aaCut = 0;
+double m_maxchi2 = 2;
+double m_maxslz = 0.1;
+double m_maxFD = 6; // only count hits with DOCA smaller than 6 mm
+int    m_tmaxSet = 0;
+//for binning
+double m_tmin = -25-1/0.96/2; // t range for one x bin
+double m_tmax = 800+1/0.96/2;
+double m_xmax = 10; // x range for one t bin
+int    m_NbinT = 792+1;
+int    m_NbinX = 256;
+int    m_NbinRes = 256;
+double m_minchi2p = 1;
+double m_maxRes = 2;
+// for ADC2Charge
+TString m_adc2charge = "2.0158464*x";
+
 // map for wire position
 double  map_x[NLAY][NCEL][2];
 double  map_y[NLAY][NCEL][2];
 double  map_off[NLAY][NCEL];
+double  map_slz[NLAY][NCEL]; // for wire calibration cuts
+double  map_inx[NLAY][NCEL]; // for wire calibration cuts
+double  map_inxmc[NLAY][NCEL]; // for wire calibration cuts
+double  map_slzmc[NLAY][NCEL]; // for wire calibration cuts
 bool    map_has[NLAY][NCEL];
 int     map_ch[NLAY][NCEL];
 int     map_bid[NLAY][NCEL];
@@ -66,50 +122,12 @@ void doFit(TH1D * h,double leftRatio = 1/3., double rightRatio = 1/3., double le
 void print_usage(char * prog_name);
 int getHitType(int type,bool isRight);
 int GetCandidate(TString & candSelBy, std::vector<int> * layerID, std::vector<int> * type, std::vector<double> * fitD[NCAND], std::vector<int> * sel[NCAND], int * nHitsS, double * chi2, double * chi2a);
+bool isInTriggerCounter(int geoSetup, double tinz, double tslz);
+void getRunTimeParameters(TString configureFile);
 
 MyProcessManager * pMyProcessManager;
 
 int main(int argc, char** argv){
-    int m_runNo = 0;
-    TString m_prerunname  = "prerun";
-    TString m_runname = "currun";
-    TString m_suffix = "";
-    int m_iEntryStart = 0;
-    int m_iEntryStop = 0;
-    int m_verboseLevel = 0;
-    int m_modulo = 10000;
-    bool m_memdebug = false;
-    int m_saveHists = 0;
-    bool m_outputEventTree = false;
-    int m_defaultLayerID = 4;
-    TString m_configureFile = "";
-    int m_geoSetup = 0; // 0: normal scintillator; 1: finger scintillator
-    int m_inputType = 0; // 1 for MC; 0 for data
-    int m_xtType = 55; // XYZ means polX for center, polY for middle and polZ for tail. If X is 0 then let middle function fit the center region.
-    bool m_AsymXT = false; // use asymmetric xt curve or not
-    TString m_CandSelBy = "Original"; // find the candidate with the smallest chi2 without the testlayer; otherwise use chi2 wit the testlayer (default order from tracking);
-    bool m_ClosestPeak = false; // To get XT: find the peak with the smallest residual. Otherwise choose the first one over threshold; NOTE: in analysis part, it's always the closest peak chosen to get efficiency and residual
-    // for cutting
-    int m_nHitsMax = 30;
-    int m_nHitsSmin = 7;
-    int m_sumCut = -30;
-    int m_aaCut = 0;
-    double m_maxchi2 = 2;
-    double m_maxslz = 0.1;
-    double m_maxFD = 6; // only count hits with DOCA smaller than 6 mm
-    int    m_tmaxSet = 0;
-    //for binning
-    double m_tmin = -25-1/0.96/2; // t range for one x bin
-    double m_tmax = 800+1/0.96/2;
-    double m_xmax = 10; // x range for one t bin
-    int    m_NbinT = 792+1;
-    int    m_NbinX = 256;
-    int    m_NbinRes = 256;
-    double m_minchi2p = 1;
-    double m_maxRes = 2;
-    // for ADC2Charge
-    TString m_adc2charge = "2.0158464*x";
-
     int temp_geoSetup = 0; bool set_geoSetup = false;
     int temp_inputType = 0; bool set_inputType = false;
     int temp_xtType = 0; bool set_xtType = false;
@@ -138,7 +156,7 @@ int main(int argc, char** argv){
     std::map<std::string, Log::ErrorPriority> namedDebugLevel;
     std::map<std::string, Log::LogPriority> namedLogLevel;
     int    opt_result;
-    while((opt_result=getopt(argc,argv,"M:R:B:E:L:H:C:n:f:c:v:r:z:d:o:s:a:l:u:t:m:y:g:i:x:AS:PD:V:"))!=-1){
+    while((opt_result=getopt(argc,argv,"M:R:B:E:L:H:C:TGF:WX:n:f:c:v:r:z:d:o:s:a:l:u:t:m:y:g:i:x:AS:PD:V:"))!=-1){
         switch(opt_result){
             /* INPUTS */
             case 'M':
@@ -166,8 +184,26 @@ int main(int argc, char** argv){
                 printf("Histogram saving level set to %d\n",m_saveHists);
                 break;
             case 'C':
-                m_configureFile = optarg;
+                getRunTimeParameters(optarg);
                 printf("Using configure file \"%s\"\n",optarg);
+                break;
+            case 'T':
+                m_RequireInTriggerCounter = false;
+                printf("Disable in-trigger cut\n");
+            case 'G':
+                m_RequireAllGoldenHits = true;
+                printf("In getting offset and new xt, require all hits used in tracking are golden hits\n");
+            case 'F':
+                m_suffix = optarg;
+                printf("Adding suffix \"%s\"\n",optarg);
+                break;
+            case 'W':
+                m_UpdateWireMap = true;
+                printf("Will update wire map\n");
+                break;
+            case 'X':
+                m_ExternalXT = optarg;
+                printf("Will not generate new xt file but use \"%s\"\n",optarg);
                 break;
             case 'n':
                 temp_nHitsMax = atoi(optarg);set_nHitsMax = true;
@@ -340,33 +376,6 @@ int main(int argc, char** argv){
         Log::SetLogLevel(i->first.c_str(), i->second);
     }
 
-    if (m_configureFile!=""){
-        MyRuntimeParameters::Get().ReadParamOverrideFile(m_configureFile);
-        m_geoSetup = MyRuntimeParameters::Get().GetParameterI("geoSetup");
-        m_inputType = MyRuntimeParameters::Get().GetParameterI("inputType");
-        m_xtType = MyRuntimeParameters::Get().GetParameterI("xtType");;
-        m_AsymXT = MyRuntimeParameters::Get().GetParameterI("ana.AsymXT");
-        m_CandSelBy = MyRuntimeParameters::Get().GetParameterS("ana.CandSelBy");
-        m_ClosestPeak = MyRuntimeParameters::Get().GetParameterI("ana.ClosestPeak");
-        //for cutting
-        m_nHitsMax = MyRuntimeParameters::Get().GetParameterI("ana.nHitsMax");
-        m_nHitsSmin = MyRuntimeParameters::Get().GetParameterI("ana.nHitsSmin");
-        m_sumCut = MyRuntimeParameters::Get().GetParameterI("ana.sumCut");
-        m_aaCut = MyRuntimeParameters::Get().GetParameterI("ana.aaCut");
-        m_maxchi2 = MyRuntimeParameters::Get().GetParameterD("ana.maxchi2");
-        m_maxslz = MyRuntimeParameters::Get().GetParameterD("ana.maxslz");
-        m_maxFD = MyRuntimeParameters::Get().GetParameterD("ana.maxFD");
-        m_tmaxSet = MyRuntimeParameters::Get().GetParameterI("ana.tmaxSet");
-        //for binning
-        m_tmin = MyRuntimeParameters::Get().GetParameterD("ana.tmin");
-        m_tmax = MyRuntimeParameters::Get().GetParameterD("ana.tmax");
-        m_xmax = MyRuntimeParameters::Get().GetParameterD("ana.xmax");
-        m_NbinT = MyRuntimeParameters::Get().GetParameterI("ana.NbinT");
-        m_NbinX = MyRuntimeParameters::Get().GetParameterI("ana.NbinX");
-        m_NbinRes = MyRuntimeParameters::Get().GetParameterI("ana.NbinRes");
-        m_minchi2p = MyRuntimeParameters::Get().GetParameterD("ana.minchi2p");
-        m_maxRes = MyRuntimeParameters::Get().GetParameterD("ana.maxRes");
-    }
     if (set_geoSetup) m_geoSetup = temp_geoSetup;
     if (set_inputType) m_inputType = temp_inputType;
     if (set_xtType) m_xtType = temp_xtType;
@@ -399,9 +408,19 @@ int main(int argc, char** argv){
     m_prerunname = argv[optind++];
     m_runname= argv[optind++];
     TString m_runnameout = m_runname;
-    if (argc-optind>0){
-        m_suffix = argv[optind++];
+    if (m_suffix!=""){
         m_runnameout=m_runname+"."+m_suffix;
+    }
+
+    if (argc-optind>0){
+        for (;optind<argc; optind++){
+            m_wireIDWhiteList[atoi(argv[optind])] = true;
+        }
+    }
+    else{
+        for (int i = 0; i<NCEL; i++){
+            m_wireIDWhiteList[i] = true;
+        }
     }
 
     printf("##############%s##################\n",argv[0]);
@@ -411,6 +430,19 @@ int main(int argc, char** argv){
     printf("suffix      = \"%s\"\n",m_suffix.Data());
     printf("default layer: %d\n",m_defaultLayerID);
     printf("geoSetup:     %s\n",m_geoSetup==0?"normal scintillator":"finger scintillator");
+    printf("Use external XT? %s\n",m_ExternalXT==""?"No, generate new one":("Yes"+m_ExternalXT).Data());
+    printf("Update wire map? %s\n",m_UpdateWireMap?"Yes":"No");
+    printf("For wire map update, stepSize    = %.3e\n",m_stepSize);
+    printf("For wire map update, min delta slz = %.3e\n",m_minDeltaSlz);
+    printf("For wire map update, max delta slz = %.3e\n",m_maxDeltaSlz);
+    printf("For wire map update, min delta inx = %.3e\n",m_minDeltaInx);
+    printf("For wire map update, max delta inx = %.3e\n",m_maxDeltaInx);
+    printf("For wire map update, wires to be calibrated: ");
+    for (std::map<int,bool>::iterator i = m_wireIDWhiteList.begin(); i != m_wireIDWhiteList.end(); ++i) {
+        printf("%d ",i->first);
+    }
+    printf("Require in trigger? %s\n",m_RequireInTriggerCounter?"Yes":"No");
+    printf("Require all golden hit? %s\n",m_RequireAllGoldenHits?"Yes":"No");
     printf("xtType:       %d\n",m_xtType);
     printf("Asymmetric XT? %s\n",m_AsymXT?"yes":"no");
     printf("Candidate selected by? %s\n",m_CandSelBy.Data());
@@ -491,25 +523,46 @@ int main(int argc, char** argv){
             map_off[lid][wid] = 0;
             map_ch[lid][wid] = -1;
             map_bid[lid][wid] = -1;
+            map_slz[lid][wid] = 0;
+            map_inx[lid][wid] = 0;
+            map_inxmc[lid][wid] = 0;
+            map_slzmc[lid][wid] = 0;
         }
     }
 
-    // get offset
-    TChain * iChain_off = new TChain("t","t");
-    iChain_off->Add(Form("%s/info/offset.%d.%s.root",HOME.Data(),m_runNo,m_runname.Data()));
-    if (iChain_off->GetEntries()>0){
-        double i_off_delta;
-        int i_off_lid;
-        int i_off_wid;
-        iChain_off->SetBranchAddress("d",&i_off_delta);
-        iChain_off->SetBranchAddress("wid",&i_off_wid);
-        iChain_off->SetBranchAddress("lid",&i_off_lid);
-        int N = iChain_off->GetEntries();
-        for (int i = 0; i<N; i++){
-            iChain_off->GetEntry(i);
-            if (i_off_lid>=0&&i_off_lid<NLAY&&i_off_wid>=0&&i_off_wid<NCEL)
-                map_off[i_off_lid][i_off_wid] = i_off_delta;
+    // prepare for offset
+    TH1D * h_celloff[NLAY][NCEL];
+    TH1D * h_cellslz[NLAY][NCEL];
+    TH1D * h_cellinx[NLAY][NCEL];
+    for (int lid = 0; lid<NLAY; lid++){
+        for (int wid = 0; wid<NCEL; wid++){
+            h_celloff[lid][wid] = new TH1D(Form("h_celloff_%d_%d",lid,wid),Form("Offset of wire [%d,%d]",lid,wid),128,-1,1);
+            h_cellslz[lid][wid] = new TH1D(Form("h_cellslz_%d_%d",lid,wid),Form("slope Z of hits on wire [%d,%d]",lid,wid),128,-0.16,0.16);
+            h_cellinx[lid][wid] = new TH1D(Form("h_cellinx_%d_%d",lid,wid),Form("intercetp X of hits on wire [%d,%d]",lid,wid),512,-50,50);
         }
+    }
+
+    // get slzmc inxmc of each wire
+    TChain * ichain_beam = new TChain("t","t");
+    ichain_beam->Add(Form("%s/Input/beammap.%d.root",HOME.Data(),m_runNo));
+    if (ichain_beam->GetEntries()){
+        double beam_inxmc;
+        double beam_slzmc;
+        int    beam_lid;
+        int    beam_wid;
+        ichain_beam->SetBranchAddress("inxmc",&beam_inxmc);
+        ichain_beam->SetBranchAddress("slzmc",&beam_slzmc);
+        ichain_beam->SetBranchAddress("lid",&beam_lid);
+        ichain_beam->SetBranchAddress("wid",&beam_wid);
+        for (int i = 0; i<ichain_beam->GetEntries(); i++){
+            ichain_beam->GetEntry(i);
+            if (beam_lid<0||beam_lid>=NLAY||beam_wid<0||beam_wid>=NCEL) continue;
+            map_inxmc[beam_lid][beam_wid] = beam_inxmc;
+            map_slzmc[beam_lid][beam_wid] = beam_slzmc;
+        }
+    }
+    else{
+        printf("Cannot find%s/Input/beammap.%d.root, will assume slzmc/inxmc center at 0\n",HOME.Data(),m_runNo);
     }
 
     // get wire map
@@ -548,26 +601,36 @@ int main(int argc, char** argv){
         }
     }
 
-    // get XT file of the previous run
-    TFile * preXTFile = new TFile(Form("%s/info/xt.%d.%s.root",HOME.Data(),m_runNo,m_prerunname.Data()));
-
-    // prepare new XT file for this run
-    TFile * newXTFile = new TFile(Form("%s/info/xt.%d.%s.root",HOME.Data(),m_runNo,m_runnameout.Data()),"RECREATE");
-    TTree * newXTTree = new TTree("t","t");
-    double mX;
-    double mT;
-    int mLayerID;
-    double mSig;
-    double mChi2;
-    int mEntries;
-    int mType;
-    newXTTree->Branch("x",&mX);
-    newXTTree->Branch("t",&mT);
-    newXTTree->Branch("lid",&mLayerID);
-    newXTTree->Branch("sig",&mSig);
-    newXTTree->Branch("chi2",&mChi2);
-    newXTTree->Branch("n",&mEntries);
-    newXTTree->Branch("type",&mType);
+    // prepare XT files
+    TFile * preXTFile = 0;
+    TFile * newXTFile = 0;
+    TTree * newXTTree = 0;
+    if (m_ExternalXT==""){
+        preXTFile = new TFile(Form("%s/info/xt.%d.%s.root",HOME.Data(),m_runNo,m_prerunname.Data()));
+        newXTFile = new TFile(Form("%s/info/xt.%d.%s.root",HOME.Data(),m_runNo,m_runnameout.Data()),"RECREATE");
+        newXTTree = new TTree("t","t");
+        double mX;
+        double mT;
+        int mLayerID;
+        double mSig;
+        double mChi2;
+        int mEntries;
+        int mType;
+        newXTTree->Branch("x",&mX);
+        newXTTree->Branch("t",&mT);
+        newXTTree->Branch("lid",&mLayerID);
+        newXTTree->Branch("sig",&mSig);
+        newXTTree->Branch("chi2",&mChi2);
+        newXTTree->Branch("n",&mEntries);
+        newXTTree->Branch("type",&mType);
+    }
+    else{
+        newXTFile = new TFile(m_ExternalXT);
+        if (!newXTFile||newXTFile->IsZombie()){
+            MyError("External XT file \""<<m_ExternalXT<<"\" doesn't exist!");
+            return -1;
+        }
+    }
 
     //===================Set scintillator geometry============================
     if (m_geoSetup==0){
@@ -833,31 +896,11 @@ int main(int argc, char** argv){
             ichain->SetBranchAddress("slzmc",&slzmc);
         }
 
-        //----------------------------------Initialize the analyzer--------------------------------------------
-        int saveEvenOdd = 0; if (testLayer==4) saveEvenOdd = 1; else if (testLayer==5) saveEvenOdd = -1;
-        int statusInitialize = fXTAnalyzer->Initialize(Form("%d.%s.layer%d",m_runNo,m_runnameout.Data(),testLayer),testLayer,preXTFile,newXTFile,newXTTree,m_xtType,!m_AsymXT,m_saveHists, testLayer==m_defaultLayerID, saveEvenOdd, testLayer!=0);
-        if (statusInitialize){
-            fprintf(stderr,"WARNING: something wrong with initializing XTAnalyzer for layer[%d], will ignore this layer!\n",testLayer);
-            continue;
-        }
-
-        //----------------------------------Start to get XT--------------------------------------------
-        if (!m_iEntryStart&&!m_iEntryStop){
-            m_iEntryStart = 0;
-            m_iEntryStop = N-1;
-        }
-
-        double closeFD;
-        double closeFD2;
-        int    closeWid;
-        int    closeWid2;
-        double averageGG = 0;
-        double averageGGErr = 0;
-        double trackCharge[MAXTRUNC] = {0};
-        MyNamedVerbose("Ana","##############The fisrt loop starts: "<<N<<" entries#############");
-        //for ( int iEntry = m_iEntryStart ; iEntry<=m_iEntryStop; iEntry++){
-        for ( int iEntry = 0; iEntry<N; iEntry++){ // better not to skip anything before we get the XT file
-            if (iEntry%m_modulo==0) printf("%d\n",iEntry);
+        //----------------------------------Get the offset--------------------------------------------
+        MyNamedVerbose("Ana","##############The initial loop starts#############");
+        // to get the offsets
+        for ( int iEntry = 0 ; iEntry<N; iEntry++){
+            if (iEntry%10000==0) printf("%d\n",iEntry);
             if (m_verboseLevel>=20) printf("Entry%d: \n",iEntry);
             ichain->GetEntry(iEntry);
 
@@ -868,50 +911,115 @@ int main(int argc, char** argv){
             if (nHitsS[theCand]<m_nHitsSmin) continue;
             if (chi2[theCand]>m_maxchi2) continue;
             //if (nHitsG>nHitsS[theCand]) continue;
-            if (m_geoSetup==1){
-                if (fabs(inz[theCand])>24) continue;
-            }
-            else{
-                if (fabs(slz[theCand])>0.11) continue;
-            }
+            if (m_RequireInTriggerCounter&&!isInTriggerCounter(m_geoSetup,inz[theCand],slz[theCand])) continue;
             if (m_nHitsMax&&nHits>m_nHitsMax) continue;
 
             if (m_verboseLevel>=20) printf("  Good Event! Looping in %d hits\n",nHits);
             // find the closest hit in the test layer
-            double res_temp = 1e9;
-            bool foundhit = false;
-            double driftT, fitD;
+            double minres = 1e9;
+            bool has = false;
+            int wireID;
+            double driftD, driftT, fitD;
+            // FIXME: test more cut
             bool hasBadHit = false;
-            bool wireChecked[NCEL] = {false};
             for (int ihit = 0; ihit<nHits; ihit++){
                 int tlayerID = (*i_layerID)[ihit];
                 int twireID = (*i_wireID)[ihit];
-                double tfitD = (*i_fitD[theCand])[ihit]-map_off[tlayerID][twireID];
+                double tfitD = (*i_fitD[theCand])[ihit];
                 double tdriftD = (*i_driftD[theCand])[ihit];
-                double tsum = (*i_sum)[ihit];
-                double taa = (*i_aa)[ihit];
                 if ((*i_sel[theCand])[ihit]==1&&(fabs(tdriftD)<0.5||fabs(tdriftD)>7.5)) hasBadHit = true;
                 if (tlayerID!=testLayer) continue;
-                if (tsum<m_sumCut||taa<m_aaCut) continue;
-                if (m_ClosestPeak&&twireID<NCEL&&wireChecked[twireID]) continue; // for each cell only get the first peak over the threshold
-                if (fabs(tfitD-tdriftD)<fabs(res_temp)){ // Get the one with smallest residual
-                    res_temp = tfitD-tdriftD;
+                if (fabs(tfitD-tdriftD)<fabs(minres)){ // no cut for test layer!
+                    minres = tfitD-tdriftD;
+                    wireID = (*i_wireID)[ihit];
                     fitD = tfitD;
+                    driftD = tdriftD;
                     driftT = (*i_driftT)[ihit];
-                    if (twireID<NCEL) wireChecked[twireID] = true;
-                    foundhit = true;
+                    has = true;
                 }
             }
-            if (!foundhit) continue; // no hits found in test layer
-            //if (hasBadHit) continue;
+            if (!has) continue; // no hits found in test layer
+            if (hasBadHit&&m_RequireAllGoldenHits) continue;
 
             if (m_verboseLevel>=20) printf("  Found hit! pushing to XTAnalyzer\n");
-            // tell analyzer a new data point
-            fXTAnalyzer->Push(driftT,fitD);
+            if (fabs(driftD)>2&&fabs(driftD)<6&&abs(fitD-driftD)<1){ // only trust the body part
+                h_celloff[testLayer][wireID]->Fill(fitD-driftD);
+                h_cellslz[testLayer][wireID]->Fill(slz[theCand]);
+                h_cellinx[testLayer][wireID]->Fill(inx[theCand]);
+            }
         }
-        if (m_verboseLevel>0) printf("Starting XT analysis\n");
-        // fit histograms/graphs, make plots, and save new xt file
-        fXTAnalyzer->Process();
+
+        // get offset
+        for (int wid = 0; wid<NCEL; wid++){
+            if (h_celloff[testLayer][wid]->GetEntries()<100) continue;
+            map_off[testLayer][wid] = h_celloff[testLayer][wid]->GetMean();
+            map_slz[testLayer][wid] = h_cellslz[testLayer][wid]->GetMean();
+            map_inx[testLayer][wid] = h_cellinx[testLayer][wid]->GetMean();
+        }
+
+        if (m_ExternalXT==""){
+            //----------------------------------Start to get XT--------------------------------------------
+            //Initialize the analyzer
+            int saveEvenOdd = 0; if (testLayer==4) saveEvenOdd = 1; else if (testLayer==5) saveEvenOdd = -1;
+            int statusInitialize = fXTAnalyzer->Initialize(Form("%d.%s.layer%d",m_runNo,m_runnameout.Data(),testLayer),testLayer,preXTFile,newXTFile,newXTTree,m_xtType,!m_AsymXT,m_saveHists, testLayer==m_defaultLayerID, saveEvenOdd, testLayer!=0);
+            if (statusInitialize){
+                fprintf(stderr,"WARNING: something wrong with initializing XTAnalyzer for layer[%d], will ignore this layer!\n",testLayer);
+                continue;
+            }
+            MyNamedVerbose("Ana","##############The fisrt loop starts: "<<N<<" entries#############");
+            //for ( int iEntry = (m_iEntryStart?m_iEntryStart:0); iEntry<(m_iEntryStop?m_iEntryStop-1:N); iEntry++){
+            for ( int iEntry = 0; iEntry<N; iEntry++){ // better not to skip anything before we get the XT file
+                if (iEntry%m_modulo==0) printf("%d\n",iEntry);
+                if (m_verboseLevel>=20) printf("Entry%d: \n",iEntry);
+                ichain->GetEntry(iEntry);
+
+                // decide which candidate to use
+                theCand = GetCandidate(m_CandSelBy, i_layerID, i_type, i_fitD, i_sel, nHitsS, chi2, chi2a);
+
+                // ignore events with bad fitting
+                if (nHitsS[theCand]<m_nHitsSmin) continue;
+                if (chi2[theCand]>m_maxchi2) continue;
+                //if (nHitsG>nHitsS[theCand]) continue;
+                if (m_RequireInTriggerCounter&&!isInTriggerCounter(m_geoSetup,inz[theCand],slz[theCand])) continue;
+                if (m_nHitsMax&&nHits>m_nHitsMax) continue;
+
+                if (m_verboseLevel>=20) printf("  Good Event! Looping in %d hits\n",nHits);
+                // find the closest hit in the test layer
+                double res_temp = 1e9;
+                bool foundhit = false;
+                double driftT, fitD;
+                bool hasBadHit = false;
+                bool wireChecked[NCEL] = {false};
+                for (int ihit = 0; ihit<nHits; ihit++){
+                    int tlayerID = (*i_layerID)[ihit];
+                    int twireID = (*i_wireID)[ihit];
+                    double tfitD = (*i_fitD[theCand])[ihit]-map_off[tlayerID][twireID];
+                    double tdriftD = (*i_driftD[theCand])[ihit];
+                    double tsum = (*i_sum)[ihit];
+                    double taa = (*i_aa)[ihit];
+                    if ((*i_sel[theCand])[ihit]==1&&(fabs(tdriftD)<0.5||fabs(tdriftD)>7.5)) hasBadHit = true;
+                    if (tlayerID!=testLayer) continue;
+                    if (tsum<m_sumCut||taa<m_aaCut) continue;
+                    if (m_ClosestPeak&&twireID<NCEL&&wireChecked[twireID]) continue; // for each cell only get the first peak over the threshold
+                    if (fabs(tfitD-tdriftD)<fabs(res_temp)){ // Get the one with smallest residual
+                        res_temp = tfitD-tdriftD;
+                        fitD = tfitD;
+                        driftT = (*i_driftT)[ihit];
+                        if (twireID<NCEL) wireChecked[twireID] = true;
+                        foundhit = true;
+                    }
+                }
+                if (!foundhit) continue; // no hits found in test layer
+                if (hasBadHit&&m_RequireAllGoldenHits) continue;
+
+                if (m_verboseLevel>=20) printf("  Found hit! pushing to XTAnalyzer\n");
+                // tell analyzer a new data point
+                fXTAnalyzer->Push(driftT,fitD);
+            }
+            if (m_verboseLevel>0) printf("Starting XT analysis\n");
+            // fit histograms/graphs, make plots, and save new xt file
+            fXTAnalyzer->Process();
+        }
 
         // get XT file
         TFile * XTFile = newXTFile;
@@ -1037,10 +1145,16 @@ int main(int argc, char** argv){
         o_boardID = new std::vector<int>;
 
         MyNamedVerbose("Ana","##############The Second loop starts#############");
+        double closeFD;
+        double closeFD2;
+        int    closeWid;
+        int    closeWid2;
+        double averageGG = 0;
+        double averageGGErr = 0;
         int prevTheCand = 0;
         //----------------------------------Start the analysis to get residual and etc--------------------------------------------
         double closestchi2 = 1e9;
-        for ( int iEntry = m_iEntryStart ; iEntry<=m_iEntryStop; iEntry++){
+        for ( int iEntry = (m_iEntryStart?m_iEntryStart:0); iEntry<(m_iEntryStop?m_iEntryStop-1:N); iEntry++){
             if (iEntry%10000==0) printf("%d\n",iEntry);
             if (m_verboseLevel>=20) printf("Entry%d: \n",iEntry);
             ichain->GetEntry(iEntry);
@@ -1351,8 +1465,9 @@ int main(int argc, char** argv){
         averageGGErr = h_ggall->GetRMS();
 
         MyNamedVerbose("Ana","##############The Third loop starts#############");
+        double trackCharge[MAXTRUNC] = {0};
         //----------------------------------loop again for filling histograms--------------------------------------------
-        for ( int iEntry = m_iEntryStart ; iEntry<=m_iEntryStop; iEntry++){
+        for ( int iEntry = (m_iEntryStart?m_iEntryStart:0); iEntry<(m_iEntryStop?m_iEntryStop-1:N); iEntry++){
             otree->GetEntry(iEntry);
             MyNamedVerbose("Ana","  iEntry = "<<iEntry<<", "<<(isGood?"Good":"Bad")<<" event, nHits = "<<nHits<<", "<<nHitsT<<" hits in the test layer on track path");
             if (!isGood) continue; // not successfully reconstructed
@@ -2011,8 +2126,89 @@ int main(int argc, char** argv){
         printf("|slz|<=%.1f: %d (%.1f%%)\n",m_maxslz,N_CUT4,(double)N_CUT4/N_ALL*100);
         printf("DOCA<=%.1f: %d (%.1f%%)\n",m_xmax,N_CUT5,(double)N_CUT5/N_ALL*100);
 
-            if (m_verboseLevel>=20) printf("Finished!\n");
+        if (m_verboseLevel>=20) printf("Finished!\n");
+    }
+
+    //===================output offset file============================
+    TFile * ofile = new TFile(Form("%s/info/offset.%d.%s.root",HOME.Data(),m_runNo,m_runnameout.Data()),"RECREATE");
+    TTree * otree = new TTree("t","t");
+    double o_off_delta;
+    double o_off_slz;
+    double o_off_inx;
+    int o_off_lid;
+    int o_off_wid;
+    otree->Branch("d",&o_off_delta);
+    otree->Branch("slz",&o_off_slz);
+    otree->Branch("inx",&o_off_inx);
+    otree->Branch("wid",&o_off_wid);
+    otree->Branch("lid",&o_off_lid);
+    for (int lid = 0; lid<NLAY; lid++){
+        for (int wid = 0; wid<NCEL; wid++){
+            h_celloff[lid][wid]->Write();
+            h_cellslz[lid][wid]->Write();
+            h_cellinx[lid][wid]->Write();
+            if (!map_off[lid][wid]) continue;
+            o_off_wid = wid;
+            o_off_lid = lid;
+            o_off_delta = map_off[lid][wid];
+            o_off_slz = map_slz[lid][wid];
+            o_off_inx = map_inx[lid][wid];
+            otree->Fill();
         }
+    }
+    otree->Write();
+    ofile->Close();
+
+    //===================Set Wire Position============================
+    if (m_UpdateWireMap){
+        TFile * TFile_wirepos = new TFile(Form("%s/info/wire-position.%d.%s.root",HOME.Data(),m_runNo,m_runnameout.Data()),"RECREATE");
+        TTree * TTree_wirepos = new TTree("t","t");
+        double wp_xc;
+        double wp_yc;
+        TTree_wirepos->Branch("b",&wp_bid);
+        TTree_wirepos->Branch("ch",&wp_ch);
+        TTree_wirepos->Branch("l",&wp_lid);
+        TTree_wirepos->Branch("w",&wp_wid);
+        TTree_wirepos->Branch("xhv",&wp_xhv);
+        TTree_wirepos->Branch("yhv",&wp_yhv);
+        TTree_wirepos->Branch("xc",&wp_xc);
+        TTree_wirepos->Branch("yc",&wp_yc);
+        TTree_wirepos->Branch("xro",&wp_xro);
+        TTree_wirepos->Branch("yro",&wp_yro);
+        for (wp_lid=0; wp_lid<NLAY; wp_lid++){
+            for (wp_wid=0; wp_wid<NCEL; wp_wid++){
+                if (!map_has[wp_lid][wp_wid]) continue;
+                wp_xhv = map_x[wp_lid][wp_wid][0];
+                wp_yhv = map_y[wp_lid][wp_wid][0];
+                wp_xro = map_x[wp_lid][wp_wid][1];
+                wp_yro = map_y[wp_lid][wp_wid][1];
+                wp_xc = (wp_xro+wp_xhv)/2.;
+                wp_yc = (wp_yro+wp_yhv)/2.;
+                wp_ch = map_ch[wp_lid][wp_wid];
+                wp_bid = map_bid[wp_lid][wp_wid];
+                if (m_wireIDWhiteList[wp_wid]){
+                    double theOff = map_off[wp_lid][wp_wid]*m_scale;
+                    double deltaSlz = map_slz[wp_lid][wp_wid]-map_slzmc[wp_lid][wp_wid];
+                    double deltaInx = map_inx[wp_lid][wp_wid]-map_inxmc[wp_lid][wp_wid];
+                    if (m_stepSize){
+                        if(fabs(theOff)>m_stepSize) theOff = theOff>0?m_stepSize:-m_stepSize;
+                    }
+                    if ((m_minDeltaSlz||m_maxDeltaSlz)&&(deltaSlz>m_maxDeltaSlz||deltaSlz<m_minDeltaSlz)){
+                        theOff = 0;
+                    }
+                    if ((m_minDeltaInx||m_maxDeltaInx)&&(deltaInx>m_maxDeltaInx||deltaInx<m_minDeltaInx)){
+                        theOff = 0;
+                    }
+                    wp_xro += theOff;
+                    wp_xc += theOff;
+                    wp_xhv += theOff;
+                }
+                TTree_wirepos->Fill();
+            }
+        }
+        TTree_wirepos->Write();
+        TFile_wirepos->Close();
+    }
 
     return 0;
 }
@@ -2181,8 +2377,56 @@ int GetCandidate(TString & candSelBy, std::vector<int> * layerID, std::vector<in
     return cand;
 }
 
+bool isInTriggerCounter(int geoSetup, double tinz, double tslz){
+    bool isIn = true;
+    if (geoSetup==1){
+        if (fabs(tinz)>24) isIn = false;
+    }
+    else{
+        if (fabs(tslz)>0.11) isIn = false;
+    }
+    return isIn;
+}
+
+void getRunTimeParameters(TString configureFile){
+    if (configureFile!=""){
+        MyRuntimeParameters::Get().ReadParamOverrideFile(configureFile);
+        if (MyRuntimeParameters::Get().HasParameter("geoSetup")) m_geoSetup = MyRuntimeParameters::Get().GetParameterI("geoSetup");
+        if (MyRuntimeParameters::Get().HasParameter("inputType")) m_inputType = MyRuntimeParameters::Get().GetParameterI("inputType");
+        if (MyRuntimeParameters::Get().HasParameter("xtType")) m_xtType = MyRuntimeParameters::Get().GetParameterI("xtType");
+        if (MyRuntimeParameters::Get().HasParameter("ana.AsymXT")) m_AsymXT = MyRuntimeParameters::Get().GetParameterI("ana.AsymXT");
+        if (MyRuntimeParameters::Get().HasParameter("ana.CandSelBy")) m_CandSelBy = MyRuntimeParameters::Get().GetParameterS("ana.CandSelBy");
+        if (MyRuntimeParameters::Get().HasParameter("ana.ClosestPeak")) m_ClosestPeak = MyRuntimeParameters::Get().GetParameterI("ana.ClosestPeak");
+        //for cutting
+        if (MyRuntimeParameters::Get().HasParameter("ana.nHitsMax")) m_nHitsMax = MyRuntimeParameters::Get().GetParameterI("ana.nHitsMax");
+        if (MyRuntimeParameters::Get().HasParameter("ana.nHitsSmin")) m_nHitsSmin = MyRuntimeParameters::Get().GetParameterI("ana.nHitsSmin");
+        if (MyRuntimeParameters::Get().HasParameter("ana.sumCut")) m_sumCut = MyRuntimeParameters::Get().GetParameterI("ana.sumCut");
+        if (MyRuntimeParameters::Get().HasParameter("ana.aaCut")) m_aaCut = MyRuntimeParameters::Get().GetParameterI("ana.aaCut");
+        if (MyRuntimeParameters::Get().HasParameter("ana.maxchi2")) m_maxchi2 = MyRuntimeParameters::Get().GetParameterD("ana.maxchi2");
+        if (MyRuntimeParameters::Get().HasParameter("ana.maxslz")) m_maxslz = MyRuntimeParameters::Get().GetParameterD("ana.maxslz");
+        if (MyRuntimeParameters::Get().HasParameter("ana.maxFD")) m_maxFD = MyRuntimeParameters::Get().GetParameterD("ana.maxFD");
+        if (MyRuntimeParameters::Get().HasParameter("ana.tmaxSet")) m_tmaxSet = MyRuntimeParameters::Get().GetParameterI("ana.tmaxSet");
+        //for binning
+        if (MyRuntimeParameters::Get().HasParameter("ana.tmin")) m_tmin = MyRuntimeParameters::Get().GetParameterD("ana.tmin");
+        if (MyRuntimeParameters::Get().HasParameter("ana.tmax")) m_tmax = MyRuntimeParameters::Get().GetParameterD("ana.tmax");
+        if (MyRuntimeParameters::Get().HasParameter("ana.xmax")) m_xmax = MyRuntimeParameters::Get().GetParameterD("ana.xmax");
+        if (MyRuntimeParameters::Get().HasParameter("ana.NbinT")) m_NbinT = MyRuntimeParameters::Get().GetParameterI("ana.NbinT");
+        if (MyRuntimeParameters::Get().HasParameter("ana.NbinX")) m_NbinX = MyRuntimeParameters::Get().GetParameterI("ana.NbinX");
+        if (MyRuntimeParameters::Get().HasParameter("ana.NbinRes")) m_NbinRes = MyRuntimeParameters::Get().GetParameterI("ana.NbinRes");
+        if (MyRuntimeParameters::Get().HasParameter("ana.minchi2p")) m_minchi2p = MyRuntimeParameters::Get().GetParameterD("ana.minchi2p");
+        if (MyRuntimeParameters::Get().HasParameter("ana.maxRes")) m_maxRes = MyRuntimeParameters::Get().GetParameterD("ana.maxRes");
+        //for wire position calibration
+        if (MyRuntimeParameters::Get().HasParameter("ana.scale")) m_scale = MyRuntimeParameters::Get().GetParameterD("ana.scale");
+        if (MyRuntimeParameters::Get().HasParameter("ana.stepSize")) m_stepSize = MyRuntimeParameters::Get().GetParameterD("ana.stepSize");
+        if (MyRuntimeParameters::Get().HasParameter("ana.minDeltaSlz")) m_minDeltaSlz = MyRuntimeParameters::Get().GetParameterD("ana.minDeltaSlz");
+        if (MyRuntimeParameters::Get().HasParameter("ana.maxDeltaSlz")) m_maxDeltaSlz = MyRuntimeParameters::Get().GetParameterD("ana.maxDeltaSlz");
+        if (MyRuntimeParameters::Get().HasParameter("ana.minDeltaInx")) m_minDeltaInx = MyRuntimeParameters::Get().GetParameterD("ana.minDeltaInx");
+        if (MyRuntimeParameters::Get().HasParameter("ana.maxDeltaInx")) m_maxDeltaInx = MyRuntimeParameters::Get().GetParameterD("ana.maxDeltaInx");
+    }
+}
+
 void print_usage(char * prog_name){
-    fprintf(stderr,"Usage %s [options] prerunname runname [suffix]\n",prog_name);
+    fprintf(stderr,"Usage %s [options] prerunname runname [wires to be calibrated (all)]\n",prog_name);
     fprintf(stderr,"[options]\n");
     fprintf(stderr,"\t -D <name>=[error,severe,warn,debug,trace]\n");
     fprintf(stderr,"\t\t Change the named debug level\n");
@@ -2203,6 +2447,16 @@ void print_usage(char * prog_name){
     fprintf(stderr,"\t\t Default layer set to l\n");
     fprintf(stderr,"\t -H <h>\n");
     fprintf(stderr,"\t\t Histogram saving level set to h\n");
+    fprintf(stderr,"\t -T\n");
+    fprintf(stderr,"\t\t Disable in-trigger cut\n");
+    fprintf(stderr,"\t -G\n");
+    fprintf(stderr,"\t\t In getting offset and new XT, require all hits used in tracking are golden hits\n");
+    fprintf(stderr,"\t -F <suffix>\n");
+    fprintf(stderr,"\t\t Adding suffix to output files\n");
+    fprintf(stderr,"\t -W\n");
+    fprintf(stderr,"\t\t (false) Update wire map\n");
+    fprintf(stderr,"\t -X <xt file>\n");
+    fprintf(stderr,"\t\t Use given xt file instead of generating a new one\n");
     fprintf(stderr,"\t -n <n>\n");
     fprintf(stderr,"\t\t Maximum number of hits cut set to n\n");
     fprintf(stderr,"\t -f <f>\n");

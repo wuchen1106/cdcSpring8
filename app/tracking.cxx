@@ -34,7 +34,6 @@ int m_iEntryStop = 0;
 int m_modulo = 100;
 bool m_memdebug = false;
 int m_testlayer = 4;
-TString m_configureFile = "";
 int m_nHitsMax = 30;
 int m_t0shift0 = 0;
 int m_t0shift1 = 0;
@@ -195,6 +194,7 @@ int getHitIndex(int lid, int nHits);
 int getHitType(int type,bool isRight);
 bool isSame(int iCand);
 double getError(int lid,double dt, bool isR);
+void getRunTimeParameters(TString configureFile);
 
 MyProcessManager * pMyProcessManager;
 
@@ -246,7 +246,7 @@ int main(int argc, char** argv){
                 printf("Test layer set to %d\n",m_testlayer);
 				break;
 			case 'C':
-				m_configureFile = optarg;
+			    getRunTimeParameters(optarg);
                 printf("Using configure file \"%s\"\n",optarg);
 				break;
 			case 'n':
@@ -373,20 +373,6 @@ int main(int argc, char** argv){
         Log::SetLogLevel(i->first.c_str(), i->second);
     }
 
-    if (m_configureFile!=""){
-        MyRuntimeParameters::Get().ReadParamOverrideFile(m_configureFile);
-        m_inputType = MyRuntimeParameters::Get().GetParameterI("inputType");
-        m_geoSetup = MyRuntimeParameters::Get().GetParameterI("geoSetup");
-        m_peakType = MyRuntimeParameters::Get().GetParameterI("peakType");
-        m_nHitsMax = MyRuntimeParameters::Get().GetParameterI("tracking.nHitsMax");
-        m_t0shift0 = MyRuntimeParameters::Get().GetParameterI("tracking.t0shift0");
-        m_t0shift1 = MyRuntimeParameters::Get().GetParameterI("tracking.t0shift1");
-        m_tmin = MyRuntimeParameters::Get().GetParameterI("tracking.tmin");
-        m_tmax = MyRuntimeParameters::Get().GetParameterI("tracking.tmax");
-        m_sumCut = MyRuntimeParameters::Get().GetParameterD("tracking.sumCut");
-        m_aaCut = MyRuntimeParameters::Get().GetParameterD("tracking.aaCut");
-        m_workType = MyRuntimeParameters::Get().GetParameterI("tracking.workType");;
-    }
     if (set_geoSetup) m_geoSetup = temp_geoSetup;
     if (set_nHitsMax) m_nHitsMax = temp_nHitsMax;
     if (set_t0shift0) m_t0shift0 = temp_t0shift0;
@@ -1619,6 +1605,23 @@ double getError(int lid,double dt, bool isR){
 		}
 	}
 	return error;
+}
+
+void getRunTimeParameters(TString configureFile){
+    if (configureFile!=""){
+        MyRuntimeParameters::Get().ReadParamOverrideFile(configureFile);
+        m_inputType = MyRuntimeParameters::Get().GetParameterI("inputType");
+        m_geoSetup = MyRuntimeParameters::Get().GetParameterI("geoSetup");
+        m_peakType = MyRuntimeParameters::Get().GetParameterI("peakType");
+        m_nHitsMax = MyRuntimeParameters::Get().GetParameterI("tracking.nHitsMax");
+        m_t0shift0 = MyRuntimeParameters::Get().GetParameterI("tracking.t0shift0");
+        m_t0shift1 = MyRuntimeParameters::Get().GetParameterI("tracking.t0shift1");
+        m_tmin = MyRuntimeParameters::Get().GetParameterI("tracking.tmin");
+        m_tmax = MyRuntimeParameters::Get().GetParameterI("tracking.tmax");
+        m_sumCut = MyRuntimeParameters::Get().GetParameterD("tracking.sumCut");
+        m_aaCut = MyRuntimeParameters::Get().GetParameterD("tracking.aaCut");
+        m_workType = MyRuntimeParameters::Get().GetParameterI("tracking.workType");;
+    }
 }
 
 //______________________________________________________________________________
