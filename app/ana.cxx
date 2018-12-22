@@ -493,14 +493,17 @@ int main(int argc, char** argv){
     }
     npair_per_cm = 60;
     TString gastype = "He:C_{2}H_{6}(50:50)";
+    TString gastypeshort = "C2H6";
     double W = 32; // eV
     if (gasID==1){
         gastype = "He:iC_{4}H_{10}(90:10)";
+        gastypeshort = "C4H10";
         npair_per_cm = 29;
         W = 39; // eV
     }
     else if (gasID==2){
         gastype = "He:CH_{4}(80:20)";
+        gastypeshort = "CH4";
         npair_per_cm = 17;
         W = 39; // eV
     }
@@ -607,6 +610,14 @@ int main(int argc, char** argv){
     TTree * newXTTree = 0;
     if (m_ExternalXT==""){
         preXTFile = new TFile(Form("%s/info/xt.%d.%s.root",HOME.Data(),m_runNo,m_prerunname.Data()));
+        if (!preXTFile||preXTFile->IsZombie()){
+            MyWarn("Cannot find xt file according to the given prerunname. Will use garfield xt instead.");
+            preXTFile = new TFile(HOME+Form("/Input/xt.%s.%d.root",gastypeshort,HV));
+            if (!preXTFile||preXTFile->IsZombie()){
+                MyError("Cannot find the default garfield xt!");
+                return -1;
+            }
+        }
         newXTFile = new TFile(Form("%s/info/xt.%d.%s.root",HOME.Data(),m_runNo,m_runnameout.Data()),"RECREATE");
         newXTTree = new TTree("t","t");
         double mX;

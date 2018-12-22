@@ -75,12 +75,14 @@ Syntax:
     -x [XYZ] xt type. XYZ ($XTTYPE) means polX for center, polY for middle and polZ for tail. If X is 0 then let middle function fit the center region.
     -n [n] maximum number ($NHITSMAX) of hits to be used in ana
     -m [m] maximum number ($nHitsGMax) of good hits to be used in tracking
+    -u [u] maximum drift time ($tmax) to be considered
+    -d [d] minimum drift time ($tmin) to be considered
 
 Report bugs to <wuchen@ihep.ac.cn>.
 EOF
 }
 
-while getopts ':hR:T:N:I:J:LH:W:US:D:l:w:c:g:t:a:s:p:x:n:m:' optname
+while getopts ':hR:T:N:I:J:LH:W:US:D:l:w:c:g:t:a:s:p:x:n:m:u:d:' optname
 do
     case "$optname" in
     'h')
@@ -155,6 +157,12 @@ do
         ;;
     'm')
         nHitsGMax="$OPTARG"
+        ;;
+    'u')
+        tmax="$OPTARG"
+        ;;
+    'd')
+        tmin="$OPTARG"
         ;;
     '?')
         echo "Unknown option $OPTARG"

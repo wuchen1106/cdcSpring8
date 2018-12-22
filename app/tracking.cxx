@@ -419,6 +419,55 @@ int main(int argc, char** argv){
     }
     MyNamedDebug("Memory","Memory size: @"<<__LINE__<<": "<<pMyProcessManager->GetMemorySize());
 
+    //=================================================Get related info========================================================
+    // get run info
+    TFile * if_run = new TFile(HOME+"/Input/run-info.root");
+    TTree * t_run = (TTree*) if_run->Get("t");
+    int i_runNo, gasID, runGr, HV, THR;
+    char runDu[128];
+    double t00, t01, aacut, sumcut;
+    t_run->SetBranchAddress("run_number",&i_runNo);
+    t_run->SetBranchAddress("gas_mixture_id",&gasID);
+    t_run->SetBranchAddress("hv_ch0",&HV);
+    t_run->SetBranchAddress("recbe_th_input_bd0",&THR);
+    t_run->SetBranchAddress("duration",&runDu);
+    t_run->SetBranchAddress("run_grade",&runGr);
+    t_run->SetBranchAddress("t00",&t00);
+    t_run->SetBranchAddress("t01",&t01);
+    t_run->SetBranchAddress("aa",&aacut);
+    t_run->SetBranchAddress("sum",&sumcut);
+    for(int i = 0; i<t_run->GetEntries(); i++){
+        t_run->GetEntry(i);
+        if (i_runNo == m_runNo) break;
+    }
+    int npair_per_cm = 60;
+    TString gastype = "He:C_{2}H_{6}(50:50)";
+    TString gastypeshort = "C2H6";
+    double W = 32; // eV
+    if (gasID==1){
+        gastype = "He:iC_{4}H_{10}(90:10)";
+        gastypeshort = "C4H10";
+        npair_per_cm = 29;
+        W = 39; // eV
+    }
+    else if (gasID==2){
+        gastype = "He:CH_{4}(80:20)";
+        gastypeshort = "CH4";
+        npair_per_cm = 17;
+        W = 39; // eV
+    }
+    TString duration = runDu;
+    const char *sep = ":";
+    char * durationSep = strtok(runDu,sep);
+    double durationTime = 0;
+    double timeunit = 3600;
+    while(durationSep){
+        durationTime += timeunit*strtol(durationSep,NULL,10);
+        timeunit/=60;
+        durationSep = strtok(NULL,sep);
+    }
+    printf("runNo#%d: %s, %d, %s, %d V, %d mV, %.0f sec\n",m_runNo,gastype.Data(),runGr,duration.Data(),HV,THR,durationTime);
+
 	//===================Set scintillator geometry============================
 	if (m_geoSetup==0){
         // normal scintillator
@@ -552,6 +601,14 @@ int main(int argc, char** argv){
     printf("##############XT##################\n");
     printf("Reading from %s/info/xt.%d.%s.root\n",HOME.Data(),m_runNo,m_prerunname.Data());
     TFile * i_xt = new TFile(HOME+Form("/info/xt.%d.",m_runNo)+m_prerunname+".root");
+    if (!i_xt||i_xt->IsZombie()){
+        MyWarn("Cannot find xt file according to the given prerunname. Will use garfield xt instead.");
+        i_xt = new TFile(HOME+Form("/Input/xt.%s.%d.root",gastypeshort,HV));
+        if (!i_xt||i_xt->IsZombie()){
+            MyError("Cannot find the default garfield xt!");
+            return -1;
+        }
+    }
     for (int i = 0; i<NLAY; i++){
         f_left[i] = (TF1*) i_xt->Get(Form("fl_%d",i));
         f_right[i] = (TF1*) i_xt->Get(Form("fr_%d",i));
