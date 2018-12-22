@@ -503,7 +503,7 @@ Syntax:
     -D [D] set this layer (4) as the default layer to save in XT file as fr/l_0
     -l [l1 (l2 ...)] Do the training of the given layers (4)
     -w [w1 (w2 ...)] Do the calibration of the given wires () in the ubove given layers (4)
-    -c [c] Set the configure file as C (/home/chen/MyWorkArea/Experiments/cdcSpring8/Para/default.dat)
+    -c [c] Add configure file as C (default one "Para/default.dat" is always loaded first)
     -g [g] geometry setup (0). 0 ordinary scintillator; 1 finger scintillator
     -t [t] work type (0) for tracking. 0, fr/l_0; 1, even/odd; -1, even/odd reversed; others, all layers
     -a [a] aa cut (0)
