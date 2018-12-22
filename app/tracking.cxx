@@ -45,6 +45,7 @@ int m_geoSetup = 0; // 0: normal; 1: finger
 int m_inputType = 0; // 1 for MC; 0 for data
 int m_peakType = 0; // 0, only the first peak over threshold; 1, all peaks over threshold; 2, even including shaddowed peaks
 int m_workType = 0; // fr/l_0; 1, even/odd; -1, even/odd reversed; others, all layers
+double m_t0error = 0; // if t0 error is 0, then don't set it as a free parameter in fitting
 
 //===================Chamber Parameter============================
 // map for wire position
@@ -113,6 +114,7 @@ double o_inx[NCAND];
 double o_inz[NCAND];
 double o_slx[NCAND];
 double o_slz[NCAND];
+double o_t0offset[NCAND];
 double o_chi2mc[NCAND];
 double o_chi2pmc[NCAND];
 double o_chi2amc[NCAND];
@@ -157,6 +159,7 @@ double inx = 0;
 double inz = 0;
 double slx = 0;
 double slz = 0;
+double t0offset = 0;
 // for get dist
 TVector3 vTrackU, vTrackD, vTrack;
 TVector3 vWireHV, vWireRO, vWire;
@@ -187,7 +190,7 @@ int fityz(int nPairs);
 bool checkScintillator(double saftyFactor,double inx, double slx, double inz, double slz);
 bool checkChi2(int nHitsSel,int nPairs,int icombi, int iselection);
 double get_dist(int lid, int wid, double slx, double inx, double slz, double inz);
-void getchi2(double &f, double & cp, double & ca, double slx, double inx, double slz, double inz,bool all = false);
+void getchi2(double &f, double & cp, double & ca, double slx, double inx, double slz, double inz, double t0offset,bool all = false);
 void fcn(int &npar, double *gin, double &f, double *par, int iflag);
 void do_fit(double slix, double inix,double sliz, double iniz);
 int getHitIndex(int lid, int nHits);
@@ -217,11 +220,12 @@ int main(int argc, char** argv){
     int temp_inputType = 0; bool set_inputType = false;
     int temp_peakType = 0; bool set_peakType = false;
     int temp_workType = 0; bool set_workType = false;
+    double temp_t0error = 0; bool set_t0error = false;
 
     std::map<std::string, Log::ErrorPriority> namedDebugLevel;
     std::map<std::string, Log::LogPriority> namedLogLevel;
     int    opt_result;
-	while((opt_result=getopt(argc,argv,"M:R:B:E:L:C:n:x:y:l:u:s:a:g:i:p:w:D:V:"))!=-1){
+	while((opt_result=getopt(argc,argv,"M:R:B:E:L:C:n:x:y:l:u:s:a:g:i:p:w:D:V:t:"))!=-1){
 		switch(opt_result){
 			/* INPUTS */
 			case 'M':
@@ -291,6 +295,10 @@ int main(int argc, char** argv){
 			case 'w':
 			    temp_workType = atoi(optarg);set_workType = true;
                 printf("Work type set to %d\n",temp_workType);
+				break;
+			case 't':
+			    temp_t0error = atoi(optarg);set_t0error = true;
+                printf("T0 error set to %.3e\n",temp_t0error);
 				break;
             case 'D':
                 {
@@ -383,6 +391,7 @@ int main(int argc, char** argv){
     if (set_workType) m_workType = temp_workType;
     if (set_inputType) m_inputType = temp_inputType;
     if (set_peakType) m_peakType = temp_peakType;
+    if (set_t0error) m_t0error = temp_t0error;
 
 	if (argc-optind<2){
 	    print_usage(argv[0]);
@@ -752,6 +761,7 @@ int main(int argc, char** argv){
         ot->Branch(Form("inz%d",iCand),&(o_inz[iCand]));
         ot->Branch(Form("slx%d",iCand),&(o_slx[iCand]));
         ot->Branch(Form("slz%d",iCand),&(o_slz[iCand]));
+        ot->Branch(Form("t0off%d",iCand),&(o_t0offset[iCand]));
         ot->Branch(Form("chi2%d",iCand),&(o_chi2[iCand]));
         ot->Branch(Form("chi2p%d",iCand),&(o_chi2p[iCand]));
         ot->Branch(Form("chi2a%d",iCand),&(o_chi2a[iCand]));
@@ -811,6 +821,7 @@ int main(int argc, char** argv){
         c->GetEntry(iEntry);
         N_trigger++; // triggered event
 
+        t0offset = 0;
         // prepare
         o_nFind = 0;
         o_nFit = 0;
@@ -838,6 +849,7 @@ int main(int argc, char** argv){
             o_inz[iCand] = 0;
             o_slx[iCand] = 0;
             o_slz[iCand] = 0;
+            o_t0offset[iCand] = 0;
             o_chi2[iCand] = 1e9;
             o_chi2p[iCand] = 1e9;
             o_chi2a[iCand] = 1e9;
@@ -939,7 +951,7 @@ int main(int argc, char** argv){
             int nSelections = 0;
             Tracking(0,nSelections,iEntry); // 0 means starting from the 1st pick; nSelections is the number of possible choices by selecting one hit per layer;
             MyNamedVerbose("Tracking","Good event, after tracking, "<<o_nHitsS[0]<<" hits selected in the first candidate");
-            if (o_nHitsS[0]>=5){ // at least 5 hits to fit: NDF of 3-D track without field is 4
+            if ((o_nHitsS[0]>=5&&!m_t0error)||(o_nHitsS[0]>=6&&m_t0error)){ // at least 5 hits to fit: NDF of 3-D track without field is 4
                 N_good++;
             }
         }
@@ -1078,7 +1090,7 @@ int doFitting(int nPicks,int iEntry,int iselection){
                 (*t_sel)[ihit] = selected;
             }
             MyNamedVerbose("Tracking",Form("       good! nHitsSel = %d",nHitsSel));
-            if (nHitsSel>=5){ // at least 5 hits to fit: NDF of 3-D track without field is 4
+            if ((nHitsSel>=5&&!m_t0error)||(nHitsSel>=6&&m_t0error)){ // at least 5 hits to fit: NDF of 3-D track without field is 4
             	o_nFit++;
                 // fitting with TMinuit
                 do_fit(islx,iinx,islz,iinz);
@@ -1087,6 +1099,16 @@ int doFitting(int nPicks,int iEntry,int iselection){
                 gMinuit->GetParameter(1, inx, temp);
                 gMinuit->GetParameter(2, slz, temp);
                 gMinuit->GetParameter(3, inz, temp);
+                if (m_t0error){
+                    gMinuit->GetParameter(4, t0offset, temp);
+                    for (int ihit = 0; ihit<i_nHits; ihit++){
+                        int lid = (*i_layerID)[ihit];
+                        int wid = (*i_wireID)[ihit];
+                        double fitD = get_dist(lid,wid,slx,inx,slz,inz);
+                        int status;
+                        (*t_driftD)[ihit] = t2x((*i_driftT)[ihit]-t0offset,lid,wid,fitD>0,status);
+                    }
+                }
                 // update fitD
                 // reselect
                 nHitsSel = 0;
@@ -1119,7 +1141,7 @@ int doFitting(int nPicks,int iEntry,int iselection){
                     }
                     (*t_sel)[ihit] = selected;
                 }
-                if (nHitsSel>=5){ // at least 5 hits to fit: NDF of 3-D track without field is 4
+                if ((nHitsSel>=5&&!m_t0error)||(nHitsSel>=6&&m_t0error)){ // at least 5 hits to fit: NDF of 3-D track without field is 4
                     // fitting with TMinuit
                     do_fit(islx,iinx,islz,iinz);
                     double temp;
@@ -1127,16 +1149,26 @@ int doFitting(int nPicks,int iEntry,int iselection){
                     gMinuit->GetParameter(1, inx, temp);
                     gMinuit->GetParameter(2, slz, temp);
                     gMinuit->GetParameter(3, inz, temp);
+                    if (m_t0error){
+                        gMinuit->GetParameter(4, t0offset, temp);
+                        for (int ihit = 0; ihit<i_nHits; ihit++){
+                            int lid = (*i_layerID)[ihit];
+                            int wid = (*i_wireID)[ihit];
+                            double fitD = get_dist(lid,wid,slx,inx,slz,inz);
+                            int status;
+                            (*t_driftD)[ihit] = t2x((*i_driftT)[ihit]-t0offset,lid,wid,fitD>0,status);
+                        }
+                    }
                     inScint = checkScintillator(1.5,inx,slx,inz,slz); // FIXME: error limit should be tuned
                     fromSource = slx>-beamSlxMax&&slx<beamSlxMax&&slz>-beamSlzMax&&slz<beamSlzMax;
                     if (inScint&&fromSource){
                         // update chi2
                         if (m_inputType)
-							getchi2(chi2mc,chi2pmc,chi2amc,i_slxmc,i_inxmc,i_slzmc,i_inzmc,true);
-                        getchi2(chi2i,chi2pi,chi2ai,islx,iinx,islz,iinz,true);
-                        getchi2(chi2,chi2p,chi2a,slx,inx,slz,inz,true);
+							getchi2(chi2mc,chi2pmc,chi2amc,i_slxmc,i_inxmc,i_slzmc,i_inzmc,0,true);
+                        getchi2(chi2i,chi2pi,chi2ai,islx,iinx,islz,iinz,0,true);
+                        getchi2(chi2,chi2p,chi2a,slx,inx,slz,inz,0,true);
                         // check chi2 and see where the result fits
-                        MyNamedVerbose("Tracking",Form("         final RESULT: x=%.3e*(y-%.3e)+%.3e, z=%.3e*(y-%.3e)+%.3e, chi2i = %.3e chi2 = %.3e",slx,sciYup,inx,slz,sciYup,inz,chi2i,chi2));
+                        MyNamedVerbose("Tracking",Form("         final RESULT: x=%.3e*(y-%.3e)+%.3e, z=%.3e*(y-%.3e)+%.3e, chi2i = %.3e chi2 = %.3e, t0offset = %.3e",slx,sciYup,inx,slz,sciYup,inz,chi2i,chi2,t0offset));
                         // at last, update driftD for unpick and unselected hits
                         for (int ihit = 0; ihit<i_nHits; ihit++){
                             int lid = (*i_layerID)[ihit];
@@ -1409,6 +1441,7 @@ bool checkChi2(int nHitsSel, int nPairs, int icombi, int iselection){
 					o_inz[j] = o_inz[j+1];
 					o_slx[j] = o_slx[j+1];
 					o_slz[j] = o_slz[j+1];
+					o_t0offset[j] = o_t0offset[j+1];
 					o_chi2[j] = o_chi2[j+1];
 					o_chi2p[j] = o_chi2p[j+1];
 					o_chi2a[j] = o_chi2a[j+1];
@@ -1452,6 +1485,7 @@ bool checkChi2(int nHitsSel, int nPairs, int icombi, int iselection){
 					o_inz[j] = o_inz[j-1];
 					o_slx[j] = o_slx[j-1];
 					o_slz[j] = o_slz[j-1];
+					o_t0offset[j] = o_t0offset[j-1];
 					o_chi2[j] = o_chi2[j-1];
 					o_chi2p[j] = o_chi2p[j-1];
 					o_chi2a[j] = o_chi2a[j-1];
@@ -1479,6 +1513,7 @@ bool checkChi2(int nHitsSel, int nPairs, int icombi, int iselection){
 				o_inz[i] = inz;
 				o_slx[i] = slx;
 				o_slz[i] = slz;
+				o_t0offset[i] = t0offset;
 				o_chi2[i] = chi2;
 				o_chi2p[i] = chi2p;
 				o_chi2a[i] = chi2a;
@@ -1552,9 +1587,12 @@ double get_dist(int lid, int wid, double slx, double inx, double slz, double inz
 }
 
 //______________________________________________________________________________
-void do_fit(double sliX, double iniX,double sliZ, double iniZ){
+void do_fit(double sliX, double iniX,double sliZ, double iniZ, double t0){
 	if(gMinuit) delete gMinuit;
-	gMinuit = new TMinuit(5);  //initialize TMinuit with a maximum of 5 params
+	if (m_t0error)
+        gMinuit = new TMinuit(6);  //initialize TMinuit with a maximum of 5 params
+    else
+        gMinuit = new TMinuit(5);  //initialize TMinuit with a maximum of 5 params
 	gMinuit->SetFCN(fcn);
 	arglist[0] = 0;
 	gMinuit->SetPrintLevel(-1); // no print
@@ -1575,6 +1613,8 @@ void do_fit(double sliX, double iniX,double sliZ, double iniZ){
 	gMinuit->mnparm(1, "interceptX", iniX, beamInxMax/1.e4, -beamInxMax,beamInxMax,ierflg);
 	gMinuit->mnparm(2, "slopeZ", sliZ, beamSlzMax/1.e4, -beamSlzMax,beamSlzMax,ierflg);
 	gMinuit->mnparm(3, "interceptZ", iniZ, beamInzMax/1.e4, -beamInzMax,beamInzMax,ierflg);
+	if (m_t0error)
+        gMinuit->mnparm(4, "t0", t0, 1, -m_t0error,m_t0error,ierflg);
 
 	// Now ready for minimization step
 	arglist[0] = 5000.0;
@@ -1591,11 +1631,14 @@ void do_fit(double sliX, double iniX,double sliZ, double iniZ){
 void fcn(int &npar, double *gin, double &f, double *par, int iflag)
 {
 	double cp,ca;
-	getchi2(f,cp,ca,*par,*(par+1),*(par+2),*(par+3),false);
+	if (m_t0error)
+        getchi2(f,cp,ca,*par,*(par+1),*(par+2),*(par+3),0,false);
+    else
+        getchi2(f,cp,ca,*par,*(par+1),*(par+2),*(par+3),*(par+4),false);
 }
 
 //______________________________________________________________________________
-void getchi2(double &f, double & cp, double & ca, double slx, double inx, double slz, double inz,bool all)
+void getchi2(double &f, double & cp, double & ca, double slx, double inx, double slz, double inz, double t0offset,bool all)
 {
 	//calculate chisquare
 	double chisq = 0;
@@ -1607,6 +1650,10 @@ void getchi2(double &f, double & cp, double & ca, double slx, double inx, double
 		if ((*t_sel)[ihit]==0) continue;
 		dfit = get_dist((*i_layerID)[ihit],(*i_wireID)[ihit],slx,inx,slz,inz);
 		double dd = (*t_driftD)[ihit];
+        if (t0offset){
+            int status;
+            dd = t2x((*i_driftT)[ihit]-t0offset,(*i_layerID)[ihit],(*i_wireID)[ihit],dfit>0,status);
+        }
 		double error = getError(fabs(dd));
         delta  = (dfit-dd)/error;
 		chisq += delta*delta;
@@ -1625,6 +1672,10 @@ void getchi2(double &f, double & cp, double & ca, double slx, double inx, double
 			int type = getHitType((*i_type)[ihit],dfit>=0);
 			if (type>3) continue;
 			double dd = dfit>0?(*o_dxr)[ihit]:(*o_dxl)[ihit];
+            if (t0offset){
+                int status;
+                dd = t2x((*i_driftT)[ihit]-t0offset,(*i_layerID)[ihit],(*i_wireID)[ihit],dfit>0,status);
+            }
 			if (fabs(minres)>fabs(dfit-dd)){
 				minres = dfit-dd;
 				found = true;
@@ -1664,17 +1715,18 @@ double getError(double dd){
 void getRunTimeParameters(TString configureFile){
     if (configureFile!=""){
         MyRuntimeParameters::Get().ReadParamOverrideFile(configureFile);
-        m_inputType = MyRuntimeParameters::Get().GetParameterI("inputType");
-        m_geoSetup = MyRuntimeParameters::Get().GetParameterI("geoSetup");
-        m_peakType = MyRuntimeParameters::Get().GetParameterI("peakType");
-        m_nHitsMax = MyRuntimeParameters::Get().GetParameterI("tracking.nHitsMax");
-        m_t0shift0 = MyRuntimeParameters::Get().GetParameterI("tracking.t0shift0");
-        m_t0shift1 = MyRuntimeParameters::Get().GetParameterI("tracking.t0shift1");
-        m_tmin = MyRuntimeParameters::Get().GetParameterI("tracking.tmin");
-        m_tmax = MyRuntimeParameters::Get().GetParameterI("tracking.tmax");
-        m_sumCut = MyRuntimeParameters::Get().GetParameterD("tracking.sumCut");
-        m_aaCut = MyRuntimeParameters::Get().GetParameterD("tracking.aaCut");
-        m_workType = MyRuntimeParameters::Get().GetParameterI("tracking.workType");;
+        if (MyRuntimeParameters::Get().HasParameter("inputType")) m_inputType = MyRuntimeParameters::Get().GetParameterI("inputType");
+        if (MyRuntimeParameters::Get().HasParameter("geoSetup")) m_geoSetup = MyRuntimeParameters::Get().GetParameterI("geoSetup");
+        if (MyRuntimeParameters::Get().HasParameter("peakType")) m_peakType = MyRuntimeParameters::Get().GetParameterI("peakType");
+        if (MyRuntimeParameters::Get().HasParameter("tracking.nHitsMax")) m_nHitsMax = MyRuntimeParameters::Get().GetParameterI("tracking.nHitsMax");
+        if (MyRuntimeParameters::Get().HasParameter("tracking.t0shift0")) m_t0shift0 = MyRuntimeParameters::Get().GetParameterI("tracking.t0shift0");
+        if (MyRuntimeParameters::Get().HasParameter("tracking.t0shift1")) m_t0shift1 = MyRuntimeParameters::Get().GetParameterI("tracking.t0shift1");
+        if (MyRuntimeParameters::Get().HasParameter("tracking.tmin")) m_tmin = MyRuntimeParameters::Get().GetParameterI("tracking.tmin");
+        if (MyRuntimeParameters::Get().HasParameter("tracking.tmax")) m_tmax = MyRuntimeParameters::Get().GetParameterI("tracking.tmax");
+        if (MyRuntimeParameters::Get().HasParameter("tracking.sumCut")) m_sumCut = MyRuntimeParameters::Get().GetParameterD("tracking.sumCut");
+        if (MyRuntimeParameters::Get().HasParameter("tracking.aaCut")) m_aaCut = MyRuntimeParameters::Get().GetParameterD("tracking.aaCut");
+        if (MyRuntimeParameters::Get().HasParameter("tracking.workType")) m_workType = MyRuntimeParameters::Get().GetParameterI("tracking.workType");;
+        if (MyRuntimeParameters::Get().HasParameter("tracking.t0error")) m_t0error = MyRuntimeParameters::Get().GetParameterD("tracking.t0error");;
     }
 }
 

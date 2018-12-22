@@ -702,6 +702,7 @@ int main(int argc, char** argv){
     double iinz[NCAND];
     double islx[NCAND];
     double islz[NCAND];
+    double it0off[NCAND];
     double chi2x[NCAND];
     double chi2z[NCAND];
     double chi2i[NCAND];
@@ -710,6 +711,7 @@ int main(int argc, char** argv){
     double inz[NCAND];
     double slx[NCAND];
     double slz[NCAND];
+    double t0offset[NCAND];
     double chi2[NCAND];
     double chi2p[NCAND];
     double chi2a[NCAND];
@@ -891,6 +893,7 @@ int main(int argc, char** argv){
             ichain->SetBranchAddress(Form("inz%d",iCand),&(inz[iCand]));
             ichain->SetBranchAddress(Form("slx%d",iCand),&(slx[iCand]));
             ichain->SetBranchAddress(Form("slz%d",iCand),&(slz[iCand]));
+            ichain->SetBranchAddress(Form("t0off%d",iCand),&(t0offset[iCand]));
             ichain->SetBranchAddress(Form("chi2%d",iCand),&(chi2[iCand]));
             ichain->SetBranchAddress(Form("chi2p%d",iCand),&(chi2p[iCand]));
             ichain->SetBranchAddress(Form("chi2a%d",iCand),&(chi2a[iCand]));
@@ -945,7 +948,6 @@ int main(int argc, char** argv){
                     wireID = (*i_wireID)[ihit];
                     fitD = tfitD;
                     driftD = tdriftD;
-                    driftT = (*i_driftT)[ihit];
                     has = true;
                 }
             }
@@ -1015,7 +1017,7 @@ int main(int argc, char** argv){
                     if (fabs(tfitD-tdriftD)<fabs(res_temp)){ // Get the one with smallest residual
                         res_temp = tfitD-tdriftD;
                         fitD = tfitD;
-                        driftT = (*i_driftT)[ihit];
+                        driftT = (*i_driftT)[ihit]-t0offset[theCand];
                         if (twireID<NCEL) wireChecked[twireID] = true;
                         foundhit = true;
                     }
@@ -1308,6 +1310,7 @@ int main(int argc, char** argv){
                 double height = (*i_height)[ihit];
                 double fitD = (*i_fitD[theCand])[ihit]-map_off[lid][wid];
                 int type = getHitType((*i_type)[ihit],fitD>=0);
+                (*i_driftT)[ihit]-=t0offset[theCand];
                 double dt = (*i_driftT)[ihit];
                 double dd;
                 double dd0 = (*i_driftD[theCand])[ihit];
