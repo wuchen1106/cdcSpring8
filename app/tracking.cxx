@@ -1277,6 +1277,7 @@ int updateHitPositions(int nPicks){
         MyNamedVerbose("Tracking","    pick_wy["<<ipick<<"] = "<<pick_wy[ipick]);
     }
     MyNamedVerbose("Tracking","    updateHitPositions finished");
+    return 0;
 }
 
 int updatePairPositions(int nPicks,int & nPairs){
