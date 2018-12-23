@@ -144,6 +144,13 @@ XTAnalyzer::XTAnalyzer(int gasID, int debug)
 		h_x_tsum[islice] = 0;
 		h_xn_tsum[islice] = 0;
     }
+	// set for binning
+	mTmin = -25-1/0.96/2; // t range for one x bin
+	mTmax = 800+1/0.96/2;
+	mNbint = 792+1;
+	mXmin = -0.02;
+	mXmax = 10.02; // x range for one t bin
+	mNbinx = 501;
 }
 
 XTAnalyzer::~XTAnalyzer(void){
@@ -162,6 +169,16 @@ void XTAnalyzer::SetXTType(int type){
 
 void XTAnalyzer::SetSaveHists(int save){
 	mSaveHists = save;
+}
+
+void XTAnalyzer::SetBinning(int nt, double tmin, double tmax, int nx, double xmin, double xmax){
+	// set for binning
+	mTmin = tmin; // t range for one x bin
+	mTmax = tmax;
+	mNbint = nt;
+	mXmin = xmin;
+	mXmax = xmax; // x range for one t bin
+	mNbinx = nx;
 }
 
 int XTAnalyzer::Initialize(TString runname, int lid, TFile * infile, TFile * outfile, TTree * otree, int xttype, bool sym, int savehists, bool saveXT0, int saveOddEven, bool updateXT){
@@ -231,13 +248,6 @@ int XTAnalyzer::Initialize(TString runname, int lid, TFile * infile, TFile * out
 //	mBWT = 9/0.96;
 	mTLEFT = -mBWT*NSLICET/2;
 	mTRIGHT = mBWT*NSLICET/2;
-	// set for binning
-	mTmin = -25-1/0.96/2; // t range for one x bin
-	mTmax = 800+1/0.96/2;
-	mNbint = 792+1;
-	mXmin = -0.02;
-	mXmax = 10.02; // x range for one t bin
-	mNbinx = 501;
 
 	// prepare 2D histograms
 	h2_xt = new TH2D(Form("h2_xt_%d",mLayerID),"XT Relation",mNbint,mTmin,mTmax,mNbinx,-mXmax,mXmax);

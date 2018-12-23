@@ -66,6 +66,10 @@ class MyRuntimeParameters {
     void ReadParamOverrideFile(TString filename);
 
 
+  /// Reads parameters from input files.
+  /// Function can be used to read in extra parameter files.
+  void ReadInputFile(TString filename, TString dirName="", bool tryFile = false, bool fixParameters = false);  
+
   /// Prints list of saved parameters
   void PrintListOfParameters();
  private:
@@ -76,10 +80,6 @@ class MyRuntimeParameters {
   MyRuntimeParameters(const MyRuntimeParameters &){
       MyLog("MyRuntimeParameters copy constructor is private.  Shouldn't be called!!!");
   }
-
-  /// Reads parameters from input files.
-  /// Function can be used to read in extra parameter files.
-  void ReadInputFile(TString filename, TString dirName="", bool tryFile = false, bool fixParameters = false);  
 
 
   /// Helper method to attempt to read parameters file based on parameters name.

@@ -14,7 +14,7 @@ tracking parameters
     < tracking.t0shift0 = 0  >
     < tracking.t0shift1 = 0 >
     < tracking.tmin = -20 >
-    < tracking.tmax = 800 >
+    < tracking.tmax = 400 >
     < tracking.sumCut = -10 >
     < tracking.aaCut = 0 >
     < tracking.nHitsMax = 30 > If this value is too large, track finding will take a long time.
@@ -34,12 +34,12 @@ ana parameters
     < ana.maxchi2 = 2 >
     < ana.maxslz = 0.1 >
     < ana.maxFD = 6 > // only count hits with DOCA smaller than 6 mm
-    < ana.tmaxSet = 0 >
+    < ana.tmaxSet = 400 >
     < ana.tmin = -25.520833333333 > // t range for one x bin
-    < ana.tmax = 800.52083333333 >
+    < ana.tmax = 400.52083333333 >
     < ana.xmin = -0.02 > // x range for one t bin
     < ana.xmax = 10.02 > // x range for one t bin
-    < ana.NbinT = 793  >
+    < ana.NbinT = 409  >
     < ana.NbinX = 512 >
     < ana.NbinRes = 256 >
     < ana.minchi2p = 1 >

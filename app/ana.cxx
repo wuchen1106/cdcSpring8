@@ -73,9 +73,10 @@ int    m_tmaxSet = 0;
 //for binning
 double m_tmin = -25-1/0.96/2; // t range for one x bin
 double m_tmax = 800+1/0.96/2;
-double m_xmax = 10; // x range for one t bin
+double m_xmin = -0.02; // x range for one t bin
+double m_xmax = 10.02; // x range for one t bin
 int    m_NbinT = 792+1;
-int    m_NbinX = 256;
+int    m_NbinX = 501;
 int    m_NbinRes = 256;
 double m_minchi2p = 1;
 double m_maxRes = 2;
@@ -145,6 +146,7 @@ int main(int argc, char** argv){
     //for binning
     double temp_tmin = 0; bool set_tmin = false;
     double temp_tmax = 0; bool set_tmax = false;
+    double temp_xmin = 0; bool set_xmin = false;
     double temp_xmax = 0; bool set_xmax = false;
     int    temp_NbinT = 0; bool set_NbinT = false;
     int    temp_NbinX = 0; bool set_NbinX = false;
@@ -394,6 +396,7 @@ int main(int argc, char** argv){
     //for binning
     if (set_tmin) m_tmin = temp_tmin;
     if (set_tmax) m_tmax = temp_tmax;
+    if (set_xmin) m_xmin = temp_xmin;
     if (set_xmax) m_xmax = temp_xmax;
     if (set_NbinT) m_NbinT = temp_NbinT;
     if (set_NbinX) m_NbinX = temp_NbinX;
@@ -453,7 +456,8 @@ int main(int argc, char** argv){
     printf("nHits max   = %d\n",m_nHitsMax);
     printf("nHitsSmin   = %d\n",m_nHitsSmin);
     printf("Q cut       = %d\n",m_aaCut);
-    printf("tmaxSet     = %d\n",m_tmaxSet);
+    printf("tmax for xt = %d\n",m_tmaxSet);
+    printf("tmax for canvas: %d\n",m_tmax);
     printf("debug       = %d\n",m_verboseLevel);
     printf("print modulo= %d\n",m_modulo);
     printf("save fitting histograms at level %d\n",m_saveHists);
@@ -840,6 +844,7 @@ int main(int argc, char** argv){
     //=================================================Loop in layers====================================================
     // Prepare XTAnalyzer
     XTAnalyzer * fXTAnalyzer = new XTAnalyzer(gasID,m_verboseLevel);
+    fXTAnalyzer->SetBinning(m_NbinT,m_tmin,m_tmax,m_NbinX,m_xmin,m_xmax);
     // Loop in layers
     for (int testLayer = 0; testLayer<NLAY; testLayer++){
         //----------------------------------Set input file--------------------------------------------
@@ -2403,7 +2408,7 @@ bool isInTriggerCounter(int geoSetup, double tinz, double tslz){
 
 void getRunTimeParameters(TString configureFile){
     if (configureFile!=""){
-        MyRuntimeParameters::Get().ReadParamOverrideFile(configureFile);
+        MyRuntimeParameters::Get().ReadInputFile(configureFile,"",false,false);
         if (MyRuntimeParameters::Get().HasParameter("geoSetup")) m_geoSetup = MyRuntimeParameters::Get().GetParameterI("geoSetup");
         if (MyRuntimeParameters::Get().HasParameter("inputType")) m_inputType = MyRuntimeParameters::Get().GetParameterI("inputType");
         if (MyRuntimeParameters::Get().HasParameter("xtType")) m_xtType = MyRuntimeParameters::Get().GetParameterI("xtType");
@@ -2422,6 +2427,7 @@ void getRunTimeParameters(TString configureFile){
         //for binning
         if (MyRuntimeParameters::Get().HasParameter("ana.tmin")) m_tmin = MyRuntimeParameters::Get().GetParameterD("ana.tmin");
         if (MyRuntimeParameters::Get().HasParameter("ana.tmax")) m_tmax = MyRuntimeParameters::Get().GetParameterD("ana.tmax");
+        if (MyRuntimeParameters::Get().HasParameter("ana.xmin")) m_xmin = MyRuntimeParameters::Get().GetParameterD("ana.xmin");
         if (MyRuntimeParameters::Get().HasParameter("ana.xmax")) m_xmax = MyRuntimeParameters::Get().GetParameterD("ana.xmax");
         if (MyRuntimeParameters::Get().HasParameter("ana.NbinT")) m_NbinT = MyRuntimeParameters::Get().GetParameterI("ana.NbinT");
         if (MyRuntimeParameters::Get().HasParameter("ana.NbinX")) m_NbinX = MyRuntimeParameters::Get().GetParameterI("ana.NbinX");

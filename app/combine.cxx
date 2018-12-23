@@ -11,7 +11,7 @@ int main(int argc, char ** argv){
     TString runname = argv[2];
     int nPerRun = 0;
     if (argc>=4) nPerRun = atoi(argv[3]);
-    TString originalFile = Form("h_%d.root",runNo);
+    TString originalFile = Form("../hits/h_%d.root",runNo);
     if (argc>=5) originalFile = argv[4];
     int theLayer = 0;
     if (argc>=6) theLayer = atoi(argv[5]);

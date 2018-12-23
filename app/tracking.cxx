@@ -1715,7 +1715,7 @@ double getError(double dd){
 
 void getRunTimeParameters(TString configureFile){
     if (configureFile!=""){
-        MyRuntimeParameters::Get().ReadParamOverrideFile(configureFile);
+        MyRuntimeParameters::Get().ReadInputFile(configureFile,"",false,false);
         if (MyRuntimeParameters::Get().HasParameter("inputType")) m_inputType = MyRuntimeParameters::Get().GetParameterI("inputType");
         if (MyRuntimeParameters::Get().HasParameter("geoSetup")) m_geoSetup = MyRuntimeParameters::Get().GetParameterI("geoSetup");
         if (MyRuntimeParameters::Get().HasParameter("peakType")) m_peakType = MyRuntimeParameters::Get().GetParameterI("peakType");

@@ -45,6 +45,7 @@ DEFAULTLAYER=4 # use this layer to generate fl(r)_0 and so on
 XTTYPE=055
 NHITSMAX=30
 SAVEHISTS=0
+tmaxSet=800
 
 usages() {
 cat << EOF
@@ -75,14 +76,15 @@ Syntax:
     -x [XYZ] xt type. XYZ ($XTTYPE) means polX for center, polY for middle and polZ for tail. If X is 0 then let middle function fit the center region.
     -n [n] maximum number ($NHITSMAX) of hits to be used in ana
     -m [m] maximum number ($nHitsGMax) of good hits to be used in tracking
-    -u [u] maximum drift time ($tmax) to be considered
-    -d [d] minimum drift time ($tmin) to be considered
+    -u [u] maximum drift time ($tmax) to be considered in tracking
+    -d [d] minimum drift time ($tmin) to be considered in tracking
+    -o [o] maximum drift time ($tmaxSet) to be considered in getting xt
 
 Report bugs to <wuchen@ihep.ac.cn>.
 EOF
 }
 
-while getopts ':hR:T:N:I:J:LH:W:US:D:l:w:c:g:t:a:s:p:x:n:m:u:d:' optname
+while getopts ':hR:T:N:I:J:LH:W:US:D:l:w:c:g:t:a:s:p:x:n:m:u:d:o:' optname
 do
     case "$optname" in
     'h')
@@ -164,6 +166,9 @@ do
     'd')
         tmin="$OPTARG"
         ;;
+    'o')
+        tmaxSet="$OPTARG"
+        ;;
     '?')
         echo "Unknown option $OPTARG"
         echo "Try \"$THISCMD -h\" for more infomation"
@@ -230,6 +235,7 @@ echo "        DEFAULTLAYER = $DEFAULTLAYER;  use this layer to generate fl(r)_0 
 echo "        XTTYPE = $XTTYPE;"
 echo "        NHITSMAX = $NHITSMAX; "
 echo "        SAVEHISTS = $SAVEHISTS; "
+echo "        tmax = $tmaxSet; "
 
 read -p 'You are going to do the job above, is that right? (Y/n):'
 if [ ! "$REPLY" = 'Y' ] && [ ! "$REPLY" = 'y' ] && [ ! "$REPLY" = '' ]; then
@@ -438,6 +444,7 @@ EOF
     echo "  arg_configure = $arg_configure"
     echo "  arg_xtfile = $arg_xtfile"
     echo "  arg_wiremap = $arg_wiremap"
+    echo "  tmaxSet = $tmaxSet"
 
     threadLists=`updateThreadLists`
     if [ ! $? -eq 0 ]
@@ -595,5 +602,5 @@ EOF
         cd ../..
     fi
 
-    ana -C $CONFIGTABLEDEFAULT $arg_configure -R $runNo -x $XTTYPE -g $geoSetup -H $SAVEHISTS -i $inputType -c $maxchi2 -L $DEFAULTLAYER -n $NHITSMAX $arg_wiremap $arg_xtfile $prerunname $currunname $wires
+    ana -C $CONFIGTABLEDEFAULT $arg_configure -R $runNo -x $XTTYPE -g $geoSetup -H $SAVEHISTS -i $inputType -c $maxchi2 -L $DEFAULTLAYER -n $NHITSMAX -o $tmaxSet $arg_wiremap $arg_xtfile $prerunname $currunname $wires
 done

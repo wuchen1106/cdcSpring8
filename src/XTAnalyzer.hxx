@@ -36,6 +36,8 @@ class XTAnalyzer{
 
 		int t2d(double t, double & d, bool isRight);
 
+        void SetBinning(int nt, double tmin, double tmax, int nx, double xmin, double xmax);
+
 	private:
 
 		int t2i(double t, bool positive);
