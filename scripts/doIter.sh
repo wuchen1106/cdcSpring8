@@ -11,6 +11,7 @@ StartName="Garfield"
 layers="4" # layers to be reconstructed and [analyzed (in case of layers is not 0)]
 wires="" # wires to be calibrated (position)
 isLast=false
+PROGRAMMED=false # by default don't load the programmed iteration setting
 CONFIGTABLEDEFAULT="$CDCS8WORKING_DIR/Para/default.dat"
 CONFIGTABLE_wireposition="$CDCS8WORKING_DIR/Para/wirepos.temp.dat"
 CONFIGTABLE=""
@@ -63,6 +64,7 @@ Syntax:
     -L     (false) Take the last iteration as the final step and do the default complete checkings
     -W     (false) update the wire position map
     -U     (false) keep the xt curves unchanged.
+    -P     (false) use programmed iteration parameters
     -S [S] set the start name ($StartName)
     -D [D] set this layer ($DEFAULTLAYER) as the default layer to save in XT file as fr/l_0
     -l [l1 (l2 ...)] Do the training of the given layers ($layers)
@@ -84,7 +86,7 @@ Report bugs to <wuchen@ihep.ac.cn>.
 EOF
 }
 
-while getopts ':hR:T:N:I:J:LH:W:US:D:l:w:c:g:t:a:s:p:x:n:m:u:d:o:' optname
+while getopts ':hR:T:N:I:J:LH:W:US:D:Pl:w:c:g:t:a:s:p:x:n:m:u:d:o:' optname
 do
     case "$optname" in
     'h')
@@ -123,6 +125,9 @@ do
         ;;
     'D')
         DEFAULTLAYER="$OPTARG";
+        ;;
+    'P')
+        PROGRAMMED=true;
         ;;
     'l')
         layers="$OPTARG";
@@ -206,6 +211,7 @@ esac
 
 echo "You are going to start iteration ${IterStart}~${IterEnd} for run$runNo using threads \"$threadName\" $thread_iStart~$thread_iStop"
 echo "StartName is $StartName, runName = $runName, layers for tracking \"$layers\", wires to calibrate \"$wires\""
+echo "Use programmed parameter setting for iteration? $PROGRAMMED"
 echo "Is this the last iteration? $isLast"
 echo "Configure file for general: $CONFIGTABLE"
 echo "Tracking Parameters are:"
@@ -350,6 +356,7 @@ prev_occupied=false
 threadLists=""
 threadlistfile=threadlist.$runName.$runNo
 lastxtfile=""
+declare -a sourcefiles
 for (( iter=IterStart; iter<=IterEnd; iter++ ))
 do
     if [ -e kill.$runNo.$runName ]
@@ -375,11 +382,18 @@ do
         workType=0
     fi
 
-    if [ $iter -gt 3 ]
+    if $PROGRAMMED
     then
-        layers="2 3 4 5 6 7"
-        wires="3 4 5 6"
-        UpdateWireMap=true
+        if [ $iter -gt 3 ]
+        then
+            layers="2 3 4 5 6 7"
+            wires="3 4 5 6"
+            UpdateWireMap=true
+        else
+            layers=$DEFAULTLAYER
+            wires=""
+            UpdateWireMap=false
+        fi
     fi
 
     if [ $iter -eq $IterEnd ] && $isLast
@@ -413,12 +427,12 @@ do
 
 #   update the configure file
     cat << EOF > $CONFIGTABLE_wireposition
-    < ana.scale = $scale>
-    < ana.stepSize = $stepSize>
-    < ana.minDeltaSlz = $minslz>
-    < ana.maxDeltaSlz = $maxslz>
-    < ana.minDeltaInx = $mininx>
-    < ana.maxDeltaInx = $maxinx>
+    < ana.scale = $scale >
+    < ana.stepSize = $stepSize >
+    < ana.minDeltaSlz = $minslz >
+    < ana.maxDeltaSlz = $maxslz >
+    < ana.minDeltaInx = $mininx >
+    < ana.maxDeltaInx = $maxinx >
 EOF
 
     echo "#Iteration $iter started"
@@ -483,9 +497,9 @@ EOF
     nEvtPerRun=`echo "$nEvents/($nThreads)+1" | bc`
 
     Njobs=0
-    sourcefiles=""
     for testlayer in $layers;
     do
+        sourcefiles[testlayer]=""
         for (( iEvent=0; iEvent<nEvents; iEvent+=nEvtPerRun ))
         do
             ((Njobs++))
@@ -497,7 +511,14 @@ EOF
             fi
             jobname="${runNo}.${currunname}.$iEntryStart-$iEntryStop.layer${testlayer}"
             echo "checking job \"$jobname\""
+
             file="root/tracks/t_${jobname}.log"
+            temprunname="${currunname}.$iEntryStart-$iEntryStop"
+            logtemp="$CDCS8WORKING_DIR/root/tracks/t_${runNo}.${temprunname}.layer${testlayer}.log"
+            errtemp="$CDCS8WORKING_DIR/root/tracks/t_${runNo}.${temprunname}.layer${testlayer}.err"
+            sourcefiles[testlayer]="${sourcefiles[testlayer]} t_${runNo}.${temprunname}.layer${testlayer}.root"
+            tempconfig="tracking -C $CONFIGTABLEDEFAULT $arg_configure -R $runNo -L $testlayer -n $nHitsGMax -x $t0shift0 -y $t0shift1 -l $tmin -u $tmax -g $geoSetup -s $sumCut -a $aaCut -B $iEntryStart -E $iEntryStop -w $workType -i $inputType -p $peakType $prerunname $temprunname > $logtemp 2> $errtemp"
+
             if [ -e $file ]
             then # log file already exists??
                 if tail -n 3 $file | grep -q "Good Events" # finished
@@ -512,11 +533,6 @@ EOF
             else
                 echo "  logfile \"$file\" doesn't exist, so generate a new job!"
             fi
-            temprunname="${currunname}.$iEntryStart-$iEntryStop"
-            logtemp="$CDCS8WORKING_DIR/root/tracks/t_${runNo}.${temprunname}.layer${testlayer}.log"
-            errtemp="$CDCS8WORKING_DIR/root/tracks/t_${runNo}.${temprunname}.layer${testlayer}.err"
-            sourcefiles="$sourcefiles t_${runNo}.${temprunname}.layer${testlayer}.root"
-            tempconfig="tracking -C $CONFIGTABLEDEFAULT $arg_configure -R $runNo -L $testlayer -n $nHitsGMax -x $t0shift0 -y $t0shift1 -l $tmin -u $tmax -g $geoSetup -s $sumCut -a $aaCut -B $iEntryStart -E $iEntryStop -w $workType -i $inputType -p $peakType $prerunname $temprunname > $logtemp 2> $errtemp"
             findVacentThread
             if [ $? -eq 1 ]
             then
@@ -595,8 +611,11 @@ EOF
 
     cd root/tracks
     #combine $runNo $currunname $nEvtPerRun &
-    hadd t_${runNo}.${currunname}.layer$testlayer.root $sourcefiles
-    pids="$!"
+    for testlayer in $layers;
+    do
+        hadd t_${runNo}.${currunname}.layer$testlayer.root ${sourcefiles[testlayer]} &
+        pids="$pids $!"
+    done
     wait $pids || { echo "there were errors in combining $runNo $currunname $ilayer" >&2; exit 1; }
     rm -f t_${runNo}.${currunname}.*-*.*
     cd ../..
