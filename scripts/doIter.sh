@@ -37,7 +37,7 @@ maxslz=0 # min slz cut for mean slz value in each sample of events in wiremap ca
 mininx=0 # min inx cut for mean inx value in each sample of events in wiremap calibration. mininx==maxinx==0 means no cut
 maxinx=0 # min inx cut for mean inx value in each sample of events in wiremap calibration. mininx==maxinx==0 means no cut
 maxchi2=2
-scale=1 # move scale*offset on wiremap for fitting in the next round
+scale=0.5 # move scale*offset on wiremap for fitting in the next round
 
 # for ana
 DONTUPDATEXT=false
@@ -375,6 +375,13 @@ do
         workType=0
     fi
 
+    if [ $iter -gt 3 ]
+    then
+        layers="2 3 4 5 6 7"
+        wires="3 4 5 6"
+        UpdateWireMap=true
+    fi
+
     if [ $iter -eq $IterEnd ] && $isLast
     then
         layers="1 2 3 4 5 6 7 8"
@@ -476,6 +483,7 @@ EOF
     nEvtPerRun=`echo "$nEvents/($nThreads)+1" | bc`
 
     Njobs=0
+    sourcefiles=""
     for testlayer in $layers;
     do
         for (( iEvent=0; iEvent<nEvents; iEvent+=nEvtPerRun ))
@@ -507,6 +515,7 @@ EOF
             temprunname="${currunname}.$iEntryStart-$iEntryStop"
             logtemp="$CDCS8WORKING_DIR/root/tracks/t_${runNo}.${temprunname}.layer${testlayer}.log"
             errtemp="$CDCS8WORKING_DIR/root/tracks/t_${runNo}.${temprunname}.layer${testlayer}.err"
+            sourcefiles="$sourcefiles t_${runNo}.${temprunname}.layer${testlayer}.root"
             tempconfig="tracking -C $CONFIGTABLEDEFAULT $arg_configure -R $runNo -L $testlayer -n $nHitsGMax -x $t0shift0 -y $t0shift1 -l $tmin -u $tmax -g $geoSetup -s $sumCut -a $aaCut -B $iEntryStart -E $iEntryStop -w $workType -i $inputType -p $peakType $prerunname $temprunname > $logtemp 2> $errtemp"
             findVacentThread
             if [ $? -eq 1 ]
@@ -585,7 +594,8 @@ EOF
     fi
 
     cd root/tracks
-    combine $runNo $currunname $nEvtPerRun &
+    #combine $runNo $currunname $nEvtPerRun &
+    hadd t_${runNo}.${currunname}.layer$testlayer.root $sourcefiles
     pids="$!"
     wait $pids || { echo "there were errors in combining $runNo $currunname $ilayer" >&2; exit 1; }
     rm -f t_${runNo}.${currunname}.*-*.*

@@ -776,71 +776,8 @@ int main(int argc, char** argv){
     std::vector<int> * o_channelID = 0;
     std::vector<int> * o_boardID = 0;
 
-    //=================================================Prepare histograms, function and counters================================================
+    // prepare the function to fit the residual distribution
     TF1 * f_res = new TF1("fres","gaus",-m_maxRes,m_maxRes);
-    TH1I * h_nHits = new TH1I("hnHits","Number of TDC hits in each event",100,0,100);
-    TH1I * h_DOF = new TH1I("hDOF","Number of DOF",5,0,5);
-    TH1D * h_chi2 = new TH1D("hchi2","#chi^{2} of fitting",256,0,10);
-    TH1D * h_slz = new TH1D("hslz","Slope on z direction",256,-0.3,0.3);
-    TH1D * h_DOCA = new TH1D("hDOCA","DOCA with Left/Right",m_NbinX,-m_xmax,m_xmax);
-    TH1D * h_DOCAb = new TH1D("hDOCAb","DOCA without Left/Right",m_NbinX/2,0,m_xmax);
-    TH1D * h_DriftD = new TH1D("hDriftD","Drift distance with Left/Right",m_NbinX,-m_xmax,m_xmax);
-    TH1D * h_DriftDb = new TH1D("hDriftDb","Drift distance without Left/Right",m_NbinX/2,0,m_xmax);
-    TH2D * h_aaVST = new TH2D("haaVST","ADC sum VS driftT",m_NbinT,m_tmin,m_tmax,200,-50,550);
-    TH2D * h_aaVSD = new TH2D("haaVSD","ADC sum VS driftD",m_NbinX,0,m_xmax,200,-50,550);
-    TH2D * h_ggVSX = new TH2D("hggVSX","Gas gain VS DOCA",m_NbinX,-m_xmax,m_xmax,256,0,2e5);
-    TH1D * h_ggall = new TH1D("hggall","Gas gain",256,0,2e5);
-    TH2D * h_xt = new TH2D("hxt","Time space relation",m_NbinT,m_tmin,m_tmax,m_NbinX,-m_xmax,m_xmax);
-    TH2D * h_tx = new TH2D("htx","Space time relation",m_NbinX,-m_xmax,m_xmax,m_NbinT,m_tmin,m_tmax);
-    TH2D * h_resVSX = new TH2D("hresVSX","Residual VS DOCA",m_NbinX,-m_xmax,m_xmax,m_NbinRes,-m_maxRes,m_maxRes);
-    TH2D * h_resVSD = new TH2D("hresVSD","Residual VS drift distance",m_NbinX,-m_xmax,m_xmax,m_NbinRes,-m_maxRes,m_maxRes);
-    TH1D * h_resD[NBINS];
-    TH1D * h_resX[NBINS];
-    TH1D * h_dedx[MAXTRUNC];
-    for (int i = 0; i<NBINS; i++){
-        double xmin = m_xmax*(i)/NBINS;
-        double xmax = m_xmax*(i+1)/NBINS;
-        h_resD[i] = new TH1D(Form("hresD%d",i),Form("Residual with drift distance in [%.1f,%.1f] mm",xmin,xmax),m_NbinRes,-m_maxRes,m_maxRes);
-        h_resD[i]->GetXaxis()->SetTitle("Residual [mm]");
-        h_resX[i] = new TH1D(Form("hresX%d",i),Form("Residual with DOCA in [%.1f,%.1f] mm",xmin,xmax),m_NbinRes,-m_maxRes,m_maxRes);
-        h_resX[i]->GetXaxis()->SetTitle("Residual [mm]");
-    }
-    for (int i = 0; i<MAXTRUNC; i++){
-        h_dedx[i] = new TH1D(Form("hdedx%d",i),Form("dEdX with %d hits omitted",i),256,0,3);
-        h_dedx[i]->GetXaxis()->SetTitle("dE/dX [keV/cm]");
-    }
-    h_nHits->GetXaxis()->SetTitle("Number of Hits");
-    h_DOF->GetXaxis()->SetTitle("DOF");
-    h_chi2->GetXaxis()->SetTitle("#chi^{2}");
-    h_slz->GetXaxis()->SetTitle("tan#theta_{z}");
-    h_DOCA->GetXaxis()->SetTitle("DOCA with left(-)/right(+) [mm]");
-    h_DOCAb->GetXaxis()->SetTitle("DOCA [mm]");
-    h_DriftD->GetXaxis()->SetTitle("Drift distance [mm]");
-    h_DriftDb->GetXaxis()->SetTitle("Drift distance with left(-)/right(+) [mm]");
-    h_aaVST->GetXaxis()->SetTitle("Drift time [ns]");
-    h_aaVST->GetYaxis()->SetTitle("ADC sum");
-    h_aaVSD->GetXaxis()->SetTitle("Drift distance [mm]");
-    h_aaVSD->GetYaxis()->SetTitle("ADC sum");
-    h_ggVSX->GetXaxis()->SetTitle("DOCA [mm]");
-    h_ggVSX->GetYaxis()->SetTitle("Gas gain");
-    h_ggall->GetXaxis()->SetTitle("Gas gain");
-    h_xt->GetXaxis()->SetTitle("Drift time [ns]");
-    h_xt->GetYaxis()->SetTitle("DOCA [mm]");
-    h_tx->GetXaxis()->SetTitle("DOCA [mm]");
-    h_tx->GetYaxis()->SetTitle("Drift time [ns]");
-    h_resVSX->GetXaxis()->SetTitle("DOCA [mm]");
-    h_resVSX->GetYaxis()->SetTitle("Residual [mm]");
-    h_resVSD->GetXaxis()->SetTitle("Drift distance [mm]");
-    h_resVSD->GetYaxis()->SetTitle("Residual [mm]");
-
-    int N_ALL = 0;
-    int N_CUT1 = 0;
-    int N_CUT2 = 0;
-    int N_CUT3 = 0;
-    int N_CUT4 = 0;
-    int N_CUT5 = 0;
-    int N_BIN[NBINS] = {0};
-
     //=================================================Loop in layers====================================================
     // Prepare XTAnalyzer
     XTAnalyzer * fXTAnalyzer = new XTAnalyzer(gasID,m_verboseLevel);
@@ -915,7 +852,7 @@ int main(int argc, char** argv){
         }
 
         //----------------------------------Get the offset--------------------------------------------
-        MyNamedVerbose("Ana","##############The initial loop starts#############");
+        MyNamedInfo("Ana","##############The initial loop starts#############");
         // to get the offsets
         for ( int iEntry = 0 ; iEntry<N; iEntry++){
             if (iEntry%10000==0) printf("%d\n",iEntry);
@@ -983,7 +920,7 @@ int main(int argc, char** argv){
                 fprintf(stderr,"WARNING: something wrong with initializing XTAnalyzer for layer[%d], will ignore this layer!\n",testLayer);
                 continue;
             }
-            MyNamedVerbose("Ana","##############The fisrt loop starts: "<<N<<" entries#############");
+            MyNamedInfo("Ana","##############The fisrt loop starts: "<<N<<" entries#############");
             //for ( int iEntry = (m_iEntryStart?m_iEntryStart:0); iEntry<(m_iEntryStop?m_iEntryStop-1:N); iEntry++){
             for ( int iEntry = 0; iEntry<N; iEntry++){ // better not to skip anything before we get the XT file
                 if (iEntry%m_modulo==0) printf("%d\n",iEntry);
@@ -1057,7 +994,7 @@ int main(int argc, char** argv){
             maxDT = m_tmaxSet;
 
         //----------------------------------prepare for output ROOT file--------------------------------------------
-        TFile * ofile = new TFile(Form("%s/root/ana/ana_%d.%s.layer%d.root",HOME.Data(),m_runNo,m_runnameout.Data(),testLayer),"RECREATE");
+        TFile * ofileana = new TFile(Form("%s/root/ana/ana_%d.%s.layer%d.root",HOME.Data(),m_runNo,m_runnameout.Data(),testLayer),"RECREATE");
         TTree * otree = new TTree("t","t");
         otree->Branch("triggerNumber",&triggerNumber);
         otree->Branch("isGood",&isGood);
@@ -1161,7 +1098,72 @@ int main(int argc, char** argv){
         o_channelID = new std::vector<int>;
         o_boardID = new std::vector<int>;
 
-        MyNamedVerbose("Ana","##############The Second loop starts#############");
+        MyNamedInfo("Ana","##############The Second loop starts#############");
+        //Prepare histograms, function and counters
+        TH1I * h_nHits = new TH1I("hnHits","Number of TDC hits in each event",100,0,100);
+        TH1I * h_DOF = new TH1I("hDOF","Number of DOF",5,0,5);
+        TH1D * h_chi2 = new TH1D("hchi2","#chi^{2} of fitting",256,0,10);
+        TH1D * h_slz = new TH1D("hslz","Slope on z direction",256,-0.3,0.3);
+        TH1D * h_DOCA = new TH1D("hDOCA","DOCA with Left/Right",m_NbinX,-m_xmax,m_xmax);
+        TH1D * h_DOCAb = new TH1D("hDOCAb","DOCA without Left/Right",m_NbinX/2,0,m_xmax);
+        TH1D * h_DriftD = new TH1D("hDriftD","Drift distance with Left/Right",m_NbinX,-m_xmax,m_xmax);
+        TH1D * h_DriftDb = new TH1D("hDriftDb","Drift distance without Left/Right",m_NbinX/2,0,m_xmax);
+        TH2D * h_aaVST = new TH2D("haaVST","ADC sum VS driftT",m_NbinT,m_tmin,m_tmax,200,-50,550);
+        TH2D * h_aaVSD = new TH2D("haaVSD","ADC sum VS driftD",m_NbinX,0,m_xmax,200,-50,550);
+        TH2D * h_ggVSX = new TH2D("hggVSX","Gas gain VS DOCA",m_NbinX,-m_xmax,m_xmax,256,0,2e5);
+        TH1D * h_ggall = new TH1D("hggall","Gas gain",256,0,2e5);
+        TH2D * h_xt = new TH2D("hxt","Time space relation",m_NbinT,m_tmin,m_tmax,m_NbinX,-m_xmax,m_xmax);
+        TH2D * h_tx = new TH2D("htx","Space time relation",m_NbinX,-m_xmax,m_xmax,m_NbinT,m_tmin,m_tmax);
+        TH2D * h_resVSX = new TH2D("hresVSX","Residual VS DOCA",m_NbinX,-m_xmax,m_xmax,m_NbinRes,-m_maxRes,m_maxRes);
+        TH2D * h_resVSD = new TH2D("hresVSD","Residual VS drift distance",m_NbinX,-m_xmax,m_xmax,m_NbinRes,-m_maxRes,m_maxRes);
+        TH1D * h_resD[NBINS];
+        TH1D * h_resX[NBINS];
+        TH1D * h_dedx[MAXTRUNC];
+        for (int i = 0; i<NBINS; i++){
+            double xmin = m_xmax*(i)/NBINS;
+            double xmax = m_xmax*(i+1)/NBINS;
+            h_resD[i] = new TH1D(Form("hresD%d",i),Form("Residual with drift distance in [%.1f,%.1f] mm",xmin,xmax),m_NbinRes,-m_maxRes,m_maxRes);
+            h_resD[i]->GetXaxis()->SetTitle("Residual [mm]");
+            h_resX[i] = new TH1D(Form("hresX%d",i),Form("Residual with DOCA in [%.1f,%.1f] mm",xmin,xmax),m_NbinRes,-m_maxRes,m_maxRes);
+            h_resX[i]->GetXaxis()->SetTitle("Residual [mm]");
+            MyNamedInfo("Ana","      h_resX["<<i<<"] @ "<<(void*)h_resX[i]);
+            MyNamedInfo("Ana","      h_resD["<<i<<"] @ "<<(void*)h_resD[i]);
+            MyNamedInfo("Ana","      nBins = "<<h_resX[i]->GetMaximumBin());
+        }
+        for (int i = 0; i<MAXTRUNC; i++){
+            h_dedx[i] = new TH1D(Form("hdedx%d",i),Form("dEdX with %d hits omitted",i),256,0,3);
+            h_dedx[i]->GetXaxis()->SetTitle("dE/dX [keV/cm]");
+        }
+        h_nHits->GetXaxis()->SetTitle("Number of Hits");
+        h_DOF->GetXaxis()->SetTitle("DOF");
+        h_chi2->GetXaxis()->SetTitle("#chi^{2}");
+        h_slz->GetXaxis()->SetTitle("tan#theta_{z}");
+        h_DOCA->GetXaxis()->SetTitle("DOCA with left(-)/right(+) [mm]");
+        h_DOCAb->GetXaxis()->SetTitle("DOCA [mm]");
+        h_DriftD->GetXaxis()->SetTitle("Drift distance [mm]");
+        h_DriftDb->GetXaxis()->SetTitle("Drift distance with left(-)/right(+) [mm]");
+        h_aaVST->GetXaxis()->SetTitle("Drift time [ns]");
+        h_aaVST->GetYaxis()->SetTitle("ADC sum");
+        h_aaVSD->GetXaxis()->SetTitle("Drift distance [mm]");
+        h_aaVSD->GetYaxis()->SetTitle("ADC sum");
+        h_ggVSX->GetXaxis()->SetTitle("DOCA [mm]");
+        h_ggVSX->GetYaxis()->SetTitle("Gas gain");
+        h_ggall->GetXaxis()->SetTitle("Gas gain");
+        h_xt->GetXaxis()->SetTitle("Drift time [ns]");
+        h_xt->GetYaxis()->SetTitle("DOCA [mm]");
+        h_tx->GetXaxis()->SetTitle("DOCA [mm]");
+        h_tx->GetYaxis()->SetTitle("Drift time [ns]");
+        h_resVSX->GetXaxis()->SetTitle("DOCA [mm]");
+        h_resVSX->GetYaxis()->SetTitle("Residual [mm]");
+        h_resVSD->GetXaxis()->SetTitle("Drift distance [mm]");
+        h_resVSD->GetYaxis()->SetTitle("Residual [mm]");
+        int N_ALL = 0;
+        int N_CUT1 = 0;
+        int N_CUT2 = 0;
+        int N_CUT3 = 0;
+        int N_CUT4 = 0;
+        int N_CUT5 = 0;
+        int N_BIN[NBINS] = {0};
         double closeFD;
         double closeFD2;
         int    closeWid;
@@ -1482,7 +1484,7 @@ int main(int argc, char** argv){
         averageGG = h_ggall->GetMean();
         averageGGErr = h_ggall->GetRMS();
 
-        MyNamedVerbose("Ana","##############The Third loop starts#############");
+        MyNamedInfo("Ana","##############The Third loop starts#############");
         double trackCharge[MAXTRUNC] = {0};
         //----------------------------------loop again for filling histograms--------------------------------------------
         for ( int iEntry = (m_iEntryStart?m_iEntryStart:0); iEntry<(m_iEntryStop?m_iEntryStop-1:N); iEntry++){
@@ -1535,10 +1537,8 @@ int main(int argc, char** argv){
         }
 
         otree->Write();
-        ofile->Close();
-
         //=================================================Get bin by bin information====================================================
-        ofile = new TFile(Form("%s/info/resi_%d.%s.layer%d.root",HOME.Data(),m_runNo,m_runnameout.Data(),testLayer),"RECREATE");
+        TFile * ofileresi = new TFile(Form("%s/info/resi_%d.%s.layer%d.root",HOME.Data(),m_runNo,m_runnameout.Data(),testLayer),"RECREATE");
         otree = new TTree("t","t");
         int o_ibin;
         double o_xmin;
@@ -2135,7 +2135,8 @@ int main(int argc, char** argv){
         g_doff->Write();
         g_xoff->Write();
         otree->Write();
-        ofile->Close();
+        ofileresi->Close();
+        ofileana->Close();
 
         printf("All events %d\n",N_ALL);
         printf("nHits<=%d: %d (%.1f%%)\n",m_nHitsMax,N_CUT1,(double)N_CUT1/N_ALL*100);
@@ -2148,7 +2149,7 @@ int main(int argc, char** argv){
     }
 
     //===================output offset file============================
-    TFile * ofile = new TFile(Form("%s/info/offset.%d.%s.root",HOME.Data(),m_runNo,m_runnameout.Data()),"RECREATE");
+    TFile * ofileoffset = new TFile(Form("%s/info/offset.%d.%s.root",HOME.Data(),m_runNo,m_runnameout.Data()),"RECREATE");
     TTree * otree = new TTree("t","t");
     double o_off_delta;
     double o_off_slz;
@@ -2175,7 +2176,7 @@ int main(int argc, char** argv){
         }
     }
     otree->Write();
-    ofile->Close();
+    ofileoffset->Close();
 
     //===================Set Wire Position============================
     if (m_UpdateWireMap){
