@@ -1000,20 +1000,22 @@ int main(int argc, char** argv){
         otree->Branch("isGood",&isGood);
         otree->Branch("res",&res);
         otree->Branch("nHitsT",&nHitsT);
-        otree->Branch("hashit",hashit,"hashit[nHitsT]/O");
-        otree->Branch("theFD",theFD,"theFD[nHitsT]/D");
-        otree->Branch("theDD",theDD,"theDD[nHitsT]/D");
-        otree->Branch("theDT",theDT,"theDT[nHitsT]/D");
-        otree->Branch("theST",theST,"theST[nHitsT]/I");
-        otree->Branch("theAA",theAA,"theAA[nHitsT]/D");
-        otree->Branch("theWid",&theWid,"theWid[nHitsT]/I");
-        otree->Branch("theSum",&theSum,"theSum[nHitsT]/D");
-        otree->Branch("sum1st",&sum1st,"sum1st[nHitsT]/D");
-        otree->Branch("dt1st",&dt1st,"dt1st[nHitsT]/D");
-        otree->Branch("thePeak",&thePeak,"thePeak[nHitsT]/D");
-        otree->Branch("theHeight",&theHeight,"theHeight[nHitsT]/D");
-        otree->Branch("theIp",&theIp,"theIp[nHitsT]/I");
-        otree->Branch("theMpi",&theMpi,"theMpi[nHitsT]/I");
+        for (int ihit = 0; ihit<2; ihit++){
+            otree->Branch(Form("hashit%d",ihit),&(hashit[ihit]));
+            otree->Branch(Form("theFD%d",ihit),&(theFD[ihit]));
+            otree->Branch(Form("theDD%d",ihit),&(theDD[ihit]));
+            otree->Branch(Form("theDT%d",ihit),&(theDT[ihit]));
+            otree->Branch(Form("theST%d",ihit),&(theST[ihit]));
+            otree->Branch(Form("theAA%d",ihit),&(theAA[ihit]));
+            otree->Branch(Form("theWid%d",ihit),&(theWid[ihit]));
+            otree->Branch(Form("theSum%d",ihit),&(theSum[ihit]));
+            otree->Branch(Form("sum1st%d",ihit),&(sum1st[ihit]));
+            otree->Branch(Form("dt1st%d",ihit),&(dt1st[ihit]));
+            otree->Branch(Form("thePeak%d",ihit),&(thePeak[ihit]));
+            otree->Branch(Form("theHeight%d",ihit),&(theHeight[ihit]));
+            otree->Branch(Form("theIp%d",ihit),&(theIp[ihit]));
+            otree->Branch(Form("theMpi%d",ihit),&(theMpi[ihit]));
+        }
         otree->Branch("theCand",&theCand);
         otree->Branch("highBid",&highBid);
         otree->Branch("highCh",&highCh);
@@ -1126,9 +1128,6 @@ int main(int argc, char** argv){
             h_resD[i]->GetXaxis()->SetTitle("Residual [mm]");
             h_resX[i] = new TH1D(Form("hresX%d",i),Form("Residual with DOCA in [%.1f,%.1f] mm",xmin,xmax),m_NbinRes,-m_maxRes,m_maxRes);
             h_resX[i]->GetXaxis()->SetTitle("Residual [mm]");
-            MyNamedInfo("Ana","      h_resX["<<i<<"] @ "<<(void*)h_resX[i]);
-            MyNamedInfo("Ana","      h_resD["<<i<<"] @ "<<(void*)h_resD[i]);
-            MyNamedInfo("Ana","      nBins = "<<h_resX[i]->GetMaximumBin());
         }
         for (int i = 0; i<MAXTRUNC; i++){
             h_dedx[i] = new TH1D(Form("hdedx%d",i),Form("dEdX with %d hits omitted",i),256,0,3);
@@ -1173,7 +1172,7 @@ int main(int argc, char** argv){
         int prevTheCand = 0;
         //----------------------------------Start the analysis to get residual and etc--------------------------------------------
         double closestchi2 = 1e9;
-        for ( int iEntry = (m_iEntryStart?m_iEntryStart:0); iEntry<(m_iEntryStop?m_iEntryStop-1:N); iEntry++){
+        for ( int iEntry = (m_iEntryStart?m_iEntryStart:0); iEntry<(m_iEntryStop?m_iEntryStop+1:N); iEntry++){
             if (iEntry%10000==0) printf("%d\n",iEntry);
             if (m_verboseLevel>=20) printf("Entry%d: \n",iEntry);
             ichain->GetEntry(iEntry);
@@ -1255,7 +1254,7 @@ int main(int argc, char** argv){
                     closeFD2 = fitD;
                 }
             }
-            MyNamedVerbose("Ana","  iEntry = "<<iEntry<<", theCand = "<<theCand<<", "<<(isGood?"Good":"Bad")<<" event, closeWid = "<<closeWid<<", closeWid2 = "<<closeWid2<<", nHits = "<<nHits);
+            MyNamedVerbose("Ana","  iEntry = "<<iEntry<<", theCand = "<<theCand<<", "<<(isGood?"Good":"Bad")<<" event, closeWid = "<<closeWid<<", closeFD = "<<closeFD<<", closeWid2 = "<<closeWid2<<", closeFD2 = "<<closeFD2<<", nHits = "<<nHits);
             theFD[0] = closeFD;
             int ibinX = fabs(closeFD)/m_xmax*NBINS; // bin index for DOCA
             if (ibinX>=NBINS) isGood = false; // too far away from any cell
@@ -1287,6 +1286,13 @@ int main(int argc, char** argv){
                 adcsumOnTrack[lid] = 0;
                 chargeOnTrackIndex[lid] = 0;
             }
+
+            // set driftD and extra info
+            o_driftD->clear();
+            o_driftDs->clear();
+            o_channelID->clear();
+            o_boardID->clear();
+
             theCharge = 0; // charge in the test layer
             res = 1e9;
             highBid = -1;
@@ -1414,12 +1420,6 @@ int main(int argc, char** argv){
 
             }
 
-            // set driftD and extra info
-            o_driftD->clear();
-            o_driftDs->clear();
-            o_channelID->clear();
-            o_boardID->clear();
-
             // get statistics relating to the ADC with the highest hit
             for (int ihit = 0; ihit<nHits; ihit++){
                 int lid = (*i_layerID)[ihit];
@@ -1487,7 +1487,7 @@ int main(int argc, char** argv){
         MyNamedInfo("Ana","##############The Third loop starts#############");
         double trackCharge[MAXTRUNC] = {0};
         //----------------------------------loop again for filling histograms--------------------------------------------
-        for ( int iEntry = (m_iEntryStart?m_iEntryStart:0); iEntry<(m_iEntryStop?m_iEntryStop-1:N); iEntry++){
+        for ( int iEntry = (m_iEntryStart?m_iEntryStart:0); iEntry<(m_iEntryStop?m_iEntryStop+1:N); iEntry++){
             otree->GetEntry(iEntry);
             MyNamedVerbose("Ana","  iEntry = "<<iEntry<<", "<<(isGood?"Good":"Bad")<<" event, nHits = "<<nHits<<", "<<nHitsT<<" hits in the test layer on track path");
             if (!isGood) continue; // not successfully reconstructed
