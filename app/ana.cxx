@@ -59,6 +59,7 @@ double m_maxDeltaSlz = 0;
 double m_minDeltaInx = 0;
 double m_maxDeltaInx = 0;
 std::map<int,bool> m_wireIDWhiteList; // a list of wire IDs to be updated in new wire map
+int m_XTLayerForRes = 0;
 // for cutting
 bool m_RequireInTriggerCounter = true;
 bool m_RequireAllGoldenHits = false;
@@ -114,6 +115,61 @@ TVector3 vWireHV, vWireRO, vWire;
 TVector3 vDist;
 TVector3 vAxis;
 
+//===================for input===============================
+// input file
+int triggerNumber;
+int nHits;
+int nHitsG;
+std::vector<int> *    i_layerID = 0;
+std::vector<int> *    i_wireID = 0;
+std::vector<double> * i_driftT = 0;
+std::vector<double> * i_driftDmc = 0;
+std::vector<int> *    i_type = 0;
+std::vector<int> *    i_np = 0;
+std::vector<int> *    i_ip = 0;
+std::vector<int> *    i_clk = 0;
+std::vector<int> *    i_width = 0;
+std::vector<int> *    i_peak = 0;
+std::vector<int> *    i_height = 0;
+std::vector<int> *    i_mpn = 0;
+std::vector<int> *    i_mpi = 0;
+std::vector<int> *    i_rank = 0;
+bool has_rank = false;
+std::vector<double> * i_ped = 0;
+bool has_ped = false;
+std::vector<double> * i_sum = 0;
+std::vector<double> * i_aa = 0;
+std::vector<double> * i_driftD[NCAND] = {0};
+std::vector<double> * i_calD[NCAND] = {0};
+std::vector<double> * i_fitD[NCAND] = {0};
+std::vector<int> * i_sel[NCAND] = {0};
+int npairs[NCAND];
+int isel[NCAND];
+int icom[NCAND];
+double iinx[NCAND];
+double iinz[NCAND];
+double islx[NCAND];
+double islz[NCAND];
+double chi2x[NCAND];
+double chi2z[NCAND];
+double chi2i[NCAND];
+int nHitsS[NCAND];
+double inx[NCAND];
+double inz[NCAND];
+double slx[NCAND];
+double slz[NCAND];
+double t0offset[NCAND];
+double chi2[NCAND];
+double chi2p[NCAND];
+double chi2a[NCAND];
+double chi2mc[NCAND];
+double chi2pmc[NCAND];
+double chi2amc[NCAND];
+double inxmc;
+double inzmc;
+double slxmc;
+double slzmc;
+
 double ADC2Charge(double adc); // fC
 double get_dist(int lid, int wid, double slx, double inx, double slz, double inz);
 double getGG(double aa, double slx, double slz);
@@ -125,6 +181,7 @@ int getHitType(int type,bool isRight);
 int GetCandidate(TString & candSelBy, std::vector<int> * layerID, std::vector<int> * type, std::vector<double> * fitD[NCAND], std::vector<int> * sel[NCAND], int * nHitsS, double * chi2, double * chi2a);
 bool isInTriggerCounter(int geoSetup, double tinz, double tslz);
 void getRunTimeParameters(TString configureFile);
+void SetInputBranchAdress(TChain * ichain);
 
 MyProcessManager * pMyProcessManager;
 
@@ -132,6 +189,7 @@ int main(int argc, char** argv){
     int temp_geoSetup = 0; bool set_geoSetup = false;
     int temp_inputType = 0; bool set_inputType = false;
     int temp_xtType = 0; bool set_xtType = false;
+    int temp_XTLayerForRes = 0; bool set_XTLayerForRes = false;
     //for cutting
     int temp_nHitsMax = 0; bool set_nHitsMax = false;
     int temp_nHitsSmin = 0; bool set_nHitsSmin = false;
@@ -158,7 +216,7 @@ int main(int argc, char** argv){
     std::map<std::string, Log::ErrorPriority> namedDebugLevel;
     std::map<std::string, Log::LogPriority> namedLogLevel;
     int    opt_result;
-    while((opt_result=getopt(argc,argv,"M:R:B:E:L:H:C:TGF:WX:n:f:c:v:r:z:d:o:s:a:l:u:t:m:y:g:i:x:AS:PD:V:"))!=-1){
+    while((opt_result=getopt(argc,argv,"AB:C:D:E:F:GH:L:M:PR:S:TV:WX:a:c:d:e:f:g:i:l:m:n:o:r:s:t:u:v:x:y:z:"))!=-1){
         switch(opt_result){
             /* INPUTS */
             case 'M':
@@ -283,6 +341,10 @@ int main(int argc, char** argv){
                 temp_AsymXT = true; set_AsymXT = true;
                 printf("Use asymmetric XT\n");
                 break;
+            case 'e':
+                temp_XTLayerForRes = atoi(optarg); set_XTLayerForRes = true;
+                printf("Use XT from layer %d to update residual\n",temp_XTLayerForRes);
+                break;
             case 'S':
                 temp_CandSelBy = optarg; set_CandSelBy = true;
                 if (temp_CandSelBy!="Original"&&temp_CandSelBy!="FittingChi2"&&temp_CandSelBy!="GlobalChi2"&&temp_CandSelBy!="LeastLatePeak"){
@@ -403,6 +465,7 @@ int main(int argc, char** argv){
     if (set_NbinRes) m_NbinRes = temp_NbinRes;
     if (set_minchi2p) m_minchi2p = temp_minchi2p;
     if (set_maxRes) m_maxRes = temp_maxRes;
+    if (set_XTLayerForRes) m_XTLayerForRes = temp_XTLayerForRes;
 
     if (argc-optind<2){
         print_usage(argv[0]);
@@ -464,6 +527,7 @@ int main(int argc, char** argv){
     printf("output EventTree? %s\n",m_outputEventTree?"yes":"no");
     printf("Entries:     [%d~%d]\n",m_iEntryStart,m_iEntryStop);
     printf("ADC -> Charge: %s\n",m_adc2charge.Data());
+    printf("Use XT from layer %d to get residual\n",m_XTLayerForRes);
     fflush(stdout);
 
     TString HOME=getenv("CDCS8WORKING_DIR");
@@ -672,60 +736,6 @@ int main(int argc, char** argv){
     fADC2ChargeFunction = new TF1("a2c",m_adc2charge,-10,800);
 
     //==============================================Prepare input file & output variables=================================================
-    // input file
-    int triggerNumber;
-    int nHits;
-    int nHitsG;
-    std::vector<int> *    i_layerID = 0;
-    std::vector<int> *    i_wireID = 0;
-    std::vector<double> * i_driftT = 0;
-    std::vector<double> * i_driftDmc = 0;
-    std::vector<int> *    i_type = 0;
-    std::vector<int> *    i_np = 0;
-    std::vector<int> *    i_ip = 0;
-    std::vector<int> *    i_clk = 0;
-    std::vector<int> *    i_width = 0;
-    std::vector<int> *    i_peak = 0;
-    std::vector<int> *    i_height = 0;
-    std::vector<int> *    i_mpn = 0;
-    std::vector<int> *    i_mpi = 0;
-    std::vector<int> *    i_rank = 0;
-    bool has_rank = false;
-    std::vector<double> * i_ped = 0;
-    bool has_ped = false;
-    std::vector<double> * i_sum = 0;
-    std::vector<double> * i_aa = 0;
-    std::vector<double> * i_driftD[NCAND] = {0};
-    std::vector<double> * i_calD[NCAND] = {0};
-    std::vector<double> * i_fitD[NCAND] = {0};
-    std::vector<int> * i_sel[NCAND] = {0};
-    int npairs[NCAND];
-    int isel[NCAND];
-    int icom[NCAND];
-    double iinx[NCAND];
-    double iinz[NCAND];
-    double islx[NCAND];
-    double islz[NCAND];
-    double chi2x[NCAND];
-    double chi2z[NCAND];
-    double chi2i[NCAND];
-    int nHitsS[NCAND];
-    double inx[NCAND];
-    double inz[NCAND];
-    double slx[NCAND];
-    double slz[NCAND];
-    double t0offset[NCAND];
-    double chi2[NCAND];
-    double chi2p[NCAND];
-    double chi2a[NCAND];
-    double chi2mc[NCAND];
-    double chi2pmc[NCAND];
-    double chi2amc[NCAND];
-    double inxmc;
-    double inzmc;
-    double slxmc;
-    double slzmc;
-
     // output file
     // the closest peak to the track in the test layer
     bool isGood = false; // if this event meets all cuts
@@ -778,7 +788,7 @@ int main(int argc, char** argv){
 
     // prepare the function to fit the residual distribution
     TF1 * f_res = new TF1("fres","gaus",-m_maxRes,m_maxRes);
-    //=================================================Loop in layers====================================================
+    //=================================================Loop in layers to get offset and XTs====================================================
     // Prepare XTAnalyzer
     XTAnalyzer * fXTAnalyzer = new XTAnalyzer(gasID,m_verboseLevel);
     fXTAnalyzer->SetBinning(m_NbinT,m_tmin,m_tmax,m_NbinX,m_xmin,m_xmax);
@@ -794,62 +804,7 @@ int main(int argc, char** argv){
             fprintf(stderr,"WARNING: \"%s/root/tracks/t_%d.%s.layer%d.root\" is empty! Will ignore this layer.\n",HOME.Data(),m_runNo,m_runname.Data(),testLayer);
             continue;
         }
-        ichain->SetBranchAddress("triggerNumber",&triggerNumber);
-        ichain->SetBranchAddress("nHits",&nHits);
-        ichain->SetBranchAddress("nHitsG",&nHitsG);
-        ichain->SetBranchAddress("layerID",&i_layerID);
-        ichain->SetBranchAddress("wireID",&i_wireID);
-        ichain->SetBranchAddress("driftT",&i_driftT);
-        if (m_inputType) ichain->SetBranchAddress("driftDmc",&i_driftDmc);
-        ichain->SetBranchAddress("type",&i_type);
-        ichain->SetBranchAddress("np",&i_np);
-        ichain->SetBranchAddress("ip",&i_ip);
-        ichain->SetBranchAddress("clk",&i_clk);
-        ichain->SetBranchAddress("width",&i_width);
-        ichain->SetBranchAddress("peak",&i_peak);
-        ichain->SetBranchAddress("height",&i_height);
-        ichain->SetBranchAddress("mpn",&i_mpn);
-        ichain->SetBranchAddress("mpi",&i_mpi);
-        has_rank = (ichain->SetBranchAddress("rank",&i_rank)==0);
-        has_ped = (ichain->SetBranchAddress("ped",&i_ped)==0);
-        ichain->SetBranchAddress("sum",&i_sum);
-        ichain->SetBranchAddress("aa",&i_aa);
-        for (int iCand = 0; iCand<NCAND; iCand++){
-            ichain->SetBranchAddress(Form("driftD%d",iCand),&(i_driftD[iCand]));
-            ichain->SetBranchAddress(Form("calD%d",iCand),&(i_calD[iCand]));
-            ichain->SetBranchAddress(Form("fitD%d",iCand),&(i_fitD[iCand]));
-            ichain->SetBranchAddress(Form("sel%d",iCand),&(i_sel[iCand]));
-            ichain->SetBranchAddress(Form("npairs%d",iCand),&(npairs[iCand]));
-            ichain->SetBranchAddress(Form("isel%d",iCand),&(isel[iCand]));
-            ichain->SetBranchAddress(Form("icom%d",iCand),&(icom[iCand]));
-            ichain->SetBranchAddress(Form("iinx%d",iCand),&(iinx[iCand]));
-            ichain->SetBranchAddress(Form("iinz%d",iCand),&(iinz[iCand]));
-            ichain->SetBranchAddress(Form("islx%d",iCand),&(islx[iCand]));
-            ichain->SetBranchAddress(Form("islz%d",iCand),&(islz[iCand]));
-            ichain->SetBranchAddress(Form("chi2x%d",iCand),&(chi2x[iCand]));
-            ichain->SetBranchAddress(Form("chi2z%d",iCand),&(chi2z[iCand]));
-            ichain->SetBranchAddress(Form("chi2i%d",iCand),&(chi2i[iCand]));
-            ichain->SetBranchAddress(Form("nHitsS%d",iCand),&(nHitsS[iCand]));
-            ichain->SetBranchAddress(Form("inx%d",iCand),&(inx[iCand]));
-            ichain->SetBranchAddress(Form("inz%d",iCand),&(inz[iCand]));
-            ichain->SetBranchAddress(Form("slx%d",iCand),&(slx[iCand]));
-            ichain->SetBranchAddress(Form("slz%d",iCand),&(slz[iCand]));
-            ichain->SetBranchAddress(Form("t0off%d",iCand),&(t0offset[iCand]));
-            ichain->SetBranchAddress(Form("chi2%d",iCand),&(chi2[iCand]));
-            ichain->SetBranchAddress(Form("chi2p%d",iCand),&(chi2p[iCand]));
-            ichain->SetBranchAddress(Form("chi2a%d",iCand),&(chi2a[iCand]));
-            if (m_inputType){
-                ichain->SetBranchAddress(Form("chi2mc%d",iCand),&(chi2mc[iCand]));
-                ichain->SetBranchAddress(Form("chi2pmc%d",iCand),&(chi2pmc[iCand]));
-                ichain->SetBranchAddress(Form("chi2amc%d",iCand),&(chi2amc[iCand]));
-            }
-        }
-        if (m_inputType){
-            ichain->SetBranchAddress("inxmc",&inxmc);
-            ichain->SetBranchAddress("inzmc",&inzmc);
-            ichain->SetBranchAddress("slxmc",&slxmc);
-            ichain->SetBranchAddress("slzmc",&slzmc);
-        }
+        SetInputBranchAdress(ichain);
 
         //----------------------------------Get the offset--------------------------------------------
         MyNamedInfo("Ana","##############The initial loop starts#############");
@@ -974,13 +929,28 @@ int main(int argc, char** argv){
             // fit histograms/graphs, make plots, and save new xt file
             fXTAnalyzer->Process();
         }
+    }
+
+    //=================================================Loop in layers to get residual====================================================
+    // Loop in layers
+    for (int testLayer = 0; testLayer<NLAY; testLayer++){
+        if (m_verboseLevel>0) {printf("In Layer %d: preparing input TChain\n",testLayer);fflush(stdout);}
+        TChain * ichain = new TChain("t","t");
+        ichain->Add(Form("%s/root/tracks/t_%d.%s.layer%d.root",HOME.Data(),m_runNo,m_runname.Data(),testLayer));
+        ichain->GetEntries();
+        Long64_t N = ichain->GetEntries();
+        if (N==0){
+            fprintf(stderr,"WARNING: \"%s/root/tracks/t_%d.%s.layer%d.root\" is empty! Will ignore this layer.\n",HOME.Data(),m_runNo,m_runname.Data(),testLayer);
+            continue;
+        }
+        SetInputBranchAdress(ichain);
 
         // get XT file
         TFile * XTFile = newXTFile;
-        f_left = (TF1*) XTFile->Get(Form("flc_%d",testLayer));
-        f_right = (TF1*) XTFile->Get(Form("frc_%d",testLayer));
+        f_left = (TF1*) XTFile->Get(Form("flc_%d",m_XTLayerForRes));
+        f_right = (TF1*) XTFile->Get(Form("frc_%d",m_XTLayerForRes));
         if (!f_left||!f_right){
-            MyWarn("Cannot find the xt curves of this layer. Will load the default ones.");
+            MyWarn("Cannot find the xt curves of layer "<<m_XTLayerForRes<<". Will load the default ones.");
             f_left = (TF1*) XTFile->Get("fl_0");
             f_right = (TF1*) XTFile->Get("fr_0");
         }
@@ -2416,6 +2386,7 @@ void getRunTimeParameters(TString configureFile){
         if (MyRuntimeParameters::Get().HasParameter("ana.AsymXT")) m_AsymXT = MyRuntimeParameters::Get().GetParameterI("ana.AsymXT");
         if (MyRuntimeParameters::Get().HasParameter("ana.CandSelBy")) m_CandSelBy = MyRuntimeParameters::Get().GetParameterS("ana.CandSelBy");
         if (MyRuntimeParameters::Get().HasParameter("ana.ClosestPeak")) m_ClosestPeak = MyRuntimeParameters::Get().GetParameterI("ana.ClosestPeak");
+        if (MyRuntimeParameters::Get().HasParameter("ana.XTLayerForRes")) m_ClosestPeak = MyRuntimeParameters::Get().GetParameterI("ana.XTLayerForRes");
         //for cutting
         if (MyRuntimeParameters::Get().HasParameter("ana.nHitsMax")) m_nHitsMax = MyRuntimeParameters::Get().GetParameterI("ana.nHitsMax");
         if (MyRuntimeParameters::Get().HasParameter("ana.nHitsSmin")) m_nHitsSmin = MyRuntimeParameters::Get().GetParameterI("ana.nHitsSmin");
@@ -2442,6 +2413,65 @@ void getRunTimeParameters(TString configureFile){
         if (MyRuntimeParameters::Get().HasParameter("ana.maxDeltaSlz")) m_maxDeltaSlz = MyRuntimeParameters::Get().GetParameterD("ana.maxDeltaSlz");
         if (MyRuntimeParameters::Get().HasParameter("ana.minDeltaInx")) m_minDeltaInx = MyRuntimeParameters::Get().GetParameterD("ana.minDeltaInx");
         if (MyRuntimeParameters::Get().HasParameter("ana.maxDeltaInx")) m_maxDeltaInx = MyRuntimeParameters::Get().GetParameterD("ana.maxDeltaInx");
+    }
+}
+
+void SetInputBranchAdress(TChain * ichain){
+    ichain->SetBranchAddress("triggerNumber",&triggerNumber);
+    ichain->SetBranchAddress("nHits",&nHits);
+    ichain->SetBranchAddress("nHitsG",&nHitsG);
+    ichain->SetBranchAddress("layerID",&i_layerID);
+    ichain->SetBranchAddress("wireID",&i_wireID);
+    ichain->SetBranchAddress("driftT",&i_driftT);
+    if (m_inputType) ichain->SetBranchAddress("driftDmc",&i_driftDmc);
+    ichain->SetBranchAddress("type",&i_type);
+    ichain->SetBranchAddress("np",&i_np);
+    ichain->SetBranchAddress("ip",&i_ip);
+    ichain->SetBranchAddress("clk",&i_clk);
+    ichain->SetBranchAddress("width",&i_width);
+    ichain->SetBranchAddress("peak",&i_peak);
+    ichain->SetBranchAddress("height",&i_height);
+    ichain->SetBranchAddress("mpn",&i_mpn);
+    ichain->SetBranchAddress("mpi",&i_mpi);
+    has_rank = (ichain->SetBranchAddress("rank",&i_rank)==0);
+    has_ped = (ichain->SetBranchAddress("ped",&i_ped)==0);
+    ichain->SetBranchAddress("sum",&i_sum);
+    ichain->SetBranchAddress("aa",&i_aa);
+    for (int iCand = 0; iCand<NCAND; iCand++){
+        ichain->SetBranchAddress(Form("driftD%d",iCand),&(i_driftD[iCand]));
+        ichain->SetBranchAddress(Form("calD%d",iCand),&(i_calD[iCand]));
+        ichain->SetBranchAddress(Form("fitD%d",iCand),&(i_fitD[iCand]));
+        ichain->SetBranchAddress(Form("sel%d",iCand),&(i_sel[iCand]));
+        ichain->SetBranchAddress(Form("npairs%d",iCand),&(npairs[iCand]));
+        ichain->SetBranchAddress(Form("isel%d",iCand),&(isel[iCand]));
+        ichain->SetBranchAddress(Form("icom%d",iCand),&(icom[iCand]));
+        ichain->SetBranchAddress(Form("iinx%d",iCand),&(iinx[iCand]));
+        ichain->SetBranchAddress(Form("iinz%d",iCand),&(iinz[iCand]));
+        ichain->SetBranchAddress(Form("islx%d",iCand),&(islx[iCand]));
+        ichain->SetBranchAddress(Form("islz%d",iCand),&(islz[iCand]));
+        ichain->SetBranchAddress(Form("chi2x%d",iCand),&(chi2x[iCand]));
+        ichain->SetBranchAddress(Form("chi2z%d",iCand),&(chi2z[iCand]));
+        ichain->SetBranchAddress(Form("chi2i%d",iCand),&(chi2i[iCand]));
+        ichain->SetBranchAddress(Form("nHitsS%d",iCand),&(nHitsS[iCand]));
+        ichain->SetBranchAddress(Form("inx%d",iCand),&(inx[iCand]));
+        ichain->SetBranchAddress(Form("inz%d",iCand),&(inz[iCand]));
+        ichain->SetBranchAddress(Form("slx%d",iCand),&(slx[iCand]));
+        ichain->SetBranchAddress(Form("slz%d",iCand),&(slz[iCand]));
+        ichain->SetBranchAddress(Form("t0off%d",iCand),&(t0offset[iCand]));
+        ichain->SetBranchAddress(Form("chi2%d",iCand),&(chi2[iCand]));
+        ichain->SetBranchAddress(Form("chi2p%d",iCand),&(chi2p[iCand]));
+        ichain->SetBranchAddress(Form("chi2a%d",iCand),&(chi2a[iCand]));
+        if (m_inputType){
+            ichain->SetBranchAddress(Form("chi2mc%d",iCand),&(chi2mc[iCand]));
+            ichain->SetBranchAddress(Form("chi2pmc%d",iCand),&(chi2pmc[iCand]));
+            ichain->SetBranchAddress(Form("chi2amc%d",iCand),&(chi2amc[iCand]));
+        }
+    }
+    if (m_inputType){
+        ichain->SetBranchAddress("inxmc",&inxmc);
+        ichain->SetBranchAddress("inzmc",&inzmc);
+        ichain->SetBranchAddress("slxmc",&slxmc);
+        ichain->SetBranchAddress("slzmc",&slzmc);
     }
 }
 
@@ -2518,6 +2548,8 @@ void print_usage(char * prog_name){
     fprintf(stderr,"\t\t XYZ (055) means polX for center, polY for middle and polZ for tail. If X is 0 then let middle function fit the center region.\n");
     fprintf(stderr,"\t -A\n");
     fprintf(stderr,"\t\t Use asymmetric XT\n");
+    fprintf(stderr,"\t -e\n");
+    fprintf(stderr,"\t\t Use XT from layer (%d) to get residual.\n",m_XTLayerForRes);
     fprintf(stderr,"\t -S\n");
     fprintf(stderr,"\t\t Select candidate by:\n");
     fprintf(stderr,"\t\t ((O)riginal): the first one given by tracking (global chi2)\n");

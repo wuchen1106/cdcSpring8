@@ -613,7 +613,7 @@ EOF
     #combine $runNo $currunname $nEvtPerRun &
     for testlayer in $layers;
     do
-        hadd t_${runNo}.${currunname}.layer$testlayer.root ${sourcefiles[testlayer]} &
+        hadd -f t_${runNo}.${currunname}.layer$testlayer.root ${sourcefiles[testlayer]} &
         pids="$pids $!"
     done
     wait $pids || { echo "there were errors in combining $runNo $currunname $ilayer" >&2; exit 1; }
