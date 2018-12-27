@@ -141,6 +141,9 @@ int main(int argc, char** argv){
 	TChain * ichain_wp = new TChain("t","t");
 	ichain_wp->Add(Form("info/wire-position.%d.%s.root",m_runNo,m_orirunname.Data()));
     if (!ichain_wp->GetEntries()) {
+        ichain_wp->Add("Input/wire-position.root");
+    }
+    if (!ichain_wp->GetEntries()) {
         printf("Cannot find info/wire-position.%d.%s.root\n",m_runNo,m_orirunname.Data());
         return -1;
     }
@@ -163,9 +166,9 @@ int main(int argc, char** argv){
 		ichain_wp->Add(Form("info/wire-position.%d.%s.i%d.root",m_runNo,m_runname.Data(),iter));
 		if (!ichain_wp->GetEntries()) {
             printf("Cannot find info/wire-position.%d.%s.i%d.root, will use original one\n",m_runNo,m_runname.Data(),iter);
-		    ichain_wp->Add(Form("info/wire-position.%d.%s.root",m_runNo,m_orirunname.Data()));
+		    ichain_wp->Add("Input/wire-position.root");
             if (!ichain_wp->GetEntries()) {
-                printf("Cannot find info/wire-position.%d.%s.root\n",m_runNo,m_orirunname.Data());
+                printf("Cannot find Input/wire-position.root\n");
                 return -1;
             }
         }
@@ -187,17 +190,17 @@ int main(int argc, char** argv){
 	// get delta X
 	for (int iter = 0; iter<=m_Niters; iter++){
 		ichain_wp = new TChain("t","t");
-		if (iter==0)
+		if (iter==0){
             ichain_wp->Add(Form("info/wire-position.%d.%s.root",m_runNo,m_orirunname.Data()));
+        }
         else
             ichain_wp->Add(Form("info/wire-position.%d.%s.i%d.root",m_runNo,m_runname.Data(),iter));
-		if (!ichain_wp->GetEntries()) {
-            printf("Cannot find info/wire-position.%d.%s.i%d.root, will use original one\n",m_runNo,m_runname.Data(),iter);
-		    ichain_wp->Add(Form("info/wire-position.%d.%s.root",m_runNo,m_orirunname.Data()));
-            if (!ichain_wp->GetEntries()) {
-                printf("Cannot find info/wire-position.%d.%s.root\n",m_runNo,m_orirunname.Data());
-                return -1;
-            }
+        if (!ichain_wp->GetEntries()) {
+            ichain_wp->Add("Input/wire-position.root");
+        }
+        if (!ichain_wp->GetEntries()) {
+            printf("Cannot find wire position file\n");
+            return -1;
         }
 		ichain_wp->SetBranchAddress("xro",&wp_x);
 		ichain_wp->SetBranchAddress("l",&wp_lid);
@@ -241,129 +244,131 @@ int main(int argc, char** argv){
     TGraph * gr_dxLid = new TGraph();
     TF1    * f_dxLid = new TF1("f_dxLid","pol1",0,NLAY);
     // get chi2, efficiency and Nothers
-	for (int iter = 1; iter<=m_Niters; iter++){
-	    for (int lid = 1; lid<NLAY; lid++){
-            TChain * ichain_ana = new TChain("t","t");
-            ichain_ana->Add(Form("root/tracks/t_%d.%s.i%d.layer%d.root",m_runNo,m_runname.Data(),iter,lid));
-            if (!ichain_ana->GetEntries()){
-                printf("Cannot find root/tracks/t_%d.%s.i%d.layer%d.root\n",m_runNo,m_runname.Data(),iter,lid);
-                continue;
-            }
-            double chi2;
-            int nHitsS;
-            double slx;
-            double inx;
-            double slxmc = 0;
-            double inxmc = 0;
-            double slz;
-            double inz;
-            double slzmc = 0;
-            double inzmc = 0;
-            std::vector<int> *    layerID = 0;
-            std::vector<int> *    wireID = 0;
-            std::vector<int> *    sel = 0;
-            std::vector<double> * driftDmc = 0;
-            std::vector<double> * driftD = 0;
-            std::vector<double> * fitD = 0;
-            ichain_ana->SetBranchAddress("chi20",&chi2);
-            ichain_ana->SetBranchAddress("nHitsS0",&nHitsS);
-            ichain_ana->SetBranchAddress("slz0",&slz);
-            ichain_ana->SetBranchAddress("inz0",&inz);
-            if (m_isMC) ichain_ana->SetBranchAddress("slzmc",&slzmc);
-            if (m_isMC) ichain_ana->SetBranchAddress("inzmc",&inzmc);
-            ichain_ana->SetBranchAddress("slx0",&slx);
-            ichain_ana->SetBranchAddress("inx0",&inx);
-            if (m_isMC) ichain_ana->SetBranchAddress("slxmc",&slxmc);
-            if (m_isMC) ichain_ana->SetBranchAddress("inxmc",&inxmc);
-            ichain_ana->SetBranchAddress("layerID",&layerID);
-            ichain_ana->SetBranchAddress("wireID",&wireID);
-            ichain_ana->SetBranchAddress("sel0",&sel);
-            if (m_isMC) ichain_ana->SetBranchAddress("driftDmc",&driftDmc);
-            ichain_ana->SetBranchAddress("driftD0",&driftD);
-            ichain_ana->SetBranchAddress("fitD0",&fitD);
-            int nEntries = ichain_ana->GetEntries();
-            printf("Loading file root/tracks/t_%d.%s.i%d.layer%d.root, %d Entries\n",m_runNo,m_runname.Data(),iter,lid,nEntries);
-            for (int iEntry = 0; iEntry<nEntries; iEntry++){
-                ichain_ana->GetEntry(iEntry);
-                int nHits = layerID->size();
-                if (iEntry%10000==0){
-                    printf("%d, %d hits, chi2 = %.3e, nHitsS = %d, slz = %.3e\n",iEntry,nHitsS,chi2,nHitsS,slz);
-                    fflush(stdout);
+    if (m_isMC){
+        for (int iter = 1; iter<=m_Niters; iter++){
+            for (int lid = 1; lid<NLAY; lid++){
+                TChain * ichain_ana = new TChain("t","t");
+                ichain_ana->Add(Form("root/tracks/t_%d.%s.i%d.layer%d.root",m_runNo,m_runname.Data(),iter,lid));
+                if (!ichain_ana->GetEntries()){
+                    printf("Cannot find root/tracks/t_%d.%s.i%d.layer%d.root\n",m_runNo,m_runname.Data(),iter,lid);
+                    continue;
                 }
-                if (chi2>0.5||nHitsS<6) continue;
-                if (m_geoSetup==0&&fabs(slz)>0.15) continue;
-                if (m_geoSetup==1&&fabs(inz)>24) continue;
-                double minres = 1e9;
-                int has = 0;
-                int theWid = 0;
-                double theDD = 0;
-                double theDDmc = 0;
-                double theFitD = 0;
-                for (int ihit = 0; ihit<nHits; ihit++){
-                    int tlayerID = (*layerID)[ihit];
-                    if (tlayerID!=lid) continue;
-                    int twireID = (*wireID)[ihit];
-                    double tfitD = (*fitD)[ihit];
-                    double tdriftD = (*driftD)[ihit];
-                    double tdriftDmc = 0;
-                    if (m_isMC) tdriftDmc = (*driftDmc)[ihit];
-                    if (fabs(tfitD-tdriftD)<fabs(minres)){ // no cut for test layer!
-                        minres = tfitD-tdriftD;
-                        theWid = twireID;
-                        theDD = tdriftD;
-                        theFitD = tfitD;
-                        theDDmc = tdriftDmc;
-                        has = 1;
+                double chi2;
+                int nHitsS;
+                double slx;
+                double inx;
+                double slxmc = 0;
+                double inxmc = 0;
+                double slz;
+                double inz;
+                double slzmc = 0;
+                double inzmc = 0;
+                std::vector<int> *    layerID = 0;
+                std::vector<int> *    wireID = 0;
+                std::vector<int> *    sel = 0;
+                std::vector<double> * driftDmc = 0;
+                std::vector<double> * driftD = 0;
+                std::vector<double> * fitD = 0;
+                ichain_ana->SetBranchAddress("chi20",&chi2);
+                ichain_ana->SetBranchAddress("nHitsS0",&nHitsS);
+                ichain_ana->SetBranchAddress("slz0",&slz);
+                ichain_ana->SetBranchAddress("inz0",&inz);
+                if (m_isMC) ichain_ana->SetBranchAddress("slzmc",&slzmc);
+                if (m_isMC) ichain_ana->SetBranchAddress("inzmc",&inzmc);
+                ichain_ana->SetBranchAddress("slx0",&slx);
+                ichain_ana->SetBranchAddress("inx0",&inx);
+                if (m_isMC) ichain_ana->SetBranchAddress("slxmc",&slxmc);
+                if (m_isMC) ichain_ana->SetBranchAddress("inxmc",&inxmc);
+                ichain_ana->SetBranchAddress("layerID",&layerID);
+                ichain_ana->SetBranchAddress("wireID",&wireID);
+                ichain_ana->SetBranchAddress("sel0",&sel);
+                if (m_isMC) ichain_ana->SetBranchAddress("driftDmc",&driftDmc);
+                ichain_ana->SetBranchAddress("driftD0",&driftD);
+                ichain_ana->SetBranchAddress("fitD0",&fitD);
+                int nEntries = ichain_ana->GetEntries();
+                printf("Loading file root/tracks/t_%d.%s.i%d.layer%d.root, %d Entries\n",m_runNo,m_runname.Data(),iter,lid,nEntries);
+                for (int iEntry = 0; iEntry<nEntries; iEntry++){
+                    ichain_ana->GetEntry(iEntry);
+                    int nHits = layerID->size();
+                    if (iEntry%10000==0){
+                        printf("%d, %d hits, chi2 = %.3e, nHitsS = %d, slz = %.3e\n",iEntry,nHitsS,chi2,nHitsS,slz);
+                        fflush(stdout);
                     }
+                    if (chi2>0.5||nHitsS<6) continue;
+                    if (m_geoSetup==0&&fabs(slz)>0.15) continue;
+                    if (m_geoSetup==1&&fabs(inz)>24) continue;
+                    double minres = 1e9;
+                    int has = 0;
+                    int theWid = 0;
+                    double theDD = 0;
+                    double theDDmc = 0;
+                    double theFitD = 0;
+                    for (int ihit = 0; ihit<nHits; ihit++){
+                        int tlayerID = (*layerID)[ihit];
+                        if (tlayerID!=lid) continue;
+                        int twireID = (*wireID)[ihit];
+                        double tfitD = (*fitD)[ihit];
+                        double tdriftD = (*driftD)[ihit];
+                        double tdriftDmc = 0;
+                        if (m_isMC) tdriftDmc = (*driftDmc)[ihit];
+                        if (fabs(tfitD-tdriftD)<fabs(minres)){ // no cut for test layer!
+                            minres = tfitD-tdriftD;
+                            theWid = twireID;
+                            theDD = tdriftD;
+                            theFitD = tfitD;
+                            theDDmc = tdriftDmc;
+                            has = 1;
+                        }
+                    }
+                    if (has==0||theWid<0||theWid>=NCEL) continue;
+                    if (fabs(theDD)<2||fabs(theDD)>6) continue;
+                    if (fabs(theFitD-theDD)>1) continue;
+                    double tdeltaXothers = 0;
+                    int nHitsUsed = 0;
+                    for (int ihit = 0; ihit<nHits; ihit++){
+                        if (!(*sel)[ihit]) continue;
+                        int tlid = (*layerID)[ihit];
+                        int twid = (*wireID)[ihit];
+                        if (tlid<0||tlid>=NLAY||twid<0||twid>=NCEL) continue;
+                        iter_Nothers[iter][lid][theWid][tlid][twid]++;
+                        gr_dxLid->SetPoint(nHitsUsed,tlid,iter_deltaX[iter-1][tlid][twid]);
+                        nHitsUsed++;
+                    }
+                    gr_dxLid->Set(nHitsUsed);
+                    gr_dxLid->Fit("f_dxLid","QN0G","");
+                    tdeltaXothers+=f_dxLid->Eval(lid);
+                    iter_deltaXmc[iter][lid][theWid]+=theDD-theDDmc;
+                    iter_deltaXfit[iter][lid][theWid]+=theFitD-(theDDmc-iter_deltaX[iter-1][lid][theWid])-tdeltaXothers;
+                    iter_deltaXothers[iter-1][lid][theWid]+=tdeltaXothers;
+                    iter_chi2[iter][lid][theWid]+=chi2;
+                    iter_slx[iter][lid][theWid]+=slx;
+                    iter_inx[iter][lid][theWid]+=inx;
+                    iter_slxoff[iter][lid][theWid]+=f_dxLid->GetParameter(1);
+                    iter_slxmc[iter][lid][theWid]+=slxmc;
+                    iter_inxmc[iter][lid][theWid]+=inxmc;
+                    iter_slz[iter][lid][theWid]+=slz;
+                    iter_inz[iter][lid][theWid]+=inz;
+                    iter_slzmc[iter][lid][theWid]+=slzmc;
+                    iter_inzmc[iter][lid][theWid]+=inzmc;
+                    iter_nGood[iter][lid][theWid]++;
                 }
-                if (has==0||theWid<0||theWid>=NCEL) continue;
-                if (fabs(theDD)<2||fabs(theDD)>6) continue;
-                if (fabs(theFitD-theDD)>1) continue;
-                double tdeltaXothers = 0;
-                int nHitsUsed = 0;
-                for (int ihit = 0; ihit<nHits; ihit++){
-                    if (!(*sel)[ihit]) continue;
-                    int tlid = (*layerID)[ihit];
-                    int twid = (*wireID)[ihit];
-                    if (tlid<0||tlid>=NLAY||twid<0||twid>=NCEL) continue;
-                    iter_Nothers[iter][lid][theWid][tlid][twid]++;
-                    gr_dxLid->SetPoint(nHitsUsed,tlid,iter_deltaX[iter-1][tlid][twid]);
-                    nHitsUsed++;
+                for (int wid = 0; wid<NCEL; wid++){
+                    iter_slx[iter][lid][wid]/=iter_nGood[iter][lid][wid];
+                    iter_inx[iter][lid][wid]/=iter_nGood[iter][lid][wid];
+                    iter_slxoff[iter][lid][wid]/=iter_nGood[iter][lid][wid];
+                    iter_slxmc[iter][lid][wid]/=iter_nGood[iter][lid][wid];
+                    iter_inxmc[iter][lid][wid]/=iter_nGood[iter][lid][wid];
+                    iter_slz[iter][lid][wid]/=iter_nGood[iter][lid][wid];
+                    iter_inz[iter][lid][wid]/=iter_nGood[iter][lid][wid];
+                    iter_slzmc[iter][lid][wid]/=iter_nGood[iter][lid][wid];
+                    iter_inzmc[iter][lid][wid]/=iter_nGood[iter][lid][wid];
+                    iter_chi2[iter][lid][wid]/=iter_nGood[iter][lid][wid];
+                    iter_deltaXothers[iter-1][lid][wid]/=iter_nGood[iter][lid][wid];
+                    iter_deltaXmc[iter][lid][wid]/=iter_nGood[iter][lid][wid];
+                    iter_deltaXfit[iter][lid][wid]/=iter_nGood[iter][lid][wid];
                 }
-                gr_dxLid->Set(nHitsUsed);
-                gr_dxLid->Fit("f_dxLid","QN0G","");
-                tdeltaXothers+=f_dxLid->Eval(lid);
-                iter_deltaXmc[iter][lid][theWid]+=theDD-theDDmc;
-                iter_deltaXfit[iter][lid][theWid]+=theFitD-(theDDmc-iter_deltaX[iter-1][lid][theWid])-tdeltaXothers;
-                iter_deltaXothers[iter-1][lid][theWid]+=tdeltaXothers;
-                iter_chi2[iter][lid][theWid]+=chi2;
-                iter_slx[iter][lid][theWid]+=slx;
-                iter_inx[iter][lid][theWid]+=inx;
-                iter_slxoff[iter][lid][theWid]+=f_dxLid->GetParameter(1);
-                iter_slxmc[iter][lid][theWid]+=slxmc;
-                iter_inxmc[iter][lid][theWid]+=inxmc;
-                iter_slz[iter][lid][theWid]+=slz;
-                iter_inz[iter][lid][theWid]+=inz;
-                iter_slzmc[iter][lid][theWid]+=slzmc;
-                iter_inzmc[iter][lid][theWid]+=inzmc;
-                iter_nGood[iter][lid][theWid]++;
+                delete ichain_ana;
             }
-            for (int wid = 0; wid<NCEL; wid++){
-                iter_slx[iter][lid][wid]/=iter_nGood[iter][lid][wid];
-                iter_inx[iter][lid][wid]/=iter_nGood[iter][lid][wid];
-                iter_slxoff[iter][lid][wid]/=iter_nGood[iter][lid][wid];
-                iter_slxmc[iter][lid][wid]/=iter_nGood[iter][lid][wid];
-                iter_inxmc[iter][lid][wid]/=iter_nGood[iter][lid][wid];
-                iter_slz[iter][lid][wid]/=iter_nGood[iter][lid][wid];
-                iter_inz[iter][lid][wid]/=iter_nGood[iter][lid][wid];
-                iter_slzmc[iter][lid][wid]/=iter_nGood[iter][lid][wid];
-                iter_inzmc[iter][lid][wid]/=iter_nGood[iter][lid][wid];
-                iter_chi2[iter][lid][wid]/=iter_nGood[iter][lid][wid];
-                iter_deltaXothers[iter-1][lid][wid]/=iter_nGood[iter][lid][wid];
-                iter_deltaXmc[iter][lid][wid]/=iter_nGood[iter][lid][wid];
-                iter_deltaXfit[iter][lid][wid]/=iter_nGood[iter][lid][wid];
-            }
-            delete ichain_ana;
         }
     }
 
