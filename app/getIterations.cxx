@@ -2,9 +2,13 @@
 #include "TChain.h"
 #include "TGraph.h"
 #include "TF1.h"
+#include "TH2D.h"
+#include "TFile.h"
+#include "TCanvas.h"
 #include <vector>
 #include <math.h>
 
+#include "Log.hxx"
 #include "header.hxx"
 
 void print_usage(char * prog_name);
@@ -111,6 +115,9 @@ int main(int argc, char** argv){
         }
     }
 
+    TString HOME=getenv("CDCS8WORKING_DIR");
+    TString filename = "";
+
 	// get offsets from MC
     for (int lid = 0; lid<NLAY; lid++){
         for (int wid = 0; wid<NLAY; wid++){
@@ -119,9 +126,10 @@ int main(int argc, char** argv){
 	}
 	if (m_isMC){
 		TChain * ichain_off = new TChain("t","t");
-		ichain_off->Add(Form("Input/wire-offset.%d.root",m_runNo));
+		filename = HOME+Form("Input/wire-offset.%d.root",m_runNo);
+		ichain_off->Add(filename);
 		if (!ichain_off->GetEntries()) {
-		    printf("Cannot find Input/wire-offset.%d.root\n",m_runNo);
+            MyError(Form("Cannot find \"%.s\"!\n",filename.Data()));
 		    return -1;
         }
 		double off_delta;
@@ -139,12 +147,10 @@ int main(int argc, char** argv){
 
 	// get wire positions
 	TChain * ichain_wp = new TChain("t","t");
-	ichain_wp->Add(Form("info/wire-position.%d.%s.root",m_runNo,m_orirunname.Data()));
+    filename = HOME+"Input/wire-position.root";
+    ichain_wp->Add(filename);
     if (!ichain_wp->GetEntries()) {
-        ichain_wp->Add("Input/wire-position.root");
-    }
-    if (!ichain_wp->GetEntries()) {
-        printf("Cannot find info/wire-position.%d.%s.root\n",m_runNo,m_orirunname.Data());
+        MyError(Form("Cannot find \"%.s\"!\n",filename.Data()));
         return -1;
     }
 	double wp_x;
@@ -163,25 +169,21 @@ int main(int argc, char** argv){
 	// check which wire is changed
 	for (int iter = 1; iter<=m_Niters; iter++){
 		ichain_wp = new TChain("t","t");
-		ichain_wp->Add(Form("info/wire-position.%d.%s.i%d.root",m_runNo,m_runname.Data(),iter));
+        filename = HOME+Form("info/offset.%d.%s.i%d.root",m_runNo,m_runname.Data(),iter);
+		ichain_wp->Add(filename);
 		if (!ichain_wp->GetEntries()) {
-            printf("Cannot find info/wire-position.%d.%s.i%d.root, will use original one\n",m_runNo,m_runname.Data(),iter);
-		    ichain_wp->Add("Input/wire-position.root");
-            if (!ichain_wp->GetEntries()) {
-                printf("Cannot find Input/wire-position.root\n");
-                return -1;
-            }
+            MyError(Form("Cannot find \"%.s\"!\n",filename.Data()));
+            return -1;
         }
-		ichain_wp->SetBranchAddress("xro",&wp_x);
+        double off_adjust;
+		ichain_wp->SetBranchAddress("adjust",&off_adjust);
 		ichain_wp->SetBranchAddress("l",&wp_lid);
 		ichain_wp->SetBranchAddress("w",&wp_wid);
 		for (int i = 0; i<ichain_wp->GetEntries(); i++){
 			ichain_wp->GetEntry(i);
             if (wp_lid<0||wp_lid>=NLAY||wp_wid<0||wp_wid>=NCEL) continue;
-			printf("iter %d, [%d,%d], %.6e-%.6e=%.6e==0?%d\n",iter,wp_lid,wp_wid,wp_x,x[wp_lid][wp_wid],wp_x-x[wp_lid][wp_wid],wp_x-x[wp_lid][wp_wid]==0);
-			if (wp_x-x[wp_lid][wp_wid]&&!changed[wp_lid][wp_wid]){
+			if (off_adjust){
 				changed[wp_lid][wp_wid] = true;
-				printf(" check wire [%d,%d]\n",wp_lid,wp_wid);
 			}
 		}
         delete ichain_wp;
@@ -190,54 +192,26 @@ int main(int argc, char** argv){
 	// get delta X
 	for (int iter = 0; iter<=m_Niters; iter++){
 		ichain_wp = new TChain("t","t");
-		if (iter==0){
-            ichain_wp->Add(Form("info/wire-position.%d.%s.root",m_runNo,m_orirunname.Data()));
-        }
-        else
-            ichain_wp->Add(Form("info/wire-position.%d.%s.i%d.root",m_runNo,m_runname.Data(),iter));
+        filename = HOME+Form("/info/offset.%d.%s.i%d.root",m_runNo,m_runname.Data(),iter);
+		ichain_wp->Add(filename);
         if (!ichain_wp->GetEntries()) {
-            ichain_wp->Add("Input/wire-position.root");
+            continue;
         }
-        if (!ichain_wp->GetEntries()) {
-            printf("Cannot find wire position file\n");
-            return -1;
-        }
-		ichain_wp->SetBranchAddress("xro",&wp_x);
+        double off_adjust;
+        double off_d;
+		ichain_wp->SetBranchAddress("d",&off_d);
+		ichain_wp->SetBranchAddress("adjust",&off_adjust);
 		ichain_wp->SetBranchAddress("l",&wp_lid);
 		ichain_wp->SetBranchAddress("w",&wp_wid);
 		for (int i = 0; i<ichain_wp->GetEntries(); i++){
 			ichain_wp->GetEntry(i);
             if (wp_lid<0||wp_lid>=NLAY||wp_wid<0||wp_wid>=NCEL) continue;
 			if (changed[wp_lid][wp_wid]){
-				iter_deltaX[iter][wp_lid][wp_wid] = wp_x-x[wp_lid][wp_wid]-off[wp_lid][wp_wid];
-				printf("iter_deltaX[%d][%d][%d] = %.7e-%.7e-%.3e = %.3e\n",iter,wp_lid,wp_wid,wp_x,x[wp_lid][wp_wid],off[wp_lid][wp_wid],iter_deltaX[iter][wp_lid][wp_wid]);
+				iter_offset[iter][wp_lid][wp_wid] = off_d;
+				iter_deltaX[iter][wp_lid][wp_wid] = off_adjust;
 			}
 		}
         delete ichain_wp;
-	}
-
-	// get offset
-	for (int iter = 1; iter<=m_Niters; iter++){
-		TChain * ichain_off = new TChain("t","t");
-		ichain_off->Add(Form("info/offset.%d.%s.i%d.root",m_runNo,m_runname.Data(),iter));
-		if (!ichain_off->GetEntries()){
-		    printf("Cannot find info/offset.%d.%s.i%d.root, will assume 0\n",m_runNo,m_runname.Data(),iter);
-		    continue;
-		}
-		double off_d;
-		int off_lid;
-		int off_wid;
-		ichain_off->SetBranchAddress("d",&off_d);
-		ichain_off->SetBranchAddress("lid",&off_lid);
-		ichain_off->SetBranchAddress("wid",&off_wid);
-		for (int i = 0; i<ichain_off->GetEntries(); i++){
-			ichain_off->GetEntry(i);
-            if (off_lid<0||off_lid>=NLAY||off_wid<0||off_wid>=NCEL) continue;
-			if (changed[off_lid][off_wid]){
-				iter_offset[iter][off_lid][off_wid]= off_d;
-			}
-		}
-        delete ichain_off;
 	}
 
     // prepare graph and function to fit deltaX:layerID
@@ -372,45 +346,104 @@ int main(int argc, char** argv){
         }
     }
 
-    // print out the result
-    printf("    iter/I lid/I wid/I dX dXo dXmc dXfit offset chi2 slx inx slxoff slxmc inxmc slz inz slzmc inzmc n\n");
+    // Output
+    TFile * ofile = new TFile(HOME+Form("/info/iter.%d.%s.root",m_runNo,m_runname.Data()));
+
+    // get histograms
+    TH2D * hOffsets[NITERSMAX] = {0};
+    TH2D * hAdjusts[NITERSMAX] = {0};
+    for (int iter = 1; iter<=m_Niters; iter++){
+        TCanvas * canv = new TCanvas(Form("Iter%d",iter),"canv",1024,800);
+        canv->Divide(2,1);
+        hOffsets[iter] = new TH2D(Form("hOffsets%d",iter),"Adjustments",11,-0.5,10.5,8,0.5,8.5);
+        hAdjusts[iter] = new TH2D(Form("hAdjusts%d",iter),"Adjustments",11,-0.5,10.5,8,0.5,8.5);
+        for (int lid = 0; lid<NLAY; lid++){
+            for (int wid = 0; wid<NCEL; wid++){
+                hOffsets[iter]->Fill(wid,lid,iter_offset[iter][lid][wid]);
+                hAdjusts[iter]->Fill(wid,lid,iter_deltaX[iter][lid][wid]);
+            }
+        }
+        canv->cd(1);
+        hOffsets[iter]->Draw("COLZTEXT");
+        canv->cd(2);
+        hAdjusts[iter]->Draw("COLZTEXT");
+        canv->SaveAs(Form("Wire_%d.%s.iter%d.png",m_runNo,m_runname.Data(),iter));
+        hOffsets[iter]->Write();
+        hAdjusts[iter]->Write();
+    }
+
+    int    o_lid;
+    int    o_wid;
+    double o_deltaX;
+    double o_deltaXmc;
+    double o_deltaXfit;
+    double o_deltaXothers;
+    double o_offset;
+    double o_chi2;
+    double o_slx;
+    double o_inx;
+    double o_slxoff;
+    double o_slxmc;
+    double o_slz;
+    double o_inz;
+    double o_slzmc;
+    double o_inzmc;
+    int    o_nGood;
+    TTree * otree = new TTree("t","t");
+    otree->Branch("lid",&o_lid);
+    otree->Branch("wid",&o_wid);
+    otree->Branch("deltaX",&o_deltaX);
+    otree->Branch("deltaXmc",&o_deltaXmc);
+    otree->Branch("deltaXfit",&o_deltaXfit);
+    otree->Branch("deltaXothers",&o_deltaXothers);
+    otree->Branch("offset",&o_offset);
+    otree->Branch("chi2",&o_chi2);
+    otree->Branch("slx",&o_slx);
+    otree->Branch("inx",&o_inx);
+    otree->Branch("slxoff",&o_slxoff);
+    otree->Branch("slxmc",&o_slxmc);
+    otree->Branch("slz",&o_slz);
+    otree->Branch("inz",&o_inz);
+    otree->Branch("slzmc",&o_slzmc);
+    otree->Branch("inzmc",&o_inzmc);
+    otree->Branch("nGood",&o_nGood);
     for (int lid = 0; lid<NLAY; lid++){
         for (int wid = 0; wid<NCEL; wid++){
             if (!changed[lid][wid]) continue;
-            printf("[%d,%d]:\n",lid,wid);
             for (int iter = 1; iter<=m_Niters; iter++){
-                printf("  =>%d %d %d %.5e %.5e %.5e %.5e %.5e %.5e %.5e %.5e %.5e %.5e %.5e %.5e %.5e %.5e %.5e %d\n",
-                        iter,
-                        lid,wid,
-                        iter_deltaX[iter-1][lid][wid],
-                        iter_deltaXothers[iter-1][lid][wid],
-                        iter_deltaXmc[iter][lid][wid],
-                        iter_deltaXfit[iter][lid][wid],
-                        iter_offset[iter][lid][wid],
-                        iter_chi2[iter][lid][wid],
-                        iter_slx[iter][lid][wid],
-                        iter_inx[iter][lid][wid],
-                        iter_slxoff[iter][lid][wid],
-                        iter_slxmc[iter][lid][wid],
-                        iter_inxmc[iter][lid][wid],
-                        iter_slz[iter][lid][wid],
-                        iter_inz[iter][lid][wid],
-                        iter_slzmc[iter][lid][wid],
-                        iter_inzmc[iter][lid][wid],
-                        iter_nGood[iter][lid][wid]
-                        );
+                 o_lid = lid;
+                 o_wid = wid;
+                 o_deltaX = iter_deltaX[iter][lid][wid];
+                 o_deltaXmc = iter_deltaXmc[iter][lid][wid];
+                 o_deltaXfit = iter_deltaXfit[iter][lid][wid];
+                 o_deltaXfit = iter_deltaXfit[iter][lid][wid];
+                 o_offset = iter_offset[iter][lid][wid];
+                 o_chi2 = iter_chi2[iter][lid][wid];
+                 o_slx = iter_slx[iter][lid][wid];
+                 o_inx = iter_inx[iter][lid][wid];
+                 o_slxoff = iter_slxoff[iter][lid][wid];
+                 o_slxmc = iter_slxmc[iter][lid][wid];
+                 o_slz = iter_slz[iter][lid][wid];
+                 o_inz = iter_inz[iter][lid][wid];
+                 o_slzmc = iter_slzmc[iter][lid][wid];
+                 o_inzmc = iter_inzmc[iter][lid][wid];
+                 o_nGood = iter_nGood[iter][lid][wid];
+                 otree->Fill();
+                /*
                 double deltaXothers = 0;
                 for (int ljd = 0; ljd<NLAY; ljd++){
                     for (int wjd = 0; wjd<NCEL; wjd++){
                         int nEntries = iter_Nothers[iter][lid][wid][ljd][wjd];
                         deltaXothers += iter_deltaX[iter-1][ljd][wjd]/nEntries;
                         if (!nEntries) continue;
-                        printf("            %d,%d: %d entries, deltaX = %.3e\n",ljd,wjd,nEntries,iter_deltaX[iter-1][ljd][wjd]);
                     }
                 }
+                */
             }
         }
     }
+    otree->Write();
+    ofile->Close();
 
     return 0;
 }
