@@ -57,7 +57,9 @@ int     map_bid[NLAY][NCEL];
 double  map_theta[NLAY][NCEL];
 int     map_lid[NBRD][NCHS];
 int     map_wid[NBRD][NCHS];
-// mcp for cross points
+// map ofr offset
+double  map_adjust[NLAY][NCEL];
+// map for cross points
 double mcp_xc[NZXP][NCEL][NCEL]; // z-x planes corresponding to the layerID of the lower layer counting from 1 
 double mcp_zc[NZXP][NCEL][NCEL]; // z-x planes corresponding to the layerID of the lower layer counting from 1 
 // for resolution
@@ -205,7 +207,6 @@ MyProcessManager * pMyProcessManager;
 TF1 * f_left[NLAY+2];
 TF1 * f_right[NLAY+2];
 // for error function
-TF1 * funcErr;
 TGraph * gr_error;
 
 int main(int argc, char** argv){
@@ -427,25 +428,31 @@ int main(int argc, char** argv){
     }
     MyNamedDebug("Memory","Memory size: @"<<__LINE__<<": "<<pMyProcessManager->GetMemorySize());
 
+    TString filename = "";
     //=================================================Get related info========================================================
     // get run info
-    TFile * if_run = new TFile(HOME+"/Input/run-info.root");
-    TTree * t_run = (TTree*) if_run->Get("t");
     int i_runNo, gasID, runGr, HV, THR;
     char runDu[128];
     double t00, t01, aacut, sumcut;
-    t_run->SetBranchAddress("run_number",&i_runNo);
-    t_run->SetBranchAddress("gas_mixture_id",&gasID);
-    t_run->SetBranchAddress("hv_ch0",&HV);
-    t_run->SetBranchAddress("recbe_th_input_bd0",&THR);
-    t_run->SetBranchAddress("duration",&runDu);
-    t_run->SetBranchAddress("run_grade",&runGr);
-    t_run->SetBranchAddress("t00",&t00);
-    t_run->SetBranchAddress("t01",&t01);
-    t_run->SetBranchAddress("aa",&aacut);
-    t_run->SetBranchAddress("sum",&sumcut);
-    for(int i = 0; i<t_run->GetEntries(); i++){
-        t_run->GetEntry(i);
+    filename = HOME+"/Input/run-info.root";
+    TChain * iChain_run = new TChain("t");
+    iChain_run->Add(filename);
+    if (!iChain_run->GetEntries()){
+        MyError(Form("Cannot find \"%.s\"!\n",filename.Data()));
+        return 1;
+    }
+    iChain_run->SetBranchAddress("run_number",&i_runNo);
+    iChain_run->SetBranchAddress("gas_mixture_id",&gasID);
+    iChain_run->SetBranchAddress("hv_ch0",&HV);
+    iChain_run->SetBranchAddress("recbe_th_input_bd0",&THR);
+    iChain_run->SetBranchAddress("duration",&runDu);
+    iChain_run->SetBranchAddress("run_grade",&runGr);
+    iChain_run->SetBranchAddress("t00",&t00);
+    iChain_run->SetBranchAddress("t01",&t01);
+    iChain_run->SetBranchAddress("aa",&aacut);
+    iChain_run->SetBranchAddress("sum",&sumcut);
+    for(int i = 0; i<iChain_run->GetEntries(); i++){
+        iChain_run->GetEntry(i);
         if (i_runNo == m_runNo) break;
     }
     int npair_per_cm = 60;
@@ -509,9 +516,6 @@ int main(int argc, char** argv){
     printf("beamInzMax  = %.3e\n",beamInzMax);
     printf("beamInxMax  = %.3e\n",beamInxMax);
 
-	//===================Get error============================
-	funcErr = new TF1("funcErr","0.346904-0.221775*x+0.080226*x*x-0.0128037*x*x*x+0.000755738*x*x*x*x",0,10);
-
     //===================Prepare Maps============================
     for(int lid = 0; lid<NLAY; lid++){
         for (int wid = 0; wid<NCEL; wid++){
@@ -523,6 +527,7 @@ int main(int argc, char** argv){
             map_z[lid][wid][1] = 0;
         	map_ch[lid][wid] = -1;
         	map_bid[lid][wid] = -1;
+        	map_adjust[lid][wid] = 0;
             if (lid <NZXP){ // z-x planes corresponding to the layerID of the lower layer counting from 1 
                 for (int wjd = 0; wjd<NCEL; wjd++){
                     mcp_xc[lid][wid][wjd] = 999;
@@ -532,11 +537,34 @@ int main(int argc, char** argv){
         }
     }
 
+    //===================get old wire map adjustment============================
+    filename = Form("%s/info/offset.%d.%s.root",HOME.Data(),m_runNo,m_prerunname.Data());
+    TChain * iChain_offset = new TChain("t");
+    iChain_offset->Add(filename);
+    if (iChain_offset->GetEntries()){
+        double off_adjustment = 0;
+        int off_lid = 0;
+        int off_wid = 0;
+        iChain_offset->SetBranchAddress("adjust",&off_adjustment);
+        iChain_offset->SetBranchAddress("lid",&off_lid);
+        iChain_offset->SetBranchAddress("wid",&off_wid);
+        for (int iEntry = 0; iEntry<iChain_offset->GetEntries(); iEntry++){
+            iChain_offset->GetEntry(iEntry);
+            map_adjust[off_lid][off_wid] = off_adjustment;
+        }
+    }
+    else{
+        MyWarn(Form("Cannot find \"%.s\"! Will assume 0 adjustment to default wire position\n",filename.Data()));
+    }
+
     //===================Get Wire Position============================
-    TFile * TFile_wirepos = new TFile(Form("%s/info/wire-position.%d.%s.root",HOME.Data(),m_runNo,m_prerunname.Data()));
-    if (!TFile_wirepos||TFile_wirepos->IsZombie())
-        TFile_wirepos = new TFile(HOME+"/Input/wire-position.root");
-    TTree * TTree_wirepos = (TTree*) TFile_wirepos->Get("t");
+    filename = HOME+"/Input/wire-position.root";
+    TChain * iChain_wirepos = new TChain("t");
+    iChain_wirepos->Add(filename);
+    if (!iChain_wirepos->GetEntries()){
+        MyError(Form("Cannot find \"%.s\"!\n",filename.Data()));
+        return 1;
+    }
     int     wp_bid;
     int     wp_ch;
     int     wp_wid;
@@ -545,21 +573,21 @@ int main(int argc, char** argv){
     double  wp_yro;
     double  wp_xhv;
     double  wp_yhv;
-    TTree_wirepos->SetBranchAddress("b",&wp_bid);
-    TTree_wirepos->SetBranchAddress("ch",&wp_ch);
-    TTree_wirepos->SetBranchAddress("l",&wp_lid);
-    TTree_wirepos->SetBranchAddress("w",&wp_wid);
-    TTree_wirepos->SetBranchAddress("xhv",&wp_xhv);
-    TTree_wirepos->SetBranchAddress("yhv",&wp_yhv);
-    TTree_wirepos->SetBranchAddress("xro",&wp_xro);
-    TTree_wirepos->SetBranchAddress("yro",&wp_yro);
-    for (int i = 0; i<TTree_wirepos->GetEntries(); i++){
-        TTree_wirepos->GetEntry(i);
+    iChain_wirepos->SetBranchAddress("b",&wp_bid);
+    iChain_wirepos->SetBranchAddress("ch",&wp_ch);
+    iChain_wirepos->SetBranchAddress("l",&wp_lid);
+    iChain_wirepos->SetBranchAddress("w",&wp_wid);
+    iChain_wirepos->SetBranchAddress("xhv",&wp_xhv);
+    iChain_wirepos->SetBranchAddress("yhv",&wp_yhv);
+    iChain_wirepos->SetBranchAddress("xro",&wp_xro);
+    iChain_wirepos->SetBranchAddress("yro",&wp_yro);
+    for (int i = 0; i<iChain_wirepos->GetEntries(); i++){
+        iChain_wirepos->GetEntry(i);
         if (wp_lid>=0&&wp_lid<NLAY&&wp_wid>=0&&wp_wid<NCEL){
-            map_x[wp_lid][wp_wid][0] = wp_xhv;
+            map_x[wp_lid][wp_wid][0] = wp_xhv+map_adjust[wp_lid][wp_wid];
             map_y[wp_lid][wp_wid][0] = wp_yhv;
             map_z[wp_lid][wp_wid][0] = -chamberHL;
-            map_x[wp_lid][wp_wid][1] = wp_xro;
+            map_x[wp_lid][wp_wid][1] = wp_xro+map_adjust[wp_lid][wp_wid];
             map_y[wp_lid][wp_wid][1] = wp_yro;
             map_z[wp_lid][wp_wid][1] = chamberHL;
             map_ch[wp_lid][wp_wid] = wp_ch;
@@ -578,32 +606,35 @@ int main(int argc, char** argv){
             fprintf(stderr,"WARNING: Entry %d in wiremap file, bid = %d ch = %d out of range (%d,%d)!\n",i,wp_bid,wp_ch,NBRD,NCHS);
         }
     }
-    TFile_wirepos->Close();
 
     //==================Get Crosspoints==========================
-    TFile * TFile_crosspoint = new TFile(HOME+"/Input/crosspoint.root");
-    TTree * TTree_crosspoint = (TTree*) TFile_crosspoint->Get("t");
+    filename = HOME+"/Input/crosspoint.root";
+    TChain * iChain_crosspoint = new TChain("t");
+    iChain_crosspoint->Add(filename);
+    if (!iChain_crosspoint->GetEntries()){
+        MyError(Form("Cannot find \"%.s\"!\n",filename.Data()));
+        return 1;
+    }
     int     cp_l1;
     int     cp_l2;
     int     cp_w1;
     int     cp_w2;
     double  cp_zc;
     double  cp_xc;
-    TTree_crosspoint->SetBranchAddress("l1",&cp_l1);
-    TTree_crosspoint->SetBranchAddress("l2",&cp_l2);
-    TTree_crosspoint->SetBranchAddress("w1",&cp_w1);
-    TTree_crosspoint->SetBranchAddress("w2",&cp_w2);
-    TTree_crosspoint->SetBranchAddress("z",&cp_zc);
-    TTree_crosspoint->SetBranchAddress("x",&cp_xc);
-    int nEntries_crosspoint = TTree_crosspoint->GetEntries();
+    iChain_crosspoint->SetBranchAddress("l1",&cp_l1);
+    iChain_crosspoint->SetBranchAddress("l2",&cp_l2);
+    iChain_crosspoint->SetBranchAddress("w1",&cp_w1);
+    iChain_crosspoint->SetBranchAddress("w2",&cp_w2);
+    iChain_crosspoint->SetBranchAddress("z",&cp_zc);
+    iChain_crosspoint->SetBranchAddress("x",&cp_xc);
+    int nEntries_crosspoint = iChain_crosspoint->GetEntries();
     for (int iEntry = 0; iEntry<nEntries_crosspoint; iEntry++){
-        TTree_crosspoint->GetEntry(iEntry);
+        iChain_crosspoint->GetEntry(iEntry);
         if (cp_l1>=0&&cp_l1<NLAY&&cp_w1>=0&&cp_w1<NCEL&&cp_l2>=0&&cp_l2<NLAY&&cp_w2>=0&&cp_w2<NCEL){
             mcp_xc[cp_l1][cp_w1][cp_w2] = cp_xc;
             mcp_zc[cp_l1][cp_w1][cp_w2] = cp_zc;
         }
     }
-    TFile_crosspoint->Close();
 
     //===================Prepare XT curves==============================
     printf("##############XT##################\n");

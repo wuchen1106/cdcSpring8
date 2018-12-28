@@ -42,6 +42,8 @@ int m_modulo = 10000;
 bool m_memdebug = false;
 int m_saveHists = 0;
 bool m_outputEventTree = false;
+bool m_OneWirePerStep = false;
+bool m_DrawDetails = false;
 int m_defaultLayerID = 4;
 int m_geoSetup = 0; // 0: normal scintillator; 1: finger scintillator
 int m_inputType = 0; // 1 for MC; 0 for data
@@ -87,7 +89,8 @@ TString m_adc2charge = "2.0158464*x";
 // map for wire position
 double  map_x[NLAY][NCEL][2];
 double  map_y[NLAY][NCEL][2];
-double  map_off[NLAY][NCEL];
+double  map_off_new[NLAY][NCEL];
+int     map_nEvents[NLAY][NCEL];
 double  map_slz[NLAY][NCEL]; // for wire calibration cuts
 double  map_inx[NLAY][NCEL]; // for wire calibration cuts
 double  map_inxmc[NLAY][NCEL]; // for wire calibration cuts
@@ -98,6 +101,8 @@ int     map_bid[NLAY][NCEL];
 double  npair_per_cm = 0;
 TF1 * f_left = 0;
 TF1 * f_right = 0;
+// map for wire position adjustment
+double  map_adjust_old[NLAY][NCEL];
 
 //==================About RECBE======================
 TF1 * fADC2ChargeFunction = 0;
@@ -216,7 +221,7 @@ int main(int argc, char** argv){
     std::map<std::string, Log::ErrorPriority> namedDebugLevel;
     std::map<std::string, Log::LogPriority> namedLogLevel;
     int    opt_result;
-    while((opt_result=getopt(argc,argv,"AB:C:D:E:F:GH:L:M:PR:S:TV:WX:a:c:d:e:f:g:i:l:m:n:o:r:s:t:u:v:x:y:z:"))!=-1){
+    while((opt_result=getopt(argc,argv,"AB:C:D:E:F:GH:L:M:OPR:S:TV:WX:Za:c:d:e:f:g:i:l:m:n:o:r:s:t:u:v:x:y:z:"))!=-1){
         switch(opt_result){
             /* INPUTS */
             case 'M':
@@ -257,6 +262,10 @@ int main(int argc, char** argv){
                 m_suffix = optarg;
                 printf("Adding suffix \"%s\"\n",optarg);
                 break;
+            case 'O':
+                m_OneWirePerStep = true;
+                printf("Update only one wire position per step (the one with the largest offset)\n");
+                break;
             case 'W':
                 m_UpdateWireMap = true;
                 printf("Will update wire map\n");
@@ -264,6 +273,10 @@ int main(int argc, char** argv){
             case 'X':
                 m_ExternalXT = optarg;
                 printf("Will not generate new xt file but use \"%s\"\n",optarg);
+                break;
+            case 'Z':
+                m_DrawDetails = true;
+                printf("Will draw detail plots\n");
                 break;
             case 'n':
                 temp_nHitsMax = atoi(optarg);set_nHitsMax = true;
@@ -497,8 +510,10 @@ int main(int argc, char** argv){
     printf("default layer: %d\n",m_defaultLayerID);
     printf("geoSetup:     %s\n",m_geoSetup==0?"normal scintillator":"finger scintillator");
     printf("Use external XT? %s\n",m_ExternalXT==""?"No, generate new one":("Yes"+m_ExternalXT).Data());
+    printf("Draw detailed plots? %s\n",m_DrawDetails?"Yes":"No");
     printf("Update wire map? %s\n",m_UpdateWireMap?"Yes":"No");
     printf("For wire map update, stepSize    = %.3e\n",m_stepSize);
+    printf("For wire map update, scale on each step: %.3e\n",m_scale);
     printf("For wire map update, min delta slz = %.3e\n",m_minDeltaSlz);
     printf("For wire map update, max delta slz = %.3e\n",m_maxDeltaSlz);
     printf("For wire map update, min delta inx = %.3e\n",m_minDeltaInx);
@@ -538,25 +553,31 @@ int main(int argc, char** argv){
     }
     MyNamedDebug("Memory","Memory size: @"<<__LINE__<<": "<<pMyProcessManager->GetMemorySize());
 
+    TString filename = "";
     //=================================================Get related info========================================================
     // get run info
-    TFile * if_run = new TFile(HOME+"/Input/run-info.root");
-    TTree * t_run = (TTree*) if_run->Get("t");
+    filename = HOME+"/Input/run-info.root";
+    TChain * iChain_run = new TChain("t");
+    iChain_run->Add(filename);
+    if (!iChain_run->GetEntries()){
+        MyError(Form("Cannot find \"%.s\"!\n",filename.Data()));
+        return 1;
+    }
     int i_runNo, gasID, runGr, HV, THR;
     char runDu[128];
     double t00, t01, aacut, sumcut;
-    t_run->SetBranchAddress("run_number",&i_runNo);
-    t_run->SetBranchAddress("gas_mixture_id",&gasID);
-    t_run->SetBranchAddress("hv_ch0",&HV);
-    t_run->SetBranchAddress("recbe_th_input_bd0",&THR);
-    t_run->SetBranchAddress("duration",&runDu);
-    t_run->SetBranchAddress("run_grade",&runGr);
-    t_run->SetBranchAddress("t00",&t00);
-    t_run->SetBranchAddress("t01",&t01);
-    t_run->SetBranchAddress("aa",&aacut);
-    t_run->SetBranchAddress("sum",&sumcut);
-    for(int i = 0; i<t_run->GetEntries(); i++){
-        t_run->GetEntry(i);
+    iChain_run->SetBranchAddress("run_number",&i_runNo);
+    iChain_run->SetBranchAddress("gas_mixture_id",&gasID);
+    iChain_run->SetBranchAddress("hv_ch0",&HV);
+    iChain_run->SetBranchAddress("recbe_th_input_bd0",&THR);
+    iChain_run->SetBranchAddress("duration",&runDu);
+    iChain_run->SetBranchAddress("run_grade",&runGr);
+    iChain_run->SetBranchAddress("t00",&t00);
+    iChain_run->SetBranchAddress("t01",&t01);
+    iChain_run->SetBranchAddress("aa",&aacut);
+    iChain_run->SetBranchAddress("sum",&sumcut);
+    for(int i = 0; i<iChain_run->GetEntries(); i++){
+        iChain_run->GetEntry(i);
         if (i_runNo == m_runNo) break;
     }
     npair_per_cm = 60;
@@ -591,7 +612,8 @@ int main(int argc, char** argv){
     for (int lid = 0; lid<NLAY; lid++){
         for (int wid = 0; wid<NCEL; wid++){
             map_has[lid][wid] = false;
-            map_off[lid][wid] = 0;
+            map_off_new[lid][wid] = 0;
+            map_nEvents[lid][wid] = 0;
             map_ch[lid][wid] = -1;
             map_bid[lid][wid] = -1;
             map_slz[lid][wid] = 0;
@@ -614,34 +636,56 @@ int main(int argc, char** argv){
     }
 
     // get slzmc inxmc of each wire
-    TChain * ichain_beam = new TChain("t","t");
-    ichain_beam->Add(Form("%s/Input/beammap.%d.root",HOME.Data(),m_runNo));
-    if (ichain_beam->GetEntries()){
+    filename = Form("%s/Input/beammap.%d.root",HOME.Data(),m_runNo);
+    TChain * iChain_beam = new TChain("t","t");
+    iChain_beam->Add(filename);
+    if (iChain_beam->GetEntries()){
         double beam_inxmc;
         double beam_slzmc;
         int    beam_lid;
         int    beam_wid;
-        ichain_beam->SetBranchAddress("inxmc",&beam_inxmc);
-        ichain_beam->SetBranchAddress("slzmc",&beam_slzmc);
-        ichain_beam->SetBranchAddress("lid",&beam_lid);
-        ichain_beam->SetBranchAddress("wid",&beam_wid);
-        for (int i = 0; i<ichain_beam->GetEntries(); i++){
-            ichain_beam->GetEntry(i);
+        iChain_beam->SetBranchAddress("inxmc",&beam_inxmc);
+        iChain_beam->SetBranchAddress("slzmc",&beam_slzmc);
+        iChain_beam->SetBranchAddress("lid",&beam_lid);
+        iChain_beam->SetBranchAddress("wid",&beam_wid);
+        for (int i = 0; i<iChain_beam->GetEntries(); i++){
+            iChain_beam->GetEntry(i);
             if (beam_lid<0||beam_lid>=NLAY||beam_wid<0||beam_wid>=NCEL) continue;
             map_inxmc[beam_lid][beam_wid] = beam_inxmc;
             map_slzmc[beam_lid][beam_wid] = beam_slzmc;
         }
     }
     else{
-        printf("Cannot find%s/Input/beammap.%d.root, will assume slzmc/inxmc center at 0\n",HOME.Data(),m_runNo);
+        printf("Cannot find \"%s\", will assume slzmc/inxmc center at 0\n",filename.Data());
+    }
+
+    // get old wire map adjustment
+    filename = Form("%s/info/offset.%d.%s.root",HOME.Data(),m_runNo,m_prerunname.Data());
+    TChain * iChain_offset = new TChain("t");
+    iChain_offset->Add(filename);
+    if (iChain_offset->GetEntries()){
+        int off_lid;
+        int off_wid;
+        double off_adjustment;
+        iChain_offset->SetBranchAddress("lid",&off_lid);
+        iChain_offset->SetBranchAddress("wid",&off_wid);
+        iChain_offset->SetBranchAddress("adjust",&off_adjustment);
+        for (int i = 0; i<iChain_offset->GetEntries(); i++){
+            iChain_offset->GetEntry(i);
+            map_adjust_old[off_lid][off_wid] = off_adjustment;
+        }
+    }
+    else{
+        MyWarn(Form("Cannot find \"%.s\"! Will assume 0 adjustment to default wire positions\n",filename.Data()));
     }
 
     // get wire map
-    TChain * TChain_wirepos = new TChain("t","t");
-    TChain_wirepos->Add(Form("%s/info/wire-position.%d.%s.root",HOME.Data(),m_runNo,m_runname.Data()));
-    if (!TChain_wirepos->GetEntries()){
-        fprintf(stderr,"Cannot find %s/info/wire-position.%d.%s.root, using default one\n",HOME.Data(),m_runNo,m_runname.Data());
-        TChain_wirepos->Add(Form("%s/Input/wire-position.root",HOME.Data()));
+    filename = HOME+"/Input/wire-position.root";
+    TChain * iChain_wirepos = new TChain("t");
+    iChain_wirepos->Add(filename);
+    if (!iChain_wirepos->GetEntries()){
+        MyError(Form("Cannot find \"%.s\"!\n",filename.Data()));
+        return 1;
     }
     int     wp_bid;
     int     wp_ch;
@@ -651,20 +695,20 @@ int main(int argc, char** argv){
     double  wp_yro;
     double  wp_xhv;
     double  wp_yhv;
-    TChain_wirepos->SetBranchAddress("b",&wp_bid);
-    TChain_wirepos->SetBranchAddress("ch",&wp_ch);
-    TChain_wirepos->SetBranchAddress("l",&wp_lid);
-    TChain_wirepos->SetBranchAddress("w",&wp_wid);
-    TChain_wirepos->SetBranchAddress("xhv",&wp_xhv);
-    TChain_wirepos->SetBranchAddress("yhv",&wp_yhv);
-    TChain_wirepos->SetBranchAddress("xro",&wp_xro);
-    TChain_wirepos->SetBranchAddress("yro",&wp_yro);
-    for (int i = 0; i<TChain_wirepos->GetEntries(); i++){
-        TChain_wirepos->GetEntry(i);
+    iChain_wirepos->SetBranchAddress("b",&wp_bid);
+    iChain_wirepos->SetBranchAddress("ch",&wp_ch);
+    iChain_wirepos->SetBranchAddress("l",&wp_lid);
+    iChain_wirepos->SetBranchAddress("w",&wp_wid);
+    iChain_wirepos->SetBranchAddress("xhv",&wp_xhv);
+    iChain_wirepos->SetBranchAddress("yhv",&wp_yhv);
+    iChain_wirepos->SetBranchAddress("xro",&wp_xro);
+    iChain_wirepos->SetBranchAddress("yro",&wp_yro);
+    for (int i = 0; i<iChain_wirepos->GetEntries(); i++){
+        iChain_wirepos->GetEntry(i);
         if (wp_lid>=0&&wp_lid<NLAY&&wp_wid>=0&&wp_wid<NCEL){
-            map_x[wp_lid][wp_wid][0] = wp_xhv;
+            map_x[wp_lid][wp_wid][0] = wp_xhv+map_adjust_old[wp_lid][wp_wid];
             map_y[wp_lid][wp_wid][0] = wp_yhv;
-            map_x[wp_lid][wp_wid][1] = wp_xro;
+            map_x[wp_lid][wp_wid][1] = wp_xro+map_adjust_old[wp_lid][wp_wid];
             map_y[wp_lid][wp_wid][1] = wp_yro;
             map_ch[wp_lid][wp_wid] = wp_ch;
             map_bid[wp_lid][wp_wid] = wp_bid;
@@ -792,6 +836,9 @@ int main(int argc, char** argv){
     // Prepare XTAnalyzer
     XTAnalyzer * fXTAnalyzer = new XTAnalyzer(gasID,m_verboseLevel);
     fXTAnalyzer->SetBinning(m_NbinT,m_tmin,m_tmax,m_NbinX,m_xmin,m_xmax);
+    double offset_max = 0;
+    int    offset_max_lid = 0;
+    int    offset_max_wid = 0;
     // Loop in layers
     for (int testLayer = 0; testLayer<NLAY; testLayer++){
         //----------------------------------Set input file--------------------------------------------
@@ -807,7 +854,7 @@ int main(int argc, char** argv){
         SetInputBranchAdress(ichain);
 
         //----------------------------------Get the offset--------------------------------------------
-        MyNamedInfo("Ana","##############The initial loop starts#############");
+        MyNamedInfo("Ana",Form("##############Layer %d: loop to get new offset#############",testLayer));
         // to get the offsets
         for ( int iEntry = 0 ; iEntry<N; iEntry++){
             if (iEntry%10000==0) printf("%d\n",iEntry);
@@ -861,9 +908,15 @@ int main(int argc, char** argv){
         // get offset
         for (int wid = 0; wid<NCEL; wid++){
             if (h_celloff[testLayer][wid]->GetEntries()<100) continue;
-            map_off[testLayer][wid] = h_celloff[testLayer][wid]->GetMean();
+            map_off_new[testLayer][wid] = h_celloff[testLayer][wid]->GetMean();
+            map_nEvents[testLayer][wid] = h_celloff[testLayer][wid]->GetEntries();
             map_slz[testLayer][wid] = h_cellslz[testLayer][wid]->GetMean();
             map_inx[testLayer][wid] = h_cellinx[testLayer][wid]->GetMean();
+            if (m_wireIDWhiteList[wid]&&fabs(map_off_new[testLayer][wid])>fabs(offset_max)){
+                offset_max = map_off_new[testLayer][wid];
+                offset_max_lid = testLayer;
+                offset_max_wid = wid;
+            }
         }
 
         if (m_ExternalXT==""){
@@ -875,7 +928,7 @@ int main(int argc, char** argv){
                 fprintf(stderr,"WARNING: something wrong with initializing XTAnalyzer for layer[%d], will ignore this layer!\n",testLayer);
                 continue;
             }
-            MyNamedInfo("Ana","##############The fisrt loop starts: "<<N<<" entries#############");
+            MyNamedInfo("Ana",Form("##############Layer %d: loop to get new XTs#############",testLayer));
             //for ( int iEntry = (m_iEntryStart?m_iEntryStart:0); iEntry<(m_iEntryStop?m_iEntryStop-1:N); iEntry++){
             for ( int iEntry = 0; iEntry<N; iEntry++){ // better not to skip anything before we get the XT file
                 if (iEntry%m_modulo==0) printf("%d\n",iEntry);
@@ -902,7 +955,7 @@ int main(int argc, char** argv){
                 for (int ihit = 0; ihit<nHits; ihit++){
                     int tlayerID = (*i_layerID)[ihit];
                     int twireID = (*i_wireID)[ihit];
-                    double tfitD = (*i_fitD[theCand])[ihit]-map_off[tlayerID][twireID];
+                    double tfitD = (*i_fitD[theCand])[ihit]-map_off_new[tlayerID][twireID]; // modify the fitD according to new offset
                     double tdriftD = (*i_driftD[theCand])[ihit];
                     double tsum = (*i_sum)[ihit];
                     double taa = (*i_aa)[ihit];
@@ -1070,7 +1123,6 @@ int main(int argc, char** argv){
         o_channelID = new std::vector<int>;
         o_boardID = new std::vector<int>;
 
-        MyNamedInfo("Ana","##############The Second loop starts#############");
         //Prepare histograms, function and counters
         TH1I * h_nHits = new TH1I("hnHits","Number of TDC hits in each event",100,0,100);
         TH1I * h_DOF = new TH1I("hDOF","Number of DOF",5,0,5);
@@ -1142,6 +1194,7 @@ int main(int argc, char** argv){
         int prevTheCand = 0;
         //----------------------------------Start the analysis to get residual and etc--------------------------------------------
         double closestchi2 = 1e9;
+        MyNamedInfo("Ana",Form("##############Layer %d: loop to get residual#############",testLayer));
         for ( int iEntry = (m_iEntryStart?m_iEntryStart:0); iEntry<(m_iEntryStop?m_iEntryStop+1:N); iEntry++){
             if (iEntry%10000==0) printf("%d\n",iEntry);
             if (m_verboseLevel>=20) printf("Entry%d: \n",iEntry);
@@ -1290,7 +1343,7 @@ int main(int argc, char** argv){
                 double sum = (*i_sum)[ihit];
                 double peak = (*i_peak)[ihit];
                 double height = (*i_height)[ihit];
-                double fitD = (*i_fitD[theCand])[ihit]-map_off[lid][wid];
+                double fitD = (*i_fitD[theCand])[ihit]-map_off_new[lid][wid]; // modify the fitD according to new offset
                 int type = getHitType((*i_type)[ihit],fitD>=0);
                 (*i_driftT)[ihit]-=t0offset[theCand];
                 double dt = (*i_driftT)[ihit];
@@ -1454,9 +1507,9 @@ int main(int argc, char** argv){
         averageGG = h_ggall->GetMean();
         averageGGErr = h_ggall->GetRMS();
 
-        MyNamedInfo("Ana","##############The Third loop starts#############");
         double trackCharge[MAXTRUNC] = {0};
         //----------------------------------loop again for filling histograms--------------------------------------------
+        MyNamedInfo("Ana",Form("##############Layer %d: loop to get fill histograms#############",testLayer));
         for ( int iEntry = (m_iEntryStart?m_iEntryStart:0); iEntry<(m_iEntryStop?m_iEntryStop+1:N); iEntry++){
             otree->GetEntry(iEntry);
             MyNamedVerbose("Ana","  iEntry = "<<iEntry<<", "<<(isGood?"Good":"Bad")<<" event, nHits = "<<nHits<<", "<<nHitsT<<" hits in the test layer on track path");
@@ -1783,6 +1836,114 @@ int main(int argc, char** argv){
                     averageEffD,averageEff3sD,averageRMSD,averageResD,
                     bestEffD,bestRMSD,bestResD,bestEffX,bestRMSX,bestResX);
 
+        //=================================================Set histograms and graphs====================================================
+        h_DOCA->GetYaxis()->SetRangeUser(0,h_DOCA->GetMaximum()*1.1);
+        h_DOCAb->GetYaxis()->SetRangeUser(0,h_DOCAb->GetMaximum()*1.1);
+        h_DriftD->GetYaxis()->SetRangeUser(0,h_DriftD->GetMaximum()*1.1);
+        h_DriftDb->GetYaxis()->SetRangeUser(0,h_DriftDb->GetMaximum()*1.1);
+        h_xt->GetXaxis()->SetRangeUser(minDT,maxDT);
+        h_tx->GetYaxis()->SetRangeUser(minDT,maxDT);
+
+        int maxEntry = 0;
+        for (int i = 0; i<MAXTRUNC; i++){
+            int entries = h_dedx[i]->GetMaximum();
+            if (maxEntry<entries) maxEntry = entries;
+        }
+        h_dedx[0]->SetLineColor(1);
+        h_dedx[0]->GetYaxis()->SetRangeUser(0,maxEntry*1.1);
+        for (int i = 1; i<MAXTRUNC; i++){
+            h_dedx[i]->SetLineColor(i+1);
+        }
+
+        TGraphErrors * g_xeff = new TGraphErrors(v_xx.size(),&(v_xx[0]),&(v_xeff[0]));
+        TGraphErrors * g_xeff3s = new TGraphErrors(v_xx.size(),&(v_xx[0]),&(v_xeff3s[0]));
+        TGraphErrors * g_xeff500 = new TGraphErrors(v_xx.size(),&(v_xx[0]),&(v_xeff500um[0]));
+        g_xeff->SetName("gxeff");
+        g_xeff3s->SetName("gxeff3s");
+        g_xeff500->SetName("gxeff500um");
+        g_xeff->SetTitle("Efficiency VS DOCA");
+        g_xeff->GetXaxis()->SetTitle("DOCA [mm]");
+        g_xeff->GetYaxis()->SetTitle("Efficiency");
+        g_xeff->SetMarkerStyle(20);
+        g_xeff->SetMarkerColor(kBlack);
+        g_xeff->SetLineColor(kBlack);
+        g_xeff->GetYaxis()->SetRangeUser(0,1.1);
+        g_xeff500->SetMarkerStyle(20);
+        g_xeff500->SetMarkerColor(kRed);
+        g_xeff500->SetLineColor(kRed);
+        g_xeff3s->SetMarkerStyle(20);
+        g_xeff3s->SetMarkerColor(kBlue);
+        g_xeff3s->SetLineColor(kBlue);
+
+        TGraphErrors * g_deff3s = new TGraphErrors(v_dx.size(),&(v_dx[0]),&(v_deff3s[0]));
+        TGraphErrors * g_deff500 = new TGraphErrors(v_dx.size(),&(v_dx[0]),&(v_deff500um[0]));
+        g_deff3s->SetName("gdeff3s");
+        g_deff500->SetName("gdeff500um");
+        g_deff500->SetTitle("Efficiency VS drift distance");
+        g_deff500->GetXaxis()->SetTitle("Drift distance [mm]");
+        g_deff500->GetYaxis()->SetTitle("Efficiency");
+        g_deff500->SetMarkerStyle(20);
+        g_deff500->SetMarkerColor(kRed);
+        g_deff500->SetLineColor(kRed);
+        g_deff500->GetYaxis()->SetRangeUser(0,1.1);
+        g_deff3s->SetMarkerStyle(20);
+        g_deff3s->SetMarkerColor(kBlue);
+        g_deff3s->SetLineColor(kBlue);
+
+        TGraphErrors * g_xres = new TGraphErrors(v_xx.size(),&(v_xx[0]),&(v_xres[0]),&(v_xxerr[0]),&(v_xreserr[0]));
+        g_xres->SetName("gxres");
+        g_xres->SetTitle("#sigma of residual VS DOCA");
+        g_xres->GetXaxis()->SetTitle("Drift distance [mm]");
+        g_xres->GetYaxis()->SetTitle("#sigma [mm]");
+        g_xres->SetMarkerStyle(20);
+        g_xres->SetMarkerColor(kBlack);
+        g_xres->SetLineColor(kBlack);
+
+        TGraphErrors * g_dres = new TGraphErrors(v_dx.size(),&(v_dx[0]),&(v_dres[0]),&(v_dxerr[0]),&(v_dreserr[0]));
+        g_dres->SetName("gdres");
+        g_dres->SetTitle("#sigma of residual VS drift distance");
+        g_dres->GetXaxis()->SetTitle("Drift distance [mm]");
+        g_dres->GetYaxis()->SetTitle("#sigma [mm]");
+        g_dres->SetMarkerStyle(20);
+        g_dres->SetMarkerColor(kBlack);
+        g_dres->SetLineColor(kBlack);
+
+        TGraphErrors * g_xrms = new TGraphErrors(v_xx.size(),&(v_xx[0]),&(v_xrms[0]),&(v_xxerr[0]),&(v_xrmserr[0]));
+        g_xrms->SetName("gxrms");
+        g_xrms->SetTitle("RMS of residual VS DOCA");
+        g_xrms->GetXaxis()->SetTitle("Drift distance [mm]");
+        g_xrms->GetYaxis()->SetTitle("RMS [mm]");
+        g_xrms->SetMarkerStyle(20);
+        g_xrms->SetMarkerColor(kBlack);
+        g_xrms->SetLineColor(kBlack);
+
+        TGraphErrors * g_drms = new TGraphErrors(v_dx.size(),&(v_dx[0]),&(v_drms[0]),&(v_dxerr[0]),&(v_drmserr[0]));
+        g_drms->SetName("gdrms");
+        g_drms->SetTitle("RMS of residual VS drift distance");
+        g_drms->GetXaxis()->SetTitle("Drift distance [mm]");
+        g_drms->GetYaxis()->SetTitle("RMS [mm]");
+        g_drms->SetMarkerStyle(20);
+        g_drms->SetMarkerColor(kBlack);
+        g_drms->SetLineColor(kBlack);
+
+        TGraphErrors * g_xoff = new TGraphErrors(v_xx.size(),&(v_xx[0]),&(v_xoff[0]));
+        g_xoff->SetName("gxoff");
+        g_xoff->SetTitle("Offset VS DOCA");
+        g_xoff->GetXaxis()->SetTitle("Drift distance [mm]");
+        g_xoff->GetYaxis()->SetTitle("offset [mm]");
+        g_xoff->SetMarkerStyle(20);
+        g_xoff->SetMarkerColor(kBlack);
+        g_xoff->SetLineColor(kBlack);
+
+        TGraphErrors * g_doff = new TGraphErrors(v_dx.size(),&(v_dx[0]),&(v_doff[0]));
+        g_doff->SetName("gdoff");
+        g_doff->SetTitle("Offset VS drift distance");
+        g_doff->GetXaxis()->SetTitle("Drift distance [mm]");
+        g_doff->GetYaxis()->SetTitle("offset [mm]");
+        g_doff->SetMarkerStyle(20);
+        g_doff->SetMarkerColor(kBlack);
+        g_doff->SetLineColor(kBlack);
+
         //=================================================Draw====================================================
         TCanvas * canv_tracking = new TCanvas("canv_tracking","canv_tracking",1024,768);
         gStyle->SetPalette(1);
@@ -1840,236 +2001,143 @@ int main(int argc, char** argv){
         canv_tracking->SaveAs(Form("track_%d.%s.layer%d.pdf",m_runNo,m_runnameout.Data(),testLayer));
         canv_tracking->SaveAs(Form("track_%d.%s.layer%d.png",m_runNo,m_runnameout.Data(),testLayer));
 
-        TCanvas * canv_DOCA = new TCanvas("canv_DOCA","canv_DOCA",600,800);
-        gStyle->SetPalette(1);
-        gStyle->SetOptStat(0);
-        gStyle->SetPadTickX(1);
-        gStyle->SetPadTickY(1);
-        canv_DOCA->Divide(1,2);
-        canv_DOCA->cd(1);
-        gPad->SetGridx(1);
-        gPad->SetGridy(1);
-        h_DOCA->GetYaxis()->SetRangeUser(0,h_DOCA->GetMaximum()*1.1);
-        h_DOCA->Draw();
-        canv_DOCA->cd(2);
-        gPad->SetGridx(1);
-        gPad->SetGridy(1);
-        h_DOCAb->GetYaxis()->SetRangeUser(0,h_DOCAb->GetMaximum()*1.1);
-        h_DOCAb->Draw();
-        canv_DOCA->SaveAs(Form("DOCA_%d.%s.layer%d.pdf",m_runNo,m_runnameout.Data(),testLayer));
-        canv_DOCA->SaveAs(Form("DOCA_%d.%s.layer%d.png",m_runNo,m_runnameout.Data(),testLayer));
-        canv_DOCA->cd(1);
-        h_DriftD->GetYaxis()->SetRangeUser(0,h_DriftD->GetMaximum()*1.1);
-        h_DriftD->Draw();
-        canv_DOCA->cd(2);
-        h_DriftDb->GetYaxis()->SetRangeUser(0,h_DriftDb->GetMaximum()*1.1);
-        h_DriftDb->Draw();
-        canv_DOCA->SaveAs(Form("DriftD_%d.%s.layer%d.pdf",m_runNo,m_runnameout.Data(),testLayer));
-        canv_DOCA->SaveAs(Form("DriftD_%d.%s.layer%d.png",m_runNo,m_runnameout.Data(),testLayer));
+        if (m_DrawDetails){
+            TCanvas * canv_DOCA = new TCanvas("canv_DOCA","canv_DOCA",600,800);
+            gStyle->SetPalette(1);
+            gStyle->SetOptStat(0);
+            gStyle->SetPadTickX(1);
+            gStyle->SetPadTickY(1);
+            canv_DOCA->Divide(1,2);
+            canv_DOCA->cd(1);
+            gPad->SetGridx(1);
+            gPad->SetGridy(1);
+            h_DOCA->Draw();
+            canv_DOCA->cd(2);
+            gPad->SetGridx(1);
+            gPad->SetGridy(1);
+            h_DOCAb->Draw();
+            canv_DOCA->SaveAs(Form("DOCA_%d.%s.layer%d.pdf",m_runNo,m_runnameout.Data(),testLayer));
+            canv_DOCA->SaveAs(Form("DOCA_%d.%s.layer%d.png",m_runNo,m_runnameout.Data(),testLayer));
+            canv_DOCA->cd(1);
+            h_DriftD->Draw();
+            canv_DOCA->cd(2);
+            h_DriftDb->Draw();
+            canv_DOCA->SaveAs(Form("DriftD_%d.%s.layer%d.pdf",m_runNo,m_runnameout.Data(),testLayer));
+            canv_DOCA->SaveAs(Form("DriftD_%d.%s.layer%d.png",m_runNo,m_runnameout.Data(),testLayer));
 
-        TCanvas * canv_XT = new TCanvas("canv_XT","canv_XT",800,600);
-        gStyle->SetPalette(1);
-        gStyle->SetOptStat(0);
-        gStyle->SetPadTickX(1);
-        gStyle->SetPadTickY(1);
-        gPad->SetGridx(1);
-        gPad->SetGridy(1);
-        h_xt->Draw("COLZ");
-        h_xt->GetXaxis()->SetRangeUser(minDT,maxDT);
-        f_left->Draw("SAME");
-        f_right->Draw("SAME");
-        canv_XT->SaveAs(Form("XT_%d.%s.layer%d.pdf",m_runNo,m_runnameout.Data(),testLayer));
-        canv_XT->SaveAs(Form("XT_%d.%s.layer%d.png",m_runNo,m_runnameout.Data(),testLayer));
+            TCanvas * canv_XT = new TCanvas("canv_XT","canv_XT",800,600);
+            gStyle->SetPalette(1);
+            gStyle->SetOptStat(0);
+            gStyle->SetPadTickX(1);
+            gStyle->SetPadTickY(1);
+            gPad->SetGridx(1);
+            gPad->SetGridy(1);
+            h_xt->Draw("COLZ");
+            f_left->Draw("SAME");
+            f_right->Draw("SAME");
+            canv_XT->SaveAs(Form("XT_%d.%s.layer%d.pdf",m_runNo,m_runnameout.Data(),testLayer));
+            canv_XT->SaveAs(Form("XT_%d.%s.layer%d.png",m_runNo,m_runnameout.Data(),testLayer));
 
-        TCanvas * canv_TX = new TCanvas("canv_TX","canv_TX",600,800);
-        gStyle->SetPalette(1);
-        gStyle->SetOptStat(0);
-        gStyle->SetPadTickX(1);
-        gStyle->SetPadTickY(1);
-        gPad->SetGridx(1);
-        gPad->SetGridy(1);
-        h_tx->Draw("COLZ");
-        h_tx->Draw("COLZ");
-        h_tx->GetYaxis()->SetRangeUser(minDT,maxDT);
-        canv_TX->SaveAs(Form("TX_%d.%s.layer%d.pdf",m_runNo,m_runnameout.Data(),testLayer));
-        canv_TX->SaveAs(Form("TX_%d.%s.layer%d.png",m_runNo,m_runnameout.Data(),testLayer));
+            TCanvas * canv_TX = new TCanvas("canv_TX","canv_TX",600,800);
+            gStyle->SetPalette(1);
+            gStyle->SetOptStat(0);
+            gStyle->SetPadTickX(1);
+            gStyle->SetPadTickY(1);
+            gPad->SetGridx(1);
+            gPad->SetGridy(1);
+            h_tx->Draw("COLZ");
+            h_tx->Draw("COLZ");
+            canv_TX->SaveAs(Form("TX_%d.%s.layer%d.pdf",m_runNo,m_runnameout.Data(),testLayer));
+            canv_TX->SaveAs(Form("TX_%d.%s.layer%d.png",m_runNo,m_runnameout.Data(),testLayer));
 
-        TCanvas * canv_general = new TCanvas("canv_general","canv_general",1024,768);
-        gStyle->SetPalette(1);
-        gStyle->SetOptStat(0);
-        gStyle->SetPadTickX(1);
-        gStyle->SetPadTickY(1);
-        gPad->SetGridx(1);
-        gPad->SetGridy(1);
-        h_resVSX->Draw("COLZ");
-        canv_general->SaveAs(Form("resVSX_%d.%s.layer%d.pdf",m_runNo,m_runnameout.Data(),testLayer));
-        canv_general->SaveAs(Form("resVSX_%d.%s.layer%d.png",m_runNo,m_runnameout.Data(),testLayer));
+            TCanvas * canv_general = new TCanvas("canv_general","canv_general",1024,768);
+            gStyle->SetPalette(1);
+            gStyle->SetOptStat(0);
+            gStyle->SetPadTickX(1);
+            gStyle->SetPadTickY(1);
+            gPad->SetGridx(1);
+            gPad->SetGridy(1);
+            h_resVSX->Draw("COLZ");
+            canv_general->SaveAs(Form("resVSX_%d.%s.layer%d.pdf",m_runNo,m_runnameout.Data(),testLayer));
+            canv_general->SaveAs(Form("resVSX_%d.%s.layer%d.png",m_runNo,m_runnameout.Data(),testLayer));
 
-        h_resVSD->Draw("COLZ");
-        canv_general->SaveAs(Form("resVSD_%d.%s.layer%d.pdf",m_runNo,m_runnameout.Data(),testLayer));
-        canv_general->SaveAs(Form("resVSD_%d.%s.layer%d.png",m_runNo,m_runnameout.Data(),testLayer));
+            h_resVSD->Draw("COLZ");
+            canv_general->SaveAs(Form("resVSD_%d.%s.layer%d.pdf",m_runNo,m_runnameout.Data(),testLayer));
+            canv_general->SaveAs(Form("resVSD_%d.%s.layer%d.png",m_runNo,m_runnameout.Data(),testLayer));
 
-        h_aaVST->Draw("COLZ");
-        TLine * line_aaVST = new TLine(m_tmin,m_aaCut,m_tmax,m_aaCut);
-        line_aaVST->SetLineColor(kRed);
-        line_aaVST->Draw("SAME");
-        canv_general->SaveAs(Form("aaVST_%d.%s.layer%d.pdf",m_runNo,m_runnameout.Data(),testLayer));
-        canv_general->SaveAs(Form("aaVST_%d.%s.layer%d.png",m_runNo,m_runnameout.Data(),testLayer));
+            h_aaVST->Draw("COLZ");
+            TLine * line_aaVST = new TLine(m_tmin,m_aaCut,m_tmax,m_aaCut);
+            line_aaVST->SetLineColor(kRed);
+            line_aaVST->Draw("SAME");
+            canv_general->SaveAs(Form("aaVST_%d.%s.layer%d.pdf",m_runNo,m_runnameout.Data(),testLayer));
+            canv_general->SaveAs(Form("aaVST_%d.%s.layer%d.png",m_runNo,m_runnameout.Data(),testLayer));
 
-        h_aaVSD->Draw("COLZ");
-        TLine * line_aaVSD = new TLine(0,m_aaCut,m_xmax,m_aaCut);
-        line_aaVSD->SetLineColor(kRed);
-        line_aaVSD->Draw("SAME");
-        canv_general->SaveAs(Form("aaVSD_%d.%s.layer%d.pdf",m_runNo,m_runnameout.Data(),testLayer));
-        canv_general->SaveAs(Form("aaVSD_%d.%s.layer%d.png",m_runNo,m_runnameout.Data(),testLayer));
+            h_aaVSD->Draw("COLZ");
+            TLine * line_aaVSD = new TLine(0,m_aaCut,m_xmax,m_aaCut);
+            line_aaVSD->SetLineColor(kRed);
+            line_aaVSD->Draw("SAME");
+            canv_general->SaveAs(Form("aaVSD_%d.%s.layer%d.pdf",m_runNo,m_runnameout.Data(),testLayer));
+            canv_general->SaveAs(Form("aaVSD_%d.%s.layer%d.png",m_runNo,m_runnameout.Data(),testLayer));
 
-        h_ggVSX->Draw("COLZ");
-        canv_general->SaveAs(Form("ggVSX_%d.%s.layer%d.pdf",m_runNo,m_runnameout.Data(),testLayer));
-        canv_general->SaveAs(Form("ggVSX_%d.%s.layer%d.png",m_runNo,m_runnameout.Data(),testLayer));
+            h_ggVSX->Draw("COLZ");
+            canv_general->SaveAs(Form("ggVSX_%d.%s.layer%d.pdf",m_runNo,m_runnameout.Data(),testLayer));
+            canv_general->SaveAs(Form("ggVSX_%d.%s.layer%d.png",m_runNo,m_runnameout.Data(),testLayer));
 
-        TLegend* leg_dedx = new TLegend(0.7,0.7,0.9,0.9);
-        leg_dedx->AddEntry(h_dedx[0],Form("All hits used"));
-        int maxEntry = 0;
-        for (int i = 0; i<MAXTRUNC; i++){
-            int entries = h_dedx[i]->GetMaximum();
-            if (maxEntry<entries) maxEntry = entries;
+            TLegend* leg_dedx = new TLegend(0.7,0.7,0.9,0.9);
+            leg_dedx->AddEntry(h_dedx[0],Form("All hits used"));
+            h_dedx[0]->Draw();
+            for (int i = 1; i<MAXTRUNC; i++){
+                leg_dedx->AddEntry(h_dedx[i],Form("Neglecting %d hits",i));
+                h_dedx[i]->Draw("SAME");
+            }
+            leg_dedx->Draw();
+            canv_general->SaveAs(Form("dedx_%d.%s.layer%d.pdf",m_runNo,m_runnameout.Data(),testLayer));
+            canv_general->SaveAs(Form("dedx_%d.%s.layer%d.png",m_runNo,m_runnameout.Data(),testLayer));
+
+            g_xeff->Draw("APL");
+            g_xeff500->Draw("PLSAME");
+            g_xeff3s->Draw("PLSAME");
+            TLegend * leg_xeff = new TLegend(0.1,0.1,0.5,0.5);
+            leg_xeff->AddEntry(g_xeff,"Raw efficiency","PL");
+            leg_xeff->AddEntry(g_xeff3s,Form("Efficiency with 3#sigma cut %.1f%%",averageEff3sX*100),"PL");
+            leg_xeff->AddEntry(g_xeff500,Form("Efficiency with 500 um cut %.1f%%",averageEffX*100),"PL");
+            leg_xeff->Draw("SAME");
+            canv_general->SaveAs(Form("effx_%d.%s.layer%d.pdf",m_runNo,m_runnameout.Data(),testLayer));
+            canv_general->SaveAs(Form("effx_%d.%s.layer%d.png",m_runNo,m_runnameout.Data(),testLayer));
+
+            g_deff500->Draw("APL");
+            g_deff3s->Draw("PLSAME");
+            TLegend * leg_deff = new TLegend(0.1,0.1,0.5,0.5);
+            leg_deff->AddEntry(g_deff3s,Form("Efficiency with 3#sigma cut %.1f%%",averageEff3sD*100),"PL");
+            leg_deff->AddEntry(g_deff500,Form("Efficiency with 500 um cut %.1f%%",averageEffD*100),"PL");
+            leg_deff->Draw("SAME");
+            canv_general->SaveAs(Form("effd_%d.%s.layer%d.pdf",m_runNo,m_runnameout.Data(),testLayer));
+            canv_general->SaveAs(Form("effd_%d.%s.layer%d.png",m_runNo,m_runnameout.Data(),testLayer));
+
+            g_xres->Draw("APL");
+            canv_general->SaveAs(Form("resx_%d.%s.layer%d.pdf",m_runNo,m_runnameout.Data(),testLayer));
+            canv_general->SaveAs(Form("resx_%d.%s.layer%d.png",m_runNo,m_runnameout.Data(),testLayer));
+
+            g_dres->Draw("APL");
+            canv_general->SaveAs(Form("resd_%d.%s.layer%d.pdf",m_runNo,m_runnameout.Data(),testLayer));
+            canv_general->SaveAs(Form("resd_%d.%s.layer%d.png",m_runNo,m_runnameout.Data(),testLayer));
+
+            g_xrms->Draw("APL");
+            canv_general->SaveAs(Form("rmsx_%d.%s.layer%d.pdf",m_runNo,m_runnameout.Data(),testLayer));
+            canv_general->SaveAs(Form("rmsx_%d.%s.layer%d.png",m_runNo,m_runnameout.Data(),testLayer));
+
+            g_drms->Draw("APL");
+            canv_general->SaveAs(Form("rmsd_%d.%s.layer%d.pdf",m_runNo,m_runnameout.Data(),testLayer));
+            canv_general->SaveAs(Form("rmsd_%d.%s.layer%d.png",m_runNo,m_runnameout.Data(),testLayer));
+
+            g_xoff->Draw("APL");
+            canv_general->SaveAs(Form("offx_%d.%s.layer%d.pdf",m_runNo,m_runnameout.Data(),testLayer));
+            canv_general->SaveAs(Form("offx_%d.%s.layer%d.png",m_runNo,m_runnameout.Data(),testLayer));
+
+            g_doff->Draw("APL");
+            canv_general->SaveAs(Form("offd_%d.%s.layer%d.pdf",m_runNo,m_runnameout.Data(),testLayer));
+            canv_general->SaveAs(Form("offd_%d.%s.layer%d.png",m_runNo,m_runnameout.Data(),testLayer));
         }
-        h_dedx[0]->SetLineColor(1);
-        h_dedx[0]->GetYaxis()->SetRangeUser(0,maxEntry*1.1);
-        h_dedx[0]->Draw();
-        for (int i = 1; i<MAXTRUNC; i++){
-            h_dedx[i]->SetLineColor(i+1);
-            leg_dedx->AddEntry(h_dedx[i],Form("Neglecting %d hits",i));
-            h_dedx[i]->Draw("SAME");
-        }
-        leg_dedx->Draw();
-        canv_general->SaveAs(Form("dedx_%d.%s.layer%d.pdf",m_runNo,m_runnameout.Data(),testLayer));
-        canv_general->SaveAs(Form("dedx_%d.%s.layer%d.png",m_runNo,m_runnameout.Data(),testLayer));
-
-        TGraphErrors * g_xeff = new TGraphErrors(v_xx.size(),&(v_xx[0]),&(v_xeff[0]));
-        TGraphErrors * g_xeff3s = new TGraphErrors(v_xx.size(),&(v_xx[0]),&(v_xeff3s[0]));
-        TGraphErrors * g_xeff500 = new TGraphErrors(v_xx.size(),&(v_xx[0]),&(v_xeff500um[0]));
-        g_xeff->SetName("gxeff");
-        g_xeff3s->SetName("gxeff3s");
-        g_xeff500->SetName("gxeff500um");
-        g_xeff->SetTitle("Efficiency VS DOCA");
-        g_xeff->GetXaxis()->SetTitle("DOCA [mm]");
-        g_xeff->GetYaxis()->SetTitle("Efficiency");
-        g_xeff->SetMarkerStyle(20);
-        g_xeff->SetMarkerColor(kBlack);
-        g_xeff->SetLineColor(kBlack);
-        g_xeff->GetYaxis()->SetRangeUser(0,1.1);
-        g_xeff->Draw("APL");
-        g_xeff500->SetMarkerStyle(20);
-        g_xeff500->SetMarkerColor(kRed);
-        g_xeff500->SetLineColor(kRed);
-        g_xeff500->Draw("PLSAME");
-        g_xeff3s->SetMarkerStyle(20);
-        g_xeff3s->SetMarkerColor(kBlue);
-        g_xeff3s->SetLineColor(kBlue);
-        g_xeff3s->Draw("PLSAME");
-        TLegend * leg_xeff = new TLegend(0.1,0.1,0.5,0.5);
-        leg_xeff->AddEntry(g_xeff,"Raw efficiency","PL");
-        leg_xeff->AddEntry(g_xeff3s,Form("Efficiency with 3#sigma cut %.1f%%",averageEff3sX*100),"PL");
-        leg_xeff->AddEntry(g_xeff500,Form("Efficiency with 500 um cut %.1f%%",averageEffX*100),"PL");
-        leg_xeff->Draw("SAME");
-        canv_general->SaveAs(Form("effx_%d.%s.layer%d.pdf",m_runNo,m_runnameout.Data(),testLayer));
-        canv_general->SaveAs(Form("effx_%d.%s.layer%d.png",m_runNo,m_runnameout.Data(),testLayer));
-
-        TGraphErrors * g_deff3s = new TGraphErrors(v_dx.size(),&(v_dx[0]),&(v_deff3s[0]));
-        TGraphErrors * g_deff500 = new TGraphErrors(v_dx.size(),&(v_dx[0]),&(v_deff500um[0]));
-        g_deff3s->SetName("gdeff3s");
-        g_deff500->SetName("gdeff500um");
-        g_deff500->SetTitle("Efficiency VS drift distance");
-        g_deff500->GetXaxis()->SetTitle("Drift distance [mm]");
-        g_deff500->GetYaxis()->SetTitle("Efficiency");
-        g_deff500->SetMarkerStyle(20);
-        g_deff500->SetMarkerColor(kRed);
-        g_deff500->SetLineColor(kRed);
-        g_deff500->GetYaxis()->SetRangeUser(0,1.1);
-        g_deff500->Draw("APL");
-        g_deff3s->SetMarkerStyle(20);
-        g_deff3s->SetMarkerColor(kBlue);
-        g_deff3s->SetLineColor(kBlue);
-        g_deff3s->Draw("PLSAME");
-        TLegend * leg_deff = new TLegend(0.1,0.1,0.5,0.5);
-        leg_deff->AddEntry(g_deff3s,Form("Efficiency with 3#sigma cut %.1f%%",averageEff3sD*100),"PL");
-        leg_deff->AddEntry(g_deff500,Form("Efficiency with 500 um cut %.1f%%",averageEffD*100),"PL");
-        leg_deff->Draw("SAME");
-        canv_general->SaveAs(Form("effd_%d.%s.layer%d.pdf",m_runNo,m_runnameout.Data(),testLayer));
-        canv_general->SaveAs(Form("effd_%d.%s.layer%d.png",m_runNo,m_runnameout.Data(),testLayer));
-
-        TGraphErrors * g_xres = new TGraphErrors(v_xx.size(),&(v_xx[0]),&(v_xres[0]),&(v_xxerr[0]),&(v_xreserr[0]));
-        g_xres->SetName("gxres");
-        g_xres->SetTitle("#sigma of residual VS DOCA");
-        g_xres->GetXaxis()->SetTitle("Drift distance [mm]");
-        g_xres->GetYaxis()->SetTitle("#sigma [mm]");
-        g_xres->SetMarkerStyle(20);
-        g_xres->SetMarkerColor(kBlack);
-        g_xres->SetLineColor(kBlack);
-        g_xres->Draw("APL");
-        canv_general->SaveAs(Form("resx_%d.%s.layer%d.pdf",m_runNo,m_runnameout.Data(),testLayer));
-        canv_general->SaveAs(Form("resx_%d.%s.layer%d.png",m_runNo,m_runnameout.Data(),testLayer));
-
-        TGraphErrors * g_dres = new TGraphErrors(v_dx.size(),&(v_dx[0]),&(v_dres[0]),&(v_dxerr[0]),&(v_dreserr[0]));
-        g_dres->SetName("gdres");
-        g_dres->SetTitle("#sigma of residual VS drift distance");
-        g_dres->GetXaxis()->SetTitle("Drift distance [mm]");
-        g_dres->GetYaxis()->SetTitle("#sigma [mm]");
-        g_dres->SetMarkerStyle(20);
-        g_dres->SetMarkerColor(kBlack);
-        g_dres->SetLineColor(kBlack);
-        g_dres->Draw("APL");
-        canv_general->SaveAs(Form("resd_%d.%s.layer%d.pdf",m_runNo,m_runnameout.Data(),testLayer));
-        canv_general->SaveAs(Form("resd_%d.%s.layer%d.png",m_runNo,m_runnameout.Data(),testLayer));
-
-        TGraphErrors * g_xrms = new TGraphErrors(v_xx.size(),&(v_xx[0]),&(v_xrms[0]),&(v_xxerr[0]),&(v_xrmserr[0]));
-        g_xrms->SetName("gxrms");
-        g_xrms->SetTitle("RMS of residual VS DOCA");
-        g_xrms->GetXaxis()->SetTitle("Drift distance [mm]");
-        g_xrms->GetYaxis()->SetTitle("RMS [mm]");
-        g_xrms->SetMarkerStyle(20);
-        g_xrms->SetMarkerColor(kBlack);
-        g_xrms->SetLineColor(kBlack);
-        g_xrms->Draw("APL");
-        canv_general->SaveAs(Form("rmsx_%d.%s.layer%d.pdf",m_runNo,m_runnameout.Data(),testLayer));
-        canv_general->SaveAs(Form("rmsx_%d.%s.layer%d.png",m_runNo,m_runnameout.Data(),testLayer));
-
-        TGraphErrors * g_drms = new TGraphErrors(v_dx.size(),&(v_dx[0]),&(v_drms[0]),&(v_dxerr[0]),&(v_drmserr[0]));
-        g_drms->SetName("gdrms");
-        g_drms->SetTitle("RMS of residual VS drift distance");
-        g_drms->GetXaxis()->SetTitle("Drift distance [mm]");
-        g_drms->GetYaxis()->SetTitle("RMS [mm]");
-        g_drms->SetMarkerStyle(20);
-        g_drms->SetMarkerColor(kBlack);
-        g_drms->SetLineColor(kBlack);
-        g_drms->Draw("APL");
-        canv_general->SaveAs(Form("rmsd_%d.%s.layer%d.pdf",m_runNo,m_runnameout.Data(),testLayer));
-        canv_general->SaveAs(Form("rmsd_%d.%s.layer%d.png",m_runNo,m_runnameout.Data(),testLayer));
-
-        TGraphErrors * g_xoff = new TGraphErrors(v_xx.size(),&(v_xx[0]),&(v_xoff[0]));
-        g_xoff->SetName("gxoff");
-        g_xoff->SetTitle("Offset VS DOCA");
-        g_xoff->GetXaxis()->SetTitle("Drift distance [mm]");
-        g_xoff->GetYaxis()->SetTitle("offset [mm]");
-        g_xoff->SetMarkerStyle(20);
-        g_xoff->SetMarkerColor(kBlack);
-        g_xoff->SetLineColor(kBlack);
-        g_xoff->Draw("APL");
-        canv_general->SaveAs(Form("offx_%d.%s.layer%d.pdf",m_runNo,m_runnameout.Data(),testLayer));
-        canv_general->SaveAs(Form("offx_%d.%s.layer%d.png",m_runNo,m_runnameout.Data(),testLayer));
-
-        TGraphErrors * g_doff = new TGraphErrors(v_dx.size(),&(v_dx[0]),&(v_doff[0]));
-        g_doff->SetName("gdoff");
-        g_doff->SetTitle("Offset VS drift distance");
-        g_doff->GetXaxis()->SetTitle("Drift distance [mm]");
-        g_doff->GetYaxis()->SetTitle("offset [mm]");
-        g_doff->SetMarkerStyle(20);
-        g_doff->SetMarkerColor(kBlack);
-        g_doff->SetLineColor(kBlack);
-        g_doff->Draw("APL");
-        canv_general->SaveAs(Form("offd_%d.%s.layer%d.pdf",m_runNo,m_runnameout.Data(),testLayer));
-        canv_general->SaveAs(Form("offd_%d.%s.layer%d.png",m_runNo,m_runnameout.Data(),testLayer));
 
         //=================================================Save====================================================
         for (int i = 0; i<NBINS; i++){
@@ -2122,11 +2190,15 @@ int main(int argc, char** argv){
     TFile * ofileoffset = new TFile(Form("%s/info/offset.%d.%s.root",HOME.Data(),m_runNo,m_runnameout.Data()),"RECREATE");
     TTree * otree = new TTree("t","t");
     double o_off_delta;
+    double o_off_adjust;
     double o_off_slz;
     double o_off_inx;
+    int o_off_n;
     int o_off_lid;
     int o_off_wid;
     otree->Branch("d",&o_off_delta);
+    otree->Branch("adjust",&o_off_adjust);
+    otree->Branch("n",&o_off_n);
     otree->Branch("slz",&o_off_slz);
     otree->Branch("inx",&o_off_inx);
     otree->Branch("wid",&o_off_wid);
@@ -2136,68 +2208,37 @@ int main(int argc, char** argv){
             h_celloff[lid][wid]->Write();
             h_cellslz[lid][wid]->Write();
             h_cellinx[lid][wid]->Write();
-            if (!map_off[lid][wid]) continue;
             o_off_wid = wid;
             o_off_lid = lid;
-            o_off_delta = map_off[lid][wid];
+            o_off_delta = map_off_new[lid][wid]+map_adjust_old[lid][wid]; // new delta should consider the adjusted amount
+            o_off_n = map_nEvents[lid][wid];
             o_off_slz = map_slz[lid][wid];
             o_off_inx = map_inx[lid][wid];
+            o_off_adjust = map_adjust_old[lid][wid]; // new adjustment should consider the adjusted amount
+            if (m_UpdateWireMap&&m_wireIDWhiteList[wid]){
+                double theOff = map_off_new[lid][wid]*m_scale;
+                double deltaSlz = map_slz[lid][wid]-map_slzmc[lid][wid];
+                double deltaInx = map_inx[lid][wid]-map_inxmc[lid][wid];
+                if (m_stepSize){
+                    if(fabs(theOff)>m_stepSize) theOff = theOff>0?m_stepSize:-m_stepSize;
+                }
+                if ((m_minDeltaSlz||m_maxDeltaSlz)&&(deltaSlz>m_maxDeltaSlz||deltaSlz<m_minDeltaSlz)){
+                    theOff = 0;
+                }
+                if ((m_minDeltaInx||m_maxDeltaInx)&&(deltaInx>m_maxDeltaInx||deltaInx<m_minDeltaInx)){
+                    theOff = 0;
+                }
+                if (m_OneWirePerStep&&(lid!=offset_max_lid||wid!=offset_max_wid)){
+                    theOff = 0;
+                }
+                o_off_adjust += theOff;
+            }
+            MyNamedInfo("Ana","adjust["<<lid<<"]["<<wid<<"] = "<<map_adjust_old[lid][wid]<<"+"<<map_off_new[lid][wid]<<"*"<<m_scale<<" = "<<o_off_adjust);
             otree->Fill();
         }
     }
     otree->Write();
     ofileoffset->Close();
-
-    //===================Set Wire Position============================
-    if (m_UpdateWireMap){
-        TFile * TFile_wirepos = new TFile(Form("%s/info/wire-position.%d.%s.root",HOME.Data(),m_runNo,m_runnameout.Data()),"RECREATE");
-        TTree * TTree_wirepos = new TTree("t","t");
-        double wp_xc;
-        double wp_yc;
-        TTree_wirepos->Branch("b",&wp_bid);
-        TTree_wirepos->Branch("ch",&wp_ch);
-        TTree_wirepos->Branch("l",&wp_lid);
-        TTree_wirepos->Branch("w",&wp_wid);
-        TTree_wirepos->Branch("xhv",&wp_xhv);
-        TTree_wirepos->Branch("yhv",&wp_yhv);
-        TTree_wirepos->Branch("xc",&wp_xc);
-        TTree_wirepos->Branch("yc",&wp_yc);
-        TTree_wirepos->Branch("xro",&wp_xro);
-        TTree_wirepos->Branch("yro",&wp_yro);
-        for (wp_lid=0; wp_lid<NLAY; wp_lid++){
-            for (wp_wid=0; wp_wid<NCEL; wp_wid++){
-                if (!map_has[wp_lid][wp_wid]) continue;
-                wp_xhv = map_x[wp_lid][wp_wid][0];
-                wp_yhv = map_y[wp_lid][wp_wid][0];
-                wp_xro = map_x[wp_lid][wp_wid][1];
-                wp_yro = map_y[wp_lid][wp_wid][1];
-                wp_xc = (wp_xro+wp_xhv)/2.;
-                wp_yc = (wp_yro+wp_yhv)/2.;
-                wp_ch = map_ch[wp_lid][wp_wid];
-                wp_bid = map_bid[wp_lid][wp_wid];
-                if (m_wireIDWhiteList[wp_wid]){
-                    double theOff = map_off[wp_lid][wp_wid]*m_scale;
-                    double deltaSlz = map_slz[wp_lid][wp_wid]-map_slzmc[wp_lid][wp_wid];
-                    double deltaInx = map_inx[wp_lid][wp_wid]-map_inxmc[wp_lid][wp_wid];
-                    if (m_stepSize){
-                        if(fabs(theOff)>m_stepSize) theOff = theOff>0?m_stepSize:-m_stepSize;
-                    }
-                    if ((m_minDeltaSlz||m_maxDeltaSlz)&&(deltaSlz>m_maxDeltaSlz||deltaSlz<m_minDeltaSlz)){
-                        theOff = 0;
-                    }
-                    if ((m_minDeltaInx||m_maxDeltaInx)&&(deltaInx>m_maxDeltaInx||deltaInx<m_minDeltaInx)){
-                        theOff = 0;
-                    }
-                    wp_xro += theOff;
-                    wp_xc += theOff;
-                    wp_xhv += theOff;
-                }
-                TTree_wirepos->Fill();
-            }
-        }
-        TTree_wirepos->Write();
-        TFile_wirepos->Close();
-    }
 
     return 0;
 }
@@ -2231,7 +2272,7 @@ double get_dist(int lid, int wid, double slx, double inx, double slz, double inz
     vDist = vWireHV-vTrackU;
     vAxis = vWire.Cross(vTrack);
     double value = -vDist*(vAxis.Unit());
-    return value-map_off[lid][wid];
+    return value-map_off_new[lid][wid];
 }
 
 int t2d(double t, double & d, bool isRight, double tmaxSet){
@@ -2503,10 +2544,14 @@ void print_usage(char * prog_name){
     fprintf(stderr,"\t\t In getting offset and new XT, require all hits used in tracking are golden hits\n");
     fprintf(stderr,"\t -F <suffix>\n");
     fprintf(stderr,"\t\t Adding suffix to output files\n");
+    fprintf(stderr,"\t -O\n");
+    fprintf(stderr,"\t\t (false) Update one wire per iteration (the wire with the largest offset)\n");
     fprintf(stderr,"\t -W\n");
     fprintf(stderr,"\t\t (false) Update wire map\n");
     fprintf(stderr,"\t -X <xt file>\n");
     fprintf(stderr,"\t\t Use given xt file instead of generating a new one\n");
+    fprintf(stderr,"\t -Z\n");
+    fprintf(stderr,"\t\t (false) Draw detail plots\n");
     fprintf(stderr,"\t -n <n>\n");
     fprintf(stderr,"\t\t Maximum number of hits cut set to n\n");
     fprintf(stderr,"\t -f <f>\n");
