@@ -32,6 +32,7 @@ tmax=800
 
 # for getOffset
 UpdateWireMap=false
+OneWirePerIter=false
 stepSize=0 # maximum step size for each movement in wire position calibration; 0 means no limit
 minslz=0 # min slz cut for mean slz value in each sample of events in wiremap calibration. minslz==maxslz==0 means no cut
 maxslz=0 # min slz cut for mean slz value in each sample of events in wiremap calibration. minslz==maxslz==0 means no cut
@@ -64,6 +65,7 @@ Syntax:
     -L     (false) Take the last iteration as the final step and do the default complete checkings
     -W     (false) update the wire position map
     -U     (false) keep the xt curves unchanged.
+    -O     (false) update one wire position per iteration step (the one with the largest offset)
     -P     (false) use programmed iteration parameters
     -S [S] set the start name ($StartName)
     -D [D] set this layer ($DEFAULTLAYER) as the default layer to save in XT file as fr/l_0
@@ -125,6 +127,9 @@ do
         ;;
     'D')
         DEFAULTLAYER="$OPTARG";
+        ;;
+    'O')
+        OneWirePerIter=true;
         ;;
     'P')
         PROGRAMMED=true;
@@ -227,6 +232,7 @@ echo "        sumCut = $sumCut; "
 echo "        aaCut = $aaCut; "
 echo "        peakType = $peakType;  0, only the first peak over threshold; 1, all peaks over threshold; 2, even including shaddowed peaks"
 echo "getOffset Parameters are:"
+echo "        OneWirePerIter = $OneWirePerIter;"
 echo "        UpdateWireMap = $UpdateWireMap;"
 echo "        stepSize = $stepSize;  maximum step size for each movement in wire position calibration; 0 means no limit"
 echo "        minslz = $minslz;  min slz cut for mean slz value in each sample of events in wiremap calibration. minslz==maxslz==0 means no cut"
@@ -386,9 +392,10 @@ do
     then
         if [ $iter -gt 3 ]
         then
-            layers="2 3 4 5 6 7"
+            layers="1 2 3 4 5 6 7 8"
             wires="3 4 5 6"
             UpdateWireMap=true
+            OneWirePerIter=true
         else
             layers=$DEFAULTLAYER
             wires=""
@@ -402,6 +409,16 @@ do
 #        layers="0"
     fi
 
+#   update the configure file
+    cat << EOF > $CONFIGTABLE_wireposition
+    < ana.scale = $scale >
+    < ana.stepSize = $stepSize >
+    < ana.minDeltaSlz = $minslz >
+    < ana.maxDeltaSlz = $maxslz >
+    < ana.minDeltaInx = $mininx >
+    < ana.maxDeltaInx = $maxinx >
+EOF
+
 #   tune arguments
     arg_configure=""
     if [ ! -z "$CONFIGTABLE" ]
@@ -411,7 +428,12 @@ do
     arg_wiremap=""
     if $UpdateWireMap
     then
-        arg_wiremap="-W"
+        if $OneWirePerIter
+        then
+            arg_wiremap="-W -O -C $CONFIGTABLE_wireposition"
+        else
+            arg_wiremap="-W -C $CONFIGTABLE_wireposition"
+        fi
     fi
     arg_xtfile=""
     if $DONTUPDATEXT
@@ -424,16 +446,11 @@ do
     else
         lastxtfile=xt.${runNo}.${currunname}.root
     fi
-
-#   update the configure file
-    cat << EOF > $CONFIGTABLE_wireposition
-    < ana.scale = $scale >
-    < ana.stepSize = $stepSize >
-    < ana.minDeltaSlz = $minslz >
-    < ana.maxDeltaSlz = $maxslz >
-    < ana.minDeltaInx = $mininx >
-    < ana.maxDeltaInx = $maxinx >
-EOF
+    arg_draw=""
+    if [ $iter -eq $IterEnd ] && $isLast
+    then
+        arg_draw="-Z"
+    fi
 
     echo "#Iteration $iter started"
     echo "  layers = \"$layers\""
@@ -457,6 +474,7 @@ EOF
     echo "  maxchi2 = $maxchi2"
     echo "  scale = $scale"
     echo "  XTTYPE = $XTTYPE"
+    echo "  OneWirePerIter = $OneWirePerIter;"
     echo "  UpdateWireMap = $UpdateWireMap"
     echo "  DONTUPDATEXT = $DONTUPDATEXT"
     echo "  DEFAULTLAYER = $DEFAULTLAYER"
@@ -518,6 +536,7 @@ EOF
             errtemp="$CDCS8WORKING_DIR/root/tracks/t_${runNo}.${temprunname}.layer${testlayer}.err"
             sourcefiles[testlayer]="${sourcefiles[testlayer]} t_${runNo}.${temprunname}.layer${testlayer}.root"
             tempconfig="tracking -C $CONFIGTABLEDEFAULT $arg_configure -R $runNo -L $testlayer -n $nHitsGMax -x $t0shift0 -y $t0shift1 -l $tmin -u $tmax -g $geoSetup -s $sumCut -a $aaCut -B $iEntryStart -E $iEntryStop -w $workType -i $inputType -p $peakType $prerunname $temprunname > $logtemp 2> $errtemp"
+            echo $tempconfig
 
             if [ -e $file ]
             then # log file already exists??
@@ -631,5 +650,6 @@ EOF
         cd ../..
     fi
 
-    ana -C $CONFIGTABLEDEFAULT $arg_configure -R $runNo -x $XTTYPE -g $geoSetup -H $SAVEHISTS -i $inputType -c $maxchi2 -L $DEFAULTLAYER -n $NHITSMAX -o $tmaxSet $arg_wiremap $arg_xtfile $prerunname $currunname $wires
+    ana -C $CONFIGTABLEDEFAULT $arg_configure -R $runNo -x $XTTYPE -g $geoSetup -H $SAVEHISTS -i $inputType -c $maxchi2 -L $DEFAULTLAYER -n $NHITSMAX -o $tmaxSet $arg_wiremap $arg_xtfile $arg_draw $prerunname $currunname $wires
+    echo "ana -C $CONFIGTABLEDEFAULT $arg_configure -R $runNo -x $XTTYPE -g $geoSetup -H $SAVEHISTS -i $inputType -c $maxchi2 -L $DEFAULTLAYER -n $NHITSMAX -o $tmaxSet $arg_wiremap $arg_xtfile $arg_draw $prerunname $currunname $wires"
 done
