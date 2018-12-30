@@ -2,7 +2,7 @@
     TChain * ichain0 = new TChain("t","t");
     TChain * ichain1 = new TChain("t","t");
     ichain0->Add("root/ana/ana_105.1224xt053t400.i4.layer4.root");
-    ichain1->Add("root/ana/ana_105.1224xt053t400.i4.layer7.root");
+    ichain1->Add("root/ana/ana_105.1224xt053t400l5.i4.layer4.root");
     int isGood0;
     int nHitsS0;
     int theWid0;
