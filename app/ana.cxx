@@ -1571,7 +1571,9 @@ int main(int argc, char** argv){
                 h_xt->Fill(dt,fd);
                 // resi VS x/d
                 h_resVSX->Fill(fd,resi);
-                h_resVSXwire[wid]->Fill(fd,resi);
+                if (wid>=FIRSTWIRE4CALIB&&wid-FIRSTWIRE4CALIB<NWIRES4CALIB){
+                    h_resVSXwire[wid-FIRSTWIRE4CALIB]->Fill(fd,resi);
+                }
                 h_resVSD->Fill(dd,resi);
                 // resi
                 int ibx = fabs(fd)/m_xmax*NBINS;
@@ -1579,7 +1581,11 @@ int main(int argc, char** argv){
                 if (ib>=0&&ib<NBINS) h_resD[ib]->Fill(resi);
                 if (ibx>=0&&ibx<NBINS) h_resX[ibx]->Fill(resi);
                 ibx = (fd+m_xmax)/2./m_xmax*NBINS;
-                if (ibx>=0&&ibx<NBINS) h_resXwire[wid][ibx]->Fill(resi);
+                if (ibx>=0&&ibx<NBINS){
+                    if (wid>=FIRSTWIRE4CALIB&&wid-FIRSTWIRE4CALIB<NWIRES4CALIB){
+                        h_resXwire[wid-FIRSTWIRE4CALIB][ibx]->Fill(resi);
+                    }
+                }
             }
         }
 
