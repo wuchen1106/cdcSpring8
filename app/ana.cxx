@@ -30,6 +30,9 @@
 #define NBINS    20
 #define MAXTRUNC 6
 
+#define NWIRES4CALIB 4
+#define FIRSTWIRE4CALIB 3
+
 // run time parameters
 int m_runNo = 0;
 TString m_prerunname  = "prerun";
@@ -1139,6 +1142,10 @@ int main(int argc, char** argv){
         TH2D * h_xt = new TH2D("hxt","Time space relation",m_NbinT,m_tmin,m_tmax,m_NbinX,-m_xmax,m_xmax);
         TH2D * h_tx = new TH2D("htx","Space time relation",m_NbinX,-m_xmax,m_xmax,m_NbinT,m_tmin,m_tmax);
         TH2D * h_resVSX = new TH2D("hresVSX","Residual VS DOCA",m_NbinX,-m_xmax,m_xmax,m_NbinRes,-m_maxRes,m_maxRes);
+        TH2D * h_resVSXwire[NWIRES4CALIB];
+        for (int iwire = 0; iwire<NWIRES4CALIB; iwire++){
+            h_resVSXwire[iwire] = new TH2D(Form("hresVSXw%d",iwire),"Residual VS DOCA",m_NbinX,-m_xmax,m_xmax,m_NbinRes,-m_maxRes,m_maxRes);
+        }
         TH2D * h_resVSD = new TH2D("hresVSD","Residual VS drift distance",m_NbinX,-m_xmax,m_xmax,m_NbinRes,-m_maxRes,m_maxRes);
         TH1D * h_resD[NBINS];
         TH1D * h_resX[NBINS];
@@ -1150,6 +1157,15 @@ int main(int argc, char** argv){
             h_resD[i]->GetXaxis()->SetTitle("Residual [mm]");
             h_resX[i] = new TH1D(Form("hresX%d",i),Form("Residual with DOCA in [%.1f,%.1f] mm",xmin,xmax),m_NbinRes,-m_maxRes,m_maxRes);
             h_resX[i]->GetXaxis()->SetTitle("Residual [mm]");
+        }
+        TH1D * h_resXwire[NWIRES4CALIB][NBINS];
+        for (int i = 0; i<NBINS; i++){
+            for (int iwire = 0; iwire<NWIRES4CALIB; iwire++){
+                double xmin = m_xmax*(2*i-NBINS)/NBINS;
+                double xmax = m_xmax*(2*(i+1)-NBINS)/NBINS;
+                h_resXwire[iwire][i] = new TH1D(Form("hresXw%d_%d",iwire,i),Form("Residual with DOCA in [%.1f,%.1f] mm in wire %d",xmin,xmax,iwire+FIRSTWIRE4CALIB),m_NbinRes,-m_maxRes,m_maxRes);
+                h_resXwire[iwire][i]->GetXaxis()->SetTitle("Residual [mm]");
+            }
         }
         for (int i = 0; i<MAXTRUNC; i++){
             h_dedx[i] = new TH1D(Form("hdedx%d",i),Form("dEdX with %d hits omitted",i),256,0,3);
@@ -1176,6 +1192,10 @@ int main(int argc, char** argv){
         h_tx->GetYaxis()->SetTitle("Drift time [ns]");
         h_resVSX->GetXaxis()->SetTitle("DOCA [mm]");
         h_resVSX->GetYaxis()->SetTitle("Residual [mm]");
+        for (int iwire = 0; iwire<NWIRES4CALIB; iwire++){
+            h_resVSXwire[iwire]->GetXaxis()->SetTitle("DOCA [mm]");
+            h_resVSXwire[iwire]->GetYaxis()->SetTitle("Residual [mm]");
+        }
         h_resVSD->GetXaxis()->SetTitle("Drift distance [mm]");
         h_resVSD->GetYaxis()->SetTitle("Residual [mm]");
         int N_ALL = 0;
@@ -1539,6 +1559,7 @@ int main(int argc, char** argv){
                 double dd = theDD[i];
                 double dt = theDT[i];
                 double aa = theAA[i];
+                int wid = theWid[i];
                 if (status) continue; // out of range
                 // if (aa<m_aaCut) continue; // too small
                 h_DriftD->Fill(dd);
@@ -1550,12 +1571,15 @@ int main(int argc, char** argv){
                 h_xt->Fill(dt,fd);
                 // resi VS x/d
                 h_resVSX->Fill(fd,resi);
+                h_resVSXwire[wid]->Fill(fd,resi);
                 h_resVSD->Fill(dd,resi);
                 // resi
                 int ibx = fabs(fd)/m_xmax*NBINS;
                 int ib = fabs(dd)/m_xmax*NBINS;
                 if (ib>=0&&ib<NBINS) h_resD[ib]->Fill(resi);
                 if (ibx>=0&&ibx<NBINS) h_resX[ibx]->Fill(resi);
+                ibx = (fd+m_xmax)/2./m_xmax*NBINS;
+                if (ibx>=0&&ibx<NBINS) h_resXwire[wid][ibx]->Fill(resi);
             }
         }
 
@@ -1579,6 +1603,7 @@ int main(int argc, char** argv){
         double o_xeff500umerr;
         double o_xeff1mm;
         double o_xoff;
+        double o_xoffwire[NWIRES4CALIB];
         double o_dres;
         double o_dreserr;
         double o_drms;
@@ -1607,6 +1632,9 @@ int main(int argc, char** argv){
         otree->Branch("xeff500umerr",&o_xeff500umerr);
         otree->Branch("xeff1mm",&o_xeff1mm);
         otree->Branch("xoff",&o_xoff);
+        for (int iwire = 0; iwire<NWIRES4CALIB; iwire++){
+            otree->Branch(Form("xoffw%d",iwire+FIRSTWIRE4CALIB),&(o_xoffwire[iwire]));
+        }
         otree->Branch("dres",&o_dres);
         otree->Branch("dreserr",&o_dreserr);
         otree->Branch("drms",&o_drms);
@@ -1632,6 +1660,7 @@ int main(int argc, char** argv){
         std::vector<double> v_xreserr;
         std::vector<double> v_xrmserr;
         std::vector<double> v_xoff;
+        std::vector<double> v_xoffwire[NWIRES4CALIB];
         std::vector<double> v_deff;
         std::vector<double> v_deff3s;
         std::vector<double> v_deff500um;
@@ -1725,6 +1754,21 @@ int main(int argc, char** argv){
                 o_xeff500um = 0;
                 o_xeff1mm   = 0;
             }
+            // get offset in each wire
+            for (int iwire = 0; iwire<NWIRES4CALIB; iwire++){
+                if (h_resXwire[iwire][ibin]->Integral()>0){
+                    if (o_xmid<0.5)
+                        doFit(h_resXwire[iwire][ibin],3/4.,1/4.,0,m_maxRes);
+                    else if (o_xmid>7)
+                        doFit(h_resXwire[iwire][ibin],1/3.,2/3.,-m_maxRes,m_maxRes);
+                    else
+                        doFit(h_resXwire[iwire][ibin],1/3.,1/3.,-m_maxRes,m_maxRes);
+                    o_xoffwire[iwire] = f_res->GetParameter(1);
+                }
+                else{
+                    o_xoffwire[iwire] = 0;
+                }
+            }
             if (h_resD[ibin]->Integral()>0){
                 if (o_xmid<0.5)
                     doFit(h_resD[ibin],1/4.,3/4.,-m_maxRes,m_maxRes);
@@ -1807,6 +1851,9 @@ int main(int argc, char** argv){
                 v_xrms.push_back(o_xrms);
                 v_xrmserr.push_back(o_xrmserr);
                 v_xoff.push_back(o_xoff);
+                for (int iwire = 0; iwire<NWIRES4CALIB; iwire++){
+                    v_xoffwire[iwire].push_back(o_xoffwire[iwire]);
+                }
             }
         }
         NusedD?averageEffD/=NusedD:averageEffD=0;
@@ -1934,6 +1981,17 @@ int main(int argc, char** argv){
         g_xoff->SetMarkerStyle(20);
         g_xoff->SetMarkerColor(kBlack);
         g_xoff->SetLineColor(kBlack);
+        TGraphErrors * g_xoffwire[NWIRES4CALIB];
+        for (int iwire = 0; iwire<NWIRES4CALIB; iwire++){
+            g_xoffwire[iwire]= new TGraphErrors(v_xx.size(),&(v_xx[0]),&(v_xoffwire[iwire][0]));
+            g_xoffwire[iwire]->SetName(Form("gxoffw%d",iwire+FIRSTWIRE4CALIB));
+            g_xoffwire[iwire]->SetTitle("Offset VS DOCA");
+            g_xoffwire[iwire]->GetXaxis()->SetTitle("Drift distance [mm]");
+            g_xoffwire[iwire]->GetYaxis()->SetTitle("offset [mm]");
+            g_xoffwire[iwire]->SetMarkerStyle(20);
+            g_xoffwire[iwire]->SetMarkerColor(kBlack);
+            g_xoffwire[iwire]->SetLineColor(kBlack);
+        }
 
         TGraphErrors * g_doff = new TGraphErrors(v_dx.size(),&(v_dx[0]),&(v_doff[0]));
         g_doff->SetName("gdoff");
@@ -2058,10 +2116,12 @@ int main(int argc, char** argv){
             gPad->SetGridx(1);
             gPad->SetGridy(1);
             h_resVSX->Draw("COLZ");
+            g_xoff->Draw("PLSAME");
             canv_general->SaveAs(Form("resVSX_%d.%s.layer%d.pdf",m_runNo,m_runnameout.Data(),testLayer));
             canv_general->SaveAs(Form("resVSX_%d.%s.layer%d.png",m_runNo,m_runnameout.Data(),testLayer));
 
             h_resVSD->Draw("COLZ");
+            g_doff->Draw("PLSAME");
             canv_general->SaveAs(Form("resVSD_%d.%s.layer%d.pdf",m_runNo,m_runnameout.Data(),testLayer));
             canv_general->SaveAs(Form("resVSD_%d.%s.layer%d.png",m_runNo,m_runnameout.Data(),testLayer));
 
@@ -2130,13 +2190,22 @@ int main(int argc, char** argv){
             canv_general->SaveAs(Form("rmsd_%d.%s.layer%d.pdf",m_runNo,m_runnameout.Data(),testLayer));
             canv_general->SaveAs(Form("rmsd_%d.%s.layer%d.png",m_runNo,m_runnameout.Data(),testLayer));
 
-            g_xoff->Draw("APL");
-            canv_general->SaveAs(Form("offx_%d.%s.layer%d.pdf",m_runNo,m_runnameout.Data(),testLayer));
-            canv_general->SaveAs(Form("offx_%d.%s.layer%d.png",m_runNo,m_runnameout.Data(),testLayer));
+            TCanvas * canv_calib = new TCanvas("canv_calib","canv_calib",1024,768);
+            gStyle->SetPalette(1);
+            gStyle->SetOptStat(0);
+            gStyle->SetPadTickX(1);
+            gStyle->SetPadTickY(1);
+            canv_calib->Divide((int)sqrt(NWIRES4CALIB),NWIRES4CALIB/((int)sqrt(NWIRES4CALIB)));
+            for (int iwire = 0; iwire<NWIRES4CALIB; iwire++){
+                canv_calib->cd(iwire+1);
+                gPad->SetGridx(1);
+                gPad->SetGridy(1);
+                h_resVSXwire[iwire]->Draw("COLZ");
+                g_xoffwire[iwire]->Draw("PLSAME");
+            }
+            canv_calib->SaveAs(Form("offx_%d.%s.layer%d.pdf",m_runNo,m_runnameout.Data(),testLayer));
+            canv_calib->SaveAs(Form("offx_%d.%s.layer%d.png",m_runNo,m_runnameout.Data(),testLayer));
 
-            g_doff->Draw("APL");
-            canv_general->SaveAs(Form("offd_%d.%s.layer%d.pdf",m_runNo,m_runnameout.Data(),testLayer));
-            canv_general->SaveAs(Form("offd_%d.%s.layer%d.png",m_runNo,m_runnameout.Data(),testLayer));
         }
 
         //=================================================Save====================================================
@@ -2172,6 +2241,9 @@ int main(int argc, char** argv){
         g_xrms->Write();
         g_doff->Write();
         g_xoff->Write();
+        for (int iwire = 0; iwire<NWIRES4CALIB; iwire++){
+            g_xoffwire[iwire]->Write();
+        }
         otree->Write();
         ofileresi->Close();
         ofileana->Close();
