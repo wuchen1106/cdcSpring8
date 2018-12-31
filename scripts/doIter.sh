@@ -390,7 +390,13 @@ do
 
     if $PROGRAMMED
     then
-        if [ $iter -gt 3 ]
+        if [ $iter -gt 20 ]
+        then
+            layers="1 2 3 4 5 6 7 8"
+            wires="3 4 5 6"
+            UpdateWireMap=true
+            OneWirePerIter=false
+        elif [ $iter -gt 3 ]
         then
             layers="1 2 3 4 5 6 7 8"
             wires="3 4 5 6"

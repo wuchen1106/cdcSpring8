@@ -5,6 +5,7 @@
 #include "TH2D.h"
 #include "TFile.h"
 #include "TCanvas.h"
+#include "TStyle.h"
 #include <vector>
 #include <math.h>
 
@@ -126,7 +127,7 @@ int main(int argc, char** argv){
 	}
 	if (m_isMC){
 		TChain * ichain_off = new TChain("t","t");
-		filename = HOME+Form("Input/wire-offset.%d.root",m_runNo);
+		filename = HOME+Form("/Input/wire-offset.%d.root",m_runNo);
 		ichain_off->Add(filename);
 		if (!ichain_off->GetEntries()) {
             MyError(Form("Cannot find \"%.s\"!\n",filename.Data()));
@@ -135,8 +136,8 @@ int main(int argc, char** argv){
 		double off_delta;
 		int off_lid;
 		int off_wid;
-		ichain_off->SetBranchAddress("l",&off_lid);
-		ichain_off->SetBranchAddress("w",&off_wid);
+		ichain_off->SetBranchAddress("lid",&off_lid);
+		ichain_off->SetBranchAddress("wid",&off_wid);
 		ichain_off->SetBranchAddress("d",&off_delta);
 		for (int i = 0; i<ichain_off->GetEntries(); i++){
 			ichain_off->GetEntry(i);
@@ -147,7 +148,7 @@ int main(int argc, char** argv){
 
 	// get wire positions
 	TChain * ichain_wp = new TChain("t","t");
-    filename = HOME+"Input/wire-position.root";
+    filename = HOME+"/Input/wire-position.root";
     ichain_wp->Add(filename);
     if (!ichain_wp->GetEntries()) {
         MyError(Form("Cannot find \"%.s\"!\n",filename.Data()));
@@ -169,20 +170,23 @@ int main(int argc, char** argv){
 	// check which wire is changed
 	for (int iter = 1; iter<=m_Niters; iter++){
 		ichain_wp = new TChain("t","t");
-        filename = HOME+Form("info/offset.%d.%s.i%d.root",m_runNo,m_runname.Data(),iter);
+        filename = HOME+Form("/info/offset.%d.%s.i%d.root",m_runNo,m_runname.Data(),iter);
 		ichain_wp->Add(filename);
 		if (!ichain_wp->GetEntries()) {
             MyError(Form("Cannot find \"%.s\"!\n",filename.Data()));
             return -1;
         }
         double off_adjust;
+        double off_d;
 		ichain_wp->SetBranchAddress("adjust",&off_adjust);
-		ichain_wp->SetBranchAddress("l",&wp_lid);
-		ichain_wp->SetBranchAddress("w",&wp_wid);
+		ichain_wp->SetBranchAddress("d",&off_d);
+		ichain_wp->SetBranchAddress("lid",&wp_lid);
+		ichain_wp->SetBranchAddress("wid",&wp_wid);
 		for (int i = 0; i<ichain_wp->GetEntries(); i++){
 			ichain_wp->GetEntry(i);
             if (wp_lid<0||wp_lid>=NLAY||wp_wid<0||wp_wid>=NCEL) continue;
-			if (off_adjust){
+            if (wp_wid<3||wp_wid>6) continue;
+			if (off_d){
 				changed[wp_lid][wp_wid] = true;
 			}
 		}
@@ -201,8 +205,8 @@ int main(int argc, char** argv){
         double off_d;
 		ichain_wp->SetBranchAddress("d",&off_d);
 		ichain_wp->SetBranchAddress("adjust",&off_adjust);
-		ichain_wp->SetBranchAddress("l",&wp_lid);
-		ichain_wp->SetBranchAddress("w",&wp_wid);
+		ichain_wp->SetBranchAddress("lid",&wp_lid);
+		ichain_wp->SetBranchAddress("wid",&wp_wid);
 		for (int i = 0; i<ichain_wp->GetEntries(); i++){
 			ichain_wp->GetEntry(i);
             if (wp_lid<0||wp_lid>=NLAY||wp_wid<0||wp_wid>=NCEL) continue;
@@ -347,11 +351,16 @@ int main(int argc, char** argv){
     }
 
     // Output
-    TFile * ofile = new TFile(HOME+Form("/info/iter.%d.%s.root",m_runNo,m_runname.Data()));
+    TFile * ofile = new TFile(HOME+Form("/info/iter.%d.%s.root",m_runNo,m_runname.Data()),"RECREATE");
 
     // get histograms
     TH2D * hOffsets[NITERSMAX] = {0};
     TH2D * hAdjusts[NITERSMAX] = {0};
+	gStyle->SetPalette(1);
+	gStyle->SetOptStat(0);
+	gStyle->SetPadTickX(1);
+	gStyle->SetPadTickY(1);
+	gStyle->SetPaintTextFormat("4.1f");
     for (int iter = 1; iter<=m_Niters; iter++){
         TCanvas * canv = new TCanvas(Form("Iter%d",iter),"canv",1024,800);
         canv->Divide(2,1);
@@ -359,10 +368,12 @@ int main(int argc, char** argv){
         hAdjusts[iter] = new TH2D(Form("hAdjusts%d",iter),"Adjustments",11,-0.5,10.5,8,0.5,8.5);
         for (int lid = 0; lid<NLAY; lid++){
             for (int wid = 0; wid<NCEL; wid++){
-                hOffsets[iter]->Fill(wid,lid,iter_offset[iter][lid][wid]);
-                hAdjusts[iter]->Fill(wid,lid,iter_deltaX[iter][lid][wid]);
+                hOffsets[iter]->Fill(wid,lid,iter_offset[iter][lid][wid]*1000);
+                hAdjusts[iter]->Fill(wid,lid,iter_deltaX[iter][lid][wid]*1000);
             }
         }
+        hOffsets[iter]->SetContour(100);
+        hAdjusts[iter]->SetContour(100);
         canv->cd(1);
         hOffsets[iter]->Draw("COLZTEXT");
         canv->cd(2);
