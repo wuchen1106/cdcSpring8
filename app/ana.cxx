@@ -1149,6 +1149,8 @@ int main(int argc, char** argv){
         TH2D * h_resVSD = new TH2D("hresVSD","Residual VS drift distance",m_NbinX,-m_xmax,m_xmax,m_NbinRes,-m_maxRes,m_maxRes);
         TH1D * h_resD[NBINS];
         TH1D * h_resX[NBINS];
+        TH1D * h_resDb[NBINS]; // for both sides case
+        TH1D * h_resXb[NBINS]; // for both sides case
         TH1D * h_dedx[MAXTRUNC];
         for (int i = 0; i<NBINS; i++){
             double xmin = m_xmax*(i)/NBINS;
@@ -1157,6 +1159,12 @@ int main(int argc, char** argv){
             h_resD[i]->GetXaxis()->SetTitle("Residual [mm]");
             h_resX[i] = new TH1D(Form("hresX%d",i),Form("Residual with DOCA in [%.1f,%.1f] mm",xmin,xmax),m_NbinRes,-m_maxRes,m_maxRes);
             h_resX[i]->GetXaxis()->SetTitle("Residual [mm]");
+            xmin = -m_xmax+2*m_xmax*(i)/NBINS;
+            xmax = -m_xmax+2*m_xmax*(i+1)/NBINS;
+            h_resXb[i] = new TH1D(Form("hresX%d",i),Form("Residual with DOCA in [%.1f,%.1f] mm",xmin,xmax),m_NbinRes,-m_maxRes,m_maxRes);
+            h_resXb[i]->GetXaxis()->SetTitle("Residual [mm]");
+            h_resDb[i] = new TH1D(Form("hresD%d",i),Form("Residual with drift distance in [%.1f,%.1f] mm",xmin,xmax),m_NbinRes,-m_maxRes,m_maxRes);
+            h_resDb[i]->GetXaxis()->SetTitle("Residual [mm]");
         }
         TH1D * h_resXwire[NWIRES4CALIB][NBINS];
         for (int i = 0; i<NBINS; i++){
@@ -1580,12 +1588,16 @@ int main(int argc, char** argv){
                 int ib = fabs(dd)/m_xmax*NBINS;
                 if (ib>=0&&ib<NBINS) h_resD[ib]->Fill(resi);
                 if (ibx>=0&&ibx<NBINS) h_resX[ibx]->Fill(resi);
+                // for both side case
                 ibx = (fd+m_xmax)/2./m_xmax*NBINS;
                 if (ibx>=0&&ibx<NBINS){
+                    h_resXb[ibx]->Fill(resi);
                     if (wid>=FIRSTWIRE4CALIB&&wid-FIRSTWIRE4CALIB<NWIRES4CALIB){
                         h_resXwire[wid-FIRSTWIRE4CALIB][ibx]->Fill(resi);
                     }
                 }
+                ib = (dd+m_xmax)/2./m_xmax*NBINS;
+                if (ib>=0&&ib<NBINS) h_resDb[ib]->Fill(resi);
             }
         }
 
@@ -1596,6 +1608,7 @@ int main(int argc, char** argv){
         int o_ibin;
         double o_xmin;
         double o_xmid;
+        double o_xmidb; // for both sides case
         double o_xmax;
         double o_xres;
         double o_xreserr;
@@ -1621,11 +1634,14 @@ int main(int argc, char** argv){
         double o_doff;
         double o_nx;
         double o_nxh;
+        double o_nxhb; // for both sides case
         double o_nd;
+        double o_ndb; // for both sides case
         otree->Branch("ibin",&o_ibin);
         otree->Branch("xmin",&o_xmin);
         otree->Branch("xmid",&o_xmid);
         otree->Branch("xmax",&o_xmax);
+        otree->Branch("xmidb",&o_xmidb);
         otree->Branch("xres",&o_xres);
         otree->Branch("xreserr",&o_xreserr);
         otree->Branch("xrms",&o_xrms);
@@ -1652,11 +1668,15 @@ int main(int argc, char** argv){
         otree->Branch("doff",&o_doff);
         otree->Branch("nx",&o_nx);
         otree->Branch("nxh",&o_nxh);
+        otree->Branch("nxhb",&o_nxhb);
         otree->Branch("nd",&o_nd);
+        otree->Branch("ndb",&o_ndb);
 
         std::vector<double> v_xx;
+        std::vector<double> v_xxb; // both-side case
         std::vector<double> v_xxerr;
         std::vector<double> v_dx;
+        std::vector<double> v_dxb;
         std::vector<double> v_dxerr;
         std::vector<double> v_xeff;
         std::vector<double> v_xeff3s;
@@ -1667,6 +1687,7 @@ int main(int argc, char** argv){
         std::vector<double> v_xrmserr;
         std::vector<double> v_xoff;
         std::vector<double> v_xoffwire[NWIRES4CALIB];
+        std::vector<double> v_xxwire[NWIRES4CALIB];
         std::vector<double> v_deff;
         std::vector<double> v_deff3s;
         std::vector<double> v_deff500um;
@@ -1710,18 +1731,25 @@ int main(int argc, char** argv){
         double bestResX = 1e6;
         double bestRMSX = 1e6;
         for (int ibin = 0; ibin<NBINS; ibin++){
+            // x axis is from 0 to m_xmax
             o_ibin = ibin;
             o_xmin = m_xmax*(ibin)/NBINS;
             o_xmid = m_xmax*(ibin+0.5)/NBINS;
             o_xmax = m_xmax*(ibin+1)/NBINS;
+            // for both-sides case, x axis is from 0 to m_xmax
+            o_xmidb = -m_xmax+2*m_xmax*(ibin+0.5)/NBINS;
+            // get values of this bin
             o_nx = N_BIN[ibin];
             o_nxh = h_resX[ibin]->GetEntries();
+            o_nxhb = h_resXb[ibin]->GetEntries();
             o_nd = h_resD[ibin]->GetEntries();
+            o_ndb = h_resDb[ibin]->GetEntries();
             o_xrms = h_resX[ibin]->GetRMS();
             o_xrmserr = h_resX[ibin]->GetRMSError();
             o_drms = h_resD[ibin]->GetRMS();
             o_drmserr = h_resD[ibin]->GetRMSError();
-            if (o_nx&&h_resX[ibin]->Integral()>0){
+            // fit the resolution for fitD case
+            if (o_nxh&&h_resX[ibin]->Integral()>0){
                 o_xeff = (double)o_nxh/o_nx;
                 if (o_xmid<0.5)
                     doFit(h_resX[ibin],3/4.,1/4.,0,m_maxRes);
@@ -1731,20 +1759,20 @@ int main(int argc, char** argv){
                     doFit(h_resX[ibin],1/3.,1/3.,-m_maxRes,m_maxRes);
                 o_xres = f_res->GetParameter(2);
                 o_xreserr = f_res->GetParError(2);
-                o_xoff = f_res->GetParameter(1);
-                ibinl = h_resX[ibin]->FindBin(o_xoff-o_xrms*3); 
-                ibinr = h_resX[ibin]->FindBin(o_xoff+o_xrms*3); 
+                double xoff = f_res->GetParameter(1);
+                ibinl = h_resX[ibin]->FindBin(xoff-o_xrms*3); 
+                ibinr = h_resX[ibin]->FindBin(xoff+o_xrms*3); 
                 o_xeff3sig = h_resX[ibin]->Integral(ibinl,ibinr)/o_nx;
                 o_xeff3sigerr = sqrt(o_xeff3sig*(1-o_xeff3sig)/o_nx);
-                ibinl = h_resX[ibin]->FindBin(o_xoff-o_xrms*5); 
-                ibinr = h_resX[ibin]->FindBin(o_xoff+o_xrms*5); 
+                ibinl = h_resX[ibin]->FindBin(xoff-o_xrms*5); 
+                ibinr = h_resX[ibin]->FindBin(xoff+o_xrms*5); 
                 o_xeff5sig = h_resX[ibin]->Integral(ibinl,ibinr)/o_nx;
-                ibinl = h_resX[ibin]->FindBin(o_xoff-0.5); 
-                ibinr = h_resX[ibin]->FindBin(o_xoff+0.5); 
+                ibinl = h_resX[ibin]->FindBin(xoff-0.5); 
+                ibinr = h_resX[ibin]->FindBin(xoff+0.5); 
                 o_xeff500um = h_resX[ibin]->Integral(ibinl,ibinr)/o_nx;
                 o_xeff500umerr = sqrt(o_xeff500um*(1-o_xeff500um)/o_nx);
-                ibinl = h_resX[ibin]->FindBin(o_xoff-1); 
-                ibinr = h_resX[ibin]->FindBin(o_xoff+1); 
+                ibinl = h_resX[ibin]->FindBin(xoff-1); 
+                ibinr = h_resX[ibin]->FindBin(xoff+1); 
                 o_xeff1mm = h_resX[ibin]->Integral(ibinl,ibinr)/o_nx;
                 if (m_saveHists){
                     h_resX[ibin]->Draw();
@@ -1753,28 +1781,26 @@ int main(int argc, char** argv){
             }
             else{
                 o_xres = 0;
-                o_xoff = 0;
                 o_xeff = 0;
                 o_xeff3sig  = 0;
                 o_xeff5sig  = 0;
                 o_xeff500um = 0;
                 o_xeff1mm   = 0;
             }
-            // get offset in each wire
-            for (int iwire = 0; iwire<NWIRES4CALIB; iwire++){
-                if (h_resXwire[iwire][ibin]->Integral()>0){
-                    if (o_xmid<0.5)
-                        doFit(h_resXwire[iwire][ibin],3/4.,1/4.,0,m_maxRes);
-                    else if (o_xmid>7)
-                        doFit(h_resXwire[iwire][ibin],1/3.,2/3.,-m_maxRes,m_maxRes);
-                    else
-                        doFit(h_resXwire[iwire][ibin],1/3.,1/3.,-m_maxRes,m_maxRes);
-                    o_xoffwire[iwire] = f_res->GetParameter(1);
-                }
-                else{
-                    o_xoffwire[iwire] = 0;
-                }
+            // fit the resolution for fitD and both sides case
+            if (o_nxhb&&h_resXb[ibin]->Integral()>0){
+                if (fabs(o_xmidb)<0.5)
+                    doFit(h_resXb[ibin],3/4.,1/4.,0,m_maxRes);
+                else if (fabs(o_xmidb)>7)
+                    doFit(h_resXb[ibin],1/3.,2/3.,-m_maxRes,m_maxRes);
+                else
+                    doFit(h_resXb[ibin],1/3.,1/3.,-m_maxRes,m_maxRes);
+                o_xoff = f_res->GetParameter(1);
             }
+            else{
+                o_xoff = 0;
+            }
+            // fit the resolution for driftD case
             if (h_resD[ibin]->Integral()>0){
                 if (o_xmid<0.5)
                     doFit(h_resD[ibin],1/4.,3/4.,-m_maxRes,m_maxRes);
@@ -1784,18 +1810,18 @@ int main(int argc, char** argv){
                     doFit(h_resD[ibin],1/3.,1/3.,-m_maxRes,m_maxRes);
                 o_dres = f_res->GetParameter(2);
                 o_dreserr = f_res->GetParError(2);
-                o_doff = f_res->GetParameter(1);
-                ibinl = h_resD[ibin]->FindBin(o_doff-o_drms*3); 
-                ibinr = h_resD[ibin]->FindBin(o_doff+o_drms*3); 
+                double doff = f_res->GetParameter(1);
+                ibinl = h_resD[ibin]->FindBin(doff-o_drms*3); 
+                ibinr = h_resD[ibin]->FindBin(doff+o_drms*3); 
                 o_deff3sig = h_resD[ibin]->Integral(ibinl,ibinr)/o_nd;
-                ibinl = h_resD[ibin]->FindBin(o_doff-o_drms*5); 
-                ibinr = h_resD[ibin]->FindBin(o_doff+o_drms*5); 
+                ibinl = h_resD[ibin]->FindBin(doff-o_drms*5); 
+                ibinr = h_resD[ibin]->FindBin(doff+o_drms*5); 
                 o_deff5sig = h_resD[ibin]->Integral(ibinl,ibinr)/o_nd;
-                ibinl = h_resD[ibin]->FindBin(o_doff-0.5); 
-                ibinr = h_resD[ibin]->FindBin(o_doff+0.5); 
+                ibinl = h_resD[ibin]->FindBin(doff-0.5); 
+                ibinr = h_resD[ibin]->FindBin(doff+0.5); 
                 o_deff500um = h_resD[ibin]->Integral(ibinl,ibinr)/o_nd;
-                ibinl = h_resD[ibin]->FindBin(o_doff-1); 
-                ibinr = h_resD[ibin]->FindBin(o_doff+1); 
+                ibinl = h_resD[ibin]->FindBin(doff-1); 
+                ibinr = h_resD[ibin]->FindBin(doff+1); 
                 o_deff1mm = h_resD[ibin]->Integral(ibinl,ibinr)/o_nd;
                 if (m_saveHists){
                     h_resD[ibin]->Draw();
@@ -1804,13 +1830,42 @@ int main(int argc, char** argv){
             }
             else{
                 o_dres = 0;
-                o_doff = 0;
                 o_deff3sig  = 0;
                 o_deff5sig  = 0;
                 o_deff500um = 0;
                 o_deff1mm   = 0;
             }
+            // fit the resolution for driftD and both sides case
+            if (o_ndb&&h_resDb[ibin]->Integral()>0){
+                if (fabs(o_xmidb)<0.5)
+                    doFit(h_resDb[ibin],3/4.,1/4.,0,m_maxRes);
+                else if (fabs(o_xmidb)>7)
+                    doFit(h_resDb[ibin],1/3.,2/3.,-m_maxRes,m_maxRes);
+                else
+                    doFit(h_resDb[ibin],1/3.,1/3.,-m_maxRes,m_maxRes);
+                o_doff = f_res->GetParameter(1);
+            }
+            else{
+                o_doff = 0;
+            }
+            // fit the resolution for each wire
+            for (int iwire = 0; iwire<NWIRES4CALIB; iwire++){
+                if (h_resXwire[iwire][ibin]->Integral()>100){
+                    if (fabs(o_xmidb)<0.5)
+                        doFit(h_resXwire[iwire][ibin],3/4.,1/4.,0,m_maxRes);
+                    else if (fabs(o_xmidb)>7)
+                        doFit(h_resXwire[iwire][ibin],1/3.,2/3.,-m_maxRes,m_maxRes);
+                    else
+                        doFit(h_resXwire[iwire][ibin],1/3.,1/3.,-m_maxRes,m_maxRes);
+                    o_xoffwire[iwire] = f_res->GetParameter(1);
+                }
+                else{
+                    o_xoffwire[iwire] = 0;
+                }
+            }
+            // fill the entry
             otree->Fill();
+            // push values to vectors for graphs later
             if (o_nd>100){
                 if (o_xmid<m_maxFD){
                     NusedD++;
@@ -1830,6 +1885,9 @@ int main(int argc, char** argv){
                 v_dreserr.push_back(o_dreserr);
                 v_drms.push_back(o_drms);
                 v_drmserr.push_back(o_drmserr);
+            }
+            if (o_ndb>100){
+                v_dxb.push_back(o_xmidb);
                 v_doff.push_back(o_doff);
             }
             if (o_nxh>100){
@@ -1856,11 +1914,21 @@ int main(int argc, char** argv){
                 v_xreserr.push_back(o_xreserr);
                 v_xrms.push_back(o_xrms);
                 v_xrmserr.push_back(o_xrmserr);
+            }
+            if (o_nxhb>100){
+                v_xxb.push_back(o_xmidb);
                 v_xoff.push_back(o_xoff);
-                for (int iwire = 0; iwire<NWIRES4CALIB; iwire++){
+            }
+            for (int iwire = 0; iwire<NWIRES4CALIB; iwire++){
+                if (h_resXwire[iwire][ibin]->GetEntries()>100&&h_resXwire[iwire][ibin]->Integral()){
                     v_xoffwire[iwire].push_back(o_xoffwire[iwire]);
+                    v_xxwire[iwire].push_back(o_xmidb);
                 }
             }
+        }
+
+        // get bin by bin information for each wire
+        for (int ibin = 0; ibin<NBINS; ibin++){
         }
         NusedD?averageEffD/=NusedD:averageEffD=0;
         NusedD?averageResD/=NusedD:averageResD=0;
@@ -1979,9 +2047,9 @@ int main(int argc, char** argv){
         g_drms->SetMarkerColor(kBlack);
         g_drms->SetLineColor(kBlack);
 
-        TGraphErrors * g_xoff = new TGraphErrors(v_xx.size(),&(v_xx[0]),&(v_xoff[0]));
+        TGraphErrors * g_xoff = new TGraphErrors(v_xxb.size(),&(v_xxb[0]),&(v_xoff[0]));
         g_xoff->SetName("gxoff");
-        g_xoff->SetTitle("Offset VS DOCA");
+        g_xoff->SetTitle(Form("Offset VS DOCA: %.0f um",g_xoff->GetMean(2)*1000));
         g_xoff->GetXaxis()->SetTitle("Drift distance [mm]");
         g_xoff->GetYaxis()->SetTitle("offset [mm]");
         g_xoff->SetMarkerStyle(20);
@@ -1989,9 +2057,9 @@ int main(int argc, char** argv){
         g_xoff->SetLineColor(kBlack);
         TGraphErrors * g_xoffwire[NWIRES4CALIB];
         for (int iwire = 0; iwire<NWIRES4CALIB; iwire++){
-            g_xoffwire[iwire]= new TGraphErrors(v_xx.size(),&(v_xx[0]),&(v_xoffwire[iwire][0]));
+            g_xoffwire[iwire]= new TGraphErrors(v_xxwire[iwire].size(),&(v_xxwire[iwire][0]),&(v_xoffwire[iwire][0]));
             g_xoffwire[iwire]->SetName(Form("gxoffw%d",iwire+FIRSTWIRE4CALIB));
-            g_xoffwire[iwire]->SetTitle("Offset VS DOCA");
+            g_xoffwire[iwire]->SetTitle(Form("Offset VS DOCA in wire %d: %.0f um",iwire+FIRSTWIRE4CALIB,g_xoffwire[iwire]->GetMean(2)*1000));
             g_xoffwire[iwire]->GetXaxis()->SetTitle("Drift distance [mm]");
             g_xoffwire[iwire]->GetYaxis()->SetTitle("offset [mm]");
             g_xoffwire[iwire]->SetMarkerStyle(20);
@@ -1999,9 +2067,9 @@ int main(int argc, char** argv){
             g_xoffwire[iwire]->SetLineColor(kBlack);
         }
 
-        TGraphErrors * g_doff = new TGraphErrors(v_dx.size(),&(v_dx[0]),&(v_doff[0]));
+        TGraphErrors * g_doff = new TGraphErrors(v_dxb.size(),&(v_dxb[0]),&(v_doff[0]));
         g_doff->SetName("gdoff");
-        g_doff->SetTitle("Offset VS drift distance");
+        g_doff->SetTitle(Form("Offset VS drift distance: %.0f um",g_doff->GetMean(2)*1000));
         g_doff->GetXaxis()->SetTitle("Drift distance [mm]");
         g_doff->GetYaxis()->SetTitle("offset [mm]");
         g_doff->SetMarkerStyle(20);
@@ -2122,11 +2190,13 @@ int main(int argc, char** argv){
             gPad->SetGridx(1);
             gPad->SetGridy(1);
             h_resVSX->Draw("COLZ");
+            h_resVSX->SetTitle(Form("Residual VS DOCA: %.0f um",g_xoff->GetMean(2)*1000));
             g_xoff->Draw("PLSAME");
             canv_general->SaveAs(Form("resVSX_%d.%s.layer%d.pdf",m_runNo,m_runnameout.Data(),testLayer));
             canv_general->SaveAs(Form("resVSX_%d.%s.layer%d.png",m_runNo,m_runnameout.Data(),testLayer));
 
             h_resVSD->Draw("COLZ");
+            h_resVSD->SetTitle(Form("Residual VS drift distance: %.0f um",g_doff->GetMean(2)*1000));
             g_doff->Draw("PLSAME");
             canv_general->SaveAs(Form("resVSD_%d.%s.layer%d.pdf",m_runNo,m_runnameout.Data(),testLayer));
             canv_general->SaveAs(Form("resVSD_%d.%s.layer%d.png",m_runNo,m_runnameout.Data(),testLayer));
@@ -2206,6 +2276,7 @@ int main(int argc, char** argv){
                 canv_calib->cd(iwire+1);
                 gPad->SetGridx(1);
                 gPad->SetGridy(1);
+                h_resVSXwire[iwire]->SetTitle(Form("Residual VS DOCA in wire %d: %.0f um",iwire+FIRSTWIRE4CALIB,g_xoffwire[iwire]->GetMean(2)*1000));
                 h_resVSXwire[iwire]->Draw("COLZ");
                 g_xoffwire[iwire]->Draw("PLSAME");
             }
