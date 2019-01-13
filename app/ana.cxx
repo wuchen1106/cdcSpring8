@@ -63,6 +63,7 @@ double m_minDeltaSlz = 0;
 double m_maxDeltaSlz = 0;
 double m_minDeltaInx = 0;
 double m_maxDeltaInx = 0;
+double m_calib_maxslz = 0;
 std::map<int,bool> m_wireIDWhiteList; // a list of wire IDs to be updated in new wire map
 int m_XTLayerForRes = 0;
 // for cutting
@@ -106,6 +107,9 @@ TF1 * f_left = 0;
 TF1 * f_right = 0;
 // map for wire position adjustment
 double  map_adjust_old[NLAY][NCEL];
+
+//==================About Resolution======================
+TF1 * f_res = 0;
 
 //==================About RECBE======================
 TF1 * fADC2ChargeFunction = 0;
@@ -198,6 +202,7 @@ int main(int argc, char** argv){
     int temp_inputType = 0; bool set_inputType = false;
     int temp_xtType = 0; bool set_xtType = false;
     int temp_XTLayerForRes = 0; bool set_XTLayerForRes = false;
+    double temp_calib_maxslz = 0; bool set_calib_maxslz = false;
     //for cutting
     int temp_nHitsMax = 0; bool set_nHitsMax = false;
     int temp_nHitsSmin = 0; bool set_nHitsSmin = false;
@@ -224,7 +229,7 @@ int main(int argc, char** argv){
     std::map<std::string, Log::ErrorPriority> namedDebugLevel;
     std::map<std::string, Log::LogPriority> namedLogLevel;
     int    opt_result;
-    while((opt_result=getopt(argc,argv,"AB:C:D:E:F:GH:L:M:OPR:S:TV:WX:Za:c:d:e:f:g:i:l:m:n:o:r:s:t:u:v:x:y:z:"))!=-1){
+    while((opt_result=getopt(argc,argv,"AB:C:D:E:F:GH:L:M:OPR:S:TV:WX:Za:b:c:d:e:f:g:i:l:m:n:o:r:s:t:u:v:x:y:z:"))!=-1){
         switch(opt_result){
             /* INPUTS */
             case 'M':
@@ -320,6 +325,10 @@ int main(int argc, char** argv){
             case 'a':
                 temp_aaCut = atoi(optarg);set_aaCut = true;
                 printf("ADC sum over all cut set to %d\n",temp_aaCut);
+                break;
+            case 'b':
+                temp_calib_maxslz = atof(optarg);set_calib_maxslz = true;
+                printf("Maximum slope z for offset is %f\n",temp_calib_maxslz);
                 break;
             case 'l':
                 temp_tmin = atof(optarg);set_tmin = true;
@@ -462,6 +471,7 @@ int main(int argc, char** argv){
     if (set_AsymXT) m_AsymXT = temp_AsymXT;
     if (set_CandSelBy) m_CandSelBy = temp_CandSelBy;
     if (set_ClosestPeak) m_ClosestPeak = temp_ClosestPeak;
+    if (set_calib_maxslz) m_calib_maxslz = temp_calib_maxslz;
     // for cutting
     if (set_nHitsMax) m_nHitsMax = temp_nHitsMax;
     if (set_nHitsSmin) m_nHitsSmin = temp_nHitsSmin;
@@ -521,6 +531,7 @@ int main(int argc, char** argv){
     printf("For wire map update, max delta slz = %.3e\n",m_maxDeltaSlz);
     printf("For wire map update, min delta inx = %.3e\n",m_minDeltaInx);
     printf("For wire map update, max delta inx = %.3e\n",m_maxDeltaInx);
+    printf("For wire map update, max slz for each event = %.3e\n",m_calib_maxslz);
     printf("For wire map update, wires to be calibrated: ");
     for (std::map<int,bool>::iterator i = m_wireIDWhiteList.begin(); i != m_wireIDWhiteList.end(); ++i) {
         printf("%d ",i->first);
@@ -834,7 +845,7 @@ int main(int argc, char** argv){
     std::vector<int> * o_boardID = 0;
 
     // prepare the function to fit the residual distribution
-    TF1 * f_res = new TF1("fres","gaus",-m_maxRes,m_maxRes);
+    f_res = new TF1("fres","gaus",-m_maxRes,m_maxRes);
     //=================================================Loop in layers to get offset and XTs====================================================
     // Prepare XTAnalyzer
     XTAnalyzer * fXTAnalyzer = new XTAnalyzer(gasID,m_verboseLevel);
@@ -860,7 +871,7 @@ int main(int argc, char** argv){
         MyNamedInfo("Ana",Form("##############Layer %d: loop to get new offset#############",testLayer));
         // to get the offsets
         for ( int iEntry = 0 ; iEntry<N; iEntry++){
-            if (iEntry%10000==0) printf("%d\n",iEntry);
+            if (iEntry%m_modulo==0) MyNamedInfo("Ana",iEntry);
             if (m_verboseLevel>=20) printf("Entry%d: \n",iEntry);
             ichain->GetEntry(iEntry);
 
@@ -901,7 +912,7 @@ int main(int argc, char** argv){
             if (hasBadHit&&m_RequireAllGoldenHits) continue;
 
             if (m_verboseLevel>=20) printf("  Found hit! pushing to XTAnalyzer\n");
-            if (fabs(driftD)>2&&fabs(driftD)<6&&abs(fitD-driftD)<1){ // only trust the body part
+            if (fabs(driftD)>2&&fabs(driftD)<6&&abs(fitD-driftD)<1&&(!m_calib_maxslz||abs(slz[theCand])<m_calib_maxslz)){ // only trust the body part
                 h_celloff[testLayer][wireID]->Fill(fitD-driftD);
                 h_cellslz[testLayer][wireID]->Fill(slz[theCand]);
                 h_cellinx[testLayer][wireID]->Fill(inx[theCand]);
@@ -934,7 +945,7 @@ int main(int argc, char** argv){
             MyNamedInfo("Ana",Form("##############Layer %d: loop to get new XTs#############",testLayer));
             //for ( int iEntry = (m_iEntryStart?m_iEntryStart:0); iEntry<(m_iEntryStop?m_iEntryStop-1:N); iEntry++){
             for ( int iEntry = 0; iEntry<N; iEntry++){ // better not to skip anything before we get the XT file
-                if (iEntry%m_modulo==0) printf("%d\n",iEntry);
+                if (iEntry%m_modulo==0) MyNamedInfo("Ana",iEntry);
                 if (m_verboseLevel>=20) printf("Entry%d: \n",iEntry);
                 ichain->GetEntry(iEntry);
 
@@ -1161,9 +1172,9 @@ int main(int argc, char** argv){
             h_resX[i]->GetXaxis()->SetTitle("Residual [mm]");
             xmin = -m_xmax+2*m_xmax*(i)/NBINS;
             xmax = -m_xmax+2*m_xmax*(i+1)/NBINS;
-            h_resXb[i] = new TH1D(Form("hresX%d",i),Form("Residual with DOCA in [%.1f,%.1f] mm",xmin,xmax),m_NbinRes,-m_maxRes,m_maxRes);
+            h_resXb[i] = new TH1D(Form("hresXb%d",i),Form("Residual with DOCA in [%.1f,%.1f] mm",xmin,xmax),m_NbinRes,-m_maxRes,m_maxRes);
             h_resXb[i]->GetXaxis()->SetTitle("Residual [mm]");
-            h_resDb[i] = new TH1D(Form("hresD%d",i),Form("Residual with drift distance in [%.1f,%.1f] mm",xmin,xmax),m_NbinRes,-m_maxRes,m_maxRes);
+            h_resDb[i] = new TH1D(Form("hresDb%d",i),Form("Residual with drift distance in [%.1f,%.1f] mm",xmin,xmax),m_NbinRes,-m_maxRes,m_maxRes);
             h_resDb[i]->GetXaxis()->SetTitle("Residual [mm]");
         }
         TH1D * h_resXwire[NWIRES4CALIB][NBINS];
@@ -1224,7 +1235,7 @@ int main(int argc, char** argv){
         double closestchi2 = 1e9;
         MyNamedInfo("Ana",Form("##############Layer %d: loop to get residual#############",testLayer));
         for ( int iEntry = (m_iEntryStart?m_iEntryStart:0); iEntry<(m_iEntryStop?m_iEntryStop+1:N); iEntry++){
-            if (iEntry%10000==0) printf("%d\n",iEntry);
+            if (iEntry%m_modulo==0) MyNamedInfo("Ana",iEntry);
             if (m_verboseLevel>=20) printf("Entry%d: \n",iEntry);
             ichain->GetEntry(iEntry);
 
@@ -1539,6 +1550,7 @@ int main(int argc, char** argv){
         //----------------------------------loop again for filling histograms--------------------------------------------
         MyNamedInfo("Ana",Form("##############Layer %d: loop to get fill histograms#############",testLayer));
         for ( int iEntry = (m_iEntryStart?m_iEntryStart:0); iEntry<(m_iEntryStop?m_iEntryStop+1:N); iEntry++){
+            if (iEntry%m_modulo==0) MyNamedInfo("Ana",iEntry);
             otree->GetEntry(iEntry);
             MyNamedVerbose("Ana","  iEntry = "<<iEntry<<", "<<(isGood?"Good":"Bad")<<" event, nHits = "<<nHits<<", "<<nHitsT<<" hits in the test layer on track path");
             if (!isGood) continue; // not successfully reconstructed
@@ -2276,7 +2288,7 @@ int main(int argc, char** argv){
                 canv_calib->cd(iwire+1);
                 gPad->SetGridx(1);
                 gPad->SetGridy(1);
-                h_resVSXwire[iwire]->SetTitle(Form("Residual VS DOCA in wire %d: %.0f um",iwire+FIRSTWIRE4CALIB,g_xoffwire[iwire]->GetMean(2)*1000));
+                h_resVSXwire[iwire]->SetTitle(Form("Residual VS DOCA in wire %d: %.0f (%.0f) um",iwire+FIRSTWIRE4CALIB,g_xoffwire[iwire]->GetMean(2)*1000,map_off_new[testLayer][iwire+FIRSTWIRE4CALIB]*1000));
                 h_resVSXwire[iwire]->Draw("COLZ");
                 g_xoffwire[iwire]->Draw("PLSAME");
             }
@@ -2488,6 +2500,7 @@ void doFit(TH1D * h,double leftRatio, double rightRatio, double leftEnd, double 
     double right = h->GetBinCenter(binr);
     if (left<leftEnd) left = leftEnd;
     if (right>rightEnd) right = rightEnd;
+    f_res->SetParameter(1,(left+right)/2.);
     h->Fit("fres","QG","",left,right);
 }
 
@@ -2603,6 +2616,7 @@ void getRunTimeParameters(TString configureFile){
         if (MyRuntimeParameters::Get().HasParameter("ana.maxDeltaSlz")) m_maxDeltaSlz = MyRuntimeParameters::Get().GetParameterD("ana.maxDeltaSlz");
         if (MyRuntimeParameters::Get().HasParameter("ana.minDeltaInx")) m_minDeltaInx = MyRuntimeParameters::Get().GetParameterD("ana.minDeltaInx");
         if (MyRuntimeParameters::Get().HasParameter("ana.maxDeltaInx")) m_maxDeltaInx = MyRuntimeParameters::Get().GetParameterD("ana.maxDeltaInx");
+        if (MyRuntimeParameters::Get().HasParameter("ana.calib_maxslz")) m_calib_maxslz= MyRuntimeParameters::Get().GetParameterD("ana.calib_maxslz");
     }
 }
 
