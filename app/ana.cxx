@@ -64,8 +64,8 @@ double m_maxDeltaSlz = 0;
 double m_minDeltaInx = 0;
 double m_maxDeltaInx = 0;
 double m_calib_maxslz = 0;
-double m_calib_maxFD = 0.5;
-double m_calib_minFD = 7.5;
+double m_calib_maxFD = 7.5;
+double m_calib_minFD = 0.5;
 std::map<int,bool> m_wireIDWhiteList; // a list of wire IDs to be updated in new wire map
 int m_XTLayerForRes = 0;
 // for cutting
@@ -320,7 +320,7 @@ int main(int argc, char** argv){
                 break;
             case 'o':
                 temp_tmaxSet = atoi(optarg);set_tmaxSet = true;
-                printf("Maximum time range set to %d\n",temp_tmaxSet);
+                printf("Maximum cap to the time range set to %d\n",temp_tmaxSet);
                 break;
             case 'p':
                 temp_calib_minFD = atoi(optarg);set_calib_minFD = true;
@@ -564,8 +564,8 @@ int main(int argc, char** argv){
     printf("nHits max   = %d\n",m_nHitsMax);
     printf("nHitsSmin   = %d\n",m_nHitsSmin);
     printf("Q cut       = %d\n",m_aaCut);
-    printf("tmax for xt = %d\n",m_tmaxSet);
-    printf("tmax for canvas: %d\n",m_tmax);
+    printf("tmax for canvas and getting xt: %d\n",m_tmax);
+    printf("cap for tmax = %d\n",m_tmaxSet);
     printf("debug       = %d\n",m_verboseLevel);
     printf("print modulo= %d\n",m_modulo);
     printf("save fitting histograms at level %d\n",m_saveHists);
@@ -901,7 +901,7 @@ int main(int argc, char** argv){
             if (m_RequireInTriggerCounter&&!isInTriggerCounter(m_geoSetup,inz[theCand],slz[theCand])) continue;
             if (m_nHitsMax&&nHits>m_nHitsMax) continue;
 
-            if (m_verboseLevel>=20) printf("  Good Event! Looping in %d hits\n",nHits);
+            if (m_verboseLevel>=20) printf("  Good Event! slz = %.3e, Looping in %d hits\n",nHits,slz[theCand]);
             // find the closest hit in the test layer
             double minres = 1e9;
             bool has = false;
@@ -925,9 +925,10 @@ int main(int argc, char** argv){
                 }
             }
             if (!has) continue; // no hits found in test layer
+            if (m_verboseLevel>=20) printf("  has hit! l %d w %d FD %.3e DD %.3e\n",testLayer,wireID,fitD,driftD);
             if (hasBadHit&&m_RequireAllGoldenHits) continue;
 
-            if (m_verboseLevel>=20) printf("  Found hit! pushing to XTAnalyzer\n");
+            if (m_verboseLevel>=20) printf("  Good hit! pushing to offset histograms\n");
             if (fabs(fitD)>m_calib_minFD&&fabs(fitD)<m_calib_maxFD&&(!m_calib_maxslz||fabs(slz[theCand])<m_calib_maxslz)){ // only trust the body part
                 h_celloff[testLayer][wireID]->Fill(fitD-driftD);
                 h_cellslz[testLayer][wireID]->Fill(slz[theCand]);

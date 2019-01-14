@@ -40,7 +40,7 @@ maxslz=0 # min slz cut for mean slz value in each sample of events in wiremap ca
 mininx=0 # min inx cut for mean inx value in each sample of events in wiremap calibration. mininx==maxinx==0 means no cut
 maxinx=0 # min inx cut for mean inx value in each sample of events in wiremap calibration. mininx==maxinx==0 means no cut
 calib_maxslz=0.025 # maximum slz for each event considered as offset estimation
-calib_maxFD=0.75 # maximum FD for each event considered as offset estimation
+calib_maxFD=7.5 # maximum FD for each event considered as offset estimation
 calib_minFD=0.5 # minimum FD for each event considered as offset estimation
 calib_allgoden=true # requiring all golden hits in getting offset (since the XT might not be good in "bad" regions that are not aligned well)
 maxchi2=2
@@ -454,6 +454,8 @@ EOF
         else
             arg_wiremap="-W -C $CONFIGTABLE_wireposition"
         fi
+    else
+        arg_wiremap="-C $CONFIGTABLE_wireposition"
     fi
     arg_xtfile=""
     if $DONTUPDATEXT
@@ -741,6 +743,6 @@ EOF
         cd ../..
     fi
 
-    ana -C $CONFIGTABLEDEFAULT $arg_configure -R $runNo -x $XTTYPE -g $geoSetup -H $SAVEHISTS -i $inputType -c $maxchi2 -L $DEFAULTLAYER -n $NHITSMAX -o $tmaxSet $arg_wiremap $arg_xtfile $arg_draw $arg_calib $prerunname $currunname $wires
-    echo "ana -C $CONFIGTABLEDEFAULT $arg_configure -R $runNo -x $XTTYPE -g $geoSetup -H $SAVEHISTS -i $inputType -c $maxchi2 -L $DEFAULTLAYER -n $NHITSMAX -o $tmaxSet $arg_wiremap $arg_xtfile $arg_draw $arg_calib $prerunname $currunname $wires"
+    ana -C $CONFIGTABLEDEFAULT $arg_configure -R $runNo -x $XTTYPE -g $geoSetup -H $SAVEHISTS -i $inputType -c $maxchi2 -L $DEFAULTLAYER -n $NHITSMAX -o $tmaxSet $arg_wiremap $arg_xtfile $arg_draw $arg_calib -V Ana=info $prerunname $currunname $wires
+    echo "ana -C $CONFIGTABLEDEFAULT $arg_configure -R $runNo -x $XTTYPE -g $geoSetup -H $SAVEHISTS -i $inputType -c $maxchi2 -L $DEFAULTLAYER -n $NHITSMAX -o $tmaxSet $arg_wiremap $arg_xtfile $arg_draw $arg_calib -V Ana=info $prerunname $currunname $wires"
 done
