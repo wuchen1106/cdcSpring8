@@ -64,6 +64,8 @@ double m_maxDeltaSlz = 0;
 double m_minDeltaInx = 0;
 double m_maxDeltaInx = 0;
 double m_calib_maxslz = 0;
+double m_calib_maxFD = 0.5;
+double m_calib_minFD = 7.5;
 std::map<int,bool> m_wireIDWhiteList; // a list of wire IDs to be updated in new wire map
 int m_XTLayerForRes = 0;
 // for cutting
@@ -203,6 +205,8 @@ int main(int argc, char** argv){
     int temp_xtType = 0; bool set_xtType = false;
     int temp_XTLayerForRes = 0; bool set_XTLayerForRes = false;
     double temp_calib_maxslz = 0; bool set_calib_maxslz = false;
+    double temp_calib_maxFD = 0; bool set_calib_maxFD = false;
+    double temp_calib_minFD = 0; bool set_calib_minFD = false;
     //for cutting
     int temp_nHitsMax = 0; bool set_nHitsMax = false;
     int temp_nHitsSmin = 0; bool set_nHitsSmin = false;
@@ -229,7 +233,7 @@ int main(int argc, char** argv){
     std::map<std::string, Log::ErrorPriority> namedDebugLevel;
     std::map<std::string, Log::LogPriority> namedLogLevel;
     int    opt_result;
-    while((opt_result=getopt(argc,argv,"AB:C:D:E:F:GH:L:M:OPR:S:TV:WX:Za:b:c:d:e:f:g:i:l:m:n:o:r:s:t:u:v:x:y:z:"))!=-1){
+    while((opt_result=getopt(argc,argv,"AB:C:D:E:F:GH:L:M:OPR:S:TV:WX:Za:b:c:d:e:f:g:i:l:m:n:o:p:q:r:s:t:u:v:x:y:z:"))!=-1){
         switch(opt_result){
             /* INPUTS */
             case 'M':
@@ -317,6 +321,14 @@ int main(int argc, char** argv){
             case 'o':
                 temp_tmaxSet = atoi(optarg);set_tmaxSet = true;
                 printf("Maximum time range set to %d\n",temp_tmaxSet);
+                break;
+            case 'p':
+                temp_calib_minFD = atoi(optarg);set_calib_minFD = true;
+                printf("Minimum |theFD| for offset is %d\n",temp_calib_minFD);
+                break;
+            case 'q':
+                temp_calib_maxFD = atoi(optarg);set_calib_maxFD = true;
+                printf("Maximum |theFD| for offset is %d\n",temp_calib_maxFD);
                 break;
             case 's':
                 temp_sumCut = atoi(optarg);set_sumCut = true;
@@ -472,6 +484,8 @@ int main(int argc, char** argv){
     if (set_CandSelBy) m_CandSelBy = temp_CandSelBy;
     if (set_ClosestPeak) m_ClosestPeak = temp_ClosestPeak;
     if (set_calib_maxslz) m_calib_maxslz = temp_calib_maxslz;
+    if (set_calib_maxFD) m_calib_maxFD = temp_calib_maxFD;
+    if (set_calib_minFD) m_calib_minFD = temp_calib_minFD;
     // for cutting
     if (set_nHitsMax) m_nHitsMax = temp_nHitsMax;
     if (set_nHitsSmin) m_nHitsSmin = temp_nHitsSmin;
@@ -532,6 +546,8 @@ int main(int argc, char** argv){
     printf("For wire map update, min delta inx = %.3e\n",m_minDeltaInx);
     printf("For wire map update, max delta inx = %.3e\n",m_maxDeltaInx);
     printf("For wire map update, max slz for each event = %.3e\n",m_calib_maxslz);
+    printf("For wire map update, max |theFD| for each event = %.3e\n",m_calib_maxFD);
+    printf("For wire map update, min |theFD| for each event = %.3e\n",m_calib_minFD);
     printf("For wire map update, wires to be calibrated: ");
     for (std::map<int,bool>::iterator i = m_wireIDWhiteList.begin(); i != m_wireIDWhiteList.end(); ++i) {
         printf("%d ",i->first);
@@ -898,7 +914,7 @@ int main(int argc, char** argv){
                 int twireID = (*i_wireID)[ihit];
                 double tfitD = (*i_fitD[theCand])[ihit];
                 double tdriftD = (*i_driftD[theCand])[ihit];
-                if ((*i_sel[theCand])[ihit]==1&&(fabs(tdriftD)<0.5||fabs(tdriftD)>7.5)) hasBadHit = true;
+                if ((*i_sel[theCand])[ihit]==1&&(fabs(tdriftD)<m_calib_minFD||fabs(tdriftD)>m_calib_maxFD)) hasBadHit = true; // this is the region where XT distortion is not considered into offset calibration, thus not that reliable... (so called "bad hit")
                 if (tlayerID!=testLayer) continue;
                 if (fabs(tfitD-tdriftD)<fabs(minres)){ // no cut for test layer!
                     minres = tfitD-tdriftD;
@@ -912,7 +928,7 @@ int main(int argc, char** argv){
             if (hasBadHit&&m_RequireAllGoldenHits) continue;
 
             if (m_verboseLevel>=20) printf("  Found hit! pushing to XTAnalyzer\n");
-            if (fabs(driftD)>2&&fabs(driftD)<6&&abs(fitD-driftD)<1&&(!m_calib_maxslz||abs(slz[theCand])<m_calib_maxslz)){ // only trust the body part
+            if (fabs(fitD)>m_calib_minFD&&fabs(fitD)<m_calib_maxFD&&(!m_calib_maxslz||fabs(slz[theCand])<m_calib_maxslz)){ // only trust the body part
                 h_celloff[testLayer][wireID]->Fill(fitD-driftD);
                 h_cellslz[testLayer][wireID]->Fill(slz[theCand]);
                 h_cellinx[testLayer][wireID]->Fill(inx[theCand]);
@@ -2617,6 +2633,8 @@ void getRunTimeParameters(TString configureFile){
         if (MyRuntimeParameters::Get().HasParameter("ana.minDeltaInx")) m_minDeltaInx = MyRuntimeParameters::Get().GetParameterD("ana.minDeltaInx");
         if (MyRuntimeParameters::Get().HasParameter("ana.maxDeltaInx")) m_maxDeltaInx = MyRuntimeParameters::Get().GetParameterD("ana.maxDeltaInx");
         if (MyRuntimeParameters::Get().HasParameter("ana.calib_maxslz")) m_calib_maxslz= MyRuntimeParameters::Get().GetParameterD("ana.calib_maxslz");
+        if (MyRuntimeParameters::Get().HasParameter("ana.calib_maxFD")) m_calib_maxFD= MyRuntimeParameters::Get().GetParameterD("ana.calib_maxFD");
+        if (MyRuntimeParameters::Get().HasParameter("ana.calib_minFD")) m_calib_minFD= MyRuntimeParameters::Get().GetParameterD("ana.calib_minFD");
     }
 }
 
@@ -2758,6 +2776,12 @@ void print_usage(char * prog_name){
     fprintf(stderr,"\t\t Use asymmetric XT\n");
     fprintf(stderr,"\t -e\n");
     fprintf(stderr,"\t\t Use XT from layer (%d) to get residual.\n",m_XTLayerForRes);
+    fprintf(stderr,"\t -b\n");
+    fprintf(stderr,"\t\t Set maximum slope z cut (%f) mm for each event in getting offset.\n",m_calib_maxslz);
+    fprintf(stderr,"\t -p\n");
+    fprintf(stderr,"\t\t Set minimum |theFD| cut (%f) mm for each event in getting offset.\n",m_calib_minFD);
+    fprintf(stderr,"\t -q\n");
+    fprintf(stderr,"\t\t Set maximum |theFD| cut (%f) mm for each event in getting offset.\n",m_calib_maxFD);
     fprintf(stderr,"\t -S\n");
     fprintf(stderr,"\t\t Select candidate by:\n");
     fprintf(stderr,"\t\t ((O)riginal): the first one given by tracking (global chi2)\n");

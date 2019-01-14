@@ -40,6 +40,9 @@ maxslz=0 # min slz cut for mean slz value in each sample of events in wiremap ca
 mininx=0 # min inx cut for mean inx value in each sample of events in wiremap calibration. mininx==maxinx==0 means no cut
 maxinx=0 # min inx cut for mean inx value in each sample of events in wiremap calibration. mininx==maxinx==0 means no cut
 calib_maxslz=0.025 # maximum slz for each event considered as offset estimation
+calib_maxFD=0.75 # maximum FD for each event considered as offset estimation
+calib_minFD=0.5 # minimum FD for each event considered as offset estimation
+calib_allgoden=true # requiring all golden hits in getting offset (since the XT might not be good in "bad" regions that are not aligned well)
 maxchi2=2
 scale=0.5 # move scale*offset on wiremap for fitting in the next round
 
@@ -432,6 +435,8 @@ do
     < ana.minDeltaInx = $mininx >
     < ana.maxDeltaInx = $maxinx >
     < ana.calib_maxslz = $calib_maxslz >
+    < ana.calib_maxFD = $calib_maxFD >
+    < ana.calib_minFD = $calib_minFD >
 EOF
 
 #   tune arguments
@@ -470,6 +475,11 @@ EOF
     if [ ! $blindLayer -eq -1 ]
     then
         arg_blindLayer="-b $blindLayer"
+    fi
+    arg_calib=""
+    if [ $calib_allgoden ]
+    then
+        arg_calib="-G"
     fi
 
     echo "#Iteration $iter started"
@@ -731,6 +741,6 @@ EOF
         cd ../..
     fi
 
-    ana -C $CONFIGTABLEDEFAULT $arg_configure -R $runNo -x $XTTYPE -g $geoSetup -H $SAVEHISTS -i $inputType -c $maxchi2 -L $DEFAULTLAYER -n $NHITSMAX -o $tmaxSet $arg_wiremap $arg_xtfile $arg_draw $prerunname $currunname $wires
-    echo "ana -C $CONFIGTABLEDEFAULT $arg_configure -R $runNo -x $XTTYPE -g $geoSetup -H $SAVEHISTS -i $inputType -c $maxchi2 -L $DEFAULTLAYER -n $NHITSMAX -o $tmaxSet $arg_wiremap $arg_xtfile $arg_draw $prerunname $currunname $wires"
+    ana -C $CONFIGTABLEDEFAULT $arg_configure -R $runNo -x $XTTYPE -g $geoSetup -H $SAVEHISTS -i $inputType -c $maxchi2 -L $DEFAULTLAYER -n $NHITSMAX -o $tmaxSet $arg_wiremap $arg_xtfile $arg_draw $arg_calib $prerunname $currunname $wires
+    echo "ana -C $CONFIGTABLEDEFAULT $arg_configure -R $runNo -x $XTTYPE -g $geoSetup -H $SAVEHISTS -i $inputType -c $maxchi2 -L $DEFAULTLAYER -n $NHITSMAX -o $tmaxSet $arg_wiremap $arg_xtfile $arg_draw $arg_calib $prerunname $currunname $wires"
 done
