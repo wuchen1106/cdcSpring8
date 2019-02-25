@@ -24,6 +24,7 @@ nHitsGMax=15
 sumCut=-10
 aaCut=0
 peakType=0 # 0, only the first peak over threshold; 1, all peaks over threshold; 2, even including shaddowed peaks
+blindLayer=-1 # don't use this layer for tracking (if it's not -1)
 
 t0shift0=0
 t0shift1=0
@@ -38,6 +39,10 @@ minslz=0 # min slz cut for mean slz value in each sample of events in wiremap ca
 maxslz=0 # min slz cut for mean slz value in each sample of events in wiremap calibration. minslz==maxslz==0 means no cut
 mininx=0 # min inx cut for mean inx value in each sample of events in wiremap calibration. mininx==maxinx==0 means no cut
 maxinx=0 # min inx cut for mean inx value in each sample of events in wiremap calibration. mininx==maxinx==0 means no cut
+calib_maxslz=0.025 # maximum slz for each event considered as offset estimation
+calib_maxFD=7.5 # maximum FD for each event considered as offset estimation
+calib_minFD=0.5 # minimum FD for each event considered as offset estimation
+calib_allgoden=true # requiring all golden hits in getting offset (since the XT might not be good in "bad" regions that are not aligned well)
 maxchi2=2
 scale=0.5 # move scale*offset on wiremap for fitting in the next round
 
@@ -75,6 +80,7 @@ Syntax:
     -g [g] geometry setup ($geoSetup). 0 ordinary scintillator; 1 finger scintillator
     -t [t] work type ($workTypeini) for tracking. 0, fr/l_0; 1, even/odd; -1, even/odd reversed; others, all layers
     -a [a] aa cut ($aaCut)
+    -b [b] Blind this layer from tracking ($blindLayer)
     -s [s] sum cut ($sumCut)
     -p [p] set peak type ($peakType) for tracking. 0, only the first peak over threshold; 1, all peaks over threshold; 2, even including shaddowed peaks
     -x [XYZ] xt type. XYZ ($XTTYPE) means polX for center, polY for middle and polZ for tail. If X is 0 then let middle function fit the center region.
@@ -88,7 +94,7 @@ Report bugs to <wuchen@ihep.ac.cn>.
 EOF
 }
 
-while getopts ':hR:T:N:I:J:LH:W:US:D:Pl:w:c:g:t:a:s:p:x:n:m:u:d:o:' optname
+while getopts ':hR:T:N:I:J:LH:W:US:D:Pl:w:c:g:t:a:b:s:p:x:n:m:u:d:o:' optname
 do
     case "$optname" in
     'h')
@@ -141,7 +147,7 @@ do
         wires="$OPTARG";
         ;;
     'c')
-        CONFIGTABLE="$OPTARG";
+        CONFIGTABLE="$CONFIGTABLE -C $OPTARG";
         ;;
     'g')
         geoSetup="$OPTARG";
@@ -154,6 +160,9 @@ do
         ;;
     'a')
         aaCut="$OPTARG"
+        ;;
+    'b')
+        blindLayer="$OPTARG"
         ;;
     's')
         sumCut="$OPTARG"
@@ -230,6 +239,7 @@ echo "        tmin = $tmin; "
 echo "        tmax = $tmax; "
 echo "        sumCut = $sumCut; "
 echo "        aaCut = $aaCut; "
+echo "        Blind layer: $blindLayer; "
 echo "        peakType = $peakType;  0, only the first peak over threshold; 1, all peaks over threshold; 2, even including shaddowed peaks"
 echo "getOffset Parameters are:"
 echo "        OneWirePerIter = $OneWirePerIter;"
@@ -239,6 +249,7 @@ echo "        minslz = $minslz;  min slz cut for mean slz value in each sample o
 echo "        maxslz = $maxslz;  min slz cut for mean slz value in each sample of events in wiremap calibration. minslz==maxslz==0 means no cut"
 echo "        mininx = $mininx;  min inx cut for mean inx value in each sample of events in wiremap calibration. mininx==maxinx==0 means no cut"
 echo "        maxinx = $maxinx;  min inx cut for mean inx value in each sample of events in wiremap calibration. mininx==maxinx==0 means no cut"
+echo "        calib_maxslz = $calib_maxslz;   maximum slz for each event considered as offset estimation"
 echo "        maxchi2 = $maxchi2; "
 echo "        scale = $scale;  move scale*offset on wiremap for fitting in the next round"
 echo "ana Parameters are:"
@@ -396,7 +407,7 @@ do
             wires="3 4 5 6"
             UpdateWireMap=true
             OneWirePerIter=false
-        elif [ $iter -gt 3 ]
+        elif [ $iter -gt 5 ]
         then
             layers="1 2 3 4 5 6 7 8"
             wires="3 4 5 6"
@@ -423,13 +434,16 @@ do
     < ana.maxDeltaSlz = $maxslz >
     < ana.minDeltaInx = $mininx >
     < ana.maxDeltaInx = $maxinx >
+    < ana.calib_maxslz = $calib_maxslz >
+    < ana.calib_maxFD = $calib_maxFD >
+    < ana.calib_minFD = $calib_minFD >
 EOF
 
 #   tune arguments
     arg_configure=""
     if [ ! -z "$CONFIGTABLE" ]
     then
-        arg_configure="-C $CONFIGTABLE"
+        arg_configure="$CONFIGTABLE"
     fi
     arg_wiremap=""
     if $UpdateWireMap
@@ -440,6 +454,8 @@ EOF
         else
             arg_wiremap="-W -C $CONFIGTABLE_wireposition"
         fi
+    else
+        arg_wiremap="-C $CONFIGTABLE_wireposition"
     fi
     arg_xtfile=""
     if $DONTUPDATEXT
@@ -456,6 +472,16 @@ EOF
     if [ $iter -eq $IterEnd ] && $isLast
     then
         arg_draw="-Z"
+    fi
+    arg_blindLayer=""
+    if [ ! $blindLayer -eq -1 ]
+    then
+        arg_blindLayer="-b $blindLayer"
+    fi
+    arg_calib=""
+    if [ $calib_allgoden ]
+    then
+        arg_calib="-G"
     fi
 
     echo "#Iteration $iter started"
@@ -489,6 +515,7 @@ EOF
     echo "  arg_configure = $arg_configure"
     echo "  arg_xtfile = $arg_xtfile"
     echo "  arg_wiremap = $arg_wiremap"
+    echo "  arg_blindLayer = $arg_blindLayer"
     echo "  tmaxSet = $tmaxSet"
 
     threadLists=`updateThreadLists`
@@ -541,19 +568,38 @@ EOF
             logtemp="$CDCS8WORKING_DIR/root/tracks/t_${runNo}.${temprunname}.layer${testlayer}.log"
             errtemp="$CDCS8WORKING_DIR/root/tracks/t_${runNo}.${temprunname}.layer${testlayer}.err"
             sourcefiles[testlayer]="${sourcefiles[testlayer]} t_${runNo}.${temprunname}.layer${testlayer}.root"
-            tempconfig="tracking -C $CONFIGTABLEDEFAULT $arg_configure -R $runNo -L $testlayer -n $nHitsGMax -x $t0shift0 -y $t0shift1 -l $tmin -u $tmax -g $geoSetup -s $sumCut -a $aaCut -B $iEntryStart -E $iEntryStop -w $workType -i $inputType -p $peakType $prerunname $temprunname > $logtemp 2> $errtemp"
+            tempconfig="tracking -C $CONFIGTABLEDEFAULT $arg_configure $arg_blindLayer -R $runNo -L $testlayer -n $nHitsGMax -x $t0shift0 -y $t0shift1 -l $tmin -u $tmax -g $geoSetup -s $sumCut -a $aaCut -B $iEntryStart -E $iEntryStop -w $workType -i $inputType -p $peakType $prerunname $temprunname > $logtemp 2> $errtemp"
             echo $tempconfig
+
+            rootfile="root/tracks/t_${jobname}.root"
+            rootsize=0
+            if [ -e $rootfile ]
+            then
+                rootsize=`du -s $rootfile | gawk '{print $1;}'`
+            else
+                echo "  ROOT file not found yet!"
+            fi
 
             if [ -e $file ]
             then # log file already exists??
                 if tail -n 3 $file | grep -q "Good Events" # finished
                 then
-                    echo "  already finished!"
-                    continue # no need to work on it
+                    if [ $rootsize -eq 0 ]
+                    then
+                        echo "  ROOT file is empty although log file shows finished status!"
+                    else
+                        echo "  already finished!"
+                        continue # no need to work on it
+                    fi
                 else  # probably still under process
-                    echo "  running by someone else!"
-                    tail -n 1 $file
-                    continue # don't know who is running it but ignore this job anyway
+                    if [ $rootsize -eq 0 ]
+                    then
+                        echo "  ROOT file is empty!"
+                    else
+                        echo "  running by someone else!"
+                        tail -n 1 $file
+                        continue # don't know who is running it but ignore this job anyway
+                    fi
                 fi
             else
                 echo "  logfile \"$file\" doesn't exist, so generate a new job!"
@@ -594,12 +640,53 @@ EOF
                 echo "WARNING: file \"$file\" doesn't exist"
                 continue
             fi
+            rootfile=`echo $file | sed 's/.log/.root/g'`
+            rootsize=0
+            if [ -e $rootfile ]
+            then
+                rootsize=`du -s $rootfile | gawk '{print $1;}'`
+            else
+                echo "  ROOT file not found yet!"
+            fi
+
             if ! tail -n 3 $file | grep -q "Good Events"
             then
                 finished=false
                 thefile=$file
             else
-                ((NjobsFinished++))
+                if [ $rootsize -eq 0 ]
+                then
+                    echo "  ROOT file is empty"
+                    finished=false
+                    thefile=$file
+
+                    jobname=`echo $file | sed 's/.*\<t_\(.*\)\.log/\1/g'`
+                    echo "resubmitting job \"$jobname\""
+
+                    temprunname=`echo $jobname | sed 's/\w*\.\(.*\)\.layer\w*/\1/g'`
+                    testlayer=`echo $jobname | sed 's/.*layer\(\w*\)\..*/\1/'`
+                    iEntryStart=`echo $jobname | sed 's/.*\.\(\w*\)-\(\w*\)\..*/\1/g'`
+                    iEntryStop=`echo $jobname | sed 's/.*\.\(\w*\)-\(\w*\)\..*/\2/g'`
+                    logtemp="$CDCS8WORKING_DIR/root/tracks/t_${runNo}.${temprunname}.layer${testlayer}.log"
+                    errtemp="$CDCS8WORKING_DIR/root/tracks/t_${runNo}.${temprunname}.layer${testlayer}.err"
+                    tempconfig="tracking -C $CONFIGTABLEDEFAULT $arg_configure $arg_blindLayer -R $runNo -L $testlayer -n $nHitsGMax -x $t0shift0 -y $t0shift1 -l $tmin -u $tmax -g $geoSetup -s $sumCut -a $aaCut -B $iEntryStart -E $iEntryStop -w $workType -i $inputType -p $peakType $prerunname $temprunname > $logtemp 2> $errtemp"
+                    echo $tempconfig
+
+                    findVacentThread
+                    if [ $? -eq 1 ]
+                    then
+                        echo "    ERROR: cannot find a vacent thread in 10 hours!"
+                        exit 1
+                    elif [ $? -eq 2 ]
+                    then
+                        echo "    ERROR: cannot access hep_q in 10 minutes!"
+                        exit 1
+                    fi
+                    echo "    found new thread available $theConf"
+                    echo "$tempconfig" > $theConf # send the trigger info to the job
+                else
+                    ((NjobsFinished++))
+                fi
             fi
         done
         if [ $NjobsFinished -lt $Njobs ]
@@ -656,6 +743,6 @@ EOF
         cd ../..
     fi
 
-    ana -C $CONFIGTABLEDEFAULT $arg_configure -R $runNo -x $XTTYPE -g $geoSetup -H $SAVEHISTS -i $inputType -c $maxchi2 -L $DEFAULTLAYER -n $NHITSMAX -o $tmaxSet $arg_wiremap $arg_xtfile $arg_draw $prerunname $currunname $wires
-    echo "ana -C $CONFIGTABLEDEFAULT $arg_configure -R $runNo -x $XTTYPE -g $geoSetup -H $SAVEHISTS -i $inputType -c $maxchi2 -L $DEFAULTLAYER -n $NHITSMAX -o $tmaxSet $arg_wiremap $arg_xtfile $arg_draw $prerunname $currunname $wires"
+    ana -C $CONFIGTABLEDEFAULT $arg_configure -R $runNo -x $XTTYPE -g $geoSetup -H $SAVEHISTS -i $inputType -c $maxchi2 -L $DEFAULTLAYER -n $NHITSMAX -o $tmaxSet $arg_wiremap $arg_xtfile $arg_draw $arg_calib -V Ana=info $prerunname $currunname $wires
+    echo "ana -C $CONFIGTABLEDEFAULT $arg_configure -R $runNo -x $XTTYPE -g $geoSetup -H $SAVEHISTS -i $inputType -c $maxchi2 -L $DEFAULTLAYER -n $NHITSMAX -o $tmaxSet $arg_wiremap $arg_xtfile $arg_draw $arg_calib -V Ana=info $prerunname $currunname $wires"
 done

@@ -45,6 +45,7 @@ int m_geoSetup = 0; // 0: normal; 1: finger
 int m_inputType = 0; // 1 for MC; 0 for data
 int m_peakType = 0; // 0, only the first peak over threshold; 1, all peaks over threshold; 2, even including shaddowed peaks
 int m_workType = 0; // fr/l_0; 1, even/odd; -1, even/odd reversed; others, all layers
+int m_BlindLayer = 0; // Don't use this layer for tracking
 double m_t0error = 0; // if t0 error is 0, then don't set it as a free parameter in fitting
 
 //===================Chamber Parameter============================
@@ -217,6 +218,7 @@ int main(int argc, char** argv){
     int temp_tmax = 0; bool set_tmax = false;
     double temp_sumCut = 0; bool set_sumCut = false;
     double temp_aaCut = 0; bool set_aaCut = false;
+    int temp_BlindLayer = 0; bool set_BlindLayer = false;
     int temp_geoSetup = 0; bool set_geoSetup = false;
     int temp_inputType = 0; bool set_inputType = false;
     int temp_peakType = 0; bool set_peakType = false;
@@ -226,7 +228,7 @@ int main(int argc, char** argv){
     std::map<std::string, Log::ErrorPriority> namedDebugLevel;
     std::map<std::string, Log::LogPriority> namedLogLevel;
     int    opt_result;
-	while((opt_result=getopt(argc,argv,"M:R:B:E:L:C:n:x:y:l:u:s:a:g:i:p:w:D:V:t:"))!=-1){
+	while((opt_result=getopt(argc,argv,"M:R:B:E:L:C:n:x:y:l:u:s:a:b:g:i:p:w:D:V:t:"))!=-1){
 		switch(opt_result){
 			/* INPUTS */
 			case 'M':
@@ -280,6 +282,10 @@ int main(int argc, char** argv){
 			case 'a':
 			    temp_aaCut = atof(optarg);set_aaCut = true;
                 printf("ADC sum over all cut set to %.3e\n",temp_aaCut);
+				break;
+			case 'b':
+			    temp_BlindLayer = atoi(optarg);set_BlindLayer = true;
+                printf("Blind this layer from tracking %d\n",temp_BlindLayer);
 				break;
 			case 'g':
 			    temp_geoSetup = atoi(optarg);set_geoSetup = true;
@@ -389,6 +395,7 @@ int main(int argc, char** argv){
     if (set_tmax) m_tmax = temp_tmax;
     if (set_sumCut) m_sumCut = temp_sumCut;
     if (set_aaCut) m_aaCut = temp_aaCut;
+    if (set_BlindLayer) m_BlindLayer = temp_BlindLayer;
     if (set_workType) m_workType = temp_workType;
     if (set_inputType) m_inputType = temp_inputType;
     if (set_peakType) m_peakType = temp_peakType;
@@ -413,6 +420,7 @@ int main(int argc, char** argv){
     printf("tmax        = %d\n",m_tmax);
     printf("sumCut      = %f\n",m_sumCut);
     printf("aaCut       = %f\n",m_aaCut);
+    printf("BlindLayer  = %d\n",m_BlindLayer);
     printf("geoSetup:     %s\n",m_geoSetup==0?"normal scintillator":"finger scintillator");
     printf("workType    = %d, %s\n",m_workType,m_workType==0?"all as 0":(m_workType==1?"even/odd":(m_workType==-1?"even/odd reversed":"all layers")));
     printf("inputType   = %d, %s\n",m_inputType,m_inputType==0?"Real Data":(m_inputType==2?"MC X":"MC T"));
@@ -937,6 +945,7 @@ int main(int argc, char** argv){
                     else type+=7*10;
                 }
             }
+            if (m_BlindLayer>=0&&lid==m_BlindLayer) type+=1000000; // blind the layer
             type+=npoc*100000; // number of peaks above threshold before this peak in this channel
             // S: sum of wave packet
             if ((*i_sum)[ihit]<m_sumCut) type+=1*100;
@@ -1797,6 +1806,8 @@ void print_usage(char* prog_name)
     fprintf(stderr,"\t\t ADC sum over peak cut set to s\n");
     fprintf(stderr,"\t -a <a>\n");
     fprintf(stderr,"\t\t ADC sum over all cut set to a\n");
+    fprintf(stderr,"\t -b <b>\n");
+    fprintf(stderr,"\t\t Set to blank the layer b in tracking\n");
     fprintf(stderr,"\t -g <g>\n");
     fprintf(stderr,"\t\t Geometry setup set to g\n");
     fprintf(stderr,"\t\t (0): normal; 1: finger\n");
