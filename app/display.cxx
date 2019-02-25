@@ -16,6 +16,8 @@
 #include <math.h>
 #include <stdlib.h>
 
+#include "MyRuntimeParameters.hxx"
+#include "Log.hxx"
 #include "header.hxx"
 
 //#define PRINT_CROSSPOINTS
@@ -46,65 +48,161 @@ void cid4dr2lidwid(int cid, int & lid, int & wid);
 bool lidwid2cid4dr(int lid, int wid, int & cid);
 
 double t2x(double time, int lid, int wid, int lr, int & status);
-void print_usage(char* progname);
+void print_usage(char* prog_name);
 
 int main(int argc, char** argv){
-
+    int m_modulo = 0;
+	int m_runNo = 0;
+	int m_workMode = 0; // 0: h_XXX; 1: t_XXX; 2: ana_XXX; 10: h_XXX with zx; 11: t_XXX with zx
+	int m_testlayer = 4;
+	int m_thelayer = 4;
+	int m_thewire = -1; // negative value means just pick up the first hit, regardless of the target layer.
+    int m_iEntryStart = 0;
+    int m_iEntryStop = 9;
+    int m_geoSetup = 0; // 0: normal; 1: finger
+	TString m_runname = "";
 	//===================Get Arguments============================
-	if (argc<3) {
+    std::map<std::string, Log::ErrorPriority> namedDebugLevel;
+    std::map<std::string, Log::LogPriority> namedLogLevel;
+    int    opt_result;
+	while((opt_result=getopt(argc,argv,"M:m:R:B:E:L:l:W:G:"))!=-1){
+		switch(opt_result){
+			/* INPUTS */
+			case 'M':
+			    m_modulo = atoi(optarg);
+                printf("Printing modulo set to %d\n",m_modulo);
+				break;
+			case 'm':
+			    m_workMode = atoi(optarg);
+                printf("Work mode set to %d\n",m_workMode);
+				break;
+			case 'R':
+			    m_runNo = atoi(optarg);
+                printf("Run number set to %d\n",m_runNo);
+				break;
+			case 'B':
+			    m_iEntryStart = atoi(optarg);
+                printf("Starting entry index set to %d\n",m_iEntryStart);
+				break;
+			case 'E':
+			    m_iEntryStop = atoi(optarg);
+                printf("Stopping entry index set to %d\n",m_iEntryStop);
+				break;
+			case 'L':
+			    m_testlayer = atoi(optarg);
+                printf("Test layer set to %d\n",m_testlayer);
+				break;
+			case 'l':
+			    m_thelayer = atoi(optarg);
+                printf("The layer set to %d\n",m_thelayer);
+				break;
+			case 'W':
+			    m_thewire = atoi(optarg);
+                printf("The wire set to %d\n",m_thelayer);
+				break;
+			case 'G':
+			    m_geoSetup = atoi(optarg);
+                printf("Geometry setup set to %d\n",m_geoSetup);
+				break;
+            case 'D':
+                {
+                    // Set the debug level for a named trace.
+                    std::string arg(optarg);
+                    std::size_t sep = arg.find("=");
+                    if (sep != std::string::npos) {
+                        std::string name = arg.substr(0,sep);
+                        std::string levelName = arg.substr(sep+1);
+                        switch (levelName[0]) {
+                            case 'e': case 'E':
+                                namedDebugLevel[name.c_str()] = Log::ErrorLevel;
+                                break;
+                            case 's': case 'S':
+                                namedDebugLevel[name.c_str()] = Log::SevereLevel;
+                                break;
+                            case 'w': case 'W':
+                                namedDebugLevel[name.c_str()] = Log::WarnLevel;
+                                break;
+                            case 'd': case 'D':
+                                namedDebugLevel[name.c_str()] = Log::DebugLevel;
+                                break;
+                            case 't': case 'T':
+                                namedDebugLevel[name.c_str()] = Log::TraceLevel;
+                                break;
+                            default:
+                                print_usage(argv[0]);
+                        }
+                    }
+                    break;
+                }
+            case 'V':
+                {
+                    // Set the debug level for a named trace.
+                    std::string arg(optarg);
+                    std::size_t sep = arg.find("=");
+                    if (sep != std::string::npos) {
+                        std::string name = arg.substr(0,sep);
+                        std::string levelName = arg.substr(sep+1);
+                        switch (levelName[0]) {
+                            case 'q': case 'Q':
+                                namedLogLevel[name.c_str()] = Log::QuietLevel;
+                                break;
+                            case 'l': case 'L':
+                                namedLogLevel[name.c_str()] = Log::LogLevel;
+                                break;
+                            case 'i': case 'I':
+                                namedLogLevel[name.c_str()] = Log::InfoLevel;
+                                break;
+                            case 'v': case 'V':
+                                namedLogLevel[name.c_str()] = Log::VerboseLevel;
+                                break;
+                            default:
+                                print_usage(argv[0]);
+                        }
+                    }
+                    break;
+                }
+			case '?':
+				printf("Wrong option! optopt=%c, optarg=%s\n", optopt, optarg);
+			case 'h':
+			default:
+				print_usage(argv[0]);
+				return 1;
+		}
+	}
+    for (std::map<std::string,Log::ErrorPriority>::iterator i 
+            = namedDebugLevel.begin();
+            i != namedDebugLevel.end();
+            ++i) {
+        Log::SetDebugLevel(i->first.c_str(), i->second);
+    }
+
+    for (std::map<std::string,Log::LogPriority>::iterator i 
+            = namedLogLevel.begin();
+            i != namedLogLevel.end();
+            ++i) {
+        Log::SetLogLevel(i->first.c_str(), i->second);
+    }
+
+	if (argc-optind<1){
 	    print_usage(argv[0]);
-	    return -1;
+		return -1;
     }
-	int runNo = (int)strtol(argv[1],NULL,10);
-	int workMode = (int)strtol(argv[2],NULL,10); // 0: h_XXX; 1: t_XXX; 2: ana_XXX; 10: h_XXX with zx; 11: t_XXX with zx
-	int testlayer = 4;
-	if (argc>=4){
-	    testlayer = atoi(argv[3]);
-    }
-	int thelayer = 4;
-	if (argc>=5){
-	    thelayer = atoi(argv[4]);
-    }
-	int thewire = -1; // negative value means just pick up the first hit, regardless of the target layer.
-	if (argc>=6){
-	    thewire = atoi(argv[5]);
-    }
-	TString runname = "";
-	if (argc>=7){
-		runname  = argv[6];
-	}
-    int iEntryStart = 0;
-    int iEntryStop = 9;
-	if (argc>=9){
-	    iEntryStart = (int)strtol(argv[7],NULL,10);
-	    iEntryStop = (int)strtol(argv[8],NULL,10);
-    }
-    else if (argc>=8){
-	    iEntryStart=0;
-	    iEntryStop=(int)strtol(argv[7],NULL,10)-1;
-	}
-    int geoSetup = 0; // 0: normal; 1: finger
-    if (argc>=10){
-	    geoSetup=(int)strtol(argv[9],NULL,10);
-	}
-	printf("runNo:              %d\n",runNo);
-	printf("workMode:           %d\n",workMode);
-	printf("test layer:         %d\n",testlayer);
-	printf("check wire:         [%d,%d]\n",thelayer,thewire);
-	printf("runname:             %s\n",runname.Data());
-	printf("Entries:            %d~%d\n",iEntryStart,iEntryStop);
-    printf("geoSetup:           %s\n",geoSetup==0?"normal scintillator":"finger scintillator");
+    m_runname= argv[optind++];
+
+    printf("##############%s##################\n",argv[0]);
+	printf("runNo:              %d\n",m_runNo);
+	printf("workMode:           %d\n",m_workMode);
+	printf("test layer:         %d\n",m_testlayer);
+	printf("check wire:         [%d,%d]\n",m_thelayer,m_thewire);
+	printf("runname:             %s\n",m_runname.Data());
+	printf("Entries:            %d~%d\n",m_iEntryStart,m_iEntryStop);
+    printf("geoSetup:           %s\n",m_geoSetup==0?"normal scintillator":"finger scintillator");
 
     TString HOME=getenv("CDCS8WORKING_DIR");
 
+    //===================Chamber Parameter============================
 	double XMAX = 130; // range of x-z plane
 	double ZMAX = 350; // range of x-z plane
-
-    //===================Chamber Parameter============================
-    double U = 8; // mm
-    double chamberHL = 599.17/2; // mm
-    double chamberHH = 170.05/2; // mm
-    double chamberCY = 572; // mm
 	double yup = 645.;    // top of the chamber, for drawing x-y plane
 	double ydown = 515;   // bottom of the chamber, for drawing x-y plane
     // normal scintillator
@@ -112,7 +210,7 @@ int main(int argc, char** argv){
     double sciYdown = 0;
     double sciHL = 0;
     double sciHW = 0;
-	if (geoSetup==0){
+	if (m_geoSetup==0){
         // normal scintillator
         sciYup = chamberCY+chamberHH+180; // mm
         sciYdown = chamberCY-chamberHH-180; 
@@ -147,7 +245,7 @@ int main(int argc, char** argv){
 	// mcp for cross points
     double mcp_xc[NZXP][NCEL][NCEL]; // z-x planes corresponding to the layerID of the lower layer counting from 1 
     double mcp_zc[NZXP][NCEL][NCEL]; // z-x planes corresponding to the layerID of the lower layer counting from 1 
-    if (workMode/10==1){
+    if (m_workMode/10==1){
 		for(int lid = 0; lid<NLAY; lid++){
 			for (int wid = 0; wid<NCEL; wid++){
 				map_x[lid][wid][0] = 0;
@@ -168,7 +266,7 @@ int main(int argc, char** argv){
 	}
 
 	//===================Get Wire Position============================
-	TFile * TFile_wirepos = new TFile(HOME+"/info/wire-position.root");
+	TFile * TFile_wirepos = new TFile(HOME+"/Input/wire-position.root");
 	TTree * TTree_wirepos = (TTree*) TFile_wirepos->Get("t");
 	int     wp_bid;
 	int     wp_ch;
@@ -268,7 +366,7 @@ int main(int argc, char** argv){
 	t_run->SetBranchAddress("sum",&sumcut);
 	for(int i = 0; i<t_run->GetEntries(); i++){
 		t_run->GetEntry(i);
-		if (i_runNo == runNo) break;
+		if (i_runNo == m_runNo) break;
 	}
 	double npair = 17.96;
 	TString gastype = "He:C_{2}H_{4}(50:50)";
@@ -292,10 +390,10 @@ int main(int argc, char** argv){
 	}
 	t0[0] = t00;
 	t0[1] = t01;
-	std::cout<<"runNo#"<<runNo<<": "<<gastype<<", "<<runGr<<", "<<duration<<", "<<HV<<" V, "<<THR<<" mV, "<<durationTime<<"sec"<<std::endl;
+	std::cout<<"runNo#"<<m_runNo<<": "<<gastype<<", "<<runGr<<", "<<duration<<", "<<HV<<" V, "<<THR<<" mV, "<<durationTime<<"sec"<<std::endl;
 
     //===================Get XT============================
-    TFile * i_xt = new TFile(HOME+Form("/info/xt.%d.%s.root",runNo,runname.Data()));
+    TFile * i_xt = new TFile(HOME+Form("/info/xt.%d.%s.root",m_runNo,m_runname.Data()));
     for (int i = 0; i<NCELA; i++){
         f_left[i] = (TF1*) i_xt->Get(Form("fl_%d",i/NCEL));
         f_right[i] = (TF1*) i_xt->Get(Form("fr_%d",i/NCEL));
@@ -303,7 +401,7 @@ int main(int argc, char** argv){
 
 	//==================Get ADC==========================
 	TChain * iChain_ADC = new TChain("tree","tree");
-	iChain_ADC->Add(HOME+Form("/root/run_%0.6d_built.root",runNo));
+	iChain_ADC->Add(HOME+Form("/root/raw/run_%0.6d_built.root",m_runNo));
 	int adc[NCHT][NSAM];
 	int tdc[NCHT][NSAM];
 	int clockNumberDriftTime[NCHT][NSAM];
@@ -313,13 +411,13 @@ int main(int argc, char** argv){
 	iChain_ADC->SetBranchAddress("clockNumberDriftTime",clockNumberDriftTime);
 	iChain_ADC->SetBranchAddress("tdcNhit",tdcNhit);
 	if (!iChain_ADC->GetEntries()) {
-	    fprintf(stderr,"Cannot find root/run_%0.6d_built.root!\n",runNo);
+	    fprintf(stderr,"Cannot find root/raw/run_%0.6d_built.root!\n",m_runNo);
 	    return -1;
 	}
 
 	//==================Get Peaks==========================
 	TChain * iChain_p = new TChain("t","t");
-	iChain_p->Add(HOME+Form("/root/p_%d.root",runNo));
+	iChain_p->Add(HOME+Form("/root/peaks/p_%d.root",m_runNo));
 	double pk_aa[NCHT];
 	iChain_p->SetBranchAddress("aa",pk_aa);
 
@@ -370,23 +468,23 @@ int main(int argc, char** argv){
     int    theWid;
     int    has;
 	TChain * iChain = new TChain("t","t");
-    if (workMode%10==0){ // 0: h_XXX; 1: t_XXX
-        iChain->Add(HOME+Form("/root/h_%d.",runNo)+runname+".root");
+    if (m_workMode%10==0){ // 0: h_XXX; 1: t_XXX
+        iChain->Add(HOME+Form("/root/hits/h_%d.",m_runNo)+m_runname+".root");
     }
-    else if (workMode%10==1){
-        iChain->Add(Form("%s/root/t_%d.%s.layer%d.root",HOME.Data(),runNo,runname.Data(),testlayer));
+    else if (m_workMode%10==1){
+        iChain->Add(Form("%s/root/tracks/t_%d.%s.layer%d.root",HOME.Data(),m_runNo,m_runname.Data(),m_testlayer));
     }
-    else if (workMode%10==2){
-        iChain->Add(Form("%s/root/ana_%d.%s.layer%d.root",HOME.Data(),runNo,runname.Data(),testlayer));
+    else if (m_workMode%10==2){
+        iChain->Add(Form("%s/root/ana/ana_%d.%s.layer%d.root",HOME.Data(),m_runNo,m_runname.Data(),m_testlayer));
     }
     int triggerNumberMax = 0;
     int nEntries = iChain->GetEntries();
 	iChain->SetBranchAddress("triggerNumber",&triggerNumber);
 	iChain->GetEntry(nEntries-1); triggerNumberMax = triggerNumber;
-    if (workMode%10==0){
+    if (m_workMode%10==0){
         i_driftD[0] = new std::vector<double>;
     }
-    else if (workMode%10==1){
+    else if (m_workMode%10==1){
         iChain->SetBranchAddress("nHitsG",&nHitsG);
         iChain->SetBranchAddress("dxl",&i_dxl);
         iChain->SetBranchAddress("dxr",&i_dxr);
@@ -413,7 +511,7 @@ int main(int argc, char** argv){
             iChain->SetBranchAddress(Form("sel%d",iCand),&(i_sel[iCand]));
         }
     }
-    else if (workMode%10==2){
+    else if (m_workMode%10==2){
         iChain->SetBranchAddress("res",&theRes);
         iChain->SetBranchAddress("theDD",&theDD);
         iChain->SetBranchAddress("theWid",&theWid);
@@ -441,7 +539,7 @@ int main(int argc, char** argv){
 		iChain->SetBranchAddress("sel",&(i_sel[0]));
     }
     else{
-        fprintf(stderr,"workMode %d is not supported! please chose from 0,1\n",workMode);
+        fprintf(stderr,"workMode %d is not supported! please chose from 0,1\n",m_workMode);
         return -1;
     }
 	iChain->SetBranchAddress("nHits",&nHits);
@@ -465,7 +563,7 @@ int main(int argc, char** argv){
 	printf("Preparing canvas...\n");
 	TLatex * text_runsum = new TLatex();
 	text_runsum->SetTextSize(0.02);
-	text_runsum->SetText(0.05,0.98,Form("run#%d ",runNo)+gastype+Form(", %d V,%d mV, Grade#%d",HV,THR,runGr)+", "+duration+Form(", %d events, Eff_{daq} = %2.2lf%%, Rate_{tri} = %1.1lfkHz",nEntries,((double)nEntries)/(triggerNumberMax+1)*100,(triggerNumberMax+1)/durationTime/1000));
+	text_runsum->SetText(0.05,0.98,Form("run#%d ",m_runNo)+gastype+Form(", %d V,%d mV, Grade#%d",HV,THR,runGr)+", "+duration+Form(", %d events, Eff_{daq} = %2.2lf%%, Rate_{tri} = %1.1lfkHz",nEntries,((double)nEntries)/(triggerNumberMax+1)*100,(triggerNumberMax+1)/durationTime/1000));
 
 	TLatex * text_title = new TLatex(0,0,"");
 	text_title->SetTextSize(0.02);
@@ -603,7 +701,7 @@ int main(int argc, char** argv){
     gr_wireCenter->GetYaxis()->SetTitle("y [mm]");
     // Prepare driftT lines on z-x planes
     TLine * l_zx[NLAY][NCEL][MULTI][2];
-    if (workMode/10==1){
+    if (m_workMode/10==1){
 		for (int lid = 0; lid<NLAY; lid++){
 			for (int wid = 0; wid<NCEL; wid++){
 				for (int ip = 0; ip<MULTI; ip++){
@@ -621,14 +719,14 @@ int main(int argc, char** argv){
     // Prepare cross points of driftT lines on z-x planes
     TMarker * point_cross_zx[NZXP][NCEL][NCEL][MULTI][MULTI][4];
     TText * text_cross_zx[NZXP][NCEL][NCEL][MULTI][MULTI][4];
-    if (workMode/10==1){
+    if (m_workMode/10==1){
 		for (int izx = 1; izx<NZXP; izx++){ // z-x planes corresponding to the layerID of the lower layer counting from 1
 			for (int wid = 0; wid<NCEL; wid++){
 				for (int wjd = 0; wjd<NCEL; wjd++){
 					for (int ip = 0; ip<MULTI; ip++){
 						for (int jp = 0; jp<MULTI; jp++){
 							for (int icombi = 0; icombi<4; icombi++){
-								if (workMode%10>0&&icombi==3) // reverse izx when icombi is 0 or 1, reverse izx+1 when icombi is 0 or 2. Keep them unchanged only when icombi is 3
+								if (m_workMode%10>0&&icombi==3) // reverse izx when icombi is 0 or 1, reverse izx+1 when icombi is 0 or 2. Keep them unchanged only when icombi is 3
 									point_cross_zx[izx][wid][wjd][ip][jp][icombi] = new TMarker(0,0,20);
 								else
 									point_cross_zx[izx][wid][wjd][ip][jp][icombi] = new TMarker(0,0,4);
@@ -647,7 +745,7 @@ int main(int argc, char** argv){
     // Prepare track points on z-x planes
     TMarker * point_track_zx[NZXP];
     TMarker * point_itrack_zx[NZXP];
-    if (workMode%10>0&&workMode/10==1){
+    if (m_workMode%10>0&&m_workMode/10==1){
         for (int izx = 1; izx<NZXP; izx++){ // z-x planes corresponding to the layerID of the lower layer counting from 1
             point_track_zx[izx] = new TMarker(0,0,20);
             point_track_zx[izx]->SetMarkerColor(kRed);
@@ -659,7 +757,7 @@ int main(int argc, char** argv){
     }
     // Prepare wires in each layer on z-x planes
     TGraph * gr_wire[NLAY][NCEL];
-    if (workMode/10==1){
+    if (m_workMode/10==1){
 		for (int lid = 1; lid<NLAY; lid++){
 			for (int wid = 0; wid<NCEL; wid++){
 				if (map_check[lid][wid]==1){
@@ -688,7 +786,7 @@ int main(int argc, char** argv){
     gr_all[0]->GetYaxis()->SetRangeUser(-XMAX,XMAX);
     gr_all[0]->GetXaxis()->SetTitle("z [mm]");
     gr_all[0]->GetYaxis()->SetTitle("x [mm]");
-    if (workMode/10==1){
+    if (m_workMode/10==1){
 		for (int izx = 1; izx<NZXP; izx++){ // z-x planes corresponding to the layerID of the lower layer counting from 1
 			// Background graph for z-x planes
 			gr_all[izx] = new TGraph(2,ar_cr_x,ar_cr_y);
@@ -753,8 +851,8 @@ int main(int argc, char** argv){
 	int the_ch = -1;
 	int the_ihit = -1;
 	printf("the_ihit @ %p\n",(void*)(&the_ihit));
-	printf("Looping in events %d~%d\n",iEntryStart,iEntryStop);
-	for ( int iEntry = iEntryStart; iEntry<=iEntryStop; iEntry++){
+	printf("Looping in events %d~%d\n",m_iEntryStart,m_iEntryStop);
+	for ( int iEntry = m_iEntryStart; iEntry<=m_iEntryStop; iEntry++){
 		iChain->GetEntry(iEntry);
 		if (nHits<=0){
 			printf("No hits in event %d, continue\n",iEntry);
@@ -765,11 +863,11 @@ int main(int argc, char** argv){
 		the_bid = -1;
 		the_ch = -1;
 		the_ihit = -1;
-        if (thelayer>=0&&thewire>=0){
+        if (m_thelayer>=0&&m_thewire>=0){
             for (int ihit; ihit<i_driftT->size(); ihit++){
                 int lid = (*i_layerID)[ihit];
                 int wid = (*i_wireID)[ihit];
-                if (lid==thelayer&&wid==thewire){
+                if (lid==m_thelayer&&wid==m_thewire){
                     the_ch = map_ch[lid][wid];
                     the_bid = map_bid[lid][wid];
                     the_ihit = ihit;
@@ -790,7 +888,7 @@ int main(int argc, char** argv){
         iChain_p->GetEntry(iEntry);
 
 		// set prefix
-		if (workMode%10>0){
+		if (m_workMode%10>0){
             if (nHitsG<=6) prefix = "incom.";
             else if (nHitsG==7 ) prefix = "single.";
             else if (nHitsG==8 ) prefix = "single.";
@@ -808,9 +906,9 @@ int main(int argc, char** argv){
                 nHits_cell[lid][wid] = 0;
 			}
 		}
-		if (workMode%10==0) i_driftD[0]->clear();
-        else if (workMode%10==1){
-            for (int iCand = 0; iCand<(workMode%10==1?NCAND:1); iCand++){
+		if (m_workMode%10==0) i_driftD[0]->clear();
+        else if (m_workMode%10==1){
+            for (int iCand = 0; iCand<(m_workMode%10==1?NCAND:1); iCand++){
                 if (nHitsS[iCand]==0){// bad fitting, driftD nonsense.
                     i_driftD[iCand]->resize(nHits);
                 }
@@ -821,7 +919,7 @@ int main(int argc, char** argv){
             int lid = (*i_layerID)[ihit];
             int wid = (*i_wireID)[ihit];
             int type = (*i_type)[ihit];
-            if (workMode%10==0){// prepare dd and type
+            if (m_workMode%10==0){// prepare dd and type
                 double dt = (*i_driftT)[ihit];
                 int dd_status = 0;
                 double dd = t2x(dt,lid,wid,0,dd_status);
@@ -830,8 +928,8 @@ int main(int argc, char** argv){
                 (*i_type)[ihit] = type;
                 i_driftD[0]->push_back(dd);
             }
-			else if (workMode%10==1){
-				for (int iCand = 0; iCand<(workMode%10==1?NCAND:1); iCand++){
+			else if (m_workMode%10==1){
+				for (int iCand = 0; iCand<(m_workMode%10==1?NCAND:1); iCand++){
 					if (nHitsS[iCand]==0){// bad fitting, driftD nonsense.
 						(*i_driftD[iCand])[ihit] = (*i_dxr)[ihit];
 					}
@@ -995,13 +1093,13 @@ int main(int argc, char** argv){
 			markerTDC[the_bid][the_ch][ip]->Draw();
 		}
 
-        for (int iCand = 0; iCand<(workMode%10==1?NCAND:1); iCand++){
+        for (int iCand = 0; iCand<(m_workMode%10==1?NCAND:1); iCand++){
             //===================Draw XY in xyADC plot============================
             // update wire position
             for (int iwire = 0; iwire<v_wire_xc.size(); iwire++){
                 double y = v_wire_yc[iwire];
                 double x;
-                if (workMode%10>0){ // according to z-y relation from tracking
+                if (m_workMode%10>0){ // according to z-y relation from tracking
                     double z = i_slz[iCand]*(y-iny)+i_inz[iCand];
                     x = ((chamberHL-z)*v_wire_xhv[iwire]+(chamberHL+z)*v_wire_xro[iwire])/chamberHL/2;
                     y = ((chamberHL-z)*v_wire_yhv[iwire]+(chamberHL+z)*v_wire_yro[iwire])/chamberHL/2;
@@ -1016,7 +1114,7 @@ int main(int argc, char** argv){
             }
             // Draw the background graph for x-y plane
             pad_xyADC[0]->cd();
-            if (workMode%10>0)
+            if (m_workMode%10>0)
                 gr_wireCenter->SetTitle(Form("Ent %d, nHitsG (%d)%d(%d), icom %d, isel %d, sl_{z}: %.2e->%.2e, #chi^{2}: %.2e->%.2e",iEntry,nHits,nHitsG,nHitsS[iCand],i_icombi[iCand],i_iselec[iCand],i_islz[iCand],i_slz[iCand],i_chi2i[iCand],i_chi2[iCand]));
             else
                 gr_wireCenter->SetTitle(Form("Entry %d nHits = %d",iEntry,nHits));
@@ -1033,7 +1131,7 @@ int main(int argc, char** argv){
                     double wzhv = -chamberHL;
                     double wy = (wyro+wyhv)/2.;
                     double wx = (wxro+wxhv)/2.;
-                    if (workMode%10>0){
+                    if (m_workMode%10>0){
                         // correct wx wy wz according to the track position
                         double wz = i_slz[iCand]*(wy-iny)+i_inz[iCand];
                         wx = ((wzro-wz)*wxhv+(wz-wzhv)*wxro)/(wzro-wzhv);
@@ -1050,7 +1148,7 @@ int main(int argc, char** argv){
                         // Get hit information
                         double fitd = 0;
                         double dd = (*i_driftD[iCand])[ihit];
-                        if (workMode%10>0){
+                        if (m_workMode%10>0){
                             fitd = (*i_fitD[iCand])[ihit]; // !!! make sure it's mm
                         }
                         // set the hit circles
@@ -1064,7 +1162,7 @@ int main(int argc, char** argv){
                         }
                         else{
                             circle_driftD[lid][wid][ip]->SetLineStyle(1);
-                            if (workMode%10>0&&(*i_sel[iCand])[ihit]) // used for fitting
+                            if (m_workMode%10>0&&(*i_sel[iCand])[ihit]) // used for fitting
                                 circle_driftD[lid][wid][ip]->SetLineColor(kRed);
                             else
                                 circle_driftD[lid][wid][ip]->SetLineColor(kOrange);
@@ -1073,7 +1171,7 @@ int main(int argc, char** argv){
                         circle_driftD[lid][wid][ip]->Draw(); // from track fitting/finding
 
                         // get the min residual
-                        if (fabs(fitd-dd)<fabs(resmin)&&(workMode%10>0&&type<=3)){ // only print when t_XXX and good hit
+                        if (fabs(fitd-dd)<fabs(resmin)&&(m_workMode%10>0&&type<=3)){ // only print when t_XXX and good hit
                             resmin = fitd-dd;
                             thefitd = fitd;
                         }
@@ -1082,14 +1180,14 @@ int main(int argc, char** argv){
                         dd_cell[lid][wid][ip] = dd;
                         fd_cell[lid][wid][ip] = fitd;
                         double delta = dd*chamberHL*2/sqrt(chamberHL*chamberHL*4+(map_x[lid][wid][0]-map_x[lid][wid][1])*(map_x[lid][wid][0]-map_x[lid][wid][1])); // correction for x position
-                        if (workMode/10==1){
+                        if (m_workMode/10==1){
 							for (int ilr = 0; ilr<2; ilr++){
 								l_zx[lid][wid][ip][ilr]->SetY1(wxhv+(ilr?delta:-delta));
 								l_zx[lid][wid][ip][ilr]->SetY2(wxro+(ilr?delta:-delta));
 							}
 						}
                     }
-                    if (workMode%10==2&&wid==theWid&&has==1&&lid==testlayer){
+                    if (m_workMode%10==2&&wid==theWid&&has==1&&lid==m_testlayer){
                     	resmin = theRes;
                     	thefitd = theDD+theRes;
                     }
@@ -1105,7 +1203,7 @@ int main(int argc, char** argv){
             double xup    = i_inx[iCand] + (yup-iny)*i_slx[iCand];
             double xdowni = i_iinx[iCand] + (ydown-iny)*i_islx[iCand];
             double xupi   = i_iinx[iCand] + (yup-iny)*i_islx[iCand];
-            if (workMode%10>0){
+            if (m_workMode%10>0){
                 l_itrack->SetX1(xupi);
                 l_itrack->SetX2(xdowni);
                 l_itrack->Draw();
@@ -1113,7 +1211,7 @@ int main(int argc, char** argv){
                 l_track->SetX2(xdown);
                 l_track->Draw();
             }
-            if (workMode%10>0){
+            if (m_workMode%10>0){
                 ca_xyADC->SaveAs(prefix+Form("xyADC.%d.i%d.pdf",iEntry,iCand));
                 ca_xyADC->SaveAs(prefix+Form("xyADC.%d.i%d.png",iEntry,iCand));
             }
@@ -1124,7 +1222,7 @@ int main(int argc, char** argv){
 
             //===================Draw ZX plots============================
             // draw the z-x planes
-            if (workMode/10==1){
+            if (m_workMode/10==1){
 				for (int izx = 1; izx<NZXP; izx++){ // z-x planes corresponding to the layerID of the lower layer counting from 1
 					ca_zx[izx]->cd();
 					// draw Background graph for z-x planes
@@ -1189,7 +1287,7 @@ int main(int argc, char** argv){
 										int jtype = (*i_type)[jhit];
 										int isel = 0;
 										int jsel = 0;
-										if (workMode%10>0){
+										if (m_workMode%10>0){
 											isel = (*i_sel[iCand])[ihit];
 											jsel = (*i_sel[iCand])[jhit];
 										}
@@ -1212,7 +1310,7 @@ int main(int argc, char** argv){
 											double theta2 = map_theta[izx+1][wjd];
 											double sintheta12 = sin(theta1-theta2);
 											double zc_fix_slx = 0;
-											if (workMode%10>0){
+											if (m_workMode%10>0){
 												double deltaY = y_cell[izx+1][wjd]-y_cell[izx][wid];
 												zc_fix_slx = deltaY*i_slx[iCand]/(tan(theta2)-tan(theta1));
 											}
@@ -1223,7 +1321,7 @@ int main(int argc, char** argv){
 												point_cross_zx[izx][wid][wjd][ip][jp][icombi]->SetY(xc);
 												point_cross_zx[izx][wid][wjd][ip][jp][icombi]->Draw();
 											}
-											if (workMode%10>0){
+											if (m_workMode%10>0){
 												if (icombi==3){
 													double y_track = (y_cell[izx][wid]+y_cell[izx+1][wjd])/2.;
 													z_track = i_inz[iCand]+(y_track-iny)*i_slz[iCand];
@@ -1258,7 +1356,7 @@ int main(int argc, char** argv){
 						}
 						if (wjd==NCEL) wjd = NCEL/2;
 						double y_track = (y_cell[izx][wid]+y_cell[izx+1][wjd])/2.; // take the y value from a previous event
-						if (workMode%10>0){
+						if (m_workMode%10>0){
 							z_track = i_inz[iCand]+(y_track-iny)*i_slz[iCand];
 							x_track = i_inx[iCand]+(y_track-iny)*i_slx[iCand];
 							z_itrack = i_iinz[iCand]+(y_track-iny)*i_islz[iCand];
@@ -1267,7 +1365,7 @@ int main(int argc, char** argv){
 						gr_all[izx]->SetTitle(Form("Layer %d and Layer %d",izx,izx+1));
 					}
 					// draw the track point
-					if (workMode%10>0){
+					if (m_workMode%10>0){
 						point_itrack_zx[izx]->SetX(z_itrack);
 						point_itrack_zx[izx]->SetY(x_itrack);
 						point_itrack_zx[izx]->Draw();
@@ -1275,7 +1373,7 @@ int main(int argc, char** argv){
 						point_track_zx[izx]->SetY(x_track);
 						point_track_zx[izx]->Draw();
 					}
-					if (workMode%10>0){
+					if (m_workMode%10>0){
 						ca_zx[izx]->SaveAs(prefix+Form("zx.%d.i%d.l%d.pdf",iEntry,iCand,izx));
 						ca_zx[izx]->SaveAs(prefix+Form("zx.%d.i%d.l%d.png",iEntry,iCand,izx));
 					}
@@ -1289,7 +1387,7 @@ int main(int argc, char** argv){
 				ca_zx_all->cd();
 				gr_all[0]->Draw("AP");
 				for (int izx = 1; izx<NZXP; izx++){
-					if (workMode%10>0)
+					if (m_workMode%10>0)
 						point_track_zx[izx]->Draw();
 					if (nHits_layer[izx]>0&&nHits_layer[izx+1]>0){
 						for (int wid = 0; wid<NCEL; wid++){
@@ -1313,7 +1411,7 @@ int main(int argc, char** argv){
 											double theta2 = map_theta[izx+1][wjd];
 											double sintheta12 = sin(theta1-theta2);
 											double zc_fix_slx = 0;
-											if (workMode%10>0){
+											if (m_workMode%10>0){
 												double deltaY = y_cell[izx+1][wjd]-y_cell[izx][wid];
 												zc_fix_slx = deltaY*i_slx[iCand]/(tan(theta2)-tan(theta1));
 											}
@@ -1331,7 +1429,7 @@ int main(int argc, char** argv){
 						}
 					}
 				}
-				if (workMode%10>0){
+				if (m_workMode%10>0){
 					ca_zx_all->SaveAs(prefix+Form("zx.%d.i%d.all.png",iEntry,iCand));
 					ca_zx_all->SaveAs(prefix+Form("zx.%d.i%d.all.pdf",iEntry,iCand));
 				}
@@ -1415,7 +1513,28 @@ bool lidwid2cid4dr(int lid, int wid, int & cid){
 //	return false;
 }
 
-void print_usage(char* progname){
-	printf("%s [runNo] [workMode: x0: h; x1: t; 1x: h_XXX with zx] <[testlayer] [thelayer] [thewire] [runname] [iEntryStart] [iEntryStop] [geoSetup]>",progname);
+void print_usage(char* prog_name){
+	fprintf(stderr,"Usage %s [options] prerunname runname\n",prog_name);
+	fprintf(stderr,"[options]\n");
+	fprintf(stderr,"\t -D <name>=[error,severe,warn,debug,trace]\n");
+	fprintf(stderr,"\t\t Change the named debug level\n");
+	fprintf(stderr,"\t -V <name>=[quiet,log,info,verbose]\n");
+	fprintf(stderr,"\t\t Change the named log level\n");
+	fprintf(stderr,"\t -M <n>\n");
+	fprintf(stderr,"\t\t Printing modulo set to n\n");
+	fprintf(stderr,"\t -R <run>\n");
+	fprintf(stderr,"\t\t Run number set to run\n");
+	fprintf(stderr,"\t -B <n>\n");
+	fprintf(stderr,"\t\t Starting entry index set to n\n");
+	fprintf(stderr,"\t -E <n>\n");
+	fprintf(stderr,"\t\t Stopping entry index set to n\n");
+    fprintf(stderr,"\t -L <l>\n");
+    fprintf(stderr,"\t\t Test layer set to l\n");
+    fprintf(stderr,"\t -l <l>\n");
+    fprintf(stderr,"\t\t The layer set to l\n");
+    fprintf(stderr,"\t -W <w>\n");
+    fprintf(stderr,"\t\t The wire set to w\n");
+    fprintf(stderr,"\t -G <g>\n");
+    fprintf(stderr,"\t\t The geometry setup set to g\n");
 	return;
 }

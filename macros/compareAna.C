@@ -1,46 +1,57 @@
 {
-    TChain * ichain0 = new TChain("t","t");
-    TChain * ichain1 = new TChain("t","t");
-    ichain0->Add("root/ana/ana_105.1224xt053t400.i4.layer4.root");
-    ichain1->Add("root/ana/ana_105.1224xt053t400l5.i4.layer4.root");
-    int isGood0;
-    int nHitsS0;
-    int theWid0;
-    double theFD0;
-    double chi2p0;
-    double slz0;
-    double inz0;
-    double slx0;
-    double inx0;
-    int isGood1;
-    int nHitsS1;
-    int theWid1;
-    double theFD1;
-    double chi2p1;
-    double slz1;
-    double inz1;
-    double slx1;
-    double inx1;
-    ichain0->SetBranchAddress("isGood",&isGood0);
-    ichain0->SetBranchAddress("nHitsS",&nHitsS0);
-    ichain0->SetBranchAddress("theWid0",&theWid0);
-    ichain0->SetBranchAddress("theFD0",&theFD0);
-    ichain0->SetBranchAddress("chi2p",&chi2p0);
-    ichain0->SetBranchAddress("slz",&slz0);
-    ichain0->SetBranchAddress("slx",&slx0);
-    ichain0->SetBranchAddress("inz",&inz0);
-    ichain0->SetBranchAddress("inx",&inx0);
-    ichain1->SetBranchAddress("isGood",&isGood1);
-    ichain1->SetBranchAddress("nHitsS",&nHitsS1);
-    ichain1->SetBranchAddress("theWid0",&theWid1);
-    ichain1->SetBranchAddress("theFD0",&theFD1);
-    ichain1->SetBranchAddress("chi2p",&chi2p1);
-    ichain1->SetBranchAddress("slz",&slz1);
-    ichain1->SetBranchAddress("slx",&slx1);
-    ichain1->SetBranchAddress("inz",&inz1);
-    ichain1->SetBranchAddress("inx",&inx1);
+    const int NF = 10;
+    TChain * ichain[NF] = {0};
+    int isGood[NF] = {0};
+    int nHitsS[NF] = {0};
+    int theWid[NF] = {0};
+    double theFD[NF] = {0};
+    double theDD[NF] = {0};
+    double chi2p[NF] = {0};
+    double slz[NF] = {0};
+    double inz[NF] = {0};
+    double slx[NF] = {0};
+    double inx[NF] = {0};
+
+    double zl7[NF] = {0};
+    double xl7[NF] = {0};
 
     TFile * ofile = new TFile("compareAna.root","RECREATE");
+    TTree * otree = new TTree("t","t");
+
+    std::vector<TString> filenames;
+    std::vector<TString> tagnames;
+    filenames.push_back("105.1224xt053t400.i4.layer4"); tagnames.push_back("l4");
+    filenames.push_back("105.1224xt053t400.i4.layer5"); tagnames.push_back("l5");
+    filenames.push_back("105.1224xt053t400.i4.layer7"); tagnames.push_back("l7");
+
+    for (int i = 0; i<filenames.size(); i++){
+        ichain[i] = new TChain("t","t");
+        ichain[i]->Add(Form("root/ana/ana_%s.root",filenames[i].Data()));
+        ichain[i]->SetBranchAddress("isGood",&(isGood[i]));
+        ichain[i]->SetBranchAddress("nHitsS",&(nHitsS[i]));
+        ichain[i]->SetBranchAddress("theWid0",&(theWid[i]));
+        ichain[i]->SetBranchAddress("theFD0",&(theFD[i]));
+        ichain[i]->SetBranchAddress("theDD0",&(theDD[i]));
+        ichain[i]->SetBranchAddress("chi2p",&(chi2p[i]));
+        ichain[i]->SetBranchAddress("slz",&(slz[i]));
+        ichain[i]->SetBranchAddress("slx",&(slx[i]));
+        ichain[i]->SetBranchAddress("inz",&(inz[i]));
+        ichain[i]->SetBranchAddress("inx",&(inx[i]));
+
+        otree->Branch(Form("isGood%s",tagnames[i].Data()),&(isGood[i]));
+        otree->Branch(Form("nHitsS%s",tagnames[i].Data()),&(nHitsS[i]));
+        otree->Branch(Form("theWid%s",tagnames[i].Data()),&(theWid[i]));
+        otree->Branch(Form("theFD%s",tagnames[i].Data()),&(theFD[i]));
+        otree->Branch(Form("theDD%s",tagnames[i].Data()),&(theDD[i]));
+        otree->Branch(Form("chi2p%s",tagnames[i].Data()),&(chi2p[i]));
+        otree->Branch(Form("slz%s",tagnames[i].Data()),&(slz[i]));
+        otree->Branch(Form("slx%s",tagnames[i].Data()),&(slx[i]));
+        otree->Branch(Form("inz%s",tagnames[i].Data()),&(inz[i]));
+        otree->Branch(Form("inx%s",tagnames[i].Data()),&(inx[i]));
+        otree->Branch(Form("xl7%s",tagnames[i].Data()),&(xl7[i]));
+        otree->Branch(Form("zl7%s",tagnames[i].Data()),&(zl7[i]));
+    }
+
     TH2D * hchi2p = new TH2D("hchi2p","hchi2p",128,0,1,128,0,1);
     TH2D * hslz = new TH2D("hslz","hslz",128,-0.15,0.15,128,-0.05,0.05);
     TH2D * hslx = new TH2D("hslx","hslx",128,-0.1,0.1,128,-0.005,0.005);
@@ -54,50 +65,21 @@
     double sciYup = chamberCY+chamberHH+180; // mm
     double yl7 = 624;
 
-    double zl70 = 0;
-    double zl71 = 0;
-    double xl70 = 0;
-    double xl71 = 0;
-
-    TTree * otree = new TTree("t","t");
-    otree->Branch("isGood0",&isGood0);
-    otree->Branch("nHitsS0",&nHitsS0);
-    otree->Branch("theWid0",&theWid0);
-    otree->Branch("theFD0",&theFD0);
-    otree->Branch("chi2p0",&chi2p0);
-    otree->Branch("slz0",&slz0);
-    otree->Branch("slx0",&slx0);
-    otree->Branch("inz0",&inz0);
-    otree->Branch("inx0",&inx0);
-    otree->Branch("xl70",&xl70);
-    otree->Branch("zl70",&zl70);
-    otree->Branch("isGood1",&isGood1);
-    otree->Branch("theFD1",&theFD1);
-    otree->Branch("nHitsS1",&nHitsS1);
-    otree->Branch("theWid1",&theWid1);
-    otree->Branch("chi2p1",&chi2p1);
-    otree->Branch("slz1",&slz1);
-    otree->Branch("slx1",&slx1);
-    otree->Branch("inz1",&inz1);
-    otree->Branch("inx1",&inx1);
-    otree->Branch("xl71",&xl71);
-    otree->Branch("zl71",&zl71);
-
-    for (int iEntry = 0; iEntry<ichain0->GetEntries(); iEntry++){
-        ichain0->GetEntry(iEntry);
-        ichain1->GetEntry(iEntry);
-        double zl70 = inz0+slz0*(yl7-sciYup);
-        double zl71 = inz1+slz1*(yl7-sciYup);
-        double xl70 = inx0+slx0*(yl7-sciYup);
-        double xl71 = inx1+slx1*(yl7-sciYup);
-        if (nHitsS0>=7&&nHitsS1>=7&&abs(theFD1)<6&&abs(theFD1)>2&&isGood1){
-            hchi2p->Fill(chi2p0,chi2p1);
-            hslz->Fill(slz0,slz1-slz0);
-            hslx->Fill(slx0,slx1-slx0);
-            hinz->Fill(inz0,inz1-inz0);
-            hzl7->Fill(zl70,zl71-zl70);
-            hxl7->Fill(xl70,xl71-xl70);
-            hinx->Fill(inx0,inx1-inx0);
+    for (int iEntry = 0; iEntry<ichain[0]->GetEntries(); iEntry++){
+        for (int i = 0; i<filenames.size(); i++){
+            ichain[i]->GetEntry(iEntry);
+            double zl7[i] = inz[i]+slz[i]*(yl7-sciYup);
+            double xl7[i] = inx[i]+slx[i]*(yl7-sciYup);
+        }
+        if (nHitsS[2]>=7&&theFD[2]<-3&&theFD[2]>-5&&isGood[2]){ // file 2 is layer 7
+            // compare with file 0 which is layer 4
+            hchi2p->Fill(chi2p[0],chi2p[2]);
+            hslz->Fill(slz[0],slz[2]-slz[0]);
+            hslx->Fill(slx[0],slx[2]-slx[0]);
+            hinz->Fill(inz[0],inz[2]-inz[0]);
+            hzl7->Fill(zl7[0],zl7[2]-zl7[0]);
+            hxl7->Fill(xl7[0],xl7[2]-xl7[0]);
+            hinx->Fill(inx[0],inx[2]-inx[0]);
         }
         otree->Fill();
     }
