@@ -50,22 +50,24 @@ bool lidwid2cid4dr(int lid, int wid, int & cid);
 double t2x(double time, int lid, int wid, int lr, int & status);
 void print_usage(char* prog_name);
 
+int m_modulo = 0;
+int m_runNo = 0;
+int m_workMode = 0; // 0: h_XXX; 1: t_XXX; 2: ana_XXX; 10: h_XXX with zx; 11: t_XXX with zx
+int m_testlayer = 4;
+int m_thelayer = 4;
+int m_thewire = -1; // negative value means just pick up the first hit, regardless of the target layer.
+int m_iEntryStart = 0;
+int m_iEntryStop = 9;
+int m_geoSetup = 0; // 0: normal; 1: finger
+TString m_xtFile = "";
+TString m_runname = "";
+
 int main(int argc, char** argv){
-    int m_modulo = 0;
-	int m_runNo = 0;
-	int m_workMode = 0; // 0: h_XXX; 1: t_XXX; 2: ana_XXX; 10: h_XXX with zx; 11: t_XXX with zx
-	int m_testlayer = 4;
-	int m_thelayer = 4;
-	int m_thewire = -1; // negative value means just pick up the first hit, regardless of the target layer.
-    int m_iEntryStart = 0;
-    int m_iEntryStop = 9;
-    int m_geoSetup = 0; // 0: normal; 1: finger
-	TString m_runname = "";
 	//===================Get Arguments============================
     std::map<std::string, Log::ErrorPriority> namedDebugLevel;
     std::map<std::string, Log::LogPriority> namedLogLevel;
     int    opt_result;
-	while((opt_result=getopt(argc,argv,"M:m:R:B:E:L:l:W:G:"))!=-1){
+	while((opt_result=getopt(argc,argv,"M:m:R:B:E:L:l:W:G:X:"))!=-1){
 		switch(opt_result){
 			/* INPUTS */
 			case 'M':
@@ -103,6 +105,10 @@ int main(int argc, char** argv){
 			case 'G':
 			    m_geoSetup = atoi(optarg);
                 printf("Geometry setup set to %d\n",m_geoSetup);
+				break;
+			case 'X':
+			    m_xtFile = optarg;
+                printf("Load xt curves from %s\n",m_xtFile.Data());
 				break;
             case 'D':
                 {
@@ -196,6 +202,7 @@ int main(int argc, char** argv){
 	printf("check wire:         [%d,%d]\n",m_thelayer,m_thewire);
 	printf("runname:             %s\n",m_runname.Data());
 	printf("Entries:            %d~%d\n",m_iEntryStart,m_iEntryStop);
+	printf("xt curves:          %s\n",m_xtFile==""?"self":m_xtFile.Data());
     printf("geoSetup:           %s\n",m_geoSetup==0?"normal scintillator":"finger scintillator");
 
     TString HOME=getenv("CDCS8WORKING_DIR");
@@ -393,7 +400,17 @@ int main(int argc, char** argv){
 	std::cout<<"runNo#"<<m_runNo<<": "<<gastype<<", "<<runGr<<", "<<duration<<", "<<HV<<" V, "<<THR<<" mV, "<<durationTime<<"sec"<<std::endl;
 
     //===================Get XT============================
-    TFile * i_xt = new TFile(HOME+Form("/info/xt.%d.%s.root",m_runNo,m_runname.Data()));
+    TFile * i_xt = 0;
+    if (m_xtFile==""){
+        i_xt = new TFile(HOME+Form("/info/xt.%d.%s.root",m_runNo,m_runname.Data()));
+    }
+    else{
+        i_xt = new TFile(m_xtFile);
+    }
+    if (!i_xt){
+        fprintf(stderr,"Cannot load xt file!\n");
+        return -1;
+    }
     for (int i = 0; i<NCELA; i++){
         f_left[i] = (TF1*) i_xt->Get(Form("fl_%d",i/NCEL));
         f_right[i] = (TF1*) i_xt->Get(Form("fr_%d",i/NCEL));
@@ -1514,7 +1531,7 @@ bool lidwid2cid4dr(int lid, int wid, int & cid){
 }
 
 void print_usage(char* prog_name){
-	fprintf(stderr,"Usage %s [options] prerunname runname\n",prog_name);
+	fprintf(stderr,"Usage %s [options] runname\n",prog_name);
 	fprintf(stderr,"[options]\n");
 	fprintf(stderr,"\t -D <name>=[error,severe,warn,debug,trace]\n");
 	fprintf(stderr,"\t\t Change the named debug level\n");
@@ -1536,5 +1553,10 @@ void print_usage(char* prog_name){
     fprintf(stderr,"\t\t The wire set to w\n");
     fprintf(stderr,"\t -G <g>\n");
     fprintf(stderr,"\t\t The geometry setup set to g\n");
+    fprintf(stderr,"\t -X <xtfile>\n");
+    fprintf(stderr,"\t\t Instead of searching for the xt file from this run, use the provided one\n");
+    fprintf(stderr,"\t -m <mode>\n");
+    fprintf(stderr,"\t\t Set the workmode (%d)\n",m_workMode);
+    fprintf(stderr,"\t\t 0: h_XXX; 1: t_XXX; 2: ana_XXX; 10: h_XXX with zx; 11: t_XXX with zx\n");
 	return;
 }
