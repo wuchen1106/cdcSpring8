@@ -140,11 +140,12 @@ Input file:
 `Input/run-info.root`  
 `Input/crosspoint.root`  
 `info/wire-position.XXXX.PRERUNNAME.root` or `Input/wire-position.root`  
-`info/xt.XXXX.PRERUNNAME.root`  
+`info/xt.XXXX.PRERUNNAME.root` or `info/xt.GAS.HV.root`
+`info/reso.XXXX.PRERUNNAME.root` or `info/reso.GAS.HV.root`
 `info/offset.XXXX.RUNNAME.root` if it exists  
-* inputType=1: `root/h_XXXX.root`
-* inputType=2: `root/h_XXXX.MC.root`
-* inputType=3: `root/h_XXXX.layerX.MC.root`
+* inputType=0: `root/h_XXXX.root` for data
+* inputType=2: `root/h_XXXX.MC.root` for MC without layer specified
+* inputType=3: `root/h_XXXX.layerX.MC.root` for MC with layer specified
 
 Output file:
 

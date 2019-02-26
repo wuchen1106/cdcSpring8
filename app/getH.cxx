@@ -58,6 +58,7 @@ int main(int argc, char** argv){
 	TTree_wirepos->SetBranchAddress("w",&wp_wid);
 	for (int i = 0; i<TTree_wirepos->GetEntries(); i++){
 		TTree_wirepos->GetEntry(i);
+		if (wp_ch+wp_bid*NCHS >= NCHT) continue;
 		map_wid[wp_ch+wp_bid*NCHS] = wp_wid;
 		map_lid[wp_ch+wp_bid*NCHS] = wp_lid;
 		if (widmax[wp_lid]<wp_wid) widmax[wp_lid] = wp_wid;

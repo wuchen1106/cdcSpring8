@@ -261,7 +261,10 @@ int main(int argc, char** argv){
 				map_x[lid][wid][1] = 0;
 				map_y[lid][wid][1] = 0;
 				map_z[lid][wid][1] = 0;
+				map_ch[lid][wid] = 0;
+				map_bid[lid][wid] = 0;
 				map_check[lid][wid]=0;
+				map_theta[lid][wid]=0;
 				if (lid <NZXP){ // z-x planes corresponding to the layerID of the lower layer counting from 1 
 					for (int wjd = 0; wjd<NCEL; wjd++){
 						mcp_xc[lid][wid][wjd] = 999;
@@ -487,6 +490,9 @@ int main(int argc, char** argv){
 	TChain * iChain = new TChain("t","t");
     if (m_workMode%10==0){ // 0: h_XXX; 1: t_XXX
         iChain->Add(HOME+Form("/root/hits/h_%d.",m_runNo)+m_runname+".root");
+        if (!iChain->GetEntries()){
+            iChain->Add(HOME+Form("/root/hits/h_%d.root",m_runNo));
+        }
     }
     else if (m_workMode%10==1){
         iChain->Add(Form("%s/root/tracks/t_%d.%s.layer%d.root",HOME.Data(),m_runNo,m_runname.Data(),m_testlayer));

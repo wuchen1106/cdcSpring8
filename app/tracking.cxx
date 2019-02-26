@@ -42,7 +42,7 @@ int m_tmax = 800;
 double m_sumCut = -10;
 double m_aaCut = 0;
 int m_geoSetup = 0; // 0: normal; 1: finger
-int m_inputType = 0; // 1 for MC; 0 for data
+int m_inputType = 0; // 2 for MC without layer specified; 3 for MC with layer specified; 0 for data
 int m_peakType = 0; // 0, only the first peak over threshold; 1, all peaks over threshold; 2, even including shaddowed peaks
 int m_workType = 0; // fr/l_0; 1, even/odd; -1, even/odd reversed; others, all layers
 int m_BlindLayer = 0; // Don't use this layer for tracking
@@ -1813,7 +1813,7 @@ void print_usage(char* prog_name)
     fprintf(stderr,"\t\t (0): normal; 1: finger\n");
     fprintf(stderr,"\t -i <i>\n");
     fprintf(stderr,"\t\t Input type set to i\n");
-    fprintf(stderr,"\t\t (0) for data; 1 for MC\n");
+    fprintf(stderr,"\t\t (0) for data; 2 for MC wihtout layer specified; 3 for MC with layer specified\n");
     fprintf(stderr,"\t -p <p>\n");
     fprintf(stderr,"\t\t Peak type set to p\n");
     fprintf(stderr,"\t\t (0) only the first peak over threshold; 1, all peaks over threshold; 2, even including shaddowed peaks\n");
