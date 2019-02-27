@@ -1,11 +1,21 @@
 #!/bin/bash
 prePWD=$PWD
-pdf=$PWD/results/WaveAna/pdf
-png=$PWD/results/WaveAna/png
+pdf=$PWD/result/WaveAna/pdf
+png=$PWD/result/WaveAna/png
 mv *.pdf $pdf
 mv *.png $png
 cd $pdf
-./move.sh
+mv *.aa.* aa/
+mv *.at.* at/
+mv *.st.* st/
+mv *.sum.* sum/
+mv *.tdc.* tdc/
+mv *.wf.* wf/
 cd $png
-./move.sh
+mv *.aa.* aa/
+mv *.at.* at/
+mv *.st.* st/
+mv *.sum.* sum/
+mv *.tdc.* tdc/
+mv *.wf.* wf/
 cd $prePWD
