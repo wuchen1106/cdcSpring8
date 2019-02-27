@@ -330,15 +330,9 @@ int main(int argc, char** argv){
             }
             map_theta[wp_lid][wp_wid] = atan(-(map_x[wp_lid][wp_wid][0]-map_x[wp_lid][wp_wid][1])/chamberHL/2); // rotation angle viewing from the dart plane (RO plane, z>0); positive rotation angle point to -x direction
 		}
-        else{
-            fprintf(stderr,"WARNING: Entry %d in wiremap file, lid = %d wid = %d out of range (%d,%d)!\n",i,wp_lid,wp_wid,NLAY,NCEL);
-        }
 		if (wp_bid>=0&&wp_bid<NBRD&&wp_ch>=0&&wp_ch<NCHS){
 			map_lid[wp_bid][wp_ch] = wp_lid;
 			map_wid[wp_bid][wp_ch] = wp_wid;
-        }
-        else{
-            fprintf(stderr,"WARNING: Entry %d in wiremap file, bid = %d ch = %d out of range (%d,%d)!\n",i,wp_bid,wp_ch,NBRD,NCHS);
         }
 	}
 	TFile_wirepos->Close();
