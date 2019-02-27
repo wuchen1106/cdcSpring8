@@ -361,13 +361,13 @@ Output file:
     double                theGG;
     double                trackGG;
     // special hits count
-    int                   nHitsSmallAll;
-    int                   nHitsSmallSASD;
-    int                   nSHits;
-    int                   nLHits;
-    int                   nSSHits;
-    int                   nBHits;
-    int                   nSBHits;
+    int                   nHitsSmallAll; // Number of hits with `aa` smaller than 35
+    int                   nHitsSmallSASD; // Number of hits with `aa` smaller than 35 and in the same ASD chip as the highest peak of the event
+    int                   nSHits; // Number of selected peak which is not the first sub-peak in its packet
+    int                   nLHits; // Number of selected peak which is not the first peak in its channel
+    int                   nSSHits; // Number of selected peak which is not the highest on in its channel
+    int                   nBHits; // Number of selected peak which corresponds to the boundary (`DD<1 mm || DD>7mm`)
+    int                   nSBHits; // Number of selected peak which corresponds to the small boundary (`DD<0.5 mm || DD>7.5mm`)
     // inheriting from raw hits
     int                   nHits;
     std::vector<int> *    layerID;
