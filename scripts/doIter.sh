@@ -17,7 +17,7 @@ CONFIGTABLE_wireposition="$CDCS8WORKING_DIR/Para/wirepos.temp.dat"
 CONFIGTABLE=""
 
 # for tracking
-geoSetup=0 # 0 for general; 1 for finger
+geoSetup=0 # 0 for general; 1 for finger; 2 for tilted run
 inputType=0 # 1 for MC; 0 for data
 workTypeini=0 # 0, fr/l_0; 1, even/odd; -1, even/odd reversed; others, all layers
 nHitsGMax=15

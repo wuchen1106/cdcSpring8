@@ -58,7 +58,9 @@ int m_thelayer = 4;
 int m_thewire = -1; // negative value means just pick up the first hit, regardless of the target layer.
 int m_iEntryStart = 0;
 int m_iEntryStop = 9;
-int m_geoSetup = 0; // 0: normal; 1: finger
+int m_geoSetup = 0; // 0: normal; 1: finger; 2: tilted run
+int m_peakType = 0; // 0, only the first peak over threshold; 1, all peaks over threshold; 2, even including shaddowed peaks
+double m_slxini = 0;
 TString m_xtFile = "";
 TString m_runname = "";
 
@@ -67,7 +69,7 @@ int main(int argc, char** argv){
     std::map<std::string, Log::ErrorPriority> namedDebugLevel;
     std::map<std::string, Log::LogPriority> namedLogLevel;
     int    opt_result;
-	while((opt_result=getopt(argc,argv,"M:m:R:B:E:L:l:W:G:X:"))!=-1){
+	while((opt_result=getopt(argc,argv,"M:m:R:B:E:L:l:W:G:X:p:"))!=-1){
 		switch(opt_result){
 			/* INPUTS */
 			case 'M':
@@ -109,6 +111,10 @@ int main(int argc, char** argv){
 			case 'X':
 			    m_xtFile = optarg;
                 printf("Load xt curves from %s\n",m_xtFile.Data());
+				break;
+			case 'p':
+			    m_peakType = atoi(optarg);
+                printf("Peak type set to %d\n",m_peakType);
 				break;
             case 'D':
                 {
@@ -194,6 +200,7 @@ int main(int argc, char** argv){
 		return -1;
     }
     m_runname= argv[optind++];
+    if (m_geoSetup==2) m_slxini = -18.4*M_PI/180;
 
     printf("##############%s##################\n",argv[0]);
 	printf("runNo:              %d\n",m_runNo);
@@ -204,6 +211,7 @@ int main(int argc, char** argv){
 	printf("Entries:            %d~%d\n",m_iEntryStart,m_iEntryStop);
 	printf("xt curves:          %s\n",m_xtFile==""?"self":m_xtFile.Data());
     printf("geoSetup:           %s\n",m_geoSetup==0?"normal scintillator":"finger scintillator");
+    printf("peakType    = %d, %s\n",m_peakType,m_peakType==0?"First peak over threshold":"All peaks over threshold");
 
     TString HOME=getenv("CDCS8WORKING_DIR");
 
@@ -353,8 +361,10 @@ int main(int argc, char** argv){
     int nEntries_crosspoint = TTree_crosspoint->GetEntries();
     for (int iEntry = 0; iEntry<nEntries_crosspoint; iEntry++){
         TTree_crosspoint->GetEntry(iEntry);
-        mcp_xc[cp_l1][cp_w1][cp_w2] = cp_xc;
-        mcp_zc[cp_l1][cp_w1][cp_w2] = cp_zc;
+        if (cp_l1>=0&&cp_l1<NLAY&&cp_w1>=0&&cp_w1<NCEL&&cp_w2>=0&&cp_w2<NCEL){
+            mcp_xc[cp_l1][cp_w1][cp_w2] = cp_xc;
+            mcp_zc[cp_l1][cp_w1][cp_w2] = cp_zc;
+        }
     }
     TFile_crosspoint->Close();
 
@@ -749,7 +759,7 @@ int main(int argc, char** argv){
 					for (int ip = 0; ip<MULTI; ip++){
 						for (int jp = 0; jp<MULTI; jp++){
 							for (int icombi = 0; icombi<4; icombi++){
-								if (m_workMode%10>0&&icombi==3) // reverse izx when icombi is 0 or 1, reverse izx+1 when icombi is 0 or 2. Keep them unchanged only when icombi is 3
+								if (m_workMode%10==0||(m_workMode%10>0&&icombi==3)) // reverse izx when icombi is 0 or 1, reverse izx+1 when icombi is 0 or 2. Keep them unchanged only when icombi is 3
 									point_cross_zx[izx][wid][wjd][ip][jp][icombi] = new TMarker(0,0,20);
 								else
 									point_cross_zx[izx][wid][wjd][ip][jp][icombi] = new TMarker(0,0,4);
@@ -941,6 +951,7 @@ int main(int argc, char** argv){
         for (int ihit = 0; ihit<nHits; ihit++){
             int lid = (*i_layerID)[ihit];
             int wid = (*i_wireID)[ihit];
+            int ip = (*i_ip)[ihit];
             int type = (*i_type)[ihit];
             if (m_workMode%10==0){// prepare dd and type
                 double dt = (*i_driftT)[ihit];
@@ -948,6 +959,7 @@ int main(int argc, char** argv){
                 double dd = t2x(dt,lid,wid,0,dd_status);
                 if (dd_status==1) type+=20;
                 else if (dd_status==-1) type+=10;
+                if (ip>0&&m_peakType==0) type+=1e5;
                 (*i_type)[ihit] = type;
                 i_driftD[0]->push_back(dd);
             }
@@ -1318,12 +1330,15 @@ int main(int argc, char** argv){
 										for (int icombi = 0; icombi<4; icombi++){
 											if (itype>3||jtype>3){ // bad cross
 												point_cross_zx[izx][wid][wjd][ip][jp][icombi]->SetMarkerColor(14);
+                                                point_cross_zx[izx][wid][wjd][ip][jp][icombi]->SetMarkerSize(0.35);
 											}
 											else if (isel&&jsel){ // selected cross
 												point_cross_zx[izx][wid][wjd][ip][jp][icombi]->SetMarkerColor(kBlack);
+                                                point_cross_zx[izx][wid][wjd][ip][jp][icombi]->SetMarkerSize(0.55);
 											}
 											else{ // good cross
-												point_cross_zx[izx][wid][wjd][ip][jp][icombi]->SetMarkerColor(kGreen);
+												point_cross_zx[izx][wid][wjd][ip][jp][icombi]->SetMarkerColor(kRed);
+                                                point_cross_zx[izx][wid][wjd][ip][jp][icombi]->SetMarkerSize(0.55);
 											}
 											double dd1 = dd_cell[izx][wid][ip];
 											double dd2 = dd_cell[izx+1][wjd][jp];
@@ -1337,6 +1352,10 @@ int main(int argc, char** argv){
 												double deltaY = y_cell[izx+1][wjd]-y_cell[izx][wid];
 												zc_fix_slx = deltaY*i_slx[iCand]/(tan(theta2)-tan(theta1));
 											}
+                                            else if (m_geoSetup==2){
+												double deltaY = y_cell[izx+1][wjd]-y_cell[izx][wid];
+												zc_fix_slx = deltaY*m_slxini/(tan(theta2)-tan(theta1));
+                                            }
 											double xc = mcp_xc[izx][wid][wjd]+dd1*sin(theta2)/(-sintheta12)+dd2*sin(theta1)/sintheta12;
 											double zc = mcp_zc[izx][wid][wjd]+dd1*cos(theta2)/(-sintheta12)+dd2*cos(theta1)/sintheta12+zc_fix_slx;
 											if (zc>-chamberHL&&zc<chamberHL){
@@ -1425,7 +1444,12 @@ int main(int argc, char** argv){
 										for (int icombi = 0; icombi<4; icombi++){
 											if (itype>3||jtype>3){ // bad cross
 												text_cross_zx[izx][wid][wjd][ip][jp][icombi]->SetTextColor(14);
+                                                text_cross_zx[izx][wid][wjd][ip][jp][icombi]->SetTextSize(0.008);
 											}
+                                            else{
+												text_cross_zx[izx][wid][wjd][ip][jp][icombi]->SetTextColor(color[izx]);
+                                                text_cross_zx[izx][wid][wjd][ip][jp][icombi]->SetTextSize(0.01);
+                                            }
 											double dd1 = dd_cell[izx][wid][ip];
 											double dd2 = dd_cell[izx+1][wjd][jp];
 											if (icombi<2) dd1 = -dd1; // reverse izx when icombi is 0 or 1
@@ -1438,6 +1462,10 @@ int main(int argc, char** argv){
 												double deltaY = y_cell[izx+1][wjd]-y_cell[izx][wid];
 												zc_fix_slx = deltaY*i_slx[iCand]/(tan(theta2)-tan(theta1));
 											}
+                                            else if (m_geoSetup==2){
+												double deltaY = y_cell[izx+1][wjd]-y_cell[izx][wid];
+												zc_fix_slx = deltaY*m_slxini/(tan(theta2)-tan(theta1));
+                                            }
 											double xc = mcp_xc[izx][wid][wjd]+dd1*sin(theta2)/(-sintheta12)+dd2*sin(theta1)/sintheta12;
 											double zc = mcp_zc[izx][wid][wjd]+dd1*cos(theta2)/(-sintheta12)+dd2*cos(theta1)/sintheta12+zc_fix_slx;
 											if (zc>-chamberHL&&zc<chamberHL){
@@ -1564,5 +1592,8 @@ void print_usage(char* prog_name){
     fprintf(stderr,"\t -m <mode>\n");
     fprintf(stderr,"\t\t Set the workmode (%d)\n",m_workMode);
     fprintf(stderr,"\t\t 0: h_XXX; 1: t_XXX; 2: ana_XXX; 10: h_XXX with zx; 11: t_XXX with zx\n");
+    fprintf(stderr,"\t -p <p>\n");
+    fprintf(stderr,"\t\t Peak type set to p\n");
+    fprintf(stderr,"\t\t (0) only the first peak over threshold; 1, all peaks over threshold; 2, even including shaddowed peaks\n");
 	return;
 }

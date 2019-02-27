@@ -41,12 +41,14 @@ int m_tmin = -20;
 int m_tmax = 800;
 double m_sumCut = -10;
 double m_aaCut = 0;
-int m_geoSetup = 0; // 0: normal; 1: finger
+int m_geoSetup = 0; // 0: normal; 1: finger; 2: rotation (18 degree)
 int m_inputType = 0; // 2 for MC without layer specified; 3 for MC with layer specified; 0 for data
 int m_peakType = 0; // 0, only the first peak over threshold; 1, all peaks over threshold; 2, even including shaddowed peaks
 int m_workType = 0; // fr/l_0; 1, even/odd; -1, even/odd reversed; others, all layers
 int m_BlindLayer = 0; // Don't use this layer for tracking
 double m_t0error = 0; // if t0 error is 0, then don't set it as a free parameter in fitting
+double m_inislx = 0; // initial guess for slope x;
+double m_iniinz = 100;
 
 //===================Chamber Parameter============================
 // map for wire position
@@ -74,6 +76,10 @@ double sciHL = 0;
 double sciHW = 0;
 
 //==================About Beam======================
+double beamSlzMin = 0;
+double beamSlxMin = 0;
+double beamInzMin = 0;
+double beamInxMin = 0;
 double beamSlzMax = 0;
 double beamSlxMax = 0;
 double beamInzMax = 0;
@@ -190,6 +196,7 @@ int setErrors(int nPairs, bool noError = false);
 int getChi2XZ(int nPairs, double & chi2x, double & chi2z);
 int fityx(int nPairs);
 int fityz(int nPairs);
+bool checkFromSource(double islx, double islz);
 bool checkScintillator(double saftyFactor,double inx, double slx, double inz, double slz);
 bool checkChi2(int nHitsSel,int nPairs,int icombi, int iselection);
 double get_dist(int lid, int wid, double slx, double inx, double slz, double inz);
@@ -407,6 +414,12 @@ int main(int argc, char** argv){
     }
     m_prerunname = argv[optind++];
     m_runname= argv[optind++];
+    if (m_geoSetup==2){
+        m_inislx = tan(-18.4*M_PI/180);
+    }
+    else{
+        m_inislx = 0;
+    }
 
     printf("##############%s##################\n",argv[0]);
     printf("runNo       = %d\n",m_runNo);
@@ -421,7 +434,7 @@ int main(int argc, char** argv){
     printf("sumCut      = %f\n",m_sumCut);
     printf("aaCut       = %f\n",m_aaCut);
     printf("BlindLayer  = %d\n",m_BlindLayer);
-    printf("geoSetup:     %s\n",m_geoSetup==0?"normal scintillator":"finger scintillator");
+    printf("geoSetup:     %d\n",m_geoSetup);
     printf("workType    = %d, %s\n",m_workType,m_workType==0?"all as 0":(m_workType==1?"even/odd":(m_workType==-1?"even/odd reversed":"all layers")));
     printf("inputType   = %d, %s\n",m_inputType,m_inputType==0?"Real Data":(m_inputType==2?"MC X":"MC T"));
     printf("peakType    = %d, %s\n",m_peakType,m_peakType==0?"First peak over threshold":"All peaks over threshold");
@@ -499,7 +512,15 @@ int main(int argc, char** argv){
         sciHL = 300/2.;
         sciHW = 90/2.;
     }
-    else{
+    else if (m_geoSetup==2){
+        // normal scintillator for tilted run
+        // TODO: position should be modified
+        sciYup = chamberCY+chamberHH+180; // mm
+        sciYdown = chamberCY-chamberHH-180; 
+        sciHL = 300/2.;
+        sciHW = 90/2.;
+    }
+    else {
         // finger scintillator
         sciYup = chamberCY+chamberHH+250; // mm
         sciYdown = chamberCY-chamberHH-195; 
@@ -515,14 +536,22 @@ int main(int argc, char** argv){
 	//===================Set beam property============================
     // FIXME: currently set a broader range. Need further investigation
     beamSlzMax = 0.3;
-    beamSlxMax = 0.1;
+    beamSlxMax = m_inislx + 0.1;
     beamInzMax = sciHL*1.5; // mm
     beamInxMax = sciHW*1.5;
+    beamSlzMin = -0.3;
+    beamSlxMin = m_inislx - 0.1;
+    beamInzMin = -sciHL*1.5; // mm
+    beamInxMin = -sciHW*1.5;
     printf("##############Beam##################\n");
     printf("beamSlzMax  = %.3e\n",beamSlzMax);
     printf("beamSlxMax  = %.3e\n",beamSlxMax);
     printf("beamInzMax  = %.3e\n",beamInzMax);
     printf("beamInxMax  = %.3e\n",beamInxMax);
+    printf("beamSlzMin  = %.3e\n",beamSlzMin);
+    printf("beamSlxMin  = %.3e\n",beamSlxMin);
+    printf("beamInzMin  = %.3e\n",beamInzMin);
+    printf("beamInxMin  = %.3e\n",beamInxMin);
 
     //===================Prepare Maps============================
     for(int lid = 0; lid<NLAY; lid++){
@@ -910,6 +939,8 @@ int main(int argc, char** argv){
         for (int ihit = 0; ihit<i_nHits; ihit++){
             int lid = (*i_layerID)[ihit];
             int wid = (*i_wireID)[ihit];
+            double aa = (*i_aa)[ihit];
+            double sum = (*i_sum)[ihit];
             int bid = map_bid[lid][wid];
             (*i_driftT)[ihit]+=(bid==0?m_t0shift0:m_t0shift1); // fix driftT according to t0shift
             double dt = (*i_driftT)[ihit];
@@ -921,7 +952,7 @@ int main(int argc, char** argv){
             if (m_inputType!=2&&m_inputType!=3){
                 (*o_dxl)[ihit] = t2x(dt,lid,wid,-1,statusl);
                 (*o_dxr)[ihit] = t2x(dt,lid,wid,1,statusr);
-                MyNamedVerbose("Tracking","cell ["<<lid<<","<<wid<<"], dt = "<<dt<<", dxl = "<<(*o_dxl)[ihit]<<", status = "<<statusl<<", dxr = "<<(*o_dxr)[ihit]<<", status = "<<statusr);
+                MyNamedVerbose("Tracking","cell ["<<lid<<","<<wid<<"], sum = "<<sum<<", aa = "<<aa<<", dt = "<<dt<<", dxl = "<<(*o_dxl)[ihit]<<", status = "<<statusl<<", dxr = "<<(*o_dxr)[ihit]<<", status = "<<statusr);
             }
             else{
                 (*o_dxl)[ihit] = -fabs((*i_driftD)[ihit]);
@@ -948,10 +979,10 @@ int main(int argc, char** argv){
             if (m_BlindLayer>=0&&lid==m_BlindLayer) type+=1000000; // blind the layer
             type+=npoc*100000; // number of peaks above threshold before this peak in this channel
             // S: sum of wave packet
-            if ((*i_sum)[ihit]<m_sumCut) type+=1*100;
+            if (sum<m_sumCut) type+=1*100;
             else npoc++; // over sum cut, then increment npoc
             // A: sum of full waveform
-            if ((*i_aa)[ihit]<m_aaCut) type+=1*1000;
+            if (aa<m_aaCut) type+=1*1000;
             // M: index of peak in a multi-peak wave packet
             type+=(*i_mpi)[ihit]*10000;
             // I: index of peak over sum cut in the whole waveform
@@ -959,8 +990,8 @@ int main(int argc, char** argv){
             (*i_type)[ihit] = type;
             int ttype = getHitType(type,true);
             if (lid != m_testlayer&&ttype<=3){ // good hit
-                MyNamedVerbose("Tracking","  Entry "<<iEntry<<Form(": dxl[%d][%d] = dxl[%d] = t2x(%.3e) = %.3e",lid,wid,ihit,dt,(*o_dxl)[ihit]));
-                MyNamedVerbose("Tracking","  Entry "<<iEntry<<Form(": dxr[%d][%d] = dxr[%d] = t2x(%.3e) = %.3e",lid,wid,ihit,dt,(*o_dxr)[ihit]));
+                MyNamedVerbose("Tracking",Form("  dxl[%d][%d] = dxl[%d] = t2x(%.3e) = %.3e",lid,wid,ihit,dt,(*o_dxl)[ihit]));
+                MyNamedVerbose("Tracking",Form("  dxr[%d][%d] = dxr[%d] = t2x(%.3e) = %.3e",lid,wid,ihit,dt,(*o_dxr)[ihit]));
                 v_layer_ihit[lid].push_back(ihit);
                 nHitsG++;
             }
@@ -980,7 +1011,7 @@ int main(int argc, char** argv){
             }
         }
         for (int ipick = 0; ipick<v_pick_lid.size(); ipick++){
-            MyNamedVerbose("Tracking",Form(" pick layer %d",v_pick_lid[ipick]));
+            MyNamedVerbose("Tracking",Form(" pick layer %d: %d hits",v_pick_lid[ipick],v_layer_ihit[v_pick_lid[ipick]].size()));
         }
 
         // Do tracking
@@ -1032,22 +1063,17 @@ int Tracking(int ipick,int & iselection,int iEntry){
 int doFitting(int nPicks,int iEntry,int iselection){
     int ncombi = pow(2,nPicks);
     MyNamedVerbose("Tracking",Form("  %d picked layers -> %d combinations",nPicks,ncombi));
-    MyNamedVerbose("Tracking","doFitting line "<<__LINE__<<", nPicks = "<<nPicks);
     for (int icombi = 0; icombi<ncombi; icombi++){ // each combination corresponds to a unique left/right selection set
     	o_nFind++;
         MyNamedVerbose("Tracking",Form("     combi %d",icombi));
         t_lr->clear();
         t_lr->resize(i_nHits,0); // 0 is used as a default value to indicate that this hit is not picked, thus left/right unfixed
-        MyNamedVerbose("Tracking","doFitting line "<<__LINE__<<", nPicks = "<<nPicks);
         setLRdriftD(nPicks,icombi); // for picked hits
-        MyNamedVerbose("Tracking","doFitting line "<<__LINE__<<", nPicks = "<<nPicks);
-        f_x->SetParameters(0,0);
-        f_z->SetParameters(0,0);
+        f_x->SetParameters(0,m_inislx);
+        f_z->SetParameters(m_iniinz,0);
         int nPairs = 0;
-        MyNamedVerbose("Tracking","doFitting line "<<__LINE__<<", nPicks = "<<nPicks);
 
         updateHitPositions(nPicks); // fix wy positions
-        MyNamedVerbose("Tracking","doFitting line "<<__LINE__);
         int result = updatePairPositions(nPicks,nPairs);
         if (result) continue;
         setErrors(nPairs,true);
@@ -1058,13 +1084,17 @@ int doFitting(int nPicks,int iEntry,int iselection){
         islx = f_x->GetParameter(1);
         islz = f_z->GetParameter(1);
         bool inScint = checkScintillator(2.5,iinx,islx,iinz,islz); // FIXME: need to tune
-        bool fromSource = islx>-beamSlxMax&&islx<beamSlxMax&&islz>-beamSlzMax&&islz<beamSlzMax;
+        bool fromSource = checkFromSource(islx,islz);
         int nGood = getChi2XZ(nPairs,chi2x,chi2z);
         MyNamedVerbose("Tracking",Form("       1st RESULT: nGood = %d, inScint? %s; x=%.3e*(y-%.3e)+%.3e, chi2 = %.3e, z=%.3e*(y-%.3e)+%.3e, chi2 = %.3e",nGood,inScint?"yes":"no",islx,sciYup,iinx,chi2x,islz,sciYup,iinz,chi2z));
-        if (!fromSource||!inScint) {f_x->SetParameters(0,0); f_z->SetParameters(0,0);}
+        TString debugContent = Form("%d %d %.3e %.3e %.3e %.3e",iselection,icombi,islx,iinx,islz,iinz);
+        for (int ipair = 0; ipair<nPairs; ipair++){
+            debugContent += Form(" %.3e %.3e %.3e %.3e",pair_wx[ipair],f_x->Eval(pair_wy[ipair]),pair_wz[ipair],f_z->Eval(pair_wy[ipair]));
+        }
+        MyNamedDebug("check",debugContent);
+        if (!fromSource||!inScint) {f_x->SetParameters(0,m_inislx); f_z->SetParameters(m_iniinz,0);}
         
         updateHitPositions(nPicks); // fix wy positions
-        MyNamedVerbose("Tracking","doFitting line "<<__LINE__);
         result = updatePairPositions(nPicks,nPairs);
         if (result) continue;
         setErrors(nPairs,false);
@@ -1075,13 +1105,12 @@ int doFitting(int nPicks,int iEntry,int iselection){
         islx = f_x->GetParameter(1);
         islz = f_z->GetParameter(1);
         inScint = checkScintillator(2.5,iinx,islx,iinz,islz); // FIXME: need to tune
-        fromSource = islx>-beamSlxMax&&islx<beamSlxMax&&islz>-beamSlzMax&&islz<beamSlzMax;
+        fromSource = checkFromSource(islx,islz);
         nGood = getChi2XZ(nPairs,chi2x,chi2z);
         MyNamedVerbose("Tracking",Form("       2nd RESULT: nGood = %d, inScint? %s; x=%.3e*(y-%.3e)+%.3e, chi2 = %.3e, z=%.3e*(y-%.3e)+%.3e, chi2 = %.3e",nGood,inScint?"yes":"no",islx,sciYup,iinx,chi2x,islz,sciYup,iinz,chi2z));
-        if (!fromSource||!inScint) {f_x->SetParameters(0,0); f_z->SetParameters(0,0);}
+        if (!fromSource||!inScint) {f_x->SetParameters(0,m_inislx); f_z->SetParameters(m_iniinz,0);}
         
         updateHitPositions(nPicks); // fix wy positions
-        MyNamedVerbose("Tracking","doFitting line "<<__LINE__);
         result = updatePairPositions(nPicks,nPairs);
         if (result) continue;
         setErrors(nPairs,false);
@@ -1092,7 +1121,7 @@ int doFitting(int nPicks,int iEntry,int iselection){
         islx = f_x->GetParameter(1);
         islz = f_z->GetParameter(1);
         inScint = checkScintillator(2.5,iinx,islx,iinz,islz); // FIXME: need to tune
-        fromSource = islx>-beamSlxMax&&islx<beamSlxMax&&islz>-beamSlzMax&&islz<beamSlzMax;
+        fromSource = checkFromSource(islx,islz);
         nGood = getChi2XZ(nPairs,chi2x,chi2z);
         MyNamedVerbose("Tracking",Form("       3rd RESULT: nGood = %d, inScint? %s; x=%.3e*(y-%.3e)+%.3e, chi2 = %.3e, z=%.3e*(y-%.3e)+%.3e, chi2 = %.3e",nGood,inScint?"yes":"no",islx,sciYup,iinx,chi2x,islz,sciYup,iinz,chi2z));
 
@@ -1129,7 +1158,7 @@ int doFitting(int nPicks,int iEntry,int iselection){
                 }
                 (*t_sel)[ihit] = selected;
             }
-            MyNamedVerbose("Tracking",Form("       good! nHitsSel = %d",nHitsSel));
+            MyNamedVerbose("Tracking",Form("       Selection finished: nHitsSel = %d",nHitsSel));
             if ((nHitsSel>=5&&!m_t0error)||(nHitsSel>=6&&m_t0error)){ // at least 5 hits to fit: NDF of 3-D track without field is 4
             	o_nFit++;
                 // fitting with TMinuit
@@ -1181,6 +1210,9 @@ int doFitting(int nPicks,int iEntry,int iselection){
                     }
                     (*t_sel)[ihit] = selected;
                 }
+                getchi2(chi2i,chi2pi,chi2ai,islx,iinx,islz,iinz,0,true);
+                getchi2(chi2,chi2p,chi2a,slx,inx,slz,inz,0,true);
+                MyNamedVerbose("Tracking",Form("       1st fitting RESULT: nHitsSel = %d, x=%.3e*(y-%.3e)+%.3e, z=%.3e*(y-%.3e)+%.3e, chi2i = %.3e chi2 = %.3e, t0offset = %.3e",nHitsSel,slx,sciYup,inx,slz,sciYup,inz,chi2i,chi2,t0offset));
                 if ((nHitsSel>=5&&!m_t0error)||(nHitsSel>=6&&m_t0error)){ // at least 5 hits to fit: NDF of 3-D track without field is 4
                     // fitting with TMinuit
                     do_fit(islx,iinx,islz,iinz);
@@ -1200,7 +1232,7 @@ int doFitting(int nPicks,int iEntry,int iselection){
                         }
                     }
                     inScint = checkScintillator(1.5,inx,slx,inz,slz); // FIXME: error limit should be tuned
-                    fromSource = slx>-beamSlxMax&&slx<beamSlxMax&&slz>-beamSlzMax&&slz<beamSlzMax;
+                    fromSource = checkFromSource(islx,islz);
                     if (inScint&&fromSource){
                         // update chi2
                         if (m_inputType)
@@ -1208,7 +1240,7 @@ int doFitting(int nPicks,int iEntry,int iselection){
                         getchi2(chi2i,chi2pi,chi2ai,islx,iinx,islz,iinz,0,true);
                         getchi2(chi2,chi2p,chi2a,slx,inx,slz,inz,0,true);
                         // check chi2 and see where the result fits
-                        MyNamedVerbose("Tracking",Form("         final RESULT: x=%.3e*(y-%.3e)+%.3e, z=%.3e*(y-%.3e)+%.3e, chi2i = %.3e chi2 = %.3e, t0offset = %.3e",slx,sciYup,inx,slz,sciYup,inz,chi2i,chi2,t0offset));
+                        MyNamedVerbose("Tracking",Form("       2nd fitting RESULT: nHitsSel = %d, x=%.3e*(y-%.3e)+%.3e, z=%.3e*(y-%.3e)+%.3e, chi2i = %.3e chi2 = %.3e, t0offset = %.3e",nHitsSel,slx,sciYup,inx,slz,sciYup,inz,chi2i,chi2,t0offset));
                         // at last, update driftD for unpick and unselected hits
                         for (int ihit = 0; ihit<i_nHits; ihit++){
                             int lid = (*i_layerID)[ihit];
@@ -1286,25 +1318,16 @@ bool isSame(int iCand){
 
 int updateHitPositions(int nPicks){
     // calculate pick_wy
-    MyNamedVerbose("Tracking","    nPicks = "<<nPicks);
     int * pointer_nPicks = & nPicks;
     for (int ipick = 0; ipick<nPicks; ipick++){
         int * pointer_ipick = & ipick;
-        MyNamedVerbose("Tracking","    ipick = "<<(int)ipick<<" < "<<(int)nPicks);
-        MyNamedVerbose("Tracking","    ipick @ "<<pointer_ipick<<" = "<<(int)(*pointer_ipick)<<", nPicks @ "<<pointer_nPicks<<" = "<<(int)(*pointer_nPicks));
-        MyNamedVerbose("Tracking","    i_wireID @ "<<i_wireID<<", size = "<<i_wireID->size());
-        MyNamedVerbose("Tracking","    pick_wy @ "<<&pick_wy<<", size = "<<pick_wy.size());
         // Get hit information
         int ihit = pick_ihit[ipick];
-        MyNamedVerbose("Tracking","    ihit = pick_ihit["<<ipick<<"] = "<<ihit);
         int lid = (*i_layerID)[ihit];
         int wid = (*i_wireID)[ihit];
-        MyNamedVerbose("Tracking","    lid = "<<lid<<", wid = "<<wid);
         double wyro = map_y[lid][wid][1];
-        MyNamedVerbose("Tracking","    wyro = "<<wyro);
         double wzro = chamberHL;
         double wyhv = map_y[lid][wid][0];
-        MyNamedVerbose("Tracking","    wyhv = "<<wyhv);
         double wzhv = -chamberHL;
         double wy = (wyro+wyhv)/2.;// assume wy
         double wz = f_z->Eval(wy);// get wz by extrapolating the track to wy
@@ -1312,11 +1335,9 @@ int updateHitPositions(int nPicks){
         wy = ((wzro-wz)*wyhv+(wz-wzhv)*wyro)/(wzro-wzhv);
         wz = f_z->Eval(wy);
         wy = ((wzro-wz)*wyhv+(wz-wzhv)*wyro)/(wzro-wzhv);
-        MyNamedVerbose("Tracking","    pick_wy["<<ipick<<"] = "<<pick_wy[ipick]);
+        MyNamedVerbose("updateHitPositions","    pick_wy["<<ipick<<"]: "<<pick_wy[ipick]<<" -> "<<wy);
         pick_wy[ipick] = wy;
-        MyNamedVerbose("Tracking","    pick_wy["<<ipick<<"] = "<<pick_wy[ipick]);
     }
-    MyNamedVerbose("Tracking","    updateHitPositions finished");
     return 0;
 }
 
@@ -1344,21 +1365,21 @@ int updatePairPositions(int nPicks,int & nPairs){
         pair_wx[nPairs] = xc;
         pair_wy[nPairs] = (pick_wy[ipick+1]+pick_wy[ipick])/2.;
         pair_wz[nPairs] = zc;
-//      MyNamedVerbose("Tracking",Form("                  xc = %.3e+%.3e*sin(%.3e)/(-sin(%.3e-%.3e))+%.3e*sin(%.3e)/sin(%.3e-%.3e)",mcp_xc[lid][wid][wjd],dd1,theta2,theta1,theta2,dd2,theta1,theta1,theta2));
- //     MyNamedVerbose("Tracking",Form("                  zc = %.3e+%.3e*cos(%.3e)/(-sin(%.3e-%.3e))+%.3e*cos(%.3e)/sin(%.3e-%.3e)+%.3e",mcp_zc[lid][wid][wjd],dd1,theta2,theta1,theta2,dd2,theta1,theta1,theta2,zc_fix_slx,zc_fix_slx));
-        MyNamedVerbose("Tracking",Form("       cp[%d,%d]: w(%d,%d) i(%d,%d) dd(%f,%f) xyz(%f,%f,%f)",lid,ljd,wid,wjd,ihit,jhit,dd1,dd2,xc,(pick_wy[ipick+1]+pick_wy[ipick])/2.,zc));
+        MyNamedVerbose("updatePairPositions",Form("        xc = %.3e+%.3e*sin(%.3e)/(-sin(%.3e-%.3e))+%.3e*sin(%.3e)/sin(%.3e-%.3e)",mcp_xc[lid][wid][wjd],dd1,theta2,theta1,theta2,dd2,theta1,theta1,theta2));
+        MyNamedVerbose("updatePairPositions",Form("        zc = %.3e+%.3e*cos(%.3e)/(-sin(%.3e-%.3e))+%.3e*cos(%.3e)/sin(%.3e-%.3e)+%.3e",mcp_zc[lid][wid][wjd],dd1,theta2,theta1,theta2,dd2,theta1,theta1,theta2,zc_fix_slx,zc_fix_slx));
+        MyNamedVerbose("updatePairPositions",Form("       cp[%d,%d]: w(%d,%d) i(%d,%d) dd(%f,%f) xyz(%f,%f,%f)",lid,ljd,wid,wjd,ihit,jhit,dd1,dd2,xc,(pick_wy[ipick+1]+pick_wy[ipick])/2.,zc));
         if (zc<-chamberHL||zc>chamberHL){
-            MyNamedVerbose("Tracking",Form("       bad combination!"));
+            MyNamedVerbose("updatePairPositions",Form("       BAD combination!"));
             break;
         }
         nPairs++;
     }
     if (ipick==nPicks-1){
-        MyNamedVerbose("Tracking",Form("       GOOD!"));
+        MyNamedVerbose("updatePairPositions",Form("       GOOD combination!"));
         return 0;
     }
     else{
-        MyNamedVerbose("Tracking",Form("       BAD @ %d!",ipick));
+        MyNamedVerbose("updatePairPositions",Form("       BAD @ %d!",ipick));
         return 1;
     }
 }
@@ -1419,10 +1440,19 @@ int getChi2XZ(int nPairs, double & chi2x, double & chi2z){
         double tchi2z = pair_wz[ipair]-f_z->Eval(pair_wy[ipair]);
         double tchi2x = pair_wx[ipair]-f_x->Eval(pair_wy[ipair]);
         MyNamedVerbose("Tracking",Form("           getChi2XZ pair[%d]: error x = %.3e, error z = %.3e",ipair,tchi2x,tchi2z));
-	    if (fabs(tchi2z)<4&&fabs(tchi2x)<1){ // FIXME: error limit should be tuned
-            chi2z += pow(tchi2z,2);
-            chi2x += pow(tchi2x,2);
-            nCount++;
+        if (m_geoSetup==2){
+            if (fabs(tchi2z)<30&&fabs(tchi2x)<1.5){ // FIXME: error limit should be tuned
+                chi2z += pow(tchi2z,2);
+                chi2x += pow(tchi2x,2);
+                nCount++;
+            }
+        }
+        else{
+            if (fabs(tchi2z)<4&&fabs(tchi2x)<1){ // FIXME: error limit should be tuned
+                chi2z += pow(tchi2z,2);
+                chi2x += pow(tchi2x,2);
+                nCount++;
+            }
         }
     }
     if (nCount){
@@ -1442,12 +1472,20 @@ int fityx(int nPairs){
 	return 0;
 }
 
+bool checkFromSource(double islx, double islz){
+    bool fromSource = false;
+    if (m_geoSetup==2) fromSource = true; // in case of tilted run, don't check the source
+    else islx>beamSlxMin&&islx<beamSlxMax&&islz>beamSlzMin&&islz<beamSlzMax;
+    return fromSource;
+}
+
 bool checkScintillator(double saftyFactor,double inx, double slx, double inz, double slz){
     double xtop = 1/saftyFactor*inx;
     double xbot = 1/saftyFactor*(inx+slx*(sciYdown-sciYup));
     double ztop = 1/saftyFactor*inz;
     double zbot = 1/saftyFactor*(inz+slz*(sciYdown-sciYup));
-    MyNamedVerbose("Tracking",Form("              top xz(%.3e, %.3e) bottom xz(%.3e, %.3e)",xtop,ztop,xbot,zbot));
+    MyNamedVerbose("checkScintillator",Form("           top xz(%.3e, %.3e) bottom xz(%.3e, %.3e)",xtop,ztop,xbot,zbot));
+    if (m_geoSetup==2) return true; // don't check scintillator for tilted runs
     if (xtop>sciHW||xtop<-sciHW||xbot>sciHW||xbot<-sciHW||ztop>sciHL||ztop<-sciHL||zbot>sciHL||zbot<-sciHL) return false;
     else return true;
 }
@@ -1507,7 +1545,7 @@ bool checkChi2(int nHitsSel, int nPairs, int icombi, int iselection){
 //			if ((chi2<o_chi2[i]&&nHitsSel==o_nHitsS[i])||nHitsSel>o_nHitsS[i]){ // now we only pick up one hit per layer since the XT shape in the corener is very sensitive to position/angle thus less reliable
 			// FIXME: WARNING, now we rely on total chi2 including test layer hit, a slight bias
 			if ((chi2a<o_chi2a[i]&&nHitsSel==o_nHitsS[i])||nHitsSel>o_nHitsS[i]){ // now we only pick up one hit per layer since the XT shape in the corener is very sensitive to position/angle thus less reliable
-                MyNamedVerbose("Tracking",Form("better than Cand#%d where chi2=%.3e, nHitsS=%d",i,o_chi2[i],o_nHitsS[i]));
+                MyNamedVerbose("Tracking",Form("better than Cand#%d where combi = %d, chi2=%.3e, nHitsS=%d",i,o_icombi[i],o_chi2[i],o_nHitsS[i]));
 				for (int j = NCAND-1; j>i; j--){
 					o_iselec[j] = o_iselec[j-1];
 					o_icombi[j] = o_icombi[j-1];
@@ -1650,10 +1688,10 @@ void do_fit(double sliX, double iniX,double sliZ, double iniZ){
 	//}
 
 	// Set starting values and step sizes for parameters
-	gMinuit->mnparm(0, "slopeX", sliX, beamSlxMax/1.e4, -beamSlxMax,beamSlxMax,ierflg);
-	gMinuit->mnparm(1, "interceptX", iniX, beamInxMax/1.e4, -beamInxMax,beamInxMax,ierflg);
-	gMinuit->mnparm(2, "slopeZ", sliZ, beamSlzMax/1.e4, -beamSlzMax,beamSlzMax,ierflg);
-	gMinuit->mnparm(3, "interceptZ", iniZ, beamInzMax/1.e4, -beamInzMax,beamInzMax,ierflg);
+	gMinuit->mnparm(0, "slopeX", sliX, (beamSlxMax-beamSlxMin)/2.e4, beamSlxMin,beamSlxMax,ierflg);
+	gMinuit->mnparm(1, "interceptX", iniX, (beamInxMax-beamInxMin)/2.e4, beamInxMin,beamInxMax,ierflg);
+	gMinuit->mnparm(2, "slopeZ", sliZ, (beamSlzMax-beamSlzMin)/2.e4, beamSlzMin,beamSlzMax,ierflg);
+	gMinuit->mnparm(3, "interceptZ", iniZ, (beamInzMax-beamInzMin)/2.e4, beamInzMin,beamInzMax,ierflg);
 	if (m_t0error)
         gMinuit->mnparm(4, "t0", 0, 1, -m_t0error,m_t0error,ierflg);
 
@@ -1810,7 +1848,7 @@ void print_usage(char* prog_name)
     fprintf(stderr,"\t\t Set to blank the layer b in tracking\n");
     fprintf(stderr,"\t -g <g>\n");
     fprintf(stderr,"\t\t Geometry setup set to g\n");
-    fprintf(stderr,"\t\t (0): normal; 1: finger\n");
+    fprintf(stderr,"\t\t (0): normal; 1: finger; 2: rotated by 18 degree\n");
     fprintf(stderr,"\t -i <i>\n");
     fprintf(stderr,"\t\t Input type set to i\n");
     fprintf(stderr,"\t\t (0) for data; 2 for MC wihtout layer specified; 3 for MC with layer specified\n");
