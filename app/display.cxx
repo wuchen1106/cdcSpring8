@@ -454,7 +454,7 @@ int main(int argc, char** argv){
 	//===================Get ROOT File============================
 	// basic
 	int triggerNumber;
-	int nHits,nHitsG;
+	int nHits,i_nHitsG;
 	std::vector<int> * i_wireID = 0;
 	std::vector<int> * i_layerID = 0;
 	std::vector<double> * i_driftT = 0;
@@ -493,10 +493,12 @@ int main(int argc, char** argv){
 	double i_chi2[NCAND];
     std::vector<double> * i_fitD[NCAND] = {0};
     std::vector<int> * i_sel[NCAND] = {0};
-    double theRes;
-    double theDD;
-    int    theWid;
-    int    has;
+    // for ana file
+    double i_theFD;
+    double i_theRes;
+    double i_theDD;
+    int    i_theWid;
+    int    i_has;
 	TChain * iChain = new TChain("t","t");
     if (m_workMode%10==0){ // 0: h_XXX; 1: t_XXX
         iChain->Add(HOME+Form("/root/hits/h_%d.",m_runNo)+m_runname+".root");
@@ -518,7 +520,7 @@ int main(int argc, char** argv){
         i_driftD[0] = new std::vector<double>;
     }
     else if (m_workMode%10==1){
-        iChain->SetBranchAddress("nHitsG",&nHitsG);
+        iChain->SetBranchAddress("nHitsG",&i_nHitsG);
         iChain->SetBranchAddress("dxl",&i_dxl);
         iChain->SetBranchAddress("dxr",&i_dxr);
         for (int iCand = 0; iCand<NCAND; iCand++){
@@ -545,11 +547,12 @@ int main(int argc, char** argv){
         }
     }
     else if (m_workMode%10==2){
-        iChain->SetBranchAddress("res",&theRes);
-        iChain->SetBranchAddress("theDD",&theDD);
-        iChain->SetBranchAddress("theWid",&theWid);
-        iChain->SetBranchAddress("has",&has);
-        iChain->SetBranchAddress("nHitsG",&nHitsG);
+        iChain->SetBranchAddress("res",&i_theRes);
+        iChain->SetBranchAddress("theDD0",&i_theDD);
+        iChain->SetBranchAddress("theWid0",&i_theWid);
+        iChain->SetBranchAddress("theFD0",&i_theFD);
+        iChain->SetBranchAddress("has0",&i_has);
+        iChain->SetBranchAddress("nHitsG",&i_nHitsG);
 		iChain->SetBranchAddress("driftD",&(i_driftD[0]));
 		iChain->SetBranchAddress("icom",&(i_icombi[0]));
 		iChain->SetBranchAddress("isel",&(i_iselec[0]));
@@ -891,6 +894,13 @@ int main(int argc, char** argv){
 			printf("No hits in event %d, continue\n",iEntry);
 			continue;
 		}
+		// ########### CUTS #############
+		//if (m_workMode%10>0){
+		//    if (i_nHitsS[0]<7||i_chi2[0]>2||i_nHitsG!=7) continue;
+		//}
+		//if (m_workMode%10==2){
+		//    if (i_theFD<-5||i_theFD>-3.5) continue;
+		//}
 
         // Find the target channel
 		the_bid = -1;
@@ -922,14 +932,14 @@ int main(int argc, char** argv){
 
 		// set prefix
 		if (m_workMode%10>0){
-            if (nHitsG<=6) prefix = "incom.";
-            else if (nHitsG==7 ) prefix = "single.";
-            else if (nHitsG==8 ) prefix = "single.";
-            else if (nHitsG==9 ) prefix = "single.";
-            else if (nHitsG==10) prefix = "n10.";
-            else if (nHitsG==11) prefix = "n11.";
-            else if (nHitsG==12) prefix = "n12.";
-            else if (nHitsG>=13) prefix = "multi.";
+            if (i_nHitsG<=6) prefix = "incom.";
+            else if (i_nHitsG==7 ) prefix = "single.";
+            else if (i_nHitsG==8 ) prefix = "single.";
+            else if (i_nHitsG==9 ) prefix = "single.";
+            else if (i_nHitsG==10) prefix = "n10.";
+            else if (i_nHitsG==11) prefix = "n11.";
+            else if (i_nHitsG==12) prefix = "n12.";
+            else if (i_nHitsG>=13) prefix = "multi.";
         }
 
         // Reset counters
@@ -1001,7 +1011,7 @@ int main(int argc, char** argv){
         // Draw waveforms
         for (int bid = 0; bid<NBRD; bid++){
             ca_WF[bid]->cd();
-			text_title->SetText(0.05,0.96,Form("Entry %d, Trigger Number %d, %d TDCs, %d chosen (first TDC in channel with ADC sum > %.0f)",iEntry,triggerNumber,nHits,nHitsG,aacut));
+			text_title->SetText(0.05,0.96,Form("Entry %d, Trigger Number %d, %d TDCs, %d chosen (first TDC in channel with ADC sum > %.0f)",iEntry,triggerNumber,nHits,i_nHitsG,aacut));
             text_title->Draw();
             text_runsum->Draw();
             for (int ch = 0; ch<NCHS; ch++){
@@ -1150,7 +1160,7 @@ int main(int argc, char** argv){
             // Draw the background graph for x-y plane
             pad_xyADC[0]->cd();
             if (m_workMode%10>0)
-                gr_wireCenter->SetTitle(Form("Ent %d, nHitsG (%d)%d(%d), icom %d, isel %d, sl_{z}: %.2e->%.2e, #chi^{2}: %.2e->%.2e",iEntry,nHits,nHitsG,nHitsS[iCand],i_icombi[iCand],i_iselec[iCand],i_islz[iCand],i_slz[iCand],i_chi2i[iCand],i_chi2[iCand]));
+                gr_wireCenter->SetTitle(Form("Ent %d, nHitsG (%d)%d(%d), icom %d, isel %d, sl_{z}: %.2e->%.2e, #chi^{2}: %.2e->%.2e",iEntry,nHits,i_nHitsG,nHitsS[iCand],i_icombi[iCand],i_iselec[iCand],i_islz[iCand],i_slz[iCand],i_chi2i[iCand],i_chi2[iCand]));
             else
                 gr_wireCenter->SetTitle(Form("Entry %d nHits = %d",iEntry,nHits));
             gr_wireCenter->Draw("AP");
@@ -1222,9 +1232,9 @@ int main(int argc, char** argv){
 							}
 						}
                     }
-                    if (m_workMode%10==2&&wid==theWid&&has==1&&lid==m_testlayer){
-                    	resmin = theRes;
-                    	thefitd = theDD+theRes;
+                    if (m_workMode%10==2&&wid==i_theWid&&i_has==1&&lid==m_testlayer){
+                    	resmin = i_theRes;
+                    	thefitd = i_theDD+i_theRes;
                     }
                     if (resmin<1e9){ // found a hit in this wire
                         text_xyhit[lid][wid]->SetText(wx,wy,Form("%d,%.3f,%.3f",wid,thefitd,resmin));// draw the one with the smallest res

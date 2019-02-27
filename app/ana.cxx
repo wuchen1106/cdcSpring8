@@ -848,13 +848,13 @@ int main(int argc, char** argv){
     double theGG = 0;
     double trackGG = 0;
     // event info
-    int nHitsSmallAll = 0;
-    int nHitsSmallSASD = 0;
-    int nSmallSumHits = 0;
-    int nShadowedHits = 0;
-    int nLateHits = 0;
-    int nBoundaryHits = 0;
-    int nSmallBoundaryHits = 0;
+    int nHitsSmallAll = 0; // Number of hits with `aa` smaller than 35
+    int nHitsSmallSASD = 0; // Number of hits with `aa` smaller than 35 and in the same ASD chip as the highest peak of the event
+    int nSmallSumHits = 0; // Number of selected peak which is not the highest on in its channel
+    int nShadowedHits = 0; // Number of selected peak which is not the first sub-peak in its packet
+    int nLateHits = 0; // Number of selected peak which is not the first peak in its channel
+    int nBoundaryHits = 0; // Number of selected peak which corresponds to the boundary (`DD<1 mm || DD>7mm`)
+    int nSmallBoundaryHits = 0; // Number of selected peak which corresponds to the small boundary (`DD<0.5 mm || DD>7.5mm`)
     std::vector<double> * o_driftD = 0;
     std::vector<int>    * o_driftDs = 0;
     std::vector<int> * o_channelID = 0;
