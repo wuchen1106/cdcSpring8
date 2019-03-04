@@ -577,10 +577,10 @@ EOF
             then
                 rootsize=`du -s $rootfile | gawk '{print $1;}'`
             else
-                echo "  ROOT file not found yet!"
+                echo "  ROOT file \"$rootfile\" not found yet!"
             fi
 
-            if [ -e $file ]
+            if [ -e "$file" ]
             then # log file already exists??
                 if tail -n 3 $file | grep -q "Good Events" # finished
                 then

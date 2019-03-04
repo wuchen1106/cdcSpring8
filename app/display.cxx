@@ -467,7 +467,7 @@ int main(int argc, char** argv){
     std::vector<double> * i_aa = 0;
 	// for candidates
     std::vector<double> * i_driftD[NCAND] = {0};
-	int nHitsS[NCAND];
+	int i_nHitsS[NCAND];
     int i_icombi[NCAND];
     int i_iselec[NCAND];
     int i_npairs[NCAND];
@@ -479,7 +479,6 @@ int main(int argc, char** argv){
     double i_chi2z[NCAND];
 	double i_chi2i[NCAND];
     std::vector<double> * i_calD[NCAND] = {0};
-    int i_nHitsS[NCAND];
 	double i_inx[NCAND];
 	double i_inz[NCAND];
 	double i_slx[NCAND];
@@ -492,7 +491,7 @@ int main(int argc, char** argv){
     double i_theRes;
     double i_theDD;
     int    i_theWid;
-    int    i_has;
+    bool   i_has;
 	TChain * iChain = new TChain("t","t");
     if (m_workMode%10==0){ // 0: h_XXX; 1: t_XXX
         iChain->Add(HOME+Form("/root/hits/h_%d.",m_runNo)+m_runname+".root");
@@ -530,7 +529,7 @@ int main(int argc, char** argv){
             iChain->SetBranchAddress(Form("chi2z%d",iCand),&(i_chi2z[iCand]));
             iChain->SetBranchAddress(Form("chi2i%d",iCand),&(i_chi2i[iCand]));
             iChain->SetBranchAddress(Form("calD%d",iCand),&(i_calD[iCand]));
-            iChain->SetBranchAddress(Form("nHitsS%d",iCand),&(nHitsS[iCand]));
+            iChain->SetBranchAddress(Form("nHitsS%d",iCand),&(i_nHitsS[iCand]));
             iChain->SetBranchAddress(Form("slx%d",iCand),&(i_slx[iCand]));
             iChain->SetBranchAddress(Form("inx%d",iCand),&(i_inx[iCand]));
             iChain->SetBranchAddress(Form("slz%d",iCand),&(i_slz[iCand]));
@@ -545,7 +544,7 @@ int main(int argc, char** argv){
         iChain->SetBranchAddress("theDD0",&i_theDD);
         iChain->SetBranchAddress("theWid0",&i_theWid);
         iChain->SetBranchAddress("theFD0",&i_theFD);
-        iChain->SetBranchAddress("has0",&i_has);
+        iChain->SetBranchAddress("hashit0",&i_has);
         iChain->SetBranchAddress("nHitsG",&i_nHitsG);
 		iChain->SetBranchAddress("driftD",&(i_driftD[0]));
 		iChain->SetBranchAddress("icom",&(i_icombi[0]));
@@ -559,7 +558,7 @@ int main(int argc, char** argv){
 		iChain->SetBranchAddress("chi2z",&(i_chi2z[0]));
 		iChain->SetBranchAddress("chi2i",&(i_chi2i[0]));
 		iChain->SetBranchAddress("calD",&(i_calD[0]));
-		iChain->SetBranchAddress("nHitsS",&(nHitsS[0]));
+		iChain->SetBranchAddress("nHitsS",&(i_nHitsS[0]));
 		iChain->SetBranchAddress("slx",&(i_slx[0]));
 		iChain->SetBranchAddress("inx",&(i_inx[0]));
 		iChain->SetBranchAddress("slz",&(i_slz[0]));
@@ -946,7 +945,7 @@ int main(int argc, char** argv){
 		if (m_workMode%10==0) i_driftD[0]->clear();
         else if (m_workMode%10==1){
             for (int iCand = 0; iCand<(m_workMode%10==1?NCAND:1); iCand++){
-                if (nHitsS[iCand]==0){// bad fitting, driftD nonsense.
+                if (i_nHitsS[iCand]==0){// bad fitting, driftD nonsense.
                     i_driftD[iCand]->resize(nHits);
                 }
             }
@@ -969,7 +968,7 @@ int main(int argc, char** argv){
             }
 			else if (m_workMode%10==1){
 				for (int iCand = 0; iCand<(m_workMode%10==1?NCAND:1); iCand++){
-					if (nHitsS[iCand]==0){// bad fitting, driftD nonsense.
+					if (i_nHitsS[iCand]==0){// bad fitting, driftD nonsense.
 						(*i_driftD[iCand])[ihit] = (*i_dxr)[ihit];
 					}
 				}
@@ -1154,7 +1153,7 @@ int main(int argc, char** argv){
             // Draw the background graph for x-y plane
             pad_xyADC[0]->cd();
             if (m_workMode%10>0)
-                gr_wireCenter->SetTitle(Form("Ent %d, nHitsG (%d)%d(%d), icom %d, isel %d, sl_{z}: %.2e->%.2e, #chi^{2}: %.2e->%.2e",iEntry,nHits,i_nHitsG,nHitsS[iCand],i_icombi[iCand],i_iselec[iCand],i_islz[iCand],i_slz[iCand],i_chi2i[iCand],i_chi2[iCand]));
+                gr_wireCenter->SetTitle(Form("Ent %d, nHitsG (%d)%d(%d), icom %d, isel %d, sl_{z}: %.2e->%.2e, #chi^{2}: %.2e->%.2e",iEntry,nHits,i_nHitsG,i_nHitsS[iCand],i_icombi[iCand],i_iselec[iCand],i_islz[iCand],i_slz[iCand],i_chi2i[iCand],i_chi2[iCand]));
             else
                 gr_wireCenter->SetTitle(Form("Entry %d nHits = %d",iEntry,nHits));
             gr_wireCenter->Draw("AP");
@@ -1226,7 +1225,7 @@ int main(int argc, char** argv){
 							}
 						}
                     }
-                    if (m_workMode%10==2&&wid==i_theWid&&i_has==1&&lid==m_testlayer){
+                    if (m_workMode%10==2&&wid==i_theWid&&i_has&&lid==m_testlayer){
                     	resmin = i_theRes;
                     	thefitd = i_theDD+i_theRes;
                     }
