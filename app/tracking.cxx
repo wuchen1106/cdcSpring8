@@ -1117,7 +1117,7 @@ int doFitting(int nPicks,int iEntry,int iselection){
         inScint = checkScintillator(2.5,iinx,islx,iinz,islz); // FIXME: need to tune
         fromSource = checkFromSource(islx,islz);
         nGood = getChi2XZ(nPairs,chi2x,chi2z);
-        MyNamedVerbose("Tracking",Form("       3rd RESULT: nGood = %d, inScint? %s; x=%.3e*(y-%.3e)+%.3e, chi2 = %.3e, z=%.3e*(y-%.3e)+%.3e, chi2 = %.3e",nGood,inScint?"yes":"no",islx,sciYup,iinx,chi2x,islz,sciYup,iinz,chi2z));
+        MyNamedVerbose("Tracking",Form("       3rd RESULT: nGood = %d, inScint? %s; from source? %s; x=%.3e*(y-%.3e)+%.3e, chi2 = %.3e, z=%.3e*(y-%.3e)+%.3e, chi2 = %.3e",nGood,inScint?"yes":"no",fromSource?"yes":"no",islx,sciYup,iinx,chi2x,islz,sciYup,iinz,chi2z));
 
         if (inScint&&fromSource&&nGood>=3){ // good candidate
             // update calD for all hits and driftD for no-pick hits
@@ -1226,7 +1226,7 @@ int doFitting(int nPicks,int iEntry,int iselection){
                         }
                     }
                     inScint = checkScintillator(1.5,inx,slx,inz,slz); // FIXME: error limit should be tuned
-                    fromSource = checkFromSource(islx,islz);
+                    fromSource = checkFromSource(slx,slz);
                     if (inScint&&fromSource){
                         // update chi2
                         if (m_inputType)
@@ -1469,7 +1469,7 @@ int fityx(int nPairs){
 bool checkFromSource(double islx, double islz){
     bool fromSource = false;
     if (m_geoSetup==2) fromSource = true; // in case of tilted run, don't check the source
-    else islx>beamSlxMin&&islx<beamSlxMax&&islz>beamSlzMin&&islz<beamSlzMax;
+    else fromSource=islx>beamSlxMin&&islx<beamSlxMax&&islz>beamSlzMin&&islz<beamSlzMax;
     return fromSource;
 }
 
