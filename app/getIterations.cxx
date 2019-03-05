@@ -351,7 +351,7 @@ int main(int argc, char** argv){
     }
 
     // Output
-    TFile * ofile = new TFile(HOME+Form("/info/iter.%d.%s.root",m_runNo,m_runname.Data()),"RECREATE");
+    TFile * ofile = new TFile(HOME+Form("/result/Calibration/cali.%d.%s.root",m_runNo,m_runname.Data()),"RECREATE");
 
     // get histograms
     TH2D * hOffsets[NITERSMAX] = {0};

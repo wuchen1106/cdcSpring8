@@ -500,6 +500,8 @@ Syntax:
     -L     (false) Take the last iteration as the final step and do the default complete checkings
     -W     (false) update the wire position map
     -U     (false) keep the xt curves unchanged.
+    -O     (false) update one wire position per iteration step (the one with the largest offset)
+    -P     (false) use programmed iteration parameters
     -S [S] set the start name (Garfield)
     -D [D] set this layer (4) as the default layer to save in XT file as fr/l_0
     -l [l1 (l2 ...)] Do the training of the given layers (4)
@@ -508,11 +510,15 @@ Syntax:
     -g [g] geometry setup (0). 0 ordinary scintillator; 1 finger scintillator
     -t [t] work type (0) for tracking. 0, fr/l_0; 1, even/odd; -1, even/odd reversed; others, all layers
     -a [a] aa cut (0)
+    -b [b] Blind this layer from tracking (-1) (-1 means don't blind any layer)
     -s [s] sum cut (-10)
     -p [p] set peak type (0) for tracking. 0, only the first peak over threshold; 1, all peaks over threshold; 2, even including shaddowed peaks
     -x [XYZ] xt type. XYZ (055) means polX for center, polY for middle and polZ for tail. If X is 0 then let middle function fit the center region.
     -n [n] maximum number (30) of hits to be used in ana
     -m [m] maximum number (15) of good hits to be used in tracking
+    -u [u] maximum drift time (800) to be considered in tracking
+    -d [d] minimum drift time (-10) to be considered in tracking
+    -o [o] maximum drift time (800) to be considered in getting xt
 ```
 
 #### To do the iteration to get spatial resolution with MC
