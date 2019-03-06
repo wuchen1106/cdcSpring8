@@ -16,7 +16,7 @@
 #include <math.h>
 
 XTAnalyzer::XTAnalyzer(int gasID, int debug)
-	:mGasID(gasID), mDebugLevel(debug), mSaveXT0(false), mSaveXTEO(0), mUpdateXT(true), mSymmetric(true),
+	:mGasID(gasID), mDebugLevel(debug), mSaveHists(0), mDrawDetails(false), mSaveXT0(false), mSaveXTEO(0), mUpdateXT(true), mSymmetric(true),
 	mXTType(55), mCentPolN(0), mMidPolN(5), mEndPolN(5),
 	mRunName(""), mEOsuffix("even"),
 	mEntriesMin(0), mSigXmax(0.5), mSigTmax(20),
@@ -181,7 +181,7 @@ void XTAnalyzer::SetBinning(int nt, double tmin, double tmax, int nx, double xmi
 	mNbinx = nx;
 }
 
-int XTAnalyzer::Initialize(TString runname, int lid, TFile * infile, TFile * outfile, TTree * otree, int xttype, bool sym, int savehists, bool saveXT0, int saveOddEven, bool updateXT){
+int XTAnalyzer::Initialize(TString runname, int lid, TFile * infile, TFile * outfile, TTree * otree, int xttype, bool sym, int savehists, bool drawDetails, bool saveXT0, int saveOddEven, bool updateXT){
 	// Set options
 	mRunName = runname;
 	mLayerID = lid;
@@ -191,6 +191,7 @@ int XTAnalyzer::Initialize(TString runname, int lid, TFile * infile, TFile * out
 	SetXTType(xttype);
 	mSymmetric = sym;
 	mSaveHists = savehists;
+	mDrawDetails = drawDetails;
 	mSaveXT0 = saveXT0;
 	mSaveXTEO = saveOddEven;
 	mEOsuffix = "even";
@@ -1577,72 +1578,74 @@ void XTAnalyzer::drawSamplingsLR(){
 	canv_xtsamples->SaveAs("xtsamples_"+mRunName+".png");
 	canv_xtsamples->SaveAs("xtsamples_"+mRunName+".pdf");
 	// Add zoom-in plots
-	TCanvas * canv_xtsamplesz = new TCanvas("canv_xtsamplesz","canv_xtsamplesz",800,1000);
-	gStyle->SetPalette(1);
-	gStyle->SetOptStat(0);
-	gStyle->SetPadTickX(1);
-	gStyle->SetPadTickY(1);
-	gPad->SetGridx(1);
-	gPad->SetGridy(1);
-	if (gr_xt_slicet) gr_xt_slicet->SetMarkerSize(1);
-	if (gr_xt_slicex) gr_xt_slicex->SetMarkerSize(1);
-	if (gr_left_end) gr_left_end->SetMarkerSize(1);
-	if (gr_left_cen) gr_left_cen->SetMarkerSize(1);
-	if (gr_right_cen) gr_right_cen->SetMarkerSize(1);
-	if (gr_left_mid) gr_left_mid->SetMarkerSize(1);
-	if (gr_right_mid) gr_right_mid->SetMarkerSize(1);
-	if (gr_right_end) gr_right_end->SetMarkerSize(1);
-	if (gr_xt_slicet) gr_xt_slicet->Draw("PSAME");
-	if (gr_xt_slicex) gr_xt_slicex->Draw("PSAME");
-	if (gr_left_cen) gr_left_cen->Draw("PSAME");
-	if (gr_right_cen) gr_right_cen->Draw("PSAME");
-	if (gr_left_mid) gr_left_mid->Draw("PSAME");
-	if (gr_right_mid) gr_right_mid->Draw("PSAME");
-	if (gr_right_end) gr_right_end->Draw("PSAME");
-	if (mGasID==1){ // He:iC4H10 (90:10)
-        h2_xt->GetXaxis()->SetRangeUser(-10,60);
+	if (mDrawDetails){
+        TCanvas * canv_xtsamplesz = new TCanvas("canv_xtsamplesz","canv_xtsamplesz",800,1000);
+        gStyle->SetPalette(1);
+        gStyle->SetOptStat(0);
+        gStyle->SetPadTickX(1);
+        gStyle->SetPadTickY(1);
+        gPad->SetGridx(1);
+        gPad->SetGridy(1);
+        if (gr_xt_slicet) gr_xt_slicet->SetMarkerSize(1);
+        if (gr_xt_slicex) gr_xt_slicex->SetMarkerSize(1);
+        if (gr_left_end) gr_left_end->SetMarkerSize(1);
+        if (gr_left_cen) gr_left_cen->SetMarkerSize(1);
+        if (gr_right_cen) gr_right_cen->SetMarkerSize(1);
+        if (gr_left_mid) gr_left_mid->SetMarkerSize(1);
+        if (gr_right_mid) gr_right_mid->SetMarkerSize(1);
+        if (gr_right_end) gr_right_end->SetMarkerSize(1);
+        if (gr_xt_slicet) gr_xt_slicet->Draw("PSAME");
+        if (gr_xt_slicex) gr_xt_slicex->Draw("PSAME");
+        if (gr_left_cen) gr_left_cen->Draw("PSAME");
+        if (gr_right_cen) gr_right_cen->Draw("PSAME");
+        if (gr_left_mid) gr_left_mid->Draw("PSAME");
+        if (gr_right_mid) gr_right_mid->Draw("PSAME");
+        if (gr_right_end) gr_right_end->Draw("PSAME");
+        if (mGasID==1){ // He:iC4H10 (90:10)
+            h2_xt->GetXaxis()->SetRangeUser(-10,60);
+        }
+        else{ // by default, He:C2H6 (50:50)
+            h2_xt->GetXaxis()->SetRangeUser(-10,45);
+        }
+        h2_xt->GetYaxis()->SetRangeUser(-2,2);
+        h2_xt->Draw("COLZ");
+        if (gr_xt_slicet) gr_xt_slicet->Draw("PSAME");
+        if (gr_xt_slicex) gr_xt_slicex->Draw("PSAME");
+        if (gr_left_cen) gr_left_cen->Draw("PSAME");
+        if (gr_right_cen) gr_right_cen->Draw("PSAME");
+        if (gr_left_mid) gr_left_mid->Draw("PSAME");
+        if (gr_right_mid) gr_right_mid->Draw("PSAME");
+        f_left_com->Draw("SAME");
+        f_right_com->Draw("SAME");
+        canv_xtsamplesz->SaveAs("xtsamples_center_"+mRunName+".png");
+        canv_xtsamplesz->SaveAs("xtsamples_center_"+mRunName+".pdf");
+        if (mGasID==1){ // He:iC4H10 (90:10)
+            h2_xt->GetXaxis()->SetRangeUser(250,450);
+        }
+        else{ // by default, He:C2H6 (50:50)
+            h2_xt->GetXaxis()->SetRangeUser(160,260);
+        }
+        h2_xt->GetYaxis()->SetRangeUser(7,8.5);
+        h2_xt->Draw("COLZ");
+        if (gr_xt_slicet) gr_xt_slicet->Draw("PSAME");
+        if (gr_xt_slicex) gr_xt_slicex->Draw("PSAME");
+        if (gr_right_mid) gr_right_mid->Draw("PSAME");
+        if (gr_right_end) gr_right_end->Draw("PSAME");
+        f_right_com->Draw("SAME");
+        canv_xtsamplesz->SaveAs("xtsamples_endR_"+mRunName+".png");
+        canv_xtsamplesz->SaveAs("xtsamples_endR_"+mRunName+".pdf");
+        h2_xt->GetYaxis()->SetRangeUser(-8.5,-7);
+        h2_xt->Draw("COLZ");
+        if (gr_xt_slicet) gr_xt_slicet->Draw("PSAME");
+        if (gr_xt_slicex) gr_xt_slicex->Draw("PSAME");
+        if (gr_left_mid) gr_left_mid->Draw("PSAME");
+        if (gr_left_end) gr_left_end->Draw("PSAME");
+        f_left_com->Draw("SAME");
+        canv_xtsamplesz->SaveAs("xtsamples_endL_"+mRunName+".png");
+        canv_xtsamplesz->SaveAs("xtsamples_endL_"+mRunName+".pdf");
+        h2_xt->GetXaxis()->UnZoom();
+        h2_xt->GetYaxis()->UnZoom();
     }
-    else{ // by default, He:C2H6 (50:50)
-        h2_xt->GetXaxis()->SetRangeUser(-10,45);
-    }
-	h2_xt->GetYaxis()->SetRangeUser(-2,2);
-	h2_xt->Draw("COLZ");
-	if (gr_xt_slicet) gr_xt_slicet->Draw("PSAME");
-	if (gr_xt_slicex) gr_xt_slicex->Draw("PSAME");
-	if (gr_left_cen) gr_left_cen->Draw("PSAME");
-	if (gr_right_cen) gr_right_cen->Draw("PSAME");
-	if (gr_left_mid) gr_left_mid->Draw("PSAME");
-	if (gr_right_mid) gr_right_mid->Draw("PSAME");
-	f_left_com->Draw("SAME");
-	f_right_com->Draw("SAME");
-	canv_xtsamplesz->SaveAs("xtsamples_center_"+mRunName+".png");
-	canv_xtsamplesz->SaveAs("xtsamples_center_"+mRunName+".pdf");
-	if (mGasID==1){ // He:iC4H10 (90:10)
-        h2_xt->GetXaxis()->SetRangeUser(250,450);
-    }
-    else{ // by default, He:C2H6 (50:50)
-        h2_xt->GetXaxis()->SetRangeUser(160,260);
-    }
-	h2_xt->GetYaxis()->SetRangeUser(7,8.5);
-	h2_xt->Draw("COLZ");
-	if (gr_xt_slicet) gr_xt_slicet->Draw("PSAME");
-	if (gr_xt_slicex) gr_xt_slicex->Draw("PSAME");
-	if (gr_right_mid) gr_right_mid->Draw("PSAME");
-	if (gr_right_end) gr_right_end->Draw("PSAME");
-	f_right_com->Draw("SAME");
-	canv_xtsamplesz->SaveAs("xtsamples_endR_"+mRunName+".png");
-	canv_xtsamplesz->SaveAs("xtsamples_endR_"+mRunName+".pdf");
-	h2_xt->GetYaxis()->SetRangeUser(-8.5,-7);
-	h2_xt->Draw("COLZ");
-	if (gr_xt_slicet) gr_xt_slicet->Draw("PSAME");
-	if (gr_xt_slicex) gr_xt_slicex->Draw("PSAME");
-	if (gr_left_mid) gr_left_mid->Draw("PSAME");
-	if (gr_left_end) gr_left_end->Draw("PSAME");
-	f_left_com->Draw("SAME");
-	canv_xtsamplesz->SaveAs("xtsamples_endL_"+mRunName+".png");
-	canv_xtsamplesz->SaveAs("xtsamples_endL_"+mRunName+".pdf");
-	h2_xt->GetXaxis()->UnZoom();
-	h2_xt->GetYaxis()->UnZoom();
 	// fitting status of slices 
 	TCanvas * canv_xtslices = new TCanvas("canv_xtslices","canv_xtslices",1364,768);
 	TPad * pad_xtslices[6];
@@ -1712,50 +1715,52 @@ void XTAnalyzer::drawSamplingsB(){
 	canv_xtsamplesn->SaveAs("xtsamplesn_"+mRunName+".png");
 	canv_xtsamplesn->SaveAs("xtsamplesn_"+mRunName+".pdf");
 	// Add zoom-in plots
-	TCanvas * canv_xtsamplesnz = new TCanvas("canv_xtsamplesnz","canv_xtsamplesnz",800,1000);
-	gStyle->SetPalette(1);
-	gStyle->SetOptStat(0);
-	gStyle->SetPadTickX(1);
-	gStyle->SetPadTickY(1);
-	gPad->SetGridx(1);
-	gPad->SetGridy(1);
-	if (gr_xt_slicetn) gr_xt_slicetn->SetMarkerSize(1);
-	if (gr_xt_slicexn) gr_xt_slicexn->SetMarkerSize(1);
-	if (gr_both_cen) gr_both_cen->SetMarkerSize(1);
-	if (gr_both_mid) gr_both_mid->SetMarkerSize(1);
-	if (gr_both_end) gr_both_end->SetMarkerSize(1);
-	if (mGasID==1){ // He:iC4H10 (90:10)
-        h2_xtn->GetXaxis()->SetRangeUser(-10,60);
+	if (mDrawDetails){
+        TCanvas * canv_xtsamplesnz = new TCanvas("canv_xtsamplesnz","canv_xtsamplesnz",800,1000);
+        gStyle->SetPalette(1);
+        gStyle->SetOptStat(0);
+        gStyle->SetPadTickX(1);
+        gStyle->SetPadTickY(1);
+        gPad->SetGridx(1);
+        gPad->SetGridy(1);
+        if (gr_xt_slicetn) gr_xt_slicetn->SetMarkerSize(1);
+        if (gr_xt_slicexn) gr_xt_slicexn->SetMarkerSize(1);
+        if (gr_both_cen) gr_both_cen->SetMarkerSize(1);
+        if (gr_both_mid) gr_both_mid->SetMarkerSize(1);
+        if (gr_both_end) gr_both_end->SetMarkerSize(1);
+        if (mGasID==1){ // He:iC4H10 (90:10)
+            h2_xtn->GetXaxis()->SetRangeUser(-10,60);
+        }
+        else{ // by default, He:C2H6 (50:50)
+            h2_xtn->GetXaxis()->SetRangeUser(-10,45);
+        }
+        h2_xtn->GetYaxis()->SetRangeUser(0,2);
+        h2_xtn->Draw("COLZ");
+        if (gr_xt_slicetn) gr_xt_slicetn->Draw("PSAME");
+        if (gr_xt_slicexn) gr_xt_slicexn->Draw("PSAME");
+        if (gr_both_cen) gr_both_cen->Draw("PSAME");
+        if (gr_both_mid) gr_both_mid->Draw("PSAME");
+        f_both_com->Draw("SAME");
+        canv_xtsamplesnz->SaveAs("xtsamplesn_center_"+mRunName+".png");
+        canv_xtsamplesnz->SaveAs("xtsamplesn_center_"+mRunName+".pdf");
+        if (mGasID==1){ // He:iC4H10 (90:10)
+            h2_xtn->GetXaxis()->SetRangeUser(250,450);
+        }
+        else{ // by default, He:C2H6 (50:50)
+            h2_xtn->GetXaxis()->SetRangeUser(160,260);
+        }
+        h2_xtn->GetYaxis()->SetRangeUser(7,8.5);
+        h2_xtn->Draw("COLZ");
+        if (gr_xt_slicetn) gr_xt_slicetn->Draw("PSAME");
+        if (gr_xt_slicexn) gr_xt_slicexn->Draw("PSAME");
+        if (gr_both_mid) gr_both_mid->Draw("PSAME");
+        if (gr_both_end) gr_both_end->Draw("PSAME");
+        f_both_com->Draw("SAME");
+        canv_xtsamplesnz->SaveAs("xtsamplesn_end_"+mRunName+".png");
+        canv_xtsamplesnz->SaveAs("xtsamplesn_end_"+mRunName+".pdf");
+        h2_xtn->GetXaxis()->UnZoom();
+        h2_xtn->GetYaxis()->UnZoom();
     }
-    else{ // by default, He:C2H6 (50:50)
-        h2_xtn->GetXaxis()->SetRangeUser(-10,45);
-    }
-	h2_xtn->GetYaxis()->SetRangeUser(0,2);
-	h2_xtn->Draw("COLZ");
-	if (gr_xt_slicetn) gr_xt_slicetn->Draw("PSAME");
-	if (gr_xt_slicexn) gr_xt_slicexn->Draw("PSAME");
-	if (gr_both_cen) gr_both_cen->Draw("PSAME");
-	if (gr_both_mid) gr_both_mid->Draw("PSAME");
-	f_both_com->Draw("SAME");
-	canv_xtsamplesnz->SaveAs("xtsamplesn_center_"+mRunName+".png");
-	canv_xtsamplesnz->SaveAs("xtsamplesn_center_"+mRunName+".pdf");
-	if (mGasID==1){ // He:iC4H10 (90:10)
-        h2_xtn->GetXaxis()->SetRangeUser(250,450);
-    }
-    else{ // by default, He:C2H6 (50:50)
-        h2_xtn->GetXaxis()->SetRangeUser(160,260);
-    }
-	h2_xtn->GetYaxis()->SetRangeUser(7,8.5);
-	h2_xtn->Draw("COLZ");
-	if (gr_xt_slicetn) gr_xt_slicetn->Draw("PSAME");
-	if (gr_xt_slicexn) gr_xt_slicexn->Draw("PSAME");
-	if (gr_both_mid) gr_both_mid->Draw("PSAME");
-	if (gr_both_end) gr_both_end->Draw("PSAME");
-	f_both_com->Draw("SAME");
-	canv_xtsamplesnz->SaveAs("xtsamplesn_end_"+mRunName+".png");
-	canv_xtsamplesnz->SaveAs("xtsamplesn_end_"+mRunName+".pdf");
-	h2_xtn->GetXaxis()->UnZoom();
-	h2_xtn->GetYaxis()->UnZoom();
 	// fitting status of slices 
 	TCanvas * canv_xtslicesn = new TCanvas("canv_xtslicesn","canv_xtslicesn",1364,768);
 	TPad * pad_xtslicesn[6];

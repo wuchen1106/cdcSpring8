@@ -632,15 +632,9 @@ int main(int argc, char** argv){
             map_theta[wp_lid][wp_wid] = atan(-(wp_xhv-wp_xro)/chamberHL/2); // rotation angle w.r.t the dart plane: read out  plane; positive rotation angle point to -x direction
             MyNamedInfo("WireMap",Form("map_theta[%d][%d] = atan(-(%.3e-%.3e)/%.3e/2) = %.3e",wp_lid,wp_wid,wp_xhv,wp_xro,chamberHL,map_theta[wp_lid][wp_wid]));
         }
-        else{
-            fprintf(stderr,"WARNING: Entry %d in wiremap file, lid = %d wid = %d out of range (%d,%d)!\n",i,wp_lid,wp_wid,NLAY,NCEL);
-        }
         if (wp_bid>=0&&wp_bid<NBRD&&wp_ch>=0&&wp_ch<NCHS){
             map_lid[wp_bid][wp_ch] = wp_lid;
             map_wid[wp_bid][wp_ch] = wp_wid;
-        }
-        else{
-            fprintf(stderr,"WARNING: Entry %d in wiremap file, bid = %d ch = %d out of range (%d,%d)!\n",i,wp_bid,wp_ch,NBRD,NCHS);
         }
     }
 
@@ -1123,7 +1117,7 @@ int doFitting(int nPicks,int iEntry,int iselection){
         inScint = checkScintillator(2.5,iinx,islx,iinz,islz); // FIXME: need to tune
         fromSource = checkFromSource(islx,islz);
         nGood = getChi2XZ(nPairs,chi2x,chi2z);
-        MyNamedVerbose("Tracking",Form("       3rd RESULT: nGood = %d, inScint? %s; x=%.3e*(y-%.3e)+%.3e, chi2 = %.3e, z=%.3e*(y-%.3e)+%.3e, chi2 = %.3e",nGood,inScint?"yes":"no",islx,sciYup,iinx,chi2x,islz,sciYup,iinz,chi2z));
+        MyNamedVerbose("Tracking",Form("       3rd RESULT: nGood = %d, inScint? %s; from source? %s; x=%.3e*(y-%.3e)+%.3e, chi2 = %.3e, z=%.3e*(y-%.3e)+%.3e, chi2 = %.3e",nGood,inScint?"yes":"no",fromSource?"yes":"no",islx,sciYup,iinx,chi2x,islz,sciYup,iinz,chi2z));
 
         if (inScint&&fromSource&&nGood>=3){ // good candidate
             // update calD for all hits and driftD for no-pick hits
@@ -1232,7 +1226,7 @@ int doFitting(int nPicks,int iEntry,int iselection){
                         }
                     }
                     inScint = checkScintillator(1.5,inx,slx,inz,slz); // FIXME: error limit should be tuned
-                    fromSource = checkFromSource(islx,islz);
+                    fromSource = checkFromSource(slx,slz);
                     if (inScint&&fromSource){
                         // update chi2
                         if (m_inputType)
@@ -1475,7 +1469,7 @@ int fityx(int nPairs){
 bool checkFromSource(double islx, double islz){
     bool fromSource = false;
     if (m_geoSetup==2) fromSource = true; // in case of tilted run, don't check the source
-    else islx>beamSlxMin&&islx<beamSlxMax&&islz>beamSlzMin&&islz<beamSlzMax;
+    else fromSource=islx>beamSlxMin&&islx<beamSlxMax&&islz>beamSlzMin&&islz<beamSlzMax;
     return fromSource;
 }
 

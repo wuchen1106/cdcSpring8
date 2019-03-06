@@ -848,13 +848,13 @@ int main(int argc, char** argv){
     double theGG = 0;
     double trackGG = 0;
     // event info
-    int nHitsSmallAll = 0;
-    int nHitsSmallSASD = 0;
-    int nSmallSumHits = 0;
-    int nShadowedHits = 0;
-    int nLateHits = 0;
-    int nBoundaryHits = 0;
-    int nSmallBoundaryHits = 0;
+    int nHitsSmallAll = 0; // Number of hits with `aa` smaller than 35
+    int nHitsSmallSASD = 0; // Number of hits with `aa` smaller than 35 and in the same ASD chip as the highest peak of the event
+    int nSmallSumHits = 0; // Number of selected peak which is not the highest on in its channel
+    int nShadowedHits = 0; // Number of selected peak which is not the first sub-peak in its packet
+    int nLateHits = 0; // Number of selected peak which is not the first peak in its channel
+    int nBoundaryHits = 0; // Number of selected peak which corresponds to the boundary (`DD<1 mm || DD>7mm`)
+    int nSmallBoundaryHits = 0; // Number of selected peak which corresponds to the small boundary (`DD<0.5 mm || DD>7.5mm`)
     std::vector<double> * o_driftD = 0;
     std::vector<int>    * o_driftDs = 0;
     std::vector<int> * o_channelID = 0;
@@ -954,7 +954,7 @@ int main(int argc, char** argv){
             //----------------------------------Start to get XT--------------------------------------------
             //Initialize the analyzer
             int saveEvenOdd = 0; if (testLayer==4) saveEvenOdd = 1; else if (testLayer==5) saveEvenOdd = -1;
-            int statusInitialize = fXTAnalyzer->Initialize(Form("%d.%s.layer%d",m_runNo,m_runnameout.Data(),testLayer),testLayer,preXTFile,newXTFile,newXTTree,m_xtType,!m_AsymXT,m_saveHists, testLayer==m_defaultLayerID, saveEvenOdd, testLayer!=0);
+            int statusInitialize = fXTAnalyzer->Initialize(Form("%d.%s.layer%d",m_runNo,m_runnameout.Data(),testLayer),testLayer,preXTFile,newXTFile,newXTTree,m_xtType,!m_AsymXT,m_saveHists,m_DrawDetails, testLayer==m_defaultLayerID, saveEvenOdd, testLayer!=0);
             if (statusInitialize){
                 fprintf(stderr,"WARNING: something wrong with initializing XTAnalyzer for layer[%d], will ignore this layer!\n",testLayer);
                 continue;

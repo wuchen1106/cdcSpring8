@@ -29,7 +29,7 @@ class XTAnalyzer{
 		void SetXTType(int type);
 		void SetSaveHists(int save);
 
-		int  Initialize(TString runname, int lid, TFile * infile, TFile * outfile, TTree * otree, int xttype, bool sym, int savehists,bool saveXT0 = false,int saveOddEven = 0, bool updateXT = true);
+		int  Initialize(TString runname, int lid, TFile * infile, TFile * outfile, TTree * otree, int xttype, bool sym, int savehists, bool drawDetails, bool saveXT0 = false,int saveOddEven = 0, bool updateXT = true);
 		void Process(void);
 
 		void Push(double t, double x);
@@ -74,6 +74,7 @@ class XTAnalyzer{
 		int mGasID;
 		int mDebugLevel;
 		int mSaveHists;
+		bool mDrawDetails;
 		bool mSaveXT0;
 		int mSaveXTEO;
 		bool mUpdateXT;
