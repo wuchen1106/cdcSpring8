@@ -1,6 +1,6 @@
 #!/bin/bash
 
-names=`ls xtslicesn_*.pdf | sed "s/xtslicesn_\(.*\)\.i\w*\.layer\w*\.pdf/\1/g"`
+names=`ls Iter_*.p* | sed "s/Iter_\(.*\)\.i\w*\.layer\w*\.p\w*/\1/g"`
 prename="NONE"
 for name in $names
 do
@@ -13,25 +13,34 @@ do
     runNo=`echo $name | sed "s/\(\w*\)\.\(.*\)/\1/g"`
     runName=`echo $name | sed "s/\(\w*\)\.\(.*\)/\2/g"`
     targetDir=$runNo/$runName
-    echo mkdir -p $targetDir
-    echo mv *_$name.* $targetDir
-    echo cd $targetDir
-#    echo mkdir -p pdf
-#    echo mv *.pdf pdf
-#    echo mkdir -p png
-#    echo mv *.png png
-#    for dir in pdf png;
-#    do
-#        cd $dir
-#        mkdir -p Iter; mv Iter_* Iter/;
-#        mkdir -p IterN; mv IterN_* IterN/;
-#        mkdir -p LRB; mv LRB_* LRB/;
-#        mkdir -p track; mv track_* track/;
-#        mkdir -p xtsamples; mv xtsamples_* xtsamples/;
-#        mkdir -p xtsamplesn; mv xtsamplesn_* xtsamplesn/;
-#        mkdir -p xtslices; mv xtslices_* xtslices/;
-#        mkdir -p xtslicesn; mv xtslicesn_* xtslicesn/;
-#        cd -
-#    done
-#    cd $homeDir
+    mkdir -p $targetDir
+    mv *_$name.* $targetDir
+    cd $targetDir
+    mkdir -p Iter; mv Iter_* Iter/;
+    mkdir -p IterN; mv IterN_* IterN/;
+    mkdir -p LRB; mv LRB_* LRB/;
+    mkdir -p track; mv track_* track/;
+    mkdir -p xtsamples; mv xtsamples_* xtsamples/;
+    mkdir -p xtsamplesn; mv xtsamplesn_* xtsamplesn/;
+    mkdir -p xtslices; mv xtslices_* xtslices/;
+    mkdir -p xtslicesn; mv xtslicesn_* xtslicesn/;
+    mkdir -p aaVSD; mv aaVSD_* aaVSD/;
+    mkdir -p aaVST; mv aaVST_* aaVST/;
+    mkdir -p dedx; mv dedx_* dedx/;
+    mkdir -p DOCA; mv DOCA_* DOCA/;
+    mkdir -p DriftD; mv DriftD_* DriftD/;
+    mkdir -p effd; mv effd_* effd/;
+    mkdir -p effx; mv effx_* effx/;
+    mkdir -p ggVSX; mv ggVSX_* ggVSX/;
+    mkdir -p offx; mv offx_* offx/;
+    mkdir -p resd; mv resd_* resd/;
+    mkdir -p resVSD; mv resVSD_* resVSD/;
+    mkdir -p resVSX; mv resVSX_* resVSX/;
+    mkdir -p resx; mv resx_* resx/;
+    mkdir -p rmsd; mv rmsd_* rmsd/;
+    mkdir -p rmsx; mv rmsx_* rmsx/;
+    mkdir -p TX; mv TX_* TX/;
+    mkdir -p XT; mv XT_* XT/;
+
+    cd $homeDir
 done
