@@ -40,7 +40,6 @@ TString m_runname = "currun";
 TString m_suffix = "";
 int m_iEntryStart = 0;
 int m_iEntryStop = 0;
-int m_verboseLevel = 0;
 int m_verboseLevelXT = 0;
 int m_modulo = 10000;
 bool m_memdebug = false;
@@ -97,7 +96,7 @@ TString m_adc2charge = "2.0158464*x";
 // map for wire position
 double  map_x[NLAY][NCEL][2];
 double  map_y[NLAY][NCEL][2];
-double  map_off_new[NLAY][NCEL];
+double  map_off_new[NLAY][NCEL]; // new offset detected: fitD-driftD, where fitD = p_track - (p_wire + old_adjust)
 int     map_nEvents[NLAY][NCEL];
 double  map_slz[NLAY][NCEL]; // for wire calibration cuts
 double  map_inx[NLAY][NCEL]; // for wire calibration cuts
@@ -110,7 +109,7 @@ double  npair_per_cm = 0;
 TF1 * f_left = 0;
 TF1 * f_right = 0;
 // map for wire position adjustment
-double  map_adjust_old[NLAY][NCEL];
+double  map_adjust_old[NLAY][NCEL]; // wire position adjustment loaded from previous run; will get new adjustment at the end of the run
 
 //==================About Resolution======================
 TF1 * f_res = 0;
@@ -387,7 +386,7 @@ int main(int argc, char** argv){
             case 'S':
                 temp_CandSelBy = optarg; set_CandSelBy = true;
                 if (temp_CandSelBy!="Original"&&temp_CandSelBy!="FittingChi2"&&temp_CandSelBy!="GlobalChi2"&&temp_CandSelBy!="LeastLatePeak"){
-                    MyNamedWarn("XT","The option \""<<temp_CandSelBy<<" is not known. Will choose Original");
+                    MyNamedWarn("Ana","The track fitting option \""<<temp_CandSelBy<<" is not known. Will choose Original");
                     temp_CandSelBy = "Original";
                 }
                 printf("Choose the candidate by %s\n",temp_CandSelBy.Data());
@@ -456,9 +455,6 @@ int main(int argc, char** argv){
                                     print_usage(argv[0]);
                             }
                         }
-                    }
-                    else{
-                        m_verboseLevel = atoi(optarg);
                     }
                     break;
                 }
@@ -573,7 +569,6 @@ int main(int argc, char** argv){
     printf("Q cut       = %d\n",m_aaCut);
     printf("tmax for canvas and getting xt: %d\n",m_tmax);
     printf("cap for tmax = %d\n",m_tmaxSet);
-    printf("debug       = %d\n",m_verboseLevel);
     printf("debugXT     = %d\n",m_verboseLevelXT);
     printf("print modulo= %d\n",m_modulo);
     printf("save fitting histograms at level %d\n",m_saveHists);
@@ -714,7 +709,7 @@ int main(int argc, char** argv){
         }
     }
     else{
-        MyWarn(Form("Cannot find \"%.s\"! Will assume 0 adjustment to default wire positions\n",filename.Data()));
+        MyNamedWarn("Ana",Form("Cannot find \"%.s\"! Will assume 0 adjustment to default wire positions\n",filename.Data()));
     }
 
     // get wire map
@@ -761,7 +756,7 @@ int main(int argc, char** argv){
     if (m_ExternalXT==""){
         preXTFile = new TFile(Form("%s/info/xt.%d.%s.root",HOME.Data(),m_runNo,m_prerunname.Data()));
         if (!preXTFile||preXTFile->IsZombie()){
-            MyWarn("Cannot find xt file according to the given prerunname. Will use garfield xt instead.");
+            MyNamedWarn("Ana","Cannot find xt file according to the given prerunname. Will use garfield xt instead.");
             preXTFile = new TFile(HOME+Form("/info/xt.%s.%d.root",gastypeshort.Data(),HV));
             if (!preXTFile||preXTFile->IsZombie()){
                 MyError("Cannot find the default garfield xt: "<<HOME+Form("/info/xt.%s.%d.root",gastypeshort.Data(),HV));
@@ -880,7 +875,7 @@ int main(int argc, char** argv){
     // Loop in layers
     for (int testLayer = 0; testLayer<NLAY; testLayer++){
         //----------------------------------Set input file--------------------------------------------
-        if (m_verboseLevel>0) {printf("In Layer %d: preparing input TChain\n",testLayer);fflush(stdout);}
+        MyNamedLog("Ana","In Layer "<<testLayer<<": preparing input TChain");
         TChain * ichain = new TChain("t","t");
         ichain->Add(Form("%s/root/tracks/t_%d.%s.layer%d.root",HOME.Data(),m_runNo,m_runname.Data(),testLayer));
         ichain->GetEntries();
@@ -896,7 +891,7 @@ int main(int argc, char** argv){
         // to get the offsets
         for ( int iEntry = 0 ; iEntry<N; iEntry++){
             if (iEntry%m_modulo==0) MyNamedInfo("Ana",iEntry);
-            if (m_verboseLevel>=20) printf("Entry%d: \n",iEntry);
+            MyNamedVerbose("Ana","Entry"<<iEntry<<":");
             ichain->GetEntry(iEntry);
 
             // decide which candidate to use
@@ -909,7 +904,7 @@ int main(int argc, char** argv){
             if (m_RequireInTriggerCounter&&!isInTriggerCounter(m_geoSetup,inz[theCand],slz[theCand])) continue;
             if (m_nHitsMax&&nHits>m_nHitsMax) continue;
 
-            if (m_verboseLevel>=20) printf("  Good Event! slz = %.3e, Looping in %d hits\n",nHits,slz[theCand]);
+            MyNamedVerbose("Ana","  Good Event! slz = "<<slz[theCand]<<", Looping in "<<nHits<<" hits");
             // find the closest hit in the test layer
             double minres = 1e9;
             bool has = false;
@@ -933,10 +928,10 @@ int main(int argc, char** argv){
                 }
             }
             if (!has) continue; // no hits found in test layer
-            if (m_verboseLevel>=20) printf("  has hit! l %d w %d FD %.3e DD %.3e\n",testLayer,wireID,fitD,driftD);
+            MyNamedVerbose("Ana","  has hit! l "<<testLayer<<" w "<<wireID<<" FD "<<fitD<<" DD "<<driftD);
             if (hasBadHit&&m_calib_allGolden) continue;
 
-            if (m_verboseLevel>=20) printf("  Good hit! pushing to offset histograms\n");
+            MyNamedVerbose("Ana","  Good hit! pushing to offset histograms");
             if (fabs(fitD)>m_calib_minFD&&fabs(fitD)<m_calib_maxFD&&(!m_calib_maxslz||fabs(slz[theCand])<m_calib_maxslz)){ // only trust the body part
                 h_celloff[testLayer][wireID]->Fill(fitD-driftD);
                 h_cellslz[testLayer][wireID]->Fill(slz[theCand]);
@@ -971,7 +966,7 @@ int main(int argc, char** argv){
             //for ( int iEntry = (m_iEntryStart?m_iEntryStart:0); iEntry<(m_iEntryStop?m_iEntryStop-1:N); iEntry++){
             for ( int iEntry = 0; iEntry<N; iEntry++){ // better not to skip anything before we get the XT file
                 if (iEntry%m_modulo==0) MyNamedInfo("Ana",iEntry);
-                if (m_verboseLevel>=20) printf("Entry%d: \n",iEntry);
+                MyNamedVerbose("Ana","Entry"<<iEntry<<":");
                 ichain->GetEntry(iEntry);
 
                 // decide which candidate to use
@@ -984,7 +979,7 @@ int main(int argc, char** argv){
                 if (m_RequireInTriggerCounter&&!isInTriggerCounter(m_geoSetup,inz[theCand],slz[theCand])) continue;
                 if (m_nHitsMax&&nHits>m_nHitsMax) continue;
 
-                if (m_verboseLevel>=20) printf("  Good Event! Looping in %d hits\n",nHits);
+                MyNamedVerbose("Ana","  Good Event! Looping in "<<nHits<<" hits");
                 // find the closest hit in the test layer
                 double res_temp = 1e9;
                 bool foundhit = false;
@@ -1013,11 +1008,11 @@ int main(int argc, char** argv){
                 if (!foundhit) continue; // no hits found in test layer
                 if (hasBadHit&&m_RequireAllGoldenHits) continue;
 
-                if (m_verboseLevel>=20) printf("  Found hit! pushing to XTAnalyzer\n");
+                MyNamedVerbose("Ana","  Found hit! pushing to XTAnalyzer");
                 // tell analyzer a new data point
                 fXTAnalyzer->Push(driftT,fitD);
             }
-            if (m_verboseLevel>0) printf("Starting XT analysis\n");
+            MyNamedVerbose("Ana","Starting XT analysis");
             // fit histograms/graphs, make plots, and save new xt file
             fXTAnalyzer->Process();
         }
@@ -1026,7 +1021,7 @@ int main(int argc, char** argv){
     //=================================================Loop in layers to get residual====================================================
     // Loop in layers
     for (int testLayer = 0; testLayer<NLAY; testLayer++){
-        if (m_verboseLevel>0) {printf("In Layer %d: preparing input TChain\n",testLayer);fflush(stdout);}
+        MyNamedLog("Ana","In Layer "<<testLayer<<": preparing input TChain");
         TChain * ichain = new TChain("t","t");
         ichain->Add(Form("%s/root/tracks/t_%d.%s.layer%d.root",HOME.Data(),m_runNo,m_runname.Data(),testLayer));
         ichain->GetEntries();
@@ -1042,7 +1037,7 @@ int main(int argc, char** argv){
         f_left = (TF1*) XTFile->Get(Form("flc_%d",m_XTLayerForRes));
         f_right = (TF1*) XTFile->Get(Form("frc_%d",m_XTLayerForRes));
         if (!f_left||!f_right){
-            MyWarn("Cannot find the xt curves of layer "<<m_XTLayerForRes<<". Will load the default ones.");
+            MyNamedWarn("Ana","Cannot find the xt curves of layer "<<m_XTLayerForRes<<". Will load the default ones.");
             f_left = (TF1*) XTFile->Get("fl_0");
             f_right = (TF1*) XTFile->Get("fr_0");
         }
@@ -1261,7 +1256,7 @@ int main(int argc, char** argv){
         MyNamedInfo("Ana",Form("##############Layer %d: loop to get residual#############",testLayer));
         for ( int iEntry = (m_iEntryStart?m_iEntryStart:0); iEntry<(m_iEntryStop?m_iEntryStop+1:N); iEntry++){
             if (iEntry%m_modulo==0) MyNamedInfo("Ana",iEntry);
-            if (m_verboseLevel>=20) printf("Entry%d: \n",iEntry);
+            MyNamedVerbose("Ana","Entry"<<iEntry<<":");
             ichain->GetEntry(iEntry);
 
             // decide which candidate to use
@@ -1895,6 +1890,10 @@ int main(int argc, char** argv){
                     else
                         doFit(h_resXwire[iwire][ibin],1/3.,1/3.,-m_maxRes,m_maxRes);
                     o_xoffwire[iwire] = f_res->GetParameter(1);
+                    if (fabs(f_res->GetParError(1))>0.1){
+                        MyNamedWarn("Ana","Bad fitting for h_resXwire["<<iwire<<"]["<<ibin<<"], off = "<<o_xoffwire[iwire]<<", err = "<<f_res->GetParError(1)<<"!");
+                        o_xoffwire[iwire] = h_resXwire[iwire][ibin]->GetMean();
+                    }
                 }
                 else{
                     o_xoffwire[iwire] = 0;
@@ -2369,7 +2368,7 @@ int main(int argc, char** argv){
         printf("|slz|<=%.1f: %d (%.1f%%)\n",m_maxslz,N_CUT4,(double)N_CUT4/N_ALL*100);
         printf("DOCA<=%.1f: %d (%.1f%%)\n",m_xmax,N_CUT5,(double)N_CUT5/N_ALL*100);
 
-        if (m_verboseLevel>=20) printf("Finished!\n");
+        MyNamedVerbose("Ana","Finished!");
     }
 
     //===================output offset file============================
@@ -2711,6 +2710,7 @@ void print_usage(char * prog_name){
     fprintf(stderr,"Usage %s [options] prerunname runname [wires to be calibrated (all)]\n",prog_name);
     fprintf(stderr,"[options]\n");
     fprintf(stderr,"\t -D <name>=[error,severe,warn,debug,trace]\n");
+    fprintf(stderr,"\t -D XTAnalyzer=N for debug level in XTAnalyzer\n");
     fprintf(stderr,"\t\t Change the named debug level\n");
     fprintf(stderr,"\t -V <name>=[quiet,log,info,verbose]\n");
     fprintf(stderr,"\t\t Change the named log level\n");
