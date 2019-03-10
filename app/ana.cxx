@@ -41,6 +41,7 @@ TString m_suffix = "";
 int m_iEntryStart = 0;
 int m_iEntryStop = 0;
 int m_verboseLevel = 0;
+int m_verboseLevelXT = 0;
 int m_modulo = 10000;
 bool m_memdebug = false;
 int m_saveHists = 0;
@@ -66,6 +67,7 @@ double m_maxDeltaInx = 0;
 double m_calib_maxslz = 0;
 double m_calib_maxFD = 7.5;
 double m_calib_minFD = 0.5;
+bool   m_calib_allGolden = false;
 std::map<int,bool> m_wireIDWhiteList; // a list of wire IDs to be updated in new wire map
 int m_XTLayerForRes = 0;
 // for cutting
@@ -433,21 +435,26 @@ int main(int argc, char** argv){
                     if (sep != std::string::npos) {
                         std::string name = arg.substr(0,sep);
                         std::string levelName = arg.substr(sep+1);
-                        switch (levelName[0]) {
-                            case 'q': case 'Q':
-                                namedLogLevel[name.c_str()] = Log::QuietLevel;
-                                break;
-                            case 'l': case 'L':
-                                namedLogLevel[name.c_str()] = Log::LogLevel;
-                                break;
-                            case 'i': case 'I':
-                                namedLogLevel[name.c_str()] = Log::InfoLevel;
-                                break;
-                            case 'v': case 'V':
-                                namedLogLevel[name.c_str()] = Log::VerboseLevel;
-                                break;
-                            default:
-                                print_usage(argv[0]);
+                        if (name == "XTAnalyzer"){
+                            m_verboseLevelXT = atoi(levelName.c_str());
+                        }
+                        else{
+                            switch (levelName[0]) {
+                                case 'q': case 'Q':
+                                    namedLogLevel[name.c_str()] = Log::QuietLevel;
+                                    break;
+                                case 'l': case 'L':
+                                    namedLogLevel[name.c_str()] = Log::LogLevel;
+                                    break;
+                                case 'i': case 'I':
+                                    namedLogLevel[name.c_str()] = Log::InfoLevel;
+                                    break;
+                                case 'v': case 'V':
+                                    namedLogLevel[name.c_str()] = Log::VerboseLevel;
+                                    break;
+                                default:
+                                    print_usage(argv[0]);
+                            }
                         }
                     }
                     else{
@@ -567,6 +574,7 @@ int main(int argc, char** argv){
     printf("tmax for canvas and getting xt: %d\n",m_tmax);
     printf("cap for tmax = %d\n",m_tmaxSet);
     printf("debug       = %d\n",m_verboseLevel);
+    printf("debugXT     = %d\n",m_verboseLevelXT);
     printf("print modulo= %d\n",m_modulo);
     printf("save fitting histograms at level %d\n",m_saveHists);
     printf("output EventTree? %s\n",m_outputEventTree?"yes":"no");
@@ -864,7 +872,7 @@ int main(int argc, char** argv){
     f_res = new TF1("fres","gaus",-m_maxRes,m_maxRes);
     //=================================================Loop in layers to get offset and XTs====================================================
     // Prepare XTAnalyzer
-    XTAnalyzer * fXTAnalyzer = new XTAnalyzer(gasID,m_verboseLevel);
+    XTAnalyzer * fXTAnalyzer = new XTAnalyzer(gasID,m_verboseLevelXT);
     fXTAnalyzer->SetBinning(m_NbinT,m_tmin,m_tmax,m_NbinX,m_xmin,m_xmax);
     double offset_max = 0;
     int    offset_max_lid = 0;
@@ -926,7 +934,7 @@ int main(int argc, char** argv){
             }
             if (!has) continue; // no hits found in test layer
             if (m_verboseLevel>=20) printf("  has hit! l %d w %d FD %.3e DD %.3e\n",testLayer,wireID,fitD,driftD);
-            if (hasBadHit&&m_RequireAllGoldenHits) continue;
+            if (hasBadHit&&m_calib_allGolden) continue;
 
             if (m_verboseLevel>=20) printf("  Good hit! pushing to offset histograms\n");
             if (fabs(fitD)>m_calib_minFD&&fabs(fitD)<m_calib_maxFD&&(!m_calib_maxslz||fabs(slz[theCand])<m_calib_maxslz)){ // only trust the body part
@@ -990,7 +998,7 @@ int main(int argc, char** argv){
                     double tdriftD = (*i_driftD[theCand])[ihit];
                     double tsum = (*i_sum)[ihit];
                     double taa = (*i_aa)[ihit];
-                    if ((*i_sel[theCand])[ihit]==1&&(fabs(tdriftD)<0.5||fabs(tdriftD)>7.5)) hasBadHit = true;
+                    if ((*i_sel[theCand])[ihit]==1&&(fabs(tdriftD)<m_calib_minFD||fabs(tdriftD)>m_calib_maxFD)) hasBadHit = true;
                     if (tlayerID!=testLayer) continue;
                     if (tsum<m_sumCut||taa<m_aaCut) continue;
                     if (m_ClosestPeak&&twireID<NCEL&&wireChecked[twireID]) continue; // for each cell only get the first peak over the threshold
@@ -2636,6 +2644,7 @@ void getRunTimeParameters(TString configureFile){
         if (MyRuntimeParameters::Get().HasParameter("ana.calib_maxslz")) m_calib_maxslz= MyRuntimeParameters::Get().GetParameterD("ana.calib_maxslz");
         if (MyRuntimeParameters::Get().HasParameter("ana.calib_maxFD")) m_calib_maxFD= MyRuntimeParameters::Get().GetParameterD("ana.calib_maxFD");
         if (MyRuntimeParameters::Get().HasParameter("ana.calib_minFD")) m_calib_minFD= MyRuntimeParameters::Get().GetParameterD("ana.calib_minFD");
+        if (MyRuntimeParameters::Get().HasParameter("ana.calib_allGolden")) m_calib_allGolden= MyRuntimeParameters::Get().GetParameterD("ana.calib_allGolden");
     }
 }
 

@@ -1190,6 +1190,7 @@ double XTAnalyzer::findFirstZero(TF1 * f, double xmin, double xmax, double delta
 }
 
 void XTAnalyzer::getTT(int & iT, std::vector<double> & vx, std::vector<double> & vt, std::vector<double> & vsig, std::vector<double> & vn, bool negtive){
+    // First, get the average velocity between 0 and 7 mm
 	double d7 = 7;
 	double t7 = 250;
 	for (int i = NSLICET/2; i<NSLICET; i++){
@@ -1201,16 +1202,18 @@ void XTAnalyzer::getTT(int & iT, std::vector<double> & vx, std::vector<double> &
 		}
 	}
 	double velocity = d7/t7;
+	// Then, get the first slice with x > 6 mm
 	iT = NSLICET/2;
 	int direction = 1; if (negtive) direction = -1;
 	for (; iT>=0&&iT<NSLICET; iT+=direction){
 		if (vsig[iT]>mSigXmax||vn[iT]<mEntriesMin) continue;
 		if (fabs(vx[iT])>6) break;
 	}
+	// At last, choose the point where the velocity drops to 1/3 level.
 	int theIT = 0;
 	for (; iT>=0&&iT<NSLICET; iT+=direction){
 		if (vsig[iT]>mSigXmax||vn[iT]<mEntriesMin) continue;
-		int j = iT+direction;
+		int j = iT+direction*2; // skip one step to avoid large error
 		for (;j>=0&&j<NSLICET; j+=direction){
 			if (vsig[j]<=mSigTmax&&vn[j]>=mEntriesMin) break;
 		}
@@ -1222,6 +1225,7 @@ void XTAnalyzer::getTT(int & iT, std::vector<double> & vx, std::vector<double> &
 		}
 		if (negtive) vel*=-1;
 		theIT = iT;
+	    if (mDebugLevel>=1) fprintf(stdout,"%d~%d: t:%.1f~%.1f ns, x:%.1f~%.1f mm, vel = %.3e mm/ns\n",iT,j,vt[iT],vt[j],vx[iT],vx[j],vel);
 		if (vel<velocity/3) break;
 		if (fabs(vx[iT])>7.8) break;
 	}
@@ -2004,4 +2008,5 @@ void XTAnalyzer::writeObjects(){
 		if (gr_sigts_slicetlEO) gr_sigts_slicetlEO->Write();
 		if (gr_sigts_slicetrEO) gr_sigts_slicetrEO->Write();
 	}
+	mOutTree->Write();
 }
