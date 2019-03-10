@@ -52,7 +52,7 @@ int m_geoSetup = 0; // 0: normal scintillator; 1: finger scintillator
 int m_inputType = 0; // 1 for MC; 0 for data
 int m_xtType = 55; // XYZ means polX for center, polY for middle and polZ for tail. If X is 0 then let middle function fit the center region.
 bool m_AsymXT = false; // use asymmetric xt curve or not
-TString m_CandSelBy = "Original"; // find the candidate with the smallest chi2 without the testlayer; otherwise use chi2 wit the testlayer (default order from tracking);
+TString m_CandSelBy = "Original"; // find the candidate with the smallest chi2 without the test layer; otherwise use chi2 wit the test layer (default order from tracking);
 bool m_ClosestPeak = false; // To get XT: find the peak with the smallest residual. Otherwise choose the first one over threshold; NOTE: in analysis part, it's always the closest peak chosen to get efficiency and residual
 bool m_UpdateWireMap = false; // by default don't update the wire map (i.e. no calibration of wire position)
 TString m_ExternalXT = ""; // if this is not an empty string, then skip generating xt file but use this one as external XTs
@@ -96,12 +96,8 @@ TString m_adc2charge = "2.0158464*x";
 // map for wire position
 double  map_x[NLAY][NCEL][2];
 double  map_y[NLAY][NCEL][2];
-double  map_off_new[NLAY][NCEL]; // new offset detected: fitD-driftD, where fitD = p_track - (p_wire + old_adjust)
-int     map_nEvents[NLAY][NCEL];
-double  map_slz[NLAY][NCEL]; // for wire calibration cuts
-double  map_inx[NLAY][NCEL]; // for wire calibration cuts
-double  map_inxmc[NLAY][NCEL]; // for wire calibration cuts
-double  map_slzmc[NLAY][NCEL]; // for wire calibration cuts
+double  map_off_current[NLAY][NCEL];
+int     map_off_nEvents[NLAY][NCEL];
 bool    map_has[NLAY][NCEL];
 int     map_ch[NLAY][NCEL];
 int     map_bid[NLAY][NCEL];
@@ -386,7 +382,7 @@ int main(int argc, char** argv){
             case 'S':
                 temp_CandSelBy = optarg; set_CandSelBy = true;
                 if (temp_CandSelBy!="Original"&&temp_CandSelBy!="FittingChi2"&&temp_CandSelBy!="GlobalChi2"&&temp_CandSelBy!="LeastLatePeak"){
-                    MyNamedWarn("Ana","The track fitting option \""<<temp_CandSelBy<<" is not known. Will choose Original");
+                    MyNamedWarn("Ana","The xt analyzing option \""<<temp_CandSelBy<<" is not known. Candidates are: Original, FittingChi2, GlobalChi2, LeastLatePeak. Will choose Original.");
                     temp_CandSelBy = "Original";
                 }
                 printf("Choose the candidate by %s\n",temp_CandSelBy.Data());
@@ -645,26 +641,8 @@ int main(int argc, char** argv){
     for (int lid = 0; lid<NLAY; lid++){
         for (int wid = 0; wid<NCEL; wid++){
             map_has[lid][wid] = false;
-            map_off_new[lid][wid] = 0;
-            map_nEvents[lid][wid] = 0;
             map_ch[lid][wid] = -1;
             map_bid[lid][wid] = -1;
-            map_slz[lid][wid] = 0;
-            map_inx[lid][wid] = 0;
-            map_inxmc[lid][wid] = 0;
-            map_slzmc[lid][wid] = 0;
-        }
-    }
-
-    // prepare for offset
-    TH1D * h_celloff[NLAY][NCEL];
-    TH1D * h_cellslz[NLAY][NCEL];
-    TH1D * h_cellinx[NLAY][NCEL];
-    for (int lid = 0; lid<NLAY; lid++){
-        for (int wid = 0; wid<NCEL; wid++){
-            h_celloff[lid][wid] = new TH1D(Form("h_celloff_%d_%d",lid,wid),Form("Offset of wire [%d,%d]",lid,wid),128,-1,1);
-            h_cellslz[lid][wid] = new TH1D(Form("h_cellslz_%d_%d",lid,wid),Form("slope Z of hits on wire [%d,%d]",lid,wid),128,-0.16,0.16);
-            h_cellinx[lid][wid] = new TH1D(Form("h_cellinx_%d_%d",lid,wid),Form("intercetp X of hits on wire [%d,%d]",lid,wid),512,-50,50);
         }
     }
 
@@ -677,15 +655,11 @@ int main(int argc, char** argv){
         double beam_slzmc;
         int    beam_lid;
         int    beam_wid;
-        iChain_beam->SetBranchAddress("inxmc",&beam_inxmc);
-        iChain_beam->SetBranchAddress("slzmc",&beam_slzmc);
         iChain_beam->SetBranchAddress("lid",&beam_lid);
         iChain_beam->SetBranchAddress("wid",&beam_wid);
         for (int i = 0; i<iChain_beam->GetEntries(); i++){
             iChain_beam->GetEntry(i);
             if (beam_lid<0||beam_lid>=NLAY||beam_wid<0||beam_wid>=NCEL) continue;
-            map_inxmc[beam_lid][beam_wid] = beam_inxmc;
-            map_slzmc[beam_lid][beam_wid] = beam_slzmc;
         }
     }
     else{
@@ -865,13 +839,10 @@ int main(int argc, char** argv){
 
     // prepare the function to fit the residual distribution
     f_res = new TF1("fres","gaus",-m_maxRes,m_maxRes);
-    //=================================================Loop in layers to get offset and XTs====================================================
+    //=================================================Loop in layers to get XTs====================================================
     // Prepare XTAnalyzer
     XTAnalyzer * fXTAnalyzer = new XTAnalyzer(gasID,m_verboseLevelXT);
     fXTAnalyzer->SetBinning(m_NbinT,m_tmin,m_tmax,m_NbinX,m_xmin,m_xmax);
-    double offset_max = 0;
-    int    offset_max_lid = 0;
-    int    offset_max_wid = 0;
     // Loop in layers
     for (int testLayer = 0; testLayer<NLAY; testLayer++){
         //----------------------------------Set input file--------------------------------------------
@@ -885,73 +856,6 @@ int main(int argc, char** argv){
             continue;
         }
         SetInputBranchAdress(ichain);
-
-        //----------------------------------Get the offset--------------------------------------------
-        MyNamedInfo("Ana",Form("##############Layer %d: loop to get new offset#############",testLayer));
-        // to get the offsets
-        for ( int iEntry = 0 ; iEntry<N; iEntry++){
-            if (iEntry%m_modulo==0) MyNamedInfo("Ana",iEntry);
-            MyNamedVerbose("Ana","Entry"<<iEntry<<":");
-            ichain->GetEntry(iEntry);
-
-            // decide which candidate to use
-            theCand = GetCandidate(m_CandSelBy, i_layerID, i_type, i_fitD, i_sel, nHitsS, chi2, chi2a);
-
-            // ignore events with bad fitting
-            if (nHitsS[theCand]<m_nHitsSmin) continue;
-            if (chi2[theCand]>m_maxchi2) continue;
-            //if (nHitsG>nHitsS[theCand]) continue;
-            if (m_RequireInTriggerCounter&&!isInTriggerCounter(m_geoSetup,inz[theCand],slz[theCand])) continue;
-            if (m_nHitsMax&&nHits>m_nHitsMax) continue;
-
-            MyNamedVerbose("Ana","  Good Event! slz = "<<slz[theCand]<<", Looping in "<<nHits<<" hits");
-            // find the closest hit in the test layer
-            double minres = 1e9;
-            bool has = false;
-            int wireID;
-            double driftD, driftT, fitD;
-            // FIXME: test more cut
-            bool hasBadHit = false;
-            for (int ihit = 0; ihit<nHits; ihit++){
-                int tlayerID = (*i_layerID)[ihit];
-                int twireID = (*i_wireID)[ihit];
-                double tfitD = (*i_fitD[theCand])[ihit];
-                double tdriftD = (*i_driftD[theCand])[ihit];
-                if ((*i_sel[theCand])[ihit]==1&&(fabs(tdriftD)<m_calib_minFD||fabs(tdriftD)>m_calib_maxFD)) hasBadHit = true; // this is the region where XT distortion is not considered into offset calibration, thus not that reliable... (so called "bad hit")
-                if (tlayerID!=testLayer) continue;
-                if (fabs(tfitD-tdriftD)<fabs(minres)){ // no cut for test layer!
-                    minres = tfitD-tdriftD;
-                    wireID = (*i_wireID)[ihit];
-                    fitD = tfitD;
-                    driftD = tdriftD;
-                    has = true;
-                }
-            }
-            if (!has) continue; // no hits found in test layer
-            MyNamedVerbose("Ana","  has hit! l "<<testLayer<<" w "<<wireID<<" FD "<<fitD<<" DD "<<driftD);
-            if (hasBadHit&&m_calib_allGolden) continue;
-
-            MyNamedVerbose("Ana","  Good hit! pushing to offset histograms");
-            if (fabs(fitD)>m_calib_minFD&&fabs(fitD)<m_calib_maxFD&&(!m_calib_maxslz||fabs(slz[theCand])<m_calib_maxslz)){ // only trust the body part
-                h_celloff[testLayer][wireID]->Fill(fitD-driftD);
-                h_cellslz[testLayer][wireID]->Fill(slz[theCand]);
-                h_cellinx[testLayer][wireID]->Fill(inx[theCand]);
-            }
-        }
-
-        // get offset
-        for (int wid = 0; wid<NCEL; wid++){
-            if (h_celloff[testLayer][wid]->GetEntries()<100) continue;
-            map_off_new[testLayer][wid] = h_celloff[testLayer][wid]->GetMean();
-            map_nEvents[testLayer][wid] = h_celloff[testLayer][wid]->GetEntries();
-            map_slz[testLayer][wid] = h_cellslz[testLayer][wid]->GetMean();
-            map_inx[testLayer][wid] = h_cellinx[testLayer][wid]->GetMean();
-            if (m_wireIDWhiteList[wid]&&fabs(map_off_new[testLayer][wid])>fabs(offset_max)){
-                offset_max = map_off_new[testLayer][wid];
-                offset_max_lid = testLayer;
-                offset_max_wid = wid;
-            }
-        }
 
         if (m_ExternalXT==""){
             //----------------------------------Start to get XT--------------------------------------------
@@ -989,7 +893,7 @@ int main(int argc, char** argv){
                 for (int ihit = 0; ihit<nHits; ihit++){
                     int tlayerID = (*i_layerID)[ihit];
                     int twireID = (*i_wireID)[ihit];
-                    double tfitD = (*i_fitD[theCand])[ihit]-map_off_new[tlayerID][twireID]; // modify the fitD according to new offset
+                    double tfitD = (*i_fitD[theCand])[ihit];
                     double tdriftD = (*i_driftD[theCand])[ihit];
                     double tsum = (*i_sum)[ihit];
                     double taa = (*i_aa)[ihit];
@@ -1019,6 +923,9 @@ int main(int argc, char** argv){
     }
 
     //=================================================Loop in layers to get residual====================================================
+    double offset_max = 0;
+    int    offset_max_lid = 0;
+    int    offset_max_wid = 0;
     // Loop in layers
     for (int testLayer = 0; testLayer<NLAY; testLayer++){
         MyNamedLog("Ana","In Layer "<<testLayer<<": preparing input TChain");
@@ -1402,7 +1309,7 @@ int main(int argc, char** argv){
                 double sum = (*i_sum)[ihit];
                 double peak = (*i_peak)[ihit];
                 double height = (*i_height)[ihit];
-                double fitD = (*i_fitD[theCand])[ihit]-map_off_new[lid][wid]; // modify the fitD according to new offset
+                double fitD = (*i_fitD[theCand])[ihit];
                 int type = getHitType((*i_type)[ihit],fitD>=0);
                 (*i_driftT)[ihit]-=t0offset[theCand];
                 double dt = (*i_driftT)[ihit];
@@ -1621,11 +1528,13 @@ int main(int argc, char** argv){
                 if (ib>=0&&ib<NBINS) h_resD[ib]->Fill(resi);
                 if (ibx>=0&&ibx<NBINS) h_resX[ibx]->Fill(resi);
                 // for both side case
-                ibx = (fd+m_xmax)/2./m_xmax*NBINS;
-                if (ibx>=0&&ibx<NBINS){
-                    h_resXb[ibx]->Fill(resi);
-                    if (wid>=FIRSTWIRE4CALIB&&wid-FIRSTWIRE4CALIB<NWIRES4CALIB){
-                        h_resXwire[wid-FIRSTWIRE4CALIB][ibx]->Fill(resi);
+                if (fabs(fd)>m_calib_minFD&&fabs(fd)<m_calib_maxFD&&(!m_calib_maxslz||fabs(slz[theCand])<m_calib_maxslz)){ // only trust the body part
+                    ibx = (fd+m_xmax)/2./m_xmax*NBINS;
+                    if (ibx>=0&&ibx<NBINS){
+                        h_resXb[ibx]->Fill(resi);
+                        if (wid>=FIRSTWIRE4CALIB&&wid-FIRSTWIRE4CALIB<NWIRES4CALIB){
+                            h_resXwire[wid-FIRSTWIRE4CALIB][ibx]->Fill(resi);
+                        }
                     }
                 }
                 ib = (dd+m_xmax)/2./m_xmax*NBINS;
@@ -2312,13 +2221,23 @@ int main(int argc, char** argv){
                 canv_calib->cd(iwire+1);
                 gPad->SetGridx(1);
                 gPad->SetGridy(1);
-                h_resVSXwire[iwire]->SetTitle(Form("Residual VS DOCA in wire %d: %.0f (%.0f) um",iwire+FIRSTWIRE4CALIB,g_xoffwire[iwire]->GetMean(2)*1000,map_off_new[testLayer][iwire+FIRSTWIRE4CALIB]*1000));
+                h_resVSXwire[iwire]->SetTitle(Form("Residual VS DOCA in wire %d: %.0f um",iwire+FIRSTWIRE4CALIB,g_xoffwire[iwire]->GetMean(2)*1000));
                 h_resVSXwire[iwire]->Draw("COLZ");
                 g_xoffwire[iwire]->Draw("PLSAME");
             }
             canv_calib->SaveAs(Form("offx_%d.%s.layer%d.pdf",m_runNo,m_runnameout.Data(),testLayer));
             canv_calib->SaveAs(Form("offx_%d.%s.layer%d.png",m_runNo,m_runnameout.Data(),testLayer));
+        }
 
+        // update offset
+        for (int iwire = 0; iwire<NWIRES4CALIB; iwire++){
+            map_off_current[testLayer][iwire+FIRSTWIRE4CALIB] = g_xoffwire[iwire]->GetMean(2);
+            map_off_nEvents[testLayer][iwire+FIRSTWIRE4CALIB] = h_resVSXwire[iwire+FIRSTWIRE4CALIB]->GetEntries();
+            if (fabs(map_off_nEvents[testLayer][iwire+FIRSTWIRE4CALIB])>offset_max){
+                offset_max = map_off_nEvents[testLayer][iwire+FIRSTWIRE4CALIB];
+                offset_max_lid = testLayer;
+                offset_max_wid = iwire+FIRSTWIRE4CALIB;
+            }
         }
 
         //=================================================Save====================================================
@@ -2374,51 +2293,36 @@ int main(int argc, char** argv){
     //===================output offset file============================
     TFile * ofileoffset = new TFile(Form("%s/info/offset.%d.%s.root",HOME.Data(),m_runNo,m_runnameout.Data()),"RECREATE");
     TTree * otree = new TTree("t","t");
-    double o_off_delta;
+    double o_off_delta; // The difference of track predicted wire position (fitD without adjustment) and the designed wire position (driftD)
     double o_off_adjust;
-    double o_off_slz;
-    double o_off_inx;
     int o_off_n;
     int o_off_lid;
     int o_off_wid;
     otree->Branch("d",&o_off_delta);
     otree->Branch("adjust",&o_off_adjust);
     otree->Branch("n",&o_off_n);
-    otree->Branch("slz",&o_off_slz);
-    otree->Branch("inx",&o_off_inx);
     otree->Branch("wid",&o_off_wid);
     otree->Branch("lid",&o_off_lid);
     for (int lid = 0; lid<NLAY; lid++){
+        // get offset
         for (int wid = 0; wid<NCEL; wid++){
-            h_celloff[lid][wid]->Write();
-            h_cellslz[lid][wid]->Write();
-            h_cellinx[lid][wid]->Write();
+            if (map_off_nEvents[lid][wid]<100) continue;
             o_off_wid = wid;
             o_off_lid = lid;
-            o_off_delta = map_off_new[lid][wid]+map_adjust_old[lid][wid]; // new delta should consider the adjusted amount
-            o_off_n = map_nEvents[lid][wid];
-            o_off_slz = map_slz[lid][wid];
-            o_off_inx = map_inx[lid][wid];
+            o_off_delta = map_off_current[lid][wid]+map_adjust_old[lid][wid]; // new delta should consider the adjusted amount
+            o_off_n = map_off_nEvents[lid][wid];
             o_off_adjust = map_adjust_old[lid][wid]; // new adjustment should consider the adjusted amount
             if (m_UpdateWireMap&&m_wireIDWhiteList[wid]){
-                double theOff = map_off_new[lid][wid]*m_scale;
-                double deltaSlz = map_slz[lid][wid]-map_slzmc[lid][wid];
-                double deltaInx = map_inx[lid][wid]-map_inxmc[lid][wid];
+                double theOff = map_off_current[lid][wid]*m_scale;
                 if (m_stepSize){
                     if(fabs(theOff)>m_stepSize) theOff = theOff>0?m_stepSize:-m_stepSize;
-                }
-                if ((m_minDeltaSlz||m_maxDeltaSlz)&&(deltaSlz>m_maxDeltaSlz||deltaSlz<m_minDeltaSlz)){
-                    theOff = 0;
-                }
-                if ((m_minDeltaInx||m_maxDeltaInx)&&(deltaInx>m_maxDeltaInx||deltaInx<m_minDeltaInx)){
-                    theOff = 0;
                 }
                 if (m_OneWirePerStep&&(lid!=offset_max_lid||wid!=offset_max_wid)){
                     theOff = 0;
                 }
                 o_off_adjust += theOff;
             }
-            MyNamedInfo("Ana","adjust["<<lid<<"]["<<wid<<"] = "<<map_adjust_old[lid][wid]<<"+"<<map_off_new[lid][wid]<<"*"<<m_scale<<" = "<<o_off_adjust);
+            MyNamedInfo("Ana","adjust["<<lid<<"]["<<wid<<"] = "<<map_adjust_old[lid][wid]<<"+"<<map_off_current[lid][wid]<<"*"<<m_scale<<" = "<<o_off_adjust);
             otree->Fill();
         }
     }
@@ -2457,7 +2361,7 @@ double get_dist(int lid, int wid, double slx, double inx, double slz, double inz
     vDist = vWireHV-vTrackU;
     vAxis = vWire.Cross(vTrack);
     double value = -vDist*(vAxis.Unit());
-    return value-map_off_new[lid][wid];
+    return value;
 }
 
 int t2d(double t, double & d, bool isRight, double tmaxSet){
