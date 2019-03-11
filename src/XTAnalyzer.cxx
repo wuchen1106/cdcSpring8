@@ -578,8 +578,8 @@ void XTAnalyzer::Process(void){
 			v_left_end_x.push_back(v_x_slicet[i]);
 			v_left_end_t.push_back(v_t_slicet[i]);
 		}
-		if (i>=iTLeft-1&&v_x_slicet[i]<=-xStart2Turn){ // turning part
-			if (mDebugLevel>2) printf("                  t<%.1f x<%.2f, push to left_mid!\n",t8Left+tMargin,-xStart2Turn);
+		if (i>=iTLeft-1&&v_x_slicet[i]<=-xCenter2Mid){ // turning part
+			if (mDebugLevel>2) printf("                  t<%.1f x<%.2f, push to left_mid!\n",t8Left+tMargin,-xCenter2Mid);
 			v_left_mid_x.push_back(v_x_slicet[i]);
 			v_left_mid_t.push_back(v_t_slicet[i]);
 		}
@@ -625,11 +625,11 @@ void XTAnalyzer::Process(void){
 					if (mDebugLevel>2) printf("                  %.2f<x, push to left_cen!\n",-xCenter2Mid);
 					v_left_cen_x.push_back(x);
 					v_left_cen_t.push_back(t);
-				}
-				if (x<-xCenter2Mid+xMargin){
-					if (mDebugLevel>2) printf("                  %.2f<x<%.2f, push to left_mid!\n",-xStart2Turn,-xCenter2Mid+xMargin);
-					v_left_mid_x.push_back(x);
-					v_left_mid_t.push_back(t);
+                    if (x<-xCenter2Mid+xMargin){
+                        if (mDebugLevel>2) printf("                  %.2f<x<%.2f, push to left_mid!\n",-xCenter2Mid,-xCenter2Mid+xMargin);
+                        v_left_mid_x.push_back(x);
+                        v_left_mid_t.push_back(t);
+                    }
 				}
 			}
 		}
@@ -640,11 +640,11 @@ void XTAnalyzer::Process(void){
 					if (mDebugLevel>2) printf("                  x<%.2f, push to right_cen!\n",xCenter2Mid);
 					v_right_cen_x.push_back(x);
 					v_right_cen_t.push_back(t);
-				}
-				if (x>xCenter2Mid-xMargin){
-					if (mDebugLevel>2) printf("                  %.2f<x<%.2f, push to right_mid!\n",xCenter2Mid-xMargin,xStart2Turn);
-					v_right_mid_x.push_back(x);
-					v_right_mid_t.push_back(t);
+                    if (x>xCenter2Mid-xMargin){
+                        if (mDebugLevel>2) printf("                  %.2f<x<%.2f, push to right_mid!\n",xCenter2Mid-xMargin,xCenter2Mid);
+                        v_right_mid_x.push_back(x);
+                        v_right_mid_t.push_back(t);
+                    }
 				}
 			}
 		}
@@ -658,8 +658,8 @@ void XTAnalyzer::Process(void){
 			v_right_end_x.push_back(v_x_slicet[i]);
 			v_right_end_t.push_back(v_t_slicet[i]);
 		}
-		if (i<=iTRight+1&&v_x_slicet[i]>=xStart2Turn){ // turning part
-			if (mDebugLevel>2) printf("                  t<%.1f x>%.2f, push to right_mid!\n",t8Right+tMargin,xStart2Turn);
+		if (i<=iTRight+1&&v_x_slicet[i]>=xCenter2Mid){ // turning part
+			if (mDebugLevel>2) printf("                  t<%.1f x>%.2f, push to right_mid!\n",t8Right+tMargin,xCenter2Mid);
 			v_right_mid_x.push_back(v_x_slicet[i]);
 			v_right_mid_t.push_back(v_t_slicet[i]);
 		}
@@ -695,12 +695,12 @@ void XTAnalyzer::Process(void){
 				v_both_cen_x.push_back(x);
 				v_bothL_cen_x.push_back(-x);
 				v_both_cen_t.push_back(t);
-			}
-			if (x>xCenter2Mid-xMargin){
-				if (mDebugLevel>2) printf("                  %.2f<x<%.2f, push to both_mid!\n",xCenter2Mid-xMargin,xStart2Turn);
-				v_both_mid_x.push_back(x);
-				v_bothL_mid_x.push_back(-x);
-				v_both_mid_t.push_back(t);
+                if (x>xCenter2Mid-xMargin){
+                    if (mDebugLevel>2) printf("                  %.2f<x<%.2f, push to both_mid!\n",xCenter2Mid-xMargin,xCenter2Mid);
+                    v_both_mid_x.push_back(x);
+                    v_bothL_mid_x.push_back(-x);
+                    v_both_mid_t.push_back(t);
+                }
 			}
 		}
 	}
@@ -715,8 +715,8 @@ void XTAnalyzer::Process(void){
 			v_bothL_end_x.push_back(-v_x_slicetn[i]);
 			v_both_end_t.push_back(v_t_slicetn[i]);
 		}
-		if (i<=iTBoth+1&&v_x_slicetn[i]>=xStart2Turn){ // turning part
-			if (mDebugLevel>2) printf("                  t<%.1f, x>=%.2f, push to both_mid!\n",t8Both+tMargin,xStart2Turn);
+		if (i<=iTBoth+1&&v_x_slicetn[i]>=xCenter2Mid){ // turning part
+			if (mDebugLevel>2) printf("                  t<%.1f, x>=%.2f, push to both_mid!\n",t8Both+tMargin,xCenter2Mid);
 			v_both_mid_x.push_back(v_x_slicetn[i]);
 			v_bothL_mid_x.push_back(-v_x_slicetn[i]);
 			v_both_mid_t.push_back(v_t_slicetn[i]);

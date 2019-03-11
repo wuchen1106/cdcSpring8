@@ -640,6 +640,8 @@ int main(int argc, char** argv){
     //Prepare Maps
     for (int lid = 0; lid<NLAY; lid++){
         for (int wid = 0; wid<NCEL; wid++){
+            map_off_current[lid][wid] = 0;
+            map_off_nEvents[lid][wid] = 0;
             map_has[lid][wid] = false;
             map_ch[lid][wid] = -1;
             map_bid[lid][wid] = -1;
@@ -2232,9 +2234,9 @@ int main(int argc, char** argv){
         // update offset
         for (int iwire = 0; iwire<NWIRES4CALIB; iwire++){
             map_off_current[testLayer][iwire+FIRSTWIRE4CALIB] = g_xoffwire[iwire]->GetMean(2);
-            map_off_nEvents[testLayer][iwire+FIRSTWIRE4CALIB] = h_resVSXwire[iwire+FIRSTWIRE4CALIB]->GetEntries();
-            if (fabs(map_off_nEvents[testLayer][iwire+FIRSTWIRE4CALIB])>offset_max){
-                offset_max = map_off_nEvents[testLayer][iwire+FIRSTWIRE4CALIB];
+            map_off_nEvents[testLayer][iwire+FIRSTWIRE4CALIB] = h_resVSXwire[iwire]->GetEntries();
+            if (fabs(map_off_current[testLayer][iwire+FIRSTWIRE4CALIB])>offset_max){
+                offset_max = map_off_current[testLayer][iwire+FIRSTWIRE4CALIB];
                 offset_max_lid = testLayer;
                 offset_max_wid = iwire+FIRSTWIRE4CALIB;
             }
