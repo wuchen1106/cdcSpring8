@@ -1,9 +1,14 @@
+#ifndef header_hxx_seen
+#define header_hxx_seen
+
 // Chamber parameters
-double CELLH = 16; // mm
-double CELLW = 16.8; // mm
-double chamberHL = 599.17/2; // mm
-double chamberHH = 170.05/2; // mm
-double chamberCY = 572; // mm
+#define CELLH 16 // mm
+#define CELLW 16.8 // mm
+#define chamberHL (599.17/2) // mm
+#define chamberHH (170.05/2) // mm
+#define chamberCY 572 // mm
+
+#define YREFERENCE (chamberCY+chamberHH+180) // mm
 
 // Single board parameters
 #define NSAM 32
@@ -44,3 +49,5 @@ double chamberCY = 572; // mm
 #endif
 
 #define NCAND 4
+
+#endif

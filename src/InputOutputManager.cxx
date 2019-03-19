@@ -1,0 +1,226 @@
+#include <stdio.h>  /* printf, getenv */
+#include <TFile.h>
+#include <TTree.h>
+#include <TChain.h>
+
+#include "Log.hxx"
+#include "InputOutputManager.hxx"
+#include "ParameterManager.hxx"
+#include "RunInfoManager.hxx"
+
+InputOutputManager* InputOutputManager::fInputOutputManager = NULL;
+
+InputOutputManager::InputOutputManager():
+    triggerNumber(0),
+    nHits(0),
+    LayerID(0),
+    CellID(0),
+    //TDCClock(0),
+    DriftT(0),
+    DriftDmc(0),
+    DOCA(0),
+    Pedestal(0),
+    ADCheight(0),
+    //peak(0),
+    //rank(0),
+    ADCsumPacket(0),
+    ADCsumAll(0),
+    PacketWidth(0),
+    nPeaksInChannel(0),
+    iPeakInChannel(0),
+    nPeaksInPacket(0),
+    iPeakInPacket(0),
+    interceptXmc(0),
+    interceptZmc(0),
+    slopeXmc(0),
+    slopeZmc(0),
+    nHitsG(0),
+    nCandidatesFound(0),
+    fOutputFile(0),
+    fInputTChain(0)
+{
+    for (int iCand = 0; iCand<NCAND; iCand++){
+        nPairs[iCand] = 0;
+        nHitsS[iCand] = 0;
+        t0offset[iCand] = 0; // in case t0 is set free to adjustment
+        interceptXInput[iCand] = 0;
+        interceptZInput[iCand] = 0;
+        slopeXInput[iCand] = 0;
+        slopeZInput[iCand] = 0;
+        chi2XInput[iCand] = 0;
+        chi2ZInput[iCand] = 0;
+        chi2Input[iCand] = 0;
+        chi2WithTestLayerInput[iCand] = 0;
+        pValueInput[iCand] = 0;
+        interceptX[iCand] = 0;
+        interceptZ[iCand] = 0;
+        slopeX[iCand] = 0;
+        slopeZ[iCand] = 0;
+        chi2[iCand] = 0;
+        chi2WithTestLayer[iCand] = 0;
+        pValue[iCand] = 0;
+        chi2mc[iCand] = 0;
+        chi2WithTestLayermc[iCand] = 0;
+        pValuemc[iCand] = 0;
+    }
+}
+
+InputOutputManager::~InputOutputManager(){
+}
+
+bool InputOutputManager::Initialize(){
+    TString HOME=getenv("CDCS8WORKING_DIR");;
+    int runNo = RunInfoManager::Get().runNo;
+    TString runName = RunInfoManager::Get().runName;
+    int testLayer = RunInfoManager::Get().testLayer;
+    InputType inputType = ParameterManager::Get().inputType;
+    if (fOutputTree) delete fOutputTree; // FIXME: double delete?
+    if (fOutputFile) fOutputFile->Close();
+    if (fInputTChain) delete fInputTChain;
+    fInputTChain = new TChain("t","t");
+    fOutputFile = new TFile(Form("%s/root/tracks/t_%d.%s.layer%d.root",HOME.Data(),runNo,runName.Data(),testLayer),"RECREATE");
+    fOutputTree = new TTree("t","t");
+
+    if (inputType==kData)
+        fInputTChain->Add(HOME+Form("/root/hits/h_%d.root",runNo));
+    else
+        fInputTChain->Add(HOME+Form("/root/hits/h_%d.MC.root",runNo));
+    fInputTChain->SetBranchAddress("triggerNumber",&triggerNumber);
+    fInputTChain->SetBranchAddress("nHits",&nHits);
+    fInputTChain->SetBranchAddress("driftT",&DriftT);
+    if (inputType==kMCDriftD||inputType==kMCDriftT) fInputTChain->SetBranchAddress("DOCA",&DOCA);
+    if (inputType==kMCDriftD) fInputTChain->SetBranchAddress("driftD",&DriftDmc);
+    fInputTChain->SetBranchAddress("layerID",&LayerID);
+    fInputTChain->SetBranchAddress("CellID",&CellID);
+    //fInputTChain->SetBranchAddress("type",&type); // 0 center, 1 left, 2 right, 3 guard, 4 dummy
+    fInputTChain->SetBranchAddress("ped",&Pedestal);
+    fInputTChain->SetBranchAddress("height",&ADCheight);
+    //fInputTChain->SetBranchAddress("peak",&peak);
+    //fInputTChain->SetBranchAddress("rank",&rank);
+    fInputTChain->SetBranchAddress("sum",&ADCsumPacket);
+    fInputTChain->SetBranchAddress("aa",&ADCsumAll);
+    fInputTChain->SetBranchAddress("width",&PacketWidth);
+    fInputTChain->SetBranchAddress("np",&nPeaksInChannel);
+    fInputTChain->SetBranchAddress("ip",&iPeakInChannel);
+    fInputTChain->SetBranchAddress("mpn",&nPeaksInPacket);
+    fInputTChain->SetBranchAddress("mpi",&iPeakInChannel);
+    //fInputTChain->SetBranchAddress("clk",&TDCclock);
+    if (inputType==kMCDriftD||inputType==kMCDriftT){
+		fInputTChain->SetBranchAddress("inxmc",&interceptXmc);
+		fInputTChain->SetBranchAddress("inzmc",&interceptZmc);
+		fInputTChain->SetBranchAddress("slxmc",&slopeXmc);
+		fInputTChain->SetBranchAddress("slzmc",&slopeZmc);
+    }
+
+    //===================Prepare output ROOT file============================
+    // from h_XXX
+    fOutputTree->Branch("triggerNumber",&triggerNumber);
+    // basic
+    int nHitsG;
+    fOutputTree->Branch("nHitsG",&nHitsG); // number of good hits in layers other than the test one: in t region and with good peak quality
+    fOutputTree->Branch("nFind",&nCandidatesFound);
+    fOutputTree->Branch("nPairs",nPairs,"nPairs[nFind]/I");
+    fOutputTree->Branch("nHitsS",nHitsS,"nHitsS[nFind]/I"); // number of hits selected from finding and fed to fitting
+    fOutputTree->Branch("t0offset",t0offset,"t0offset[nFind]/D");
+    fOutputTree->Branch("interceptXInput",interceptXInput,"interceptXInput[nFind]/D");
+    fOutputTree->Branch("interceptZInput",interceptZInput,"interceptZInput[nFind]/D");
+    fOutputTree->Branch("slopeXInput",slopeXInput,"slopeXInput[nFind]/D");
+    fOutputTree->Branch("slopeZInput",slopeZInput,"slopeZInput[nFind]/D");
+    fOutputTree->Branch("chi2XInput",chi2XInput,"chi2XInput[nFind]/D");
+    fOutputTree->Branch("chi2ZInput",chi2ZInput,"chi2ZInput[nFind]/D");
+    fOutputTree->Branch("chi2Input",chi2Input,"chi2Input[nFind]/D");
+    fOutputTree->Branch("chi2WithTestLayerInput",chi2WithTestLayerInput,"chi2WithTestLayerInput[nFind]/D");
+    fOutputTree->Branch("pValueInput",pValueInput,"pValueInput[nFind]/D");
+    fOutputTree->Branch("interceptX",interceptX,"interceptX[nFind]/D");
+    fOutputTree->Branch("interceptZ",interceptZ,"interceptZ[nFind]/D");
+    fOutputTree->Branch("slopeX",slopeX,"slopeX[nFind]/D");
+    fOutputTree->Branch("slopeZ",slopeZ,"slopeZ[nFind]/D");
+    fOutputTree->Branch("chi2",chi2,"chi2[nFind]/D");
+    fOutputTree->Branch("chi2WithTestLayer",chi2WithTestLayer,"chi2WithTestLayer[nFind]/D");
+    fOutputTree->Branch("pValue",pValue,"pValue[nFind]/D");
+    if (inputType){
+        fOutputTree->Branch("chi2mc",chi2mc,"chi2mc[nFind]/D");
+        fOutputTree->Branch("chi2WithTestLayermc",chi2WithTestLayermc,"chi2WithTestLayermc[nFind]/D");
+        fOutputTree->Branch("pValuemc",pValuemc,"pValuemc[nFind]/D");
+		fOutputTree->Branch("inxmc",&interceptXmc);
+		fOutputTree->Branch("inzmc",&interceptZmc);
+		fOutputTree->Branch("slxmc",&slopeXmc);
+		fOutputTree->Branch("slzmc",&slopeZmc);
+	}
+
+    return true;
+}
+
+void InputOutputManager::Reset(){
+    /*
+        t0offset = 0;
+        // prepare
+        o_nFind = 0;
+        o_nFit = 0;
+        o_dxl->resize(i_nHits);
+        o_dxr->resize(i_nHits);
+        for (int iCand = 0; iCand<NCAND; iCand++){
+            o_iinx[iCand] = 0;
+            o_iinz[iCand] = 0;
+            o_islx[iCand] = 0;
+            o_islz[iCand] = 0;
+            o_chi2x[iCand] = 1e9;
+            o_chi2z[iCand] = 1e9;
+            o_chi2i[iCand] = 1e9;
+            o_chi2pi[iCand] = 1e9;
+            o_chi2ai[iCand] = 1e9;
+            o_npairs[iCand] = 0;
+            o_icombi[iCand] = 0;
+            o_iselec[iCand] = 0;
+            o_calD[iCand]->resize(i_nHits);
+            o_fitD[iCand]->resize(i_nHits);
+            o_sel[iCand]->resize(i_nHits);
+            o_driftD[iCand]->resize(i_nHits);
+            o_nHitsS[iCand] = 0;
+            o_inx[iCand] = 0;
+            o_inz[iCand] = 0;
+            o_slx[iCand] = 0;
+            o_slz[iCand] = 0;
+            o_t0offset[iCand] = 0;
+            o_chi2[iCand] = 1e9;
+            o_chi2p[iCand] = 1e9;
+            o_chi2a[iCand] = 1e9;
+        }
+        t_calD->resize(i_nHits);
+        t_fitD->resize(i_nHits);
+        t_driftD->resize(i_nHits);
+        t_sel->resize(i_nHits);
+        t_lr->resize(i_nHits);
+        nHitsG = 0;
+        v_pick_lid.clear();
+        for (int i = 0; i<NLAY; i++){
+            v_layer_ihit[i].clear();
+        }
+        */
+}
+
+void InputOutputManager::Fill(){
+    fOutputTree->Fill();
+}
+
+void InputOutputManager::Write(){
+    fOutputTree->Write();
+}
+
+void InputOutputManager::Close(){
+    fOutputFile->Close();
+}
+
+void InputOutputManager::GetEntry(Long64_t iEntry){
+    if (fInputTChain) fInputTChain->GetEntry(iEntry); 
+}
+
+Long64_t InputOutputManager::GetEntries(){
+    if (fInputTChain)
+        return fInputTChain->GetEntries();
+    else
+        return 0;
+}
+
+void InputOutputManager::Print(){
+}

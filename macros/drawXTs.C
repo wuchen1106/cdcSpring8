@@ -1,16 +1,12 @@
 #include "src/header.hxx"
 int drawXTs(){
 	std::vector<TString> runNames; std::vector<int> theLayers;
-	runNames.push_back("105.0110xt053t400l4.i3"); theLayers.push_back(4);
-//	runNames.push_back("105.0110xt053t400l4.i25"); theLayers.push_back(4);
-	runNames.push_back("105.0110xt053t400l5.i3"); theLayers.push_back(5);
-//	runNames.push_back("105.0110xt053t400l5.i23"); theLayers.push_back(5);
-	runNames.push_back("105.0116xt053t400l4.i3"); theLayers.push_back(4);
-//	runNames.push_back("105.0116xt053t400l4.i25"); theLayers.push_back(4);
-	runNames.push_back("105.1224xt053t400.i3"); theLayers.push_back(4);
-//	runNames.push_back("105.1224xt053t400.i30"); theLayers.push_back(4);
-	runNames.push_back("105.1224xt053t400l5.i3"); theLayers.push_back(5);
-//	runNames.push_back("105.1224xt053t400l5.i26"); theLayers.push_back(5);
+	runNames.push_back("105.0305xt053l4.i20"); theLayers.push_back(4);
+	runNames.push_back("105.0307xt053l4.i20"); theLayers.push_back(4);
+	runNames.push_back("105.0309xt053l4.i10"); theLayers.push_back(4);
+	runNames.push_back("105.0305xt353l4.i20"); theLayers.push_back(4);
+	runNames.push_back("105.0307xt353l4.i20"); theLayers.push_back(4);
+	runNames.push_back("105.0309xt353l4.i10"); theLayers.push_back(4);
 
 	int nRuns = runNames.size();
 
