@@ -194,7 +194,8 @@ GeometryManager::GeometryManager():
 }
 
 void GeometryManager::Print(){
-    printf("GeometryManager info with geometry setup %d:\n",fGeoSetup);
+    printf("#########################GeometryManager###########################\n");
+    printf("  geometry setup %d:\n",fGeoSetup);
     fScintillator->Print();
     fChamber->Print();
 }

@@ -44,7 +44,8 @@ bool BeamManager::Initialize(BeamType theBeamType){
 }
 
 void BeamManager::Print(){
-    printf("BeamManager info with beam type %d:\n",beamType);
+    printf("#########################BeamManager###########################\n");
+    printf("  beam type %d:\n",beamType);
     printf("  beamSlz       = %.3e\n",beamSlz);
     printf("  beamSlx       = %.3e\n",beamSlx);
     printf("  beamInz       = %.3e\n",beamInz);

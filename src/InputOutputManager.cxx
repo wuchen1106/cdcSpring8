@@ -95,7 +95,6 @@ bool InputOutputManager::Initialize(){
     // from h_XXX
     fOutputTree->Branch("triggerNumber",&triggerNumber);
     // basic
-    int nHitsG;
     fOutputTree->Branch("nHitsG",&nHitsG); // number of good hits in layers other than the test one: in t region and with good peak quality
     fOutputTree->Branch("nFind",&nCandidatesFound);
     fOutputTree->Branch("nPairs",nPairs,"nPairs[nFind]/I");
@@ -193,7 +192,6 @@ Long64_t InputOutputManager::GetEntries(){
 void InputOutputManager::Print(TString opt){
     printf("Entry %d, triggerNumber %d:\n",fCurrentEntry,triggerNumber);
     printf("  Total hits: %d, good hits after cuts: %d\n",nHits,nHitsG);
-    printf("  Total hits: %d, good hits after cuts: %d\n",LayerID->size(),nHitsG);
     if (opt.Contains("h")){
         int iPacket = 0;
         for (int iHit = 0; iHit<nHits; iHit++){

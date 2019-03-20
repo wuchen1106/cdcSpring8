@@ -165,14 +165,20 @@ int main(int argc, char** argv){
             = namedDebugLevel.begin();
             i != namedDebugLevel.end();
             ++i) {
-        Log::SetDebugLevel(i->first.c_str(), i->second);
+        if (i->first=="general")
+            Log::SetDebugLevel(i->second);
+        else
+            Log::SetDebugLevel(i->first.c_str(), i->second);
     }
 
     for (std::map<std::string,Log::LogPriority>::iterator i 
             = namedLogLevel.begin();
             i != namedLogLevel.end();
             ++i) {
-        Log::SetLogLevel(i->first.c_str(), i->second);
+        if (i->first=="general")
+            Log::SetLogLevel(i->second);
+        else
+            Log::SetLogLevel(i->first.c_str(), i->second);
     }
 
 	if (argc-optind<2){
@@ -229,6 +235,10 @@ int main(int argc, char** argv){
     int nPairsMin = ParameterManager::Get().TrackingParameters.nPairsMin;
     int nHitsMax = ParameterManager::Get().TrackingParameters.nHitsMax;
     int nHitsSMin = ParameterManager::Get().TrackingParameters.nHitsSMin;
+    double sumCut = ParameterManager::Get().TrackingParameters.sumCut;
+    double aaCut = ParameterManager::Get().TrackingParameters.aaCut;
+    double tmin = ParameterManager::Get().TrackingParameters.tmin;
+    double tmax = ParameterManager::Get().TrackingParameters.tmax;
 
     //===================Tracking====================================
     // Efficiency Counters
@@ -253,11 +263,18 @@ int main(int argc, char** argv){
         /// 1. Scan raw hits, select a list of them according to predefined cuts
         int nHitsG = 0; // number of good hits in this event
         for (int iHit = 0; iHit<InputOutputManager::Get().nHits; iHit++){
+            double aa = InputOutputManager::Get().ADCsumAll->at(iHit);
+            double sum = InputOutputManager::Get().ADCsumPacket->at(iHit);
+            double driftT = InputOutputManager::Get().DriftT->at(iHit);
             int lid = InputOutputManager::Get().LayerID->at(iHit);
-            // TODO: add cuts here
+            if (lid==0) continue; // assuming the first layer is dummy layer. FIXME: should add flag for other connections
+            if (aa<aaCut) continue;
+            if (sum<sumCut) continue;
+            if (driftT<tmin||driftT>tmax) continue;
             tracker->hitLayerIndexMap->at(lid)->push_back(iHit);
             nHitsG++;
         }
+        InputOutputManager::Get().nHitsG = nHitsG;
         /// 2. Loop in layers, see how many pairs we can get and create a list of layers to form pairs
         ///    In this way we are picking one hit per layer to form pairs and get initial track parameters.
         ///    This tracking scheme doesn't support the tracking of multiple co-existing tracks.
@@ -272,11 +289,16 @@ int main(int argc, char** argv){
                 tracker->pairableLayers->push_back(lid);
             }
         }
-        MyNamedVerbose("Tracking",Form(" Found %d good raw hits, we can make %d pairs",nHitsG,nPairs));
-        for (int ipick = 0; ipick<tracker->pairableLayers->size(); ipick++){
+        if (Log::GetLogLevel()>=Log::VerboseLevel) InputOutputManager::Get().Print("h"); // print hit level information
+        int nCombinations = 1;
+        int nPairableLayers = tracker->pairableLayers->size();
+        for (int ipick = 0; ipick<nPairableLayers; ipick++){
             int lid = tracker->pairableLayers->at(ipick);
-            MyNamedVerbose("Tracking",Form("  pairable layer %d: %d hits",lid,tracker->hitLayerIndexMap->at(lid)->size()));
+            int nhits = tracker->hitLayerIndexMap->at(lid)->size();
+            MyNamedInfo("Tracking",Form("  pairable layer %d: %d hits",lid,nhits));
+            nCombinations*=nhits;
         }
+        MyNamedInfo("Tracking",Form("  => %d pairs from %d good hits in %d pairable layers with %d combinations X 2^%d L/R choices",nPairs,nHitsG,nPairableLayers,nCombinations,nHitsG));
 
         /// 3. Apply tracking after cuts
         if (nHitsG<=nHitsMax&&nPairs>=nPairsMin){

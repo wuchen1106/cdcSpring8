@@ -87,6 +87,7 @@ bool RunInfoManager::Initialize(int theRunNo, TString thePreRunName, TString the
 }
 
 void RunInfoManager::Print(){
-    printf("runNo#%d: %s, %d, %s, %d V, %d mV, %.0f sec\n",runNo,gasType.Data(),runGr,duration.Data(),HV,THR,durationTime);
-    printf("Test layer %d, previous run: \"%s\", this run: \"%s\"\n",testLayer,preRunName.Data(),runName.Data());
+    printf("#########################RunInfoManager###########################\n");
+    printf("  runNo#%d: %s, %d, %s, %d V, %d mV, %.0f sec\n",runNo,gasType.Data(),runGr,duration.Data(),HV,THR,durationTime);
+    printf("  Test layer %d, previous run: \"%s\", this run: \"%s\"\n",testLayer,preRunName.Data(),runName.Data());
 }
