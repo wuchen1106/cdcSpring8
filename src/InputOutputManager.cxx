@@ -11,17 +11,18 @@
 InputOutputManager* InputOutputManager::fInputOutputManager = NULL;
 
 InputOutputManager::InputOutputManager():
+    fCurrentEntry(0),
     triggerNumber(0),
     nHits(0),
     LayerID(0),
     CellID(0),
-    //TDCClock(0),
+    TDCClock(0),
     DriftT(0),
     DriftDmc(0),
     DOCA(0),
     Pedestal(0),
     ADCheight(0),
-    //peak(0),
+    ADCpeak(0),
     //rank(0),
     ADCsumPacket(0),
     ADCsumAll(0),
@@ -36,39 +37,17 @@ InputOutputManager::InputOutputManager():
     slopeZmc(0),
     nHitsG(0),
     nCandidatesFound(0),
+    fOutputTree(0),
     fOutputFile(0),
     fInputTChain(0)
 {
-    for (int iCand = 0; iCand<NCAND; iCand++){
-        nPairs[iCand] = 0;
-        nHitsS[iCand] = 0;
-        t0offset[iCand] = 0; // in case t0 is set free to adjustment
-        interceptXInput[iCand] = 0;
-        interceptZInput[iCand] = 0;
-        slopeXInput[iCand] = 0;
-        slopeZInput[iCand] = 0;
-        chi2XInput[iCand] = 0;
-        chi2ZInput[iCand] = 0;
-        chi2Input[iCand] = 0;
-        chi2WithTestLayerInput[iCand] = 0;
-        pValueInput[iCand] = 0;
-        interceptX[iCand] = 0;
-        interceptZ[iCand] = 0;
-        slopeX[iCand] = 0;
-        slopeZ[iCand] = 0;
-        chi2[iCand] = 0;
-        chi2WithTestLayer[iCand] = 0;
-        pValue[iCand] = 0;
-        chi2mc[iCand] = 0;
-        chi2WithTestLayermc[iCand] = 0;
-        pValuemc[iCand] = 0;
-    }
 }
 
 InputOutputManager::~InputOutputManager(){
 }
 
 bool InputOutputManager::Initialize(){
+    fCurrentEntry = 0;
     TString HOME=getenv("CDCS8WORKING_DIR");;
     int runNo = RunInfoManager::Get().runNo;
     TString runName = RunInfoManager::Get().runName;
@@ -91,11 +70,11 @@ bool InputOutputManager::Initialize(){
     if (inputType==kMCDriftD||inputType==kMCDriftT) fInputTChain->SetBranchAddress("DOCA",&DOCA);
     if (inputType==kMCDriftD) fInputTChain->SetBranchAddress("driftD",&DriftDmc);
     fInputTChain->SetBranchAddress("layerID",&LayerID);
-    fInputTChain->SetBranchAddress("CellID",&CellID);
+    fInputTChain->SetBranchAddress("wireID",&CellID);
     //fInputTChain->SetBranchAddress("type",&type); // 0 center, 1 left, 2 right, 3 guard, 4 dummy
     fInputTChain->SetBranchAddress("ped",&Pedestal);
     fInputTChain->SetBranchAddress("height",&ADCheight);
-    //fInputTChain->SetBranchAddress("peak",&peak);
+    fInputTChain->SetBranchAddress("peak",&ADCpeak);
     //fInputTChain->SetBranchAddress("rank",&rank);
     fInputTChain->SetBranchAddress("sum",&ADCsumPacket);
     fInputTChain->SetBranchAddress("aa",&ADCsumAll);
@@ -103,8 +82,8 @@ bool InputOutputManager::Initialize(){
     fInputTChain->SetBranchAddress("np",&nPeaksInChannel);
     fInputTChain->SetBranchAddress("ip",&iPeakInChannel);
     fInputTChain->SetBranchAddress("mpn",&nPeaksInPacket);
-    fInputTChain->SetBranchAddress("mpi",&iPeakInChannel);
-    //fInputTChain->SetBranchAddress("clk",&TDCclock);
+    fInputTChain->SetBranchAddress("mpi",&iPeakInPacket);
+    fInputTChain->SetBranchAddress("clk",&TDCClock);
     if (inputType==kMCDriftD||inputType==kMCDriftT){
 		fInputTChain->SetBranchAddress("inxmc",&interceptXmc);
 		fInputTChain->SetBranchAddress("inzmc",&interceptZmc);
@@ -121,6 +100,9 @@ bool InputOutputManager::Initialize(){
     fOutputTree->Branch("nFind",&nCandidatesFound);
     fOutputTree->Branch("nPairs",nPairs,"nPairs[nFind]/I");
     fOutputTree->Branch("nHitsS",nHitsS,"nHitsS[nFind]/I"); // number of hits selected from finding and fed to fitting
+    for (int iLayer = 0; iLayer<NLAY; iLayer++){
+        fOutputTree->Branch(Form("hitIndexSelectedInLayer%d",iLayer),hitIndexSelected[iLayer],Form("hitIndexSelectedInLayer%d[nFind]/I",iLayer)); // number of hits selected from finding and fed to fitting
+    }
     fOutputTree->Branch("t0offset",t0offset,"t0offset[nFind]/D");
     fOutputTree->Branch("interceptXInput",interceptXInput,"interceptXInput[nFind]/D");
     fOutputTree->Branch("interceptZInput",interceptZInput,"interceptZInput[nFind]/D");
@@ -151,52 +133,37 @@ bool InputOutputManager::Initialize(){
     return true;
 }
 
-void InputOutputManager::Reset(){
-    /*
-        t0offset = 0;
-        // prepare
-        o_nFind = 0;
-        o_nFit = 0;
-        o_dxl->resize(i_nHits);
-        o_dxr->resize(i_nHits);
-        for (int iCand = 0; iCand<NCAND; iCand++){
-            o_iinx[iCand] = 0;
-            o_iinz[iCand] = 0;
-            o_islx[iCand] = 0;
-            o_islz[iCand] = 0;
-            o_chi2x[iCand] = 1e9;
-            o_chi2z[iCand] = 1e9;
-            o_chi2i[iCand] = 1e9;
-            o_chi2pi[iCand] = 1e9;
-            o_chi2ai[iCand] = 1e9;
-            o_npairs[iCand] = 0;
-            o_icombi[iCand] = 0;
-            o_iselec[iCand] = 0;
-            o_calD[iCand]->resize(i_nHits);
-            o_fitD[iCand]->resize(i_nHits);
-            o_sel[iCand]->resize(i_nHits);
-            o_driftD[iCand]->resize(i_nHits);
-            o_nHitsS[iCand] = 0;
-            o_inx[iCand] = 0;
-            o_inz[iCand] = 0;
-            o_slx[iCand] = 0;
-            o_slz[iCand] = 0;
-            o_t0offset[iCand] = 0;
-            o_chi2[iCand] = 1e9;
-            o_chi2p[iCand] = 1e9;
-            o_chi2a[iCand] = 1e9;
+void InputOutputManager::Reset(){ // called at the beginning of every event
+    // prepare
+    nHitsG = 0;
+    nCandidatesFound = 0;
+    for (int iCand = 0; iCand<NCAND; iCand++){
+        nPairs[iCand] = 0;
+        nHitsS[iCand] = 0;
+        for (int iLayer = 0; iLayer<NLAY; iLayer++){
+            hitIndexSelected[iLayer][iCand] = -1;
         }
-        t_calD->resize(i_nHits);
-        t_fitD->resize(i_nHits);
-        t_driftD->resize(i_nHits);
-        t_sel->resize(i_nHits);
-        t_lr->resize(i_nHits);
-        nHitsG = 0;
-        v_pick_lid.clear();
-        for (int i = 0; i<NLAY; i++){
-            v_layer_ihit[i].clear();
-        }
-        */
+        t0offset[iCand] = 0; // in case t0 is set free to adjustment
+        interceptXInput[iCand] = 0;
+        interceptZInput[iCand] = 0;
+        slopeXInput[iCand] = 0;
+        slopeZInput[iCand] = 0;
+        chi2XInput[iCand] = -1;
+        chi2ZInput[iCand] = -1;
+        chi2Input[iCand] = -1;
+        chi2WithTestLayerInput[iCand] = -1;
+        pValueInput[iCand] = -1;
+        interceptX[iCand] = 0;
+        interceptZ[iCand] = 0;
+        slopeX[iCand] = 0;
+        slopeZ[iCand] = 0;
+        chi2[iCand] = -1;
+        chi2WithTestLayer[iCand] = -1;
+        pValue[iCand] = -1;
+        chi2mc[iCand] = -1;
+        chi2WithTestLayermc[iCand] = -1;
+        pValuemc[iCand] = -1;
+    }
 }
 
 void InputOutputManager::Fill(){
@@ -213,6 +180,7 @@ void InputOutputManager::Close(){
 
 void InputOutputManager::GetEntry(Long64_t iEntry){
     if (fInputTChain) fInputTChain->GetEntry(iEntry); 
+    fCurrentEntry = iEntry;
 }
 
 Long64_t InputOutputManager::GetEntries(){
@@ -222,5 +190,36 @@ Long64_t InputOutputManager::GetEntries(){
         return 0;
 }
 
-void InputOutputManager::Print(){
+void InputOutputManager::Print(TString opt){
+    printf("Entry %d, triggerNumber %d:\n",fCurrentEntry,triggerNumber);
+    printf("  Total hits: %d, good hits after cuts: %d\n",nHits,nHitsG);
+    printf("  Total hits: %d, good hits after cuts: %d\n",LayerID->size(),nHitsG);
+    if (opt.Contains("h")){
+        int iPacket = 0;
+        for (int iHit = 0; iHit<nHits; iHit++){
+            int    lid    = LayerID->at(iHit);
+            int    cid    = CellID->at(iHit);
+            int    clock  = TDCClock->at(iHit);
+            int    nPeakA = nPeaksInChannel->at(iHit);
+            int    iPeakA = iPeakInChannel->at(iHit);
+            int    nPeakL = nPeaksInPacket->at(iHit);
+            int    iPeakL = iPeakInPacket->at(iHit);
+            int    width  = PacketWidth->at(iHit);
+            int    height = ADCheight->at(iHit);
+            int    peak   = ADCpeak->at(iHit);
+            double ped    = Pedestal->at(iHit);
+            double sumA   = ADCsumAll->at(iHit);
+            double sumL   = ADCsumPacket->at(iHit);
+            double driftT = DriftT->at(iHit);
+            if (iPeakA==0){
+                printf("    layer %3d cell %3d:  %3d TDCs,  total ADC sum %.1f, pedestal %.1f\n",lid,cid,nPeakA,sumA,ped);
+                iPacket = 0;
+            }
+            if (iPeakL==0){
+                printf("        wave packet %3d: %3d peaks, local ADC sum %.1f, ADC peak %d, width %d ticks.\n",iPacket,nPeakL,sumL,peak,width);
+                iPacket++;
+            }
+            printf("  %4d      peak %d @ clock %d: driftT = %.1f ns, ADC height at trigger point %d\n",iHit,iPeakL,clock,driftT,height);
+        }
+    }
 }

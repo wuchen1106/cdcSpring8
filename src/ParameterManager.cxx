@@ -55,7 +55,7 @@ void ParameterManager::ReadInputFile(TString filename, TString dirName, bool try
 }
 
 void ParameterManager::Print(){
-    printf("#########################ParameterManager###########################");
+    printf("#########################ParameterManager###########################\n");
     printf("  geometry setup:    %d\n",geoSetup);
     printf("  beam type:         %d\n",beamType);
     TrackingParameters.Print();

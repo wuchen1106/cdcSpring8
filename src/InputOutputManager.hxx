@@ -4,6 +4,7 @@
 #include <TString.h>
 
 #include "Tracker.hxx"
+#include "header.hxx"
 
 class TFile;
 class TTree;
@@ -30,27 +31,29 @@ public:
         kMCDriftD
     };
 
-    bool Initialize();
-    void Reset();
+    bool Initialize(); /// called at the beginning of the run
+    void Reset(); /// called at the beginning of every event
     void Fill();
     void Write();
     void Close();
     void GetEntry(Long64_t iEntry);
     Long64_t GetEntries();
-    void Print();
+    void Print(TString opt = "");
+
+    int                   fCurrentEntry;
 
     // raw hits from input
     int                   triggerNumber;
     int                   nHits;
     std::vector<int> *    LayerID;
     std::vector<int> *    CellID;
-    //std::vector<int> *    TDCClock;
+    std::vector<int> *    TDCClock;
     std::vector<double> * DriftT;
     std::vector<double> * DriftDmc; // For MC input
     std::vector<double> * DOCA; // For MC input
     std::vector<double> * Pedestal;
     std::vector<int> *    ADCheight;
-    //std::vector<double> * peak;
+    std::vector<int> *    ADCpeak;
     //std::vector<int> *    rank;
     std::vector<double> * ADCsumPacket;
     std::vector<double> * ADCsumAll;
@@ -69,6 +72,7 @@ public:
     int                   nCandidatesFound;
     int                   nPairs[NCAND];
     int                   nHitsS[NCAND];
+    int                   hitIndexSelected[NLAY][NCAND];
     double                t0offset[NCAND]; // in case t0 is set free to adjustment
     double                interceptXInput[NCAND];
     double                interceptZInput[NCAND];

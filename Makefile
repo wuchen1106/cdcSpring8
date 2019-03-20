@@ -8,9 +8,10 @@ SUFFIX = .cxx
 HEADER = .h
 EXCUTE = 
 
-CXXFLAGS += -g -W -Wall -O2 -fPIC -shared
+LDFLAGS  += -shared
+CXXFLAGS += -g -W -Wall -O2 -fPIC
 CXXFLAGS += $(shell root-config --cflags)
-LIBS     += $(shell $(ROOTSYS)/bin/root-config --glibs) -lMinuit
+LIBS     += $(shell $(ROOTSYS)/bin/root-config --glibs) -lMinuit -L $(LIBDIR) -lTarget
 LIBS     += -pthread -lm -ldl -rdynamic -lGeom -lEG
 INCS     += -I$(shell $(ROOTSYS)/bin/root-config --incdir)
 INCS     += -Isrc -Iapp
@@ -20,16 +21,20 @@ SRCS := $(wildcard $(SRCDIR)/*$(SUFFIX))
 HEADERS := $(wildcard $(SRCDIR)/*$(HEADER))
 
 TGTS = $(addprefix $(BINDIR)/, $(notdir $(basename $(SRCA))))
-OBJS = $(addprefix $(LIBDIR)/, $(notdir $(SRCS:$(SUFFIX)=.so)))
+SHLS = $(LIBDIR)/libTarget.so
+OBJS = $(addprefix $(LIBDIR)/, $(notdir $(SRCS:$(SUFFIX)=.o)))
 
 .PHONY: all
 all: $(TGTS) $(OBJS)
 
-$(BINDIR)/%: $(OBJS) $(APPDIR)/%$(SUFFIX) $(HEADERS)
+$(BINDIR)/%: $(OBJS) $(APPDIR)/%$(SUFFIX) $(HEADERS) $(SHLS)
 	mkdir -p $(BINDIR); \
 	$(CXX) $(CXXFLAGS) $(LIBS) $(INCS) $(APPDIR)/$(notdir $@)$(SUFFIX) -o $@${EXCUTE} $(filter-out $(APPDIR)/%$(SUFFIX), $^)
 
-$(LIBDIR)/%.so: $(SRCDIR)/%$(SUFFIX) $(HEADERS)
+$(SHLS): $(OBJS)
+	$(CXX) $(OBJS) -o $@ $(LDFLAGS)
+
+$(LIBDIR)/%.o: $(SRCDIR)/%$(SUFFIX) $(HEADERS)
 	mkdir -p $(LIBDIR); \
 	$(CXX) $(INCS) -c $(CXXFLAGS) $< -o $@
 

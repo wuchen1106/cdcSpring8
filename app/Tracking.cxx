@@ -51,8 +51,8 @@ int main(int argc, char** argv){
     int m_runNo = 0;
     TString m_preRunName = "pre";
     TString m_runName = "cur";
-    int m_iEntryStart = 0;
-    int m_iEntryStop = 0;
+    int m_iEntryStart = -1;
+    int m_iEntryStop = -1;
     int m_nEntries = 0;
     int m_modulo = 100;
     bool m_memdebug = false;
@@ -64,7 +64,6 @@ int main(int argc, char** argv){
     int    opt_result;
 	while((opt_result=getopt(argc,argv,"M:R:B:E:N:L:C:D:V:h"))!=-1){
 		switch(opt_result){
-			/* INPUTS */
 			case 'M':
 			    m_modulo = atoi(optarg);
                 printf("Printing modulo set to %d\n",m_modulo);
@@ -201,17 +200,17 @@ int main(int argc, char** argv){
     // Prepare managers
     bool success = false;
     success = RunInfoManager::Get().Initialize(m_runNo,m_preRunName,m_runName,m_testLayer);RunInfoManager::Get().Print();
-    if (!success) MyError("Cannot initialize RunInfoManager");
+    if (!success) {MyError("Cannot initialize RunInfoManager"); return 1;}
     success = BeamManager::Get().Initialize(ParameterManager::Get().beamType);BeamManager::Get().Print();
-    if (!success) MyError("Cannot initialize BeamManager");
+    if (!success) {MyError("Cannot initialize BeamManager"); return 1;}
     success = GeometryManager::Get().Initialize(ParameterManager::Get().geoSetup); GeometryManager::Get().Print();
-    if (!success) MyError("Cannot initialize GeometryManager");
+    if (!success) {MyError("Cannot initialize GeometryManager"); return 1;}
     success = GeometryManager::Get().AdjustWirePosition(Form("%s/info/offset.%d.%s.root",HOME.Data(),m_runNo,m_preRunName.Data()));
     if (!success) MyWarn("Cannot load offset file for wire adjustment. Will ignore this step.");
     success = XTManager::Get().Initialize();
-    if (!success) MyError("Cannot initialize XTManager");
+    if (!success) {MyError("Cannot initialize XTManager"); return 1;}
     success = InputOutputManager::Get().Initialize();
-    if (!success) MyError("Cannot initialize InputOutputManager");
+    if (!success) {MyError("Cannot initialize InputOutputManager"); return 1;}
 
     // Prepare Tracker
     Tracker * tracker = new Tracker();
@@ -237,7 +236,7 @@ int main(int argc, char** argv){
     int N_found = 0;
     int N_good = 0;
     Long64_t N = InputOutputManager::Get().GetEntries();
-    if (!m_iEntryStop&&!m_iEntryStart){m_iEntryStart = 0; m_iEntryStop=N-1;}
+    if (m_iEntryStop<0||m_iEntryStart<0){m_iEntryStart = 0; m_iEntryStop=N-1;}
     MyNamedDebug("Memory","Memory size: @"<<__LINE__<<": "<<pMyProcessManager->GetMemorySize());
     for (Long64_t iEntry = m_iEntryStart; iEntry<=m_iEntryStop; iEntry++){
         MyNamedInfo("Tracking","############ Entry "<<iEntry<<" #############");
@@ -246,8 +245,8 @@ int main(int argc, char** argv){
             MyNamedDebug("Memory","Memory size: @"<<__LINE__<<": "<<pMyProcessManager->GetMemorySize());
             std::cout<<iEntry<<std::endl;
         }
-        InputOutputManager::Get().GetEntry(iEntry);
         InputOutputManager::Get().Reset();
+        InputOutputManager::Get().GetEntry(iEntry);
         tracker->Reset();
         N_trigger++; // triggered event
 
