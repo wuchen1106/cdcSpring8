@@ -93,6 +93,8 @@ public:
     void Print();
 
     GeometryManager::GeoSetup geoSetup;
+    GeometryManager::ChamberType chamberType;
+    GeometryManager::ConnectionType connectionType;
     BeamManager::BeamType beamType;
     InputOutputManager::InputType inputType;
 

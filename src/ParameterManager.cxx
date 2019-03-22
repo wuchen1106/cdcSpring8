@@ -6,6 +6,8 @@ ParameterManager* ParameterManager::fParameterManager = NULL;
 ParameterManager::ParameterManager()
 {
     geoSetup = GeometryManager::kNormal;
+    chamberType = GeometryManager::kProto4;
+    connectionType = GeometryManager::kSPring8;
     beamType = BeamManager::kSPring8;
     inputType = InputOutputManager::kData;
 }
@@ -17,6 +19,18 @@ void ParameterManager::LoadParameters(ParaBlock theParaBlock){
         if (name == "tilted") geoSetup = GeometryManager::kTilted;
         else if (name == "finger") geoSetup = GeometryManager::kFinger;
         else if (name == "normal") geoSetup = GeometryManager::kNormal;
+    }
+    if (MyRuntimeParameters::Get().HasParameter("chamberType")){
+        TString name = MyRuntimeParameters::Get().GetParameterS("chamberType");
+        name.ToLower();
+        if (name == "cdc") chamberType = GeometryManager::kCDC;
+        else if (name == "proto4") chamberType = GeometryManager::kProto4;
+    }
+    if (MyRuntimeParameters::Get().HasParameter("connectionType")){
+        TString name = MyRuntimeParameters::Get().GetParameterS("connectionType");
+        name.ToLower();
+        if (name == "spring8") connectionType = GeometryManager::kSPring8;
+        else if (name == "cosmic") connectionType = GeometryManager::kCosmic;
     }
     if (MyRuntimeParameters::Get().HasParameter("beam")){
         TString name = MyRuntimeParameters::Get().GetParameterS("beam");
@@ -56,6 +70,8 @@ void ParameterManager::ReadInputFile(TString filename, TString dirName, bool try
 
 void ParameterManager::Print(){
     printf("#########################ParameterManager###########################\n");
+    printf("  Chamber type:      %d\n",chamberType);
+    printf("  connection type:   %d\n",connectionType);
     printf("  geometry setup:    %d\n",geoSetup);
     printf("  beam type:         %d\n",beamType);
     TrackingParameters.Print();

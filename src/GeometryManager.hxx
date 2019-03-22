@@ -1,7 +1,44 @@
 #ifndef GeometryManager_hxx_seen
 #define GeometryManager_hxx_seen
 
-#include "header.hxx"
+// Single board parameters
+#define NSAM 32
+#define NCHS 48
+#define MIN_ADCL -50  // used in getH
+#define MAX_ADCL 1000 // used in getH
+#define MIN_ADC 50   // used in getP
+#define MAX_ADC 750  // used in getP
+#define NBINS  256
+#define MAX_WIDTH 10 // about merging. Depending on drift velocity: HV and Gas
+
+// Choose number of layers
+#define NLAY 9
+//#define NLAY  11
+//#define NLAY  19
+
+// TODO: consider to make a large map for general cases
+#if NLAY == 9
+#define NCEL  11
+#define NCELA 99
+#define NBRD 2
+#define NCHT 96
+#define NZXP 8
+#define NITERSMAX 100
+#elif NLAY == 11
+#define NCEL  12
+#define NCELA 132
+#define NBRD 3
+#define NCHT 144
+#define NZXP 10
+#define NITERSMAX 100
+#elif NLAY == 19 // CRT
+#define NCEL  12
+#define NCELA 228
+#define NBRD 13
+#define NCHT 624
+#define NZXP 18
+#define NITERSMAX 25
+#endif
 
 class TString;
 class Scintillator;
@@ -9,6 +46,16 @@ class Chamber;
 
 class GeometryManager{
 public:
+    enum ChamberType{
+        kProto4,
+        kCDC
+    };
+
+    enum ConnectionType{
+        kSPring8,
+        kCosmic
+    };
+
     enum GeoSetup{
         kNormal,
         kTilted,
@@ -28,11 +75,16 @@ public:
         return *fGeometryManager;
     }
 
-    bool Initialize(GeoSetup theGeoSetup = kNormal);
+    bool IsInScinti(double saftyFactor,double inx, double slx, double inz, double slz);
+    bool Initialize(GeoSetup theGeoSetup = kNormal, ConnectionType theConnectionType = kSPring8, ChamberType theChamberType = kProto4);
     bool AdjustWirePosition(TString file);
     Scintillator * GetScintillator(){return fScintillator;};
     Chamber* GetChamber(){return fChamber;};
     void Print();
+
+    // the refernece X-Z plane position
+    // TODO: for real chamber case we need reference radius
+    double ReferenceY;
 
 private:
     /// The static pointer to the singleton instance.
@@ -50,7 +102,6 @@ public:
 
     void Print();
     void SetGeometry(GeometryManager::GeoSetup theGeoSetup);
-    bool IsInScinti(double saftyFactor,double inx, double slx, double inz, double slz, double y0 = YREFERENCE);
 
     double Yup;
     double Ydown;
@@ -60,30 +111,45 @@ public:
 
 class Chamber{
 public:
-    Chamber(GeometryManager::GeoSetup theGeoSetup = GeometryManager::kNormal);
+    Chamber(GeometryManager::GeoSetup theGeoSetup = GeometryManager::kNormal, GeometryManager::ConnectionType theConnectionType = GeometryManager::kSPring8, GeometryManager::ChamberType theChamberType = GeometryManager::kProto4);
     virtual ~Chamber(){};
 
     void Print();
-    void SetGeometry(GeometryManager::GeoSetup theGeoSetup);
+    void SetGeometry(GeometryManager::GeoSetup theGeoSetup, GeometryManager::ConnectionType theConnectionType, GeometryManager::ChamberType theChamberType);
     void Initialize();
     bool LoadWireMap(TString file);
     bool LoadCrossPoints(TString file);
     bool AdjustWirePosition(TString file);
 
-    // map for wiremap
-    double  map_x[NLAY][NCEL][2];
-    double  map_y[NLAY][NCEL][2];
-    double  map_z[NLAY][NCEL][2];
-    int     map_ch[NLAY][NCEL];
-    int     map_bid[NLAY][NCEL];
-    double  map_theta[NLAY][NCEL];
-    int     map_lid[NBRD][NCHS];
-    int     map_wid[NBRD][NCHS];
+    // Cell shape
+    double cellHeight;
+    double cellWidth;
+
+    // chamber geometry
+    double chamberLength;
+    double chamberHeight;
+    double chamberPositionX;
+    double chamberPositionY;
+    double chamberPositionZ;
+
+    // map for wires
+    double  wire_x[NLAY][NCEL][2];
+    double  wire_y[NLAY][NCEL][2];
+    double  wire_z[NLAY][NCEL][2];
+    int     wire_ch[NLAY][NCEL];
+    int     wire_bid[NLAY][NCEL];
+    double  wire_theta[NLAY][NCEL];
+    int     wire_lid[NBRD][NCHS];
+    int     wire_wid[NBRD][NCHS];
     // map for wire position adjustment
-    double  map_adjust[NLAY][NCEL];
-    // map for cross points
-    double mcp_xc[NZXP][NCEL][NCEL]; // z-x planes corresponding to the layerID of the lower layer counting from 1 
-    double mcp_zc[NZXP][NCEL][NCEL]; // z-x planes corresponding to the layerID of the lower layer counting from 1 
+    // TODO: consider about wire sag and wire rotation calibration in the future
+    double  wire_adjustX[NLAY][NCEL];
+    double  wire_adjustY[NLAY][NCEL];
+    double  wire_adjustZ[NLAY][NCEL];
+    // map for cross points of two wire with the two given cellIDs from the given layer and the layer above it.
+    double wirecross_x[NLAY][NCEL][NCEL];
+    double wirecross_y[NLAY][NCEL][NCEL];
+    double wirecross_z[NLAY][NCEL][NCEL];
 };
 
 #endif

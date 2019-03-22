@@ -3,7 +3,7 @@
 
 #include <TString.h>
 
-#include "header.hxx"
+#include "GeometryManager.hxx"
 
 class TFile;
 class TF1;

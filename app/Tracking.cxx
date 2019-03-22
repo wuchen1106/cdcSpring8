@@ -18,7 +18,6 @@
 #include <TMinuit.h>
 #include <TMath.h>
 
-#include "header.hxx"
 #include "Log.hxx"
 #include "MyProcessManager.hxx"
 
@@ -209,7 +208,7 @@ int main(int argc, char** argv){
     if (!success) {MyError("Cannot initialize RunInfoManager"); return 1;}
     success = BeamManager::Get().Initialize(ParameterManager::Get().beamType);BeamManager::Get().Print();
     if (!success) {MyError("Cannot initialize BeamManager"); return 1;}
-    success = GeometryManager::Get().Initialize(ParameterManager::Get().geoSetup); GeometryManager::Get().Print();
+    success = GeometryManager::Get().Initialize(ParameterManager::Get().geoSetup,ParameterManager::Get().connectionType,ParameterManager::Get().chamberType); GeometryManager::Get().Print();
     if (!success) {MyError("Cannot initialize GeometryManager"); return 1;}
     success = GeometryManager::Get().AdjustWirePosition(Form("%s/info/offset.%d.%s.root",HOME.Data(),m_runNo,m_preRunName.Data()));
     if (!success) MyWarn("Cannot load offset file for wire adjustment. Will ignore this step.");

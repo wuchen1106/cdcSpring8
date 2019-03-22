@@ -1,7 +1,6 @@
 #include <math.h>
 #include <stdio.h>  /* printf */
 
-#include "header.hxx"
 #include "Log.hxx"
 #include "BeamManager.hxx"
 
@@ -30,8 +29,8 @@ bool BeamManager::Initialize(BeamType theBeamType){
         beamInx    = 0;
         beamSlzRange = 0.3;
         beamSlxRange = 0.1;
-        beamInzRange = chamberHL;
-        beamInxRange = chamberHH;
+        beamInzRange = 350;
+        beamInxRange = 100;
         if (beamType == kSPring8Tilted){
             beamSlx += tan(-18.4*M_PI/180);
         }
