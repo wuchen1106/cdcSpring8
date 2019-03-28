@@ -10,6 +10,7 @@ ParameterManager::ParameterManager()
     connectionType = GeometryManager::kSPring8;
     beamType = BeamManager::kSPring8;
     inputType = InputOutputManager::kData;
+    peakType = TrackingPara::kFirstPeak;
 }
 
 void ParameterManager::LoadParameters(ParaBlock theParaBlock){
@@ -39,15 +40,21 @@ void ParameterManager::LoadParameters(ParaBlock theParaBlock){
         else if (name == "spring8tilted") beamType = BeamManager::kSPring8;
         else if (name == "cosmic") beamType = BeamManager::kCosmic;
     }
+    if (MyRuntimeParameters::Get().HasParameter("inputType")){
+        TString name = MyRuntimeParameters::Get().GetParameterS("inputType");
+        name.ToLower();
+        if (name == "data") inputType = InputOutputManager::kData;
+        else if (name == "mc" || name == "mcdriftt") inputType = InputOutputManager::kMCDriftT;
+        else if (name == "mcdriftd") inputType = InputOutputManager::kMCDriftD;
+    }
+    if (MyRuntimeParameters::Get().HasParameter("peakType")){
+        TString name = MyRuntimeParameters::Get().GetParameterS("peakType");
+        name.ToLower();
+        if (name == "firstpeak") peakType = TrackingPara::kFirstPeak;
+        else if (name == "highestpeak") peakType = TrackingPara::kHighestPeak;
+        else if (name == "allpeaks") peakType = TrackingPara::kAllPeaks;
+    }
     if (theParaBlock==kAll||theParaBlock==kTracking){
-        if (MyRuntimeParameters::Get().HasParameter("tracking.inputType")){
-            TString name = MyRuntimeParameters::Get().GetParameterS("tracking.inputType");
-            name.ToLower();
-            if (name == "data") inputType = InputOutputManager::kData;
-            else if (name == "mc" || name == "mcdriftt") inputType = InputOutputManager::kMCDriftT;
-            else if (name == "mcdriftd") inputType = InputOutputManager::kMCDriftD;
-        }
-        if (MyRuntimeParameters::Get().HasParameter("peakType")) TrackingParameters.peakType = MyRuntimeParameters::Get().GetParameterI("peakType");
         if (MyRuntimeParameters::Get().HasParameter("tracking.nHitsMax")) TrackingParameters.nHitsMax = MyRuntimeParameters::Get().GetParameterI("tracking.nHitsMax");
         if (MyRuntimeParameters::Get().HasParameter("tracking.nHitsSMin")) TrackingParameters.nHitsSMin = MyRuntimeParameters::Get().GetParameterI("tracking.nHitsSMin");
         if (MyRuntimeParameters::Get().HasParameter("tracking.nPairsMin")) TrackingParameters.nPairsMin = MyRuntimeParameters::Get().GetParameterI("tracking.nPairsMin");
@@ -74,6 +81,8 @@ void ParameterManager::Print(){
     printf("  connection type:   %d\n",connectionType);
     printf("  geometry setup:    %d\n",geoSetup);
     printf("  beam type:         %d\n",beamType);
+    printf("  input type:        %d\n",inputType);
+    printf("  peak type:         %d\n",peakType);
     TrackingParameters.Print();
     CalibParameters.Print();
     XTAnalylzerParameters.Print();
@@ -90,8 +99,6 @@ TrackingPara::TrackingPara(){
     tmax = 800;
     sumCut = -10;
     aaCut = 0;
-    inputType = 0; // 2 for MC without layer specified; 3 for MC with layer specified; 0 for data
-    peakType = 0; // 0, only the first peak over threshold; 1, all peaks over threshold; 2, even including shaddowed peaks
     workType = 0; // fr/l_0; 1, even/odd; -1, even/odd reversed; others, all layers
     BlindLayer = 0; // Don't use this layer for tracking
     t0error = 0; // if t0 error is 0, then don't set it as a free parameter in fitting
@@ -114,8 +121,6 @@ void TrackingPara::Print(){
     printf("  aaCut       = %f\n",aaCut);
     printf("  BlindLayer  = %d\n",BlindLayer);
     printf("  workType    = %d, %s\n",workType,workType==0?"all as 0":(workType==1?"even/odd":(workType==-1?"even/odd reversed":"all layers")));
-    printf("  inputType   = %d, %s\n",inputType,inputType==0?"Real Data":(inputType==2?"MC X":"MC T"));
-    printf("  peakType    = %d, %s\n",peakType,peakType==0?"First peak over threshold":"All peaks over threshold");
 }
 
 CalibPara::CalibPara(){

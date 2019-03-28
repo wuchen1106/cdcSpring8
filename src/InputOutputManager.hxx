@@ -1,9 +1,10 @@
 #ifndef InputOutputManager_hxx_seen
 #define InputOutputManager_hxx_seen
 
+#define NCAND 10
+
 #include <TString.h>
 
-#include "Tracker.hxx"
 #include "GeometryManager.hxx"
 
 class TFile;

@@ -20,6 +20,7 @@ XTManager::XTManager():
 	fXTRightDefault(0),
     fResIntrinsic(0)
 {
+    xtType = kSingleFolded;
     for (int i = 0; i<NLAY; i++){
         fXTLeft[i] = 0; 
         fXTRight[i] = 0;
@@ -84,6 +85,97 @@ bool XTManager::Initialize(){
 	fResIntrinsic = (TGraph*)fInputFileRes->Get("gr_resIni");
 
     return true;
+}
+
+double XTManager::t2x(double time, int lid, int wid, int lr, int & status){ // 1: right; 2: right end; -1: left; -2: left end; 0 out of range
+    TF1* f=0;
+    // FIXME: consider to use left/right case and folded case
+    if (xtType == kSingleFolded){
+        if (lr>=0) f = fXTRightDefault;
+        else       f = fXTLeftDefault;
+    }
+    else if (xtType == kSingleLeftRight){
+        if (lr>=0) f = fXTRightDefault;
+        else       f = fXTLeftDefault;
+    }
+	else if (xtType == kEvenOddFolded){
+	    if (lid%2==0){
+            if (lr>=0) f = fXTRightEven;
+            else       f = fXTLeftEven;
+        }
+        else{
+            if (lr>=0) f = fXTRightOdd;
+            else       f = fXTLeftOdd;
+        }
+	}
+	else if (xtType == kEvenOddLeftRight){
+	    if (lid%2==0){
+            if (lr>=0) f = fXTRightEven;
+            else       f = fXTLeftEven;
+        }
+        else{
+            if (lr>=0) f = fXTRightOdd;
+            else       f = fXTLeftOdd;
+        }
+	}
+	else if (xtType == kAllFolded){
+        if (lr>=0){
+            f = fXTRight[lid];
+        }
+        else {
+            f = fXTLeft[lid];
+        }
+	}
+	else if (xtType == kAllLeftRight){
+        if (lr>=0){
+            f = fXTRight[lid];
+        }
+        else {
+            f = fXTLeft[lid];
+        }
+    }
+    if (!f){
+        MyError("Cannot get XT curve for layer "<<lid<<"!\n");
+        status = -2;
+        return 0;
+    }
+    double tmax = f->GetXmax();
+    double tmin = f->GetXmin();
+    status = 0;
+    double dd = 0;
+    if (time>tmax){
+        status = 1;
+        dd = f->Eval(tmax);
+    }
+    else if (time<tmin){
+        status = -1;
+        dd = 0;
+    }
+    else {
+        status = 0;
+        dd = f->Eval(time);
+    }
+    return dd;
+}
+
+double XTManager::GetError(double dd){
+	double error = 0.2; // default value 200 um
+	int N = fResIntrinsic->GetN();
+	for (int i = 0; i<N-1; i++){
+		double d1,sig1;
+		double d2,sig2;
+		fResIntrinsic->GetPoint(i,d1,sig1);
+		fResIntrinsic->GetPoint(i+1,d2,sig2);
+		if (d2>7){
+		    error = sig1;
+			break;
+		}
+        else if (d1<dd&&d2>=dd){
+			error = (sig1*(d2-dd)+sig2*(dd-d1))/(d2-d1);
+			break;
+		}
+	}
+	return error;
 }
 
 void XTManager::Print(){

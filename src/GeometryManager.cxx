@@ -243,3 +243,19 @@ bool GeometryManager::IsInScinti(double saftyFactor,double inx, double slx, doub
     else return true;
 }
 
+double GeometryManager::GetDOCA(int lid, int wid, double slx, double inx, double slz, double inz)
+{
+	double ydown = fScintillator->Ydown;
+	double xdown = inx-slx*(ReferenceY-ydown);
+	double zdown = inz-slz*(ReferenceY-ydown);
+	vTrackU.SetXYZ(inx,ReferenceY,inz);
+	vTrackD.SetXYZ(xdown,ydown,zdown);
+	vWireHV.SetXYZ(fChamber->wire_x[lid][wid][0],fChamber->wire_y[lid][wid][0],fChamber->wire_z[lid][wid][0]);
+	vWireRO.SetXYZ(fChamber->wire_x[lid][wid][1],fChamber->wire_y[lid][wid][1],fChamber->wire_z[lid][wid][1]);
+	vTrack = vTrackD-vTrackU;
+	vWire = vWireRO-vWireHV;
+	vDist = vWireHV-vTrackU;
+	vAxis = vWire.Cross(vTrack);
+	double value = -vDist*(vAxis.Unit());
+	return value;
+}

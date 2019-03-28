@@ -23,12 +23,8 @@ public:
     }
 
     bool Initialize(BeamType theBeamType);
-    bool IsInBeam();
+    bool IsInBeam(double islx, double islz);
     void Print();
-
-private:
-    /// The static pointer to the singleton instance.
-    static BeamManager* fBeamManager;
 
     BeamType beamType;
     double   beamSlz;
@@ -39,6 +35,10 @@ private:
     double   beamSlxRange;
     double   beamInzRange;
     double   beamInxRange;
+
+private:
+    /// The static pointer to the singleton instance.
+    static BeamManager* fBeamManager;
 };
 
 #endif

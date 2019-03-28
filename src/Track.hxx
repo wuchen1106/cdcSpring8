@@ -27,8 +27,21 @@ public:
     virtual ~TrackCandidate(){};
 
     void Reset();
+    bool operator ==(const TrackCandidate &);
+    void operator =(const TrackCandidate &);
 
     std::vector<int> hitIndexSelected;
+    std::vector<int> hitLeftRightSelected;
+
+    double t0Offset;
+    int    nPairs;
+    int    nGoodPairs;
+    double chi2X;
+    double chi2Z;
+    double chi2;
+    double chi2WithTestLayer;
+    double pValue;
+    double NDF;
 };
 
 class TrackResult:public TrackCandidate{
@@ -37,10 +50,10 @@ public:
     virtual ~TrackResult(){};
 
     void Reset();
+    bool operator ==(const TrackResult &);
+    void operator =(const TrackResult &);
 
-    double chi2;
-    double NDF;
-    TrackResult * fInitialTrackResult;
+    TrackCandidate initialTrackCandidate;
 };
 
 #endif

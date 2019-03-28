@@ -1,6 +1,8 @@
 #ifndef GeometryManager_hxx_seen
 #define GeometryManager_hxx_seen
 
+#include <TVector3.h>
+
 // Single board parameters
 #define NSAM 32
 #define NCHS 48
@@ -80,19 +82,29 @@ public:
     bool AdjustWirePosition(TString file);
     Scintillator * GetScintillator(){return fScintillator;};
     Chamber* GetChamber(){return fChamber;};
+    double GetDOCA(int lid, int wid, double slx, double inx, double slz, double inz);
     void Print();
 
     // the refernece X-Z plane position
     // TODO: for real chamber case we need reference radius
     double ReferenceY;
 
+    GeoSetup       fGeoSetup;
+    Scintillator * fScintillator;
+    Chamber      * fChamber;
+
 private:
     /// The static pointer to the singleton instance.
     static GeometryManager* fGeometryManager;
 
-    GeoSetup       fGeoSetup;
-    Scintillator * fScintillator;
-    Chamber      * fChamber;
+    TVector3 vTrackU;
+    TVector3 vTrackD;
+    TVector3 vTrack;
+    TVector3 vWireHV;
+    TVector3 vWireRO;
+    TVector3 vWire;
+    TVector3 vDist;
+    TVector3 vAxis;
 };
 
 class Scintillator{

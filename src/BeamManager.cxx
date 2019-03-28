@@ -25,7 +25,7 @@ bool BeamManager::Initialize(BeamType theBeamType){
         // FIXME: currently set a broader range. Need further investigation
         beamSlz    = 0.02;
         beamSlx    = 0;
-        beamInz    = 150; // mm
+        beamInz    = 0; // mm
         beamInx    = 0;
         beamSlzRange = 0.3;
         beamSlxRange = 0.1;
@@ -40,6 +40,10 @@ bool BeamManager::Initialize(BeamType theBeamType){
         return false;
     }
     return true;
+}
+
+bool BeamManager::IsInBeam(double islx, double islz){
+    return fabs(islx-beamSlx)<beamSlxRange&&fabs(islz-beamSlz)<beamSlzRange;
 }
 
 void BeamManager::Print(){

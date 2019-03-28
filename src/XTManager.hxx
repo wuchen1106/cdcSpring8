@@ -11,6 +11,15 @@ class TGraph;
 
 class XTManager{
 public:
+    enum XTType{
+        kSingleFolded,
+        kSingleLeftRight,
+        kAllFolded,
+        kAllLeftRight,
+        kEvenOddFolded,
+        kEvenOddLeftRight
+    };
+
     XTManager();
     virtual ~XTManager();
     
@@ -25,8 +34,12 @@ public:
     }
 
     bool Initialize();
+    double t2x(double time, int lid, int wid, int lr, int & status);
+    double GetError(double dd);
     void Print();
     bool PrintXTfunc(const TF1 * fl, const TF1 * fr);
+
+    XTType xtType;
 
 private:
     /// The static pointer to the singleton instance.

@@ -217,9 +217,6 @@ int main(int argc, char** argv){
     success = InputOutputManager::Get().Initialize();
     if (!success) {MyError("Cannot initialize InputOutputManager"); return 1;}
 
-    // Prepare Tracker
-    Tracker * tracker = new Tracker();
-
     // for track finding
     double sciYup = GeometryManager::Get().GetScintillator()->Yup;
     double sciYdown = GeometryManager::Get().GetScintillator()->Ydown;
@@ -238,6 +235,11 @@ int main(int argc, char** argv){
     double aaCut = ParameterManager::Get().TrackingParameters.aaCut;
     double tmin = ParameterManager::Get().TrackingParameters.tmin;
     double tmax = ParameterManager::Get().TrackingParameters.tmax;
+    TrackingPara::PeakType peakType = ParameterManager::Get().peakType;
+    InputOutputManager::InputType inputType = ParameterManager::Get().inputType;
+
+    // Prepare Tracker
+    Tracker * tracker = new Tracker(inputType);
 
     //===================Tracking====================================
     // Efficiency Counters
@@ -265,8 +267,14 @@ int main(int argc, char** argv){
             double aa = InputOutputManager::Get().ADCsumAll->at(iHit);
             double sum = InputOutputManager::Get().ADCsumPacket->at(iHit);
             double driftT = InputOutputManager::Get().DriftT->at(iHit);
+            int iPeak = InputOutputManager::Get().iPeakInChannel->at(iHit);
             int lid = InputOutputManager::Get().LayerID->at(iHit);
             if (lid==0) continue; // assuming the first layer is dummy layer. FIXME: should add flag for other connections
+            if (peakType!= TrackingPara::kAllPeaks&&iPeak!=0) continue; // TODO: not considering about the highest peak option yet
+            if (lid==m_testLayer){
+                tracker->hitIndexInTestLayer->push_back(iHit);
+                continue;
+            }
             if (aa<aaCut) continue;
             if (sum<sumCut) continue;
             if (driftT<tmin||driftT>tmax) continue;
@@ -279,12 +287,11 @@ int main(int argc, char** argv){
         ///    This tracking scheme doesn't support the tracking of multiple co-existing tracks.
         int nPairs = 0;
         for (int lid = lidStart; lid <= lidStop; lid++){
-            if (lid==m_testLayer) continue;
-            if(lid+1!=m_testLayer && lid+1<=lidStop && tracker->hitLayerIndexMap->at(lid+1)->size()>0){
+            if(lid+1<=lidStop && tracker->hitLayerIndexMap->at(lid+1)->size()>0){
                 tracker->pairableLayers->push_back(lid);
                 nPairs++;
             }
-            else if (lid-1!=m_testLayer && lid-1>=lidStart && tracker->hitLayerIndexMap->at(lid-1)->size()>0){
+            else if (lid-1>=lidStart && tracker->hitLayerIndexMap->at(lid-1)->size()>0){
                 tracker->pairableLayers->push_back(lid);
             }
         }
@@ -305,7 +312,7 @@ int main(int argc, char** argv){
             tracker->DoTracking();
 
             /// 4. Check and save tracking results.
-            int nHitsS = tracker->trackCandidates[0].hitIndexSelected.size();
+            int nHitsS = tracker->trackResults[0].hitIndexSelected.size();
             MyNamedVerbose("Tracking","Good event, after tracking, "<<nHitsS<<" hits selected in the first candidate");
             if (nHitsS>=nHitsSMin){
                 N_good++; // successfully reconstructed a track

@@ -9,6 +9,12 @@
 // parameter block for tracking
 class TrackingPara{
 public:
+    enum PeakType{
+        kFirstPeak,
+        kHighestPeak,
+        kAllPeaks
+    };
+
     TrackingPara();
     virtual ~TrackingPara(){};
     void Print();
@@ -21,8 +27,7 @@ public:
     int    tmax;
     double sumCut;
     double aaCut;
-    int    inputType;
-    int    peakType;
+    PeakType peakType;
     int    workType;
     int    BlindLayer;
     double t0error;
@@ -97,6 +102,7 @@ public:
     GeometryManager::ConnectionType connectionType;
     BeamManager::BeamType beamType;
     InputOutputManager::InputType inputType;
+    TrackingPara::PeakType peakType;
 
     TrackingPara    TrackingParameters;
     CalibPara       CalibParameters;
