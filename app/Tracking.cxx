@@ -287,6 +287,7 @@ int main(int argc, char** argv){
         ///    This tracking scheme doesn't support the tracking of multiple co-existing tracks.
         int nPairs = 0;
         for (int lid = lidStart; lid <= lidStop; lid++){
+            if (tracker->hitLayerIndexMap->at(lid)->size()==0) continue;
             if(lid+1<=lidStop && tracker->hitLayerIndexMap->at(lid+1)->size()>0){
                 tracker->pairableLayers->push_back(lid);
                 nPairs++;

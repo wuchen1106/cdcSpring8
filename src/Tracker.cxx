@@ -17,6 +17,7 @@ std::vector<int>               * Tracker::hitIndexInTestLayer = NULL;
 std::vector<std::vector<int>*> * Tracker::hitLayerIndexMap = NULL;
 TrackResult Tracker::currentTrackResult;
 TrackResult Tracker::trackResults[NCAND];
+std::map <int, int>    Tracker::hitIndexLeftRight;
 std::map <int, double> Tracker::hitIndexDriftDLeftMap;
 std::map <int, double> Tracker::hitIndexDriftDRightMap;
 
@@ -95,6 +96,7 @@ void Tracker::Reset(){
     }
     hitIndexInTestLayer->clear();
     pairableLayers->clear();
+    hitIndexLeftRight.clear();
     hitIndexDriftDLeftMap.clear();
     hitIndexDriftDRightMap.clear();
 
@@ -136,6 +138,7 @@ void Tracker::updateDriftD(){
             double driftT = InputOutputManager::Get().DriftT->at(hitIndex); // FIXME: should add t0 offset consideration here
             int wid = InputOutputManager::Get().CellID->at(hitIndex);
             int status;
+            hitIndexLeftRight[hitIndex] = 0;
             hitIndexDriftDLeftMap[hitIndex] = XTManager::Get().t2x(driftT,lid,wid,-1,status);
             hitIndexDriftDRightMap[hitIndex] = XTManager::Get().t2x(driftT,lid,wid,1,status);
         }
@@ -147,6 +150,7 @@ void Tracker::updateDriftD(){
         int lid = InputOutputManager::Get().LayerID->at(hitIndex);
         int wid = InputOutputManager::Get().CellID->at(hitIndex);
         int status;
+        hitIndexLeftRight[hitIndex] = 0;
         hitIndexDriftDLeftMap[hitIndex] = XTManager::Get().t2x(driftT,lid,wid,-1,status);
         hitIndexDriftDRightMap[hitIndex] = XTManager::Get().t2x(driftT,lid,wid,1,status);
     }
@@ -193,7 +197,7 @@ int Tracker::fitting(int iselection){
 
         /// 1. Prepare drift distance according to left/right choices
         InputOutputManager::Get().nCandidatesFound++;
-        setLRdriftD(icombi); // set left right for picked hits
+        setLeftRight(icombi); // set left right for picked hits
 
         /// 2. Get pair positions according to the initial track parameter. Fit pairs on Y-X and Y-Z plains
         Reset2DFunctions();
@@ -289,12 +293,13 @@ int Tracker::fitting(int iselection){
     return 0;
 }
 
-void Tracker::setLRdriftD(int icombi){
+void Tracker::setLeftRight(int icombi){
     int nPicks = pairableLayers->size();
     for (int iPick = 0; iPick<nPicks; iPick++){
         int ilr = (icombi&(1<<iPick))>>iPick;
         if (ilr==0) ilr = -1; // 1 for right, -1 for left
         pickLR[iPick] = ilr;
+        hitIndexLeftRight[pickIndex[iPick]] = ilr;
     }
 }
 
@@ -482,7 +487,10 @@ void Tracker::pickUpHitsForFitting(double residualCut){
             if (fabs(residual)<fabs(resMin)){
                 resMin = residual;
                 theHitIndex = iHit;
-                theLR = doca>=0?1:-1;
+                if (hitIndexLeftRight[iHit])
+                    theLR = hitIndexLeftRight[iHit];
+                else
+                    theLR = doca>=0?1:-1;
             }
         }
         if (fabs(resMin)<residualCut){

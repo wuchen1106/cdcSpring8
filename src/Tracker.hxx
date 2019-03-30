@@ -24,6 +24,7 @@ public:
 
     static std::vector<int> * hitIndexInTestLayer; /// store a list of hit indice in the test layer
     static std::vector<std::vector<int>*> * hitLayerIndexMap; /// store a list of hit indice for each layer (except for the test layer)
+    static std::map <int, int>    hitIndexLeftRight; /// store a map from hit index to left right. Set upon l/r combination selection
     static std::map <int, double> hitIndexDriftDLeftMap; /// store a map from hit index to driftD calculated by XT left side (negative value)
     static std::map <int, double> hitIndexDriftDRightMap; /// store a map from hit index to driftD calculated by XT right side (positive value)
 
@@ -41,7 +42,7 @@ private:
     void updateDriftD(); /// calculate drift distance for every hit in the given maps with both left and right assumptions. Will be stored in hitIndexDriftDLeftMap and hitIndexDriftDRightMap
     int tracking(int ipick,int & iselection); /// Loop in the given layer hits map (hitLayerIndexMap). Called recursively. In each iterative call, pick up one hit per layer in the pairable layers and perform tracking.
     int fitting(int iselection); /// Fit the track with given selection of hits
-    void setLRdriftD(int icombi); /// get left/right from the given combination index, set driftD accordingly
+    void setLeftRight(int icombi); /// get left/right from the given combination index
     void Reset2DFunctions(double MoveRatioX = 0, double MoveRatioZ = 0); /// get the 2-D fitting functions reset to default values. If arguements are given, then set with them as offsets
     bool Fit2D(double safetyFactor, bool fitWithError, double & chi2X, double & chi2Z, bool & inScint, bool & fromSource); /// do the 2-D fitting. Firstly the pair positions will be recalculated according to the track parameters stored in the 2-D functions. Then the 2-D functions will be updated with new fitting.
     int getChi2XZ(double & chi2x, double & chi2z); /// get chi2 for 2-D fittings on Y-X and Y-Z planes

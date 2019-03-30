@@ -5,7 +5,7 @@ LIBDIR = $(BINARIESDIR)/lib
 APPDIR = app
 SRCDIR = src
 SUFFIX = .cxx
-HEADER = .h
+HEADER = .hxx
 EXCUTE = 
 
 LDFLAGS  += -shared
@@ -25,9 +25,9 @@ SHLS = $(LIBDIR)/libTarget.so
 OBJS = $(addprefix $(LIBDIR)/, $(notdir $(SRCS:$(SUFFIX)=.o)))
 
 .PHONY: all
-all: $(TGTS) $(OBJS)
+all: $(TGTS) $(SHLS) $(OBJS)
 
-$(BINDIR)/%: $(OBJS) $(APPDIR)/%$(SUFFIX) $(HEADERS) $(SHLS)
+$(BINDIR)/%: $(APPDIR)/%$(SUFFIX) $(HEADERS) $(SHLS)
 	mkdir -p $(BINDIR); \
 	$(CXX) $(CXXFLAGS) $(LIBS) $(INCS) $(APPDIR)/$(notdir $@)$(SUFFIX) -o $@${EXCUTE} $(filter-out $(APPDIR)/%$(SUFFIX), $^)
 
