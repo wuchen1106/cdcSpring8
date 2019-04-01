@@ -119,6 +119,15 @@ int main(int argc, char** argv){
                             default:
                                 print_usage(argv[0]);
                         }
+                        for (std::map<std::string,Log::ErrorPriority>::iterator i 
+                                = namedDebugLevel.begin();
+                                i != namedDebugLevel.end();
+                                ++i) {
+                            if (i->first=="general")
+                                Log::SetDebugLevel(i->second);
+                            else
+                                Log::SetDebugLevel(i->first.c_str(), i->second);
+                        }
                     }
                     break;
                 }
@@ -147,6 +156,15 @@ int main(int argc, char** argv){
                                 print_usage(argv[0]);
                         }
                     }
+                    for (std::map<std::string,Log::LogPriority>::iterator i 
+                            = namedLogLevel.begin();
+                            i != namedLogLevel.end();
+                            ++i) {
+                        if (i->first=="general")
+                            Log::SetLogLevel(i->second);
+                        else
+                            Log::SetLogLevel(i->first.c_str(), i->second);
+                    }
                     break;
                 }
 			case '?':
@@ -159,25 +177,6 @@ int main(int argc, char** argv){
 	}
 	if (m_nEntries>0){
         m_iEntryStop = m_iEntryStart+m_nEntries-1;
-    }
-    for (std::map<std::string,Log::ErrorPriority>::iterator i 
-            = namedDebugLevel.begin();
-            i != namedDebugLevel.end();
-            ++i) {
-        if (i->first=="general")
-            Log::SetDebugLevel(i->second);
-        else
-            Log::SetDebugLevel(i->first.c_str(), i->second);
-    }
-
-    for (std::map<std::string,Log::LogPriority>::iterator i 
-            = namedLogLevel.begin();
-            i != namedLogLevel.end();
-            ++i) {
-        if (i->first=="general")
-            Log::SetLogLevel(i->second);
-        else
-            Log::SetLogLevel(i->first.c_str(), i->second);
     }
 
 	if (argc-optind<2){

@@ -153,6 +153,10 @@ int MyRuntimeParameters::TryLoadingParametersFile(std::string parameterName){
 
   // Figure out the name of the package
   int pos = parameterName.find(".");
+  if (pos<0){
+      MyWarn("Cannot find the packageName from parameter "<<parameterName);
+      return 0;
+  }
   TString packageName(parameterName.c_str(), pos);
 
   // and the file name for parameters file
@@ -163,6 +167,10 @@ int MyRuntimeParameters::TryLoadingParametersFile(std::string parameterName){
   TString packageROOT = packageName + "ROOT";
   TString dirName =  getenv(packageROOT.Data()) 
     + TString("/parameters/");
+  if (dirName == "/parameters/"){
+      MyWarn("Cannot find enviroment variable for package "<<packageName);
+      dirName = "parameters/";
+  }
   // Now try reading in this file.  Last input variable is set to true,
   // indicating that we don't want to throw exception if a file is not found.
   ReadInputFile(fileName,dirName,true);
