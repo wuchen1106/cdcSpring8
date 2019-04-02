@@ -262,14 +262,16 @@ int main(int argc, char** argv){
 
         /// 1. Scan raw hits, select a list of them according to predefined cuts
         int nHitsG = 0; // number of good hits in this event
+        int iPeakOverCut = 0;
         for (int iHit = 0; iHit<InputOutputManager::Get().nHits; iHit++){
             double aa = InputOutputManager::Get().ADCsumAll->at(iHit);
             double sum = InputOutputManager::Get().ADCsumPacket->at(iHit);
             double driftT = InputOutputManager::Get().DriftT->at(iHit);
             int iPeak = InputOutputManager::Get().iPeakInChannel->at(iHit);
+            if (iPeak == 0) iPeakOverCut = 0;
             int lid = InputOutputManager::Get().LayerID->at(iHit);
             if (lid==0) continue; // assuming the first layer is dummy layer. FIXME: should add flag for other connections
-            if (peakType!= TrackingPara::kAllPeaks&&iPeak!=0) continue; // TODO: not considering about the highest peak option yet
+            if (peakType!= TrackingPara::kAllPeaks&&iPeakOverCut!=0) continue; // TODO: not considering about the highest peak option yet
             if (lid==m_testLayer){
                 tracker->hitIndexInTestLayer->push_back(iHit);
                 continue;
@@ -278,6 +280,7 @@ int main(int argc, char** argv){
             if (sum<sumCut) continue;
             if (driftT<tmin||driftT>tmax) continue;
             tracker->hitLayerIndexMap->at(lid)->push_back(iHit);
+            iPeakOverCut++;
             nHitsG++;
         }
         InputOutputManager::Get().nHitsG = nHitsG;

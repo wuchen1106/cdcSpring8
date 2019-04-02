@@ -324,7 +324,7 @@ bool Tracker::Fit2D(double safetyFactor, bool fitWithError, double & chi2X, doub
     inScint = GeometryManager::Get().IsInScinti(safetyFactor,iinx,islx,iinz,islz); // FIXME: need to tune
     fromSource = BeamManager::Get().IsInBeam(islx,islz);
     nGoodPairs = getChi2XZ(chi2X,chi2Z);
-    MyNamedVerbose("Tracking",Form("       2D FITTING RESULT: nGoodPairs = %d, inScint? %s; x=%.3e*(y-%.3e)+%.3e, chi2 = %.3e, z=%.3e*(y-%.3e)+%.3e, chi2 = %.3e",nGoodPairs,inScint?"yes":"no",islx,GeometryManager::Get().ReferenceY,iinx,chi2X,islz,GeometryManager::Get().ReferenceY,iinz,chi2Z));
+    MyNamedVerbose("Tracking",Form("       2D FITTING RESULT: nGoodPairs = %d, inScint? %s, fromSource? %s; x=%.3e*(y-%.3e)+%.3e, chi2 = %.3e, z=%.3e*(y-%.3e)+%.3e, chi2 = %.3e",nGoodPairs,inScint?"yes":"no",fromSource?"yes":"no",islx,GeometryManager::Get().ReferenceY,iinx,chi2X,islz,GeometryManager::Get().ReferenceY,iinz,chi2Z));
     TString debugContent = Form("%.3e %.3e %.3e %.3e",islx,iinx,islz,iinz);
     for (int ipair = 0; ipair<nPairs; ipair++){
         debugContent += Form(" %.3e %.3e %.3e %.3e",pairX[ipair],func_pairYX->Eval(pairY[ipair]),pairZ[ipair],func_pairYZ->Eval(pairY[ipair]));
@@ -402,7 +402,7 @@ int Tracker::updatePairPositions(){
     }
 }
 
-int Tracker::setPairPositionGraphs(bool noError){
+int Tracker::setPairPositionGraphs(bool withError){
     graph_pairX->Set(nPairs);
     graph_pairZ->Set(nPairs);
     for (int i = 0; i<nPairs; i++){
@@ -416,7 +416,7 @@ int Tracker::setPairPositionGraphs(bool noError){
     for (int ipair = 0; ipair<nPairs; ipair++){
         double errorz = 0;
         double errorx = 0;
-        if (!noError){
+        if (withError){
             errorz = fabs(func_pairYZ->Eval(pairY[ipair])-pairZ[ipair]);
             errorx = fabs(func_pairYX->Eval(pairY[ipair])-pairX[ipair]);
         }
