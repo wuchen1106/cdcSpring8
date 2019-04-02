@@ -49,12 +49,12 @@ bool XTManager::Initialize(){
     int runNo = RunInfoManager::Get().runNo;
     TString gasTypeShort = RunInfoManager::Get().gasTypeShort;
     int HV = RunInfoManager::Get().HV;
-    TString runName = RunInfoManager::Get().runName;
+    TString runName = RunInfoManager::Get().preRunName;
 
     // Prepare XT functions
     fInputFileXT = new TFile(HOME+Form("/info/xt.%d.",runNo)+runName+".root");
     if (!fInputFileXT||fInputFileXT->IsZombie()){
-        MyWarn("Cannot find xt file according to the given preRunName. Will use garfield xt instead.");
+        MyWarn("Cannot find xt file according to the given run name. Will use garfield xt instead.");
         fInputFileXT = new TFile(HOME+Form("/info/xt.%s.%d.root",gasTypeShort.Data(),HV));
         if (!fInputFileXT||fInputFileXT->IsZombie()){
             MyError("Cannot find the default garfield xt: "<<HOME+Form("/info/xt.%s.%d.root",gasTypeShort.Data(),HV));
@@ -75,7 +75,7 @@ bool XTManager::Initialize(){
     // Prepare error function
     fInputFileRes = new TFile(HOME+Form("/info/reso.%d.",runNo)+runName+".root");
     if (!fInputFileRes||fInputFileRes->IsZombie()){
-        MyWarn("Cannot find reso file according to the given preRunName. Will use default reso instead.");
+        MyWarn("Cannot find reso file according to the given run name. Will use default reso instead.");
         fInputFileRes = new TFile(HOME+Form("/info/reso.%s.%d.root",gasTypeShort.Data(),HV));
         if (!fInputFileRes||fInputFileRes->IsZombie()){
             MyError("Cannot find the default reso: "<<HOME+Form("/info/reso.%s.%d.root",gasTypeShort.Data(),HV));

@@ -28,7 +28,6 @@ public:
     double sumCut;
     double aaCut;
     PeakType peakType;
-    int    workType;
     int    BlindLayer;
     double t0error;
     double inislx;

@@ -64,7 +64,6 @@ void ParameterManager::LoadParameters(ParaBlock theParaBlock){
         if (MyRuntimeParameters::Get().HasParameter("tracking.tmax")) TrackingParameters.tmax = MyRuntimeParameters::Get().GetParameterI("tracking.tmax");
         if (MyRuntimeParameters::Get().HasParameter("tracking.sumCut")) TrackingParameters.sumCut = MyRuntimeParameters::Get().GetParameterD("tracking.sumCut");
         if (MyRuntimeParameters::Get().HasParameter("tracking.aaCut")) TrackingParameters.aaCut = MyRuntimeParameters::Get().GetParameterD("tracking.aaCut");
-        if (MyRuntimeParameters::Get().HasParameter("tracking.workType")) TrackingParameters.workType = MyRuntimeParameters::Get().GetParameterI("tracking.workType");;
         if (MyRuntimeParameters::Get().HasParameter("tracking.t0error")) TrackingParameters.t0error = MyRuntimeParameters::Get().GetParameterD("tracking.t0error");;
         if (MyRuntimeParameters::Get().HasParameter("tracking.lidStart")) TrackingParameters.lidStart = MyRuntimeParameters::Get().GetParameterI("tracking.lidStart");;
         if (MyRuntimeParameters::Get().HasParameter("tracking.lidStop")) TrackingParameters.lidStop = MyRuntimeParameters::Get().GetParameterI("tracking.lidStop");;
@@ -99,7 +98,6 @@ TrackingPara::TrackingPara(){
     tmax = 800;
     sumCut = -10;
     aaCut = 0;
-    workType = 0; // fr/l_0; 1, even/odd; -1, even/odd reversed; others, all layers
     BlindLayer = 0; // Don't use this layer for tracking
     t0error = 0; // if t0 error is 0, then don't set it as a free parameter in fitting
     inislx = 0; // initial guess for slope x;
@@ -120,7 +118,6 @@ void TrackingPara::Print(){
     printf("  sumCut      = %f\n",sumCut);
     printf("  aaCut       = %f\n",aaCut);
     printf("  BlindLayer  = %d\n",BlindLayer);
-    printf("  workType    = %d, %s\n",workType,workType==0?"all as 0":(workType==1?"even/odd":(workType==-1?"even/odd reversed":"all layers")));
 }
 
 CalibPara::CalibPara(){
