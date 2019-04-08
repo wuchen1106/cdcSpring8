@@ -23,7 +23,7 @@ public:
     }
 
     bool Initialize(BeamType theBeamType);
-    bool IsInBeam(double islx, double islz);
+    bool IsInBeam(double islx, double islz, double safetyFactor = 1);
     void Print();
 
     BeamType beamType;

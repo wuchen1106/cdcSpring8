@@ -72,9 +72,12 @@ public:
     int                   nHitsG;
     int                   nCandidatesFound;
     int                   nPairs[NCAND];
+    int                   nGoodPairs[NCAND];
+    int                   iSelection[NCAND];
+    int                   iCombination[NCAND];
     int                   nHitsS[NCAND];
     int                   hitIndexSelected[NLAY][NCAND];
-    double                t0offset[NCAND]; // in case t0 is set free to adjustment
+    double                t0Offset[NCAND]; // in case t0 is set free to adjustment
     double                interceptXInput[NCAND];
     double                interceptZInput[NCAND];
     double                slopeXInput[NCAND];

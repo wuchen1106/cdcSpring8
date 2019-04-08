@@ -278,9 +278,9 @@ int main(int argc, char** argv){
             }
             if (aa<aaCut) continue;
             if (sum<sumCut) continue;
+            iPeakOverCut++; // only count peaks over size cut
             if (driftT<tmin||driftT>tmax) continue;
             tracker->hitLayerIndexMap->at(lid)->push_back(iHit);
-            iPeakOverCut++;
             nHitsG++;
         }
         InputOutputManager::Get().nHitsG = nHitsG;
@@ -298,13 +298,13 @@ int main(int argc, char** argv){
                 tracker->pairableLayers->push_back(lid);
             }
         }
-        if (Log::GetLogLevel()>=Log::VerboseLevel) InputOutputManager::Get().Print("h"); // print hit level information
+        if (Log::GetLogLevel("Tracking")>=Log::VerboseLevel) InputOutputManager::Get().Print("h"); // print hit level information
         int nCombinations = 1;
         int nPairableLayers = tracker->pairableLayers->size();
         for (int ipick = 0; ipick<nPairableLayers; ipick++){
             int lid = tracker->pairableLayers->at(ipick);
             int nhits = tracker->hitLayerIndexMap->at(lid)->size();
-            MyNamedInfo("Tracking",Form("  pairable layer %d: %d hits",lid,nhits));
+            MyNamedInfo("Tracking",Form("  pairable layer %d: %d good hits",lid,nhits));
             nCombinations*=nhits;
         }
         MyNamedInfo("Tracking",Form("  => %d pairs from %d good hits in %d pairable layers with %d combinations X 2^%d L/R choices",nPairs,nHitsG,nPairableLayers,nCombinations,nHitsG));
@@ -322,6 +322,7 @@ int main(int argc, char** argv){
             }
         }
 
+        tracker->SetOutput();
         InputOutputManager::Get().Fill();
         MyNamedTrace("Memory","Memory size: @"<<__LINE__<<": "<<pMyProcessManager->GetMemorySize());
     }// end of event loop

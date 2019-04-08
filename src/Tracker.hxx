@@ -18,6 +18,7 @@ public:
 
     void Reset(); /// prepare for tracking. To be called every time given a new event
     void DoTracking(); /// the main function to get tracks from the current event with given hit list
+    void SetOutput(); /// set the fitted results to InputOutputManager
 
     static TrackResult currentTrackResult;
     static TrackResult trackResults[NCAND];
@@ -28,6 +29,7 @@ public:
     static std::map <int, double> hitIndexDriftDLeftMap; /// store a map from hit index to driftD calculated by XT left side (negative value)
     static std::map <int, double> hitIndexDriftDRightMap; /// store a map from hit index to driftD calculated by XT right side (positive value)
 
+    int nGoodTracks; /// number of good tracks found in one event
     std::vector<int> * pairableLayers; /// a list of layers that may form a pair, i.e. having a non-empty neighbour layer (excluding test layer)
     int nPairs; /// number of pairs found in current pick & l/r combination
     int nGoodPairs; /// number of good pairs that is roughly on track. Updated after Fit2D is called.
@@ -49,7 +51,7 @@ private:
     int updateWirePositionOnHit(); /// update wire positions upon picked hits
     int updatePairPositions(); /// update pair positions
     int setPairPositionGraphs(bool noError); /// set graphs containing pair position information; errors are given by calculating the difference between pair position and the current track parameters (stored in the 2-D fitting functions)
-    void pickUpHitsForFitting(double residualCut); /// pick up hits from the given layer hit map. In each layer only choose one hit that is closest to the track (according to the track parameters stored in the 2-D fitting functions). Abondon some layers if the residual of the closest one is still too larger than the residual cut
+    void pickUpHitsForFitting(double slx, double inx, double slz, double inz, double residualCut); /// pick up hits from the given layer hit map. In each layer only choose one hit that is closest to the track. Abandon some layers if the residual of the closest one is still too larger than the residual cut
     void doFitting(double sliX, double iniX,double sliZ, double iniZ); /// The core part of track fitting
     static void fcn(int &npar, double *gin, double &f, double *par, int iflag); /// The function to be used by TMinuit
     static void getchi2(double &f, double & cp, double & ca, double slx, double inx, double slz, double inz, double t0offset,bool all); /// get the chi2 with 3-D track

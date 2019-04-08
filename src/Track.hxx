@@ -36,6 +36,8 @@ public:
     double t0Offset;
     int    nPairs;
     int    nGoodPairs;
+    int    iSelection;
+    int    iCombination;
     double chi2X;
     double chi2Z;
     double chi2;

@@ -98,11 +98,14 @@ bool InputOutputManager::Initialize(){
     fOutputTree->Branch("nHitsG",&nHitsG); // number of good hits in layers other than the test one: in t region and with good peak quality
     fOutputTree->Branch("nFind",&nCandidatesFound);
     fOutputTree->Branch("nPairs",nPairs,"nPairs[nFind]/I");
+    fOutputTree->Branch("nPairsG",nGoodPairs,"nPairsG[nFind]/I");
+    fOutputTree->Branch("iSelection",iSelection,"iSelection[nFind]/I");
+    fOutputTree->Branch("iCombination",iCombination,"iCombination[nFind]/I");
     fOutputTree->Branch("nHitsS",nHitsS,"nHitsS[nFind]/I"); // number of hits selected from finding and fed to fitting
     for (int iLayer = 0; iLayer<NLAY; iLayer++){
         fOutputTree->Branch(Form("hitIndexSelectedInLayer%d",iLayer),hitIndexSelected[iLayer],Form("hitIndexSelectedInLayer%d[nFind]/I",iLayer)); // number of hits selected from finding and fed to fitting
     }
-    fOutputTree->Branch("t0offset",t0offset,"t0offset[nFind]/D");
+    fOutputTree->Branch("t0Offset",t0Offset,"t0Offset[nFind]/D");
     fOutputTree->Branch("interceptXInput",interceptXInput,"interceptXInput[nFind]/D");
     fOutputTree->Branch("interceptZInput",interceptZInput,"interceptZInput[nFind]/D");
     fOutputTree->Branch("slopeXInput",slopeXInput,"slopeXInput[nFind]/D");
@@ -138,11 +141,14 @@ void InputOutputManager::Reset(){ // called at the beginning of every event
     nCandidatesFound = 0;
     for (int iCand = 0; iCand<NCAND; iCand++){
         nPairs[iCand] = 0;
+        nGoodPairs[iCand] = 0;
+        iSelection[iCand] = -1;
+        iCombination[iCand] = -1;
         nHitsS[iCand] = 0;
         for (int iLayer = 0; iLayer<NLAY; iLayer++){
             hitIndexSelected[iLayer][iCand] = -1;
         }
-        t0offset[iCand] = 0; // in case t0 is set free to adjustment
+        t0Offset[iCand] = 0; // in case t0 is set free to adjustment
         interceptXInput[iCand] = 0;
         interceptZInput[iCand] = 0;
         slopeXInput[iCand] = 0;
@@ -210,14 +216,14 @@ void InputOutputManager::Print(TString opt){
             double sumL   = ADCsumPacket->at(iHit);
             double driftT = DriftT->at(iHit);
             if (iPeakA==0){
-                printf("    layer %3d cell %3d:  %3d TDCs,  total ADC sum %.1f, pedestal %.1f\n",lid,cid,nPeakA,sumA,ped);
+                printf("[%2d,%2d] :  %3d TDCs,  total ADC sum %.1f, pedestal %.1f\n",lid,cid,nPeakA,sumA,ped);
                 iPacket = 0;
             }
             if (iPeakL==0){
-                printf("        wave packet %3d: %3d peaks, local ADC sum %.1f, ADC peak %d, width %d ticks.\n",iPacket,nPeakL,sumL,peak,width);
+                printf("             packet with %2d peaks : ADC sum %.1f, peak %d, %d ticks wide.\n",nPeakL,sumL,peak,width);
                 iPacket++;
             }
-            printf("  %4d      peak %d @ clock %d: driftT = %.1f ns, ADC height at trigger point %d\n",iHit,iPeakL,clock,driftT,height);
+            printf("%4d        %.1f ns, ADC %d @ clk %d\n",iHit,driftT,height,clock);
         }
     }
 }

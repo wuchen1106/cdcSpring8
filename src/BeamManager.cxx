@@ -23,7 +23,7 @@ bool BeamManager::Initialize(BeamType theBeamType){
     beamType = theBeamType;
     if (beamType == kSPring8 || beamType == kSPring8Tilted){
         // FIXME: currently set a broader range. Need further investigation
-        beamSlz    = 0.02;
+        beamSlz    = 0;
         beamSlx    = 0;
         beamInz    = 0; // mm
         beamInx    = 0;
@@ -42,8 +42,8 @@ bool BeamManager::Initialize(BeamType theBeamType){
     return true;
 }
 
-bool BeamManager::IsInBeam(double islx, double islz){
-    return fabs(islx-beamSlx)<beamSlxRange&&fabs(islz-beamSlz)<beamSlzRange;
+bool BeamManager::IsInBeam(double islx, double islz, double safetyFactor){
+    return fabs(islx-beamSlx)<beamSlxRange*safetyFactor&&fabs(islz-beamSlz)<beamSlzRange*safetyFactor;
 }
 
 void BeamManager::Print(){
