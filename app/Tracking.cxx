@@ -176,6 +176,7 @@ int main(int argc, char** argv){
 		}
 	}
 	if (m_nEntries>0){
+        if (m_iEntryStart<0) m_iEntryStart = 0;
         m_iEntryStop = m_iEntryStart+m_nEntries-1;
     }
 
