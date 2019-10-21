@@ -84,13 +84,13 @@ void MyRuntimeParameters::ReadInputFile(TString fileName, TString dirName, bool 
         throw EBadParameterFile();
       }
     }
-    else if (inputState == 3) {	
-      //        parameterValue = atof(inputString.c_str());
+    else if (inputState == 3) {
+        //        parameterValue = atof(inputString.c_str());
         parameterValue = inputString.c_str();
-	parameterValueUnit = inputString;
-	inputState = 4;
+        parameterValueUnit = inputString;
+        inputState = 4;
     }
-    else if (inputState == 4) {	
+    else if (inputState == 4) {
       if (inputString == ">"){
           // Finished reading. Save parameter; but only if the parameter
           // isn't already 'fixed'
@@ -112,24 +112,24 @@ void MyRuntimeParameters::ReadInputFile(TString fileName, TString dirName, bool 
       }
       else {
 
-	// The parameter must have a unit.  Resave the value with the correct unit.
-	parameterValueUnit.append(" ");
-	parameterValueUnit.append(inputString);
+          // The parameter must have a unit.  Resave the value with the correct unit.
+          parameterValueUnit.append(" ");
+          parameterValueUnit.append(inputString);
 
-	// Use MyUnitsTableParser class to convert string of value+unit to 
-	// a double with value+unit.
-	parameterValue = fUnitsTableParser->Convert2DoubleWithUnit(parameterValueUnit);
+          // Use MyUnitsTableParser class to convert string of value+unit to 
+          // a double with value+unit.
+          parameterValue = fUnitsTableParser->Convert2DoubleWithUnit(parameterValueUnit);
       }
     }
   }
-  
+
   if (inputState != 0) {    
-    MyError("\n***** MyRuntimeParameters::ReadInputFile *****\n"
-               << "Input file '" << fileName << "'. Last parameter '"
-               << parameterName << "'.\n"
-               << "Cannot find symbol '>' at the end of file.\n"
-               << "Badly formatted parameters file."); 
-    throw EBadParameterFile();
+      MyError("\n***** MyRuntimeParameters::ReadInputFile *****\n"
+              << "Input file '" << fileName << "'. Last parameter '"
+              << parameterName << "'.\n"
+              << "Cannot find symbol '>' at the end of file.\n"
+              << "Badly formatted parameters file."); 
+      throw EBadParameterFile();
   }  
   inputFile.close();
 }

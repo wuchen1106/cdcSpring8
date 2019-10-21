@@ -16,7 +16,7 @@ Scintillator::Scintillator(GeometryManager::GeoSetup theGeoSetup):
 void Scintillator::SetGeometry(GeometryManager::GeoSetup theGeoSetup){
     double chamberHH = 170.05/2;
     double chamberCY = 572;
-	if (theGeoSetup == GeometryManager::kNormal){
+    if (theGeoSetup == GeometryManager::kNormal){
         // normal scintillator
         Yup = chamberCY+chamberHH+180; // mm
         Ydown = chamberCY-chamberHH-180; 
@@ -81,11 +81,11 @@ void Chamber::Initialize(){
             wire_x[lid][wid][1] = 0;
             wire_y[lid][wid][1] = 0;
             wire_z[lid][wid][1] = 0;
-        	wire_ch[lid][wid] = -1;
-        	wire_bid[lid][wid] = -1;
-        	wire_adjustX[lid][wid] = 0;
-        	wire_adjustY[lid][wid] = 0;
-        	wire_adjustZ[lid][wid] = 0;
+            wire_ch[lid][wid] = -1;
+            wire_bid[lid][wid] = -1;
+            wire_adjustX[lid][wid] = 0;
+            wire_adjustY[lid][wid] = 0;
+            wire_adjustZ[lid][wid] = 0;
             for (int wjd = 0; wjd<NCEL; wjd++){
                 wirecross_x[lid][wid][wjd] = 999;
                 wirecross_z[lid][wid][wjd] = 999;
@@ -245,17 +245,17 @@ bool GeometryManager::IsInScinti(double saftyFactor,double inx, double slx, doub
 
 double GeometryManager::GetDOCA(int lid, int wid, double slx, double inx, double slz, double inz)
 {
-	double ydown = fScintillator->Ydown;
-	double xdown = inx-slx*(ReferenceY-ydown);
-	double zdown = inz-slz*(ReferenceY-ydown);
-	vTrackU.SetXYZ(inx,ReferenceY,inz);
-	vTrackD.SetXYZ(xdown,ydown,zdown);
-	vWireHV.SetXYZ(fChamber->wire_x[lid][wid][0],fChamber->wire_y[lid][wid][0],fChamber->wire_z[lid][wid][0]);
-	vWireRO.SetXYZ(fChamber->wire_x[lid][wid][1],fChamber->wire_y[lid][wid][1],fChamber->wire_z[lid][wid][1]);
-	vTrack = vTrackD-vTrackU;
-	vWire = vWireRO-vWireHV;
-	vDist = vWireHV-vTrackU;
-	vAxis = vWire.Cross(vTrack);
-	double value = -vDist*(vAxis.Unit());
-	return value;
+    double ydown = fScintillator->Ydown;
+    double xdown = inx-slx*(ReferenceY-ydown);
+    double zdown = inz-slz*(ReferenceY-ydown);
+    vTrackU.SetXYZ(inx,ReferenceY,inz);
+    vTrackD.SetXYZ(xdown,ydown,zdown);
+    vWireHV.SetXYZ(fChamber->wire_x[lid][wid][0],fChamber->wire_y[lid][wid][0],fChamber->wire_z[lid][wid][0]);
+    vWireRO.SetXYZ(fChamber->wire_x[lid][wid][1],fChamber->wire_y[lid][wid][1],fChamber->wire_z[lid][wid][1]);
+    vTrack = vTrackD-vTrackU;
+    vWire = vWireRO-vWireHV;
+    vDist = vWireHV-vTrackU;
+    vAxis = vWire.Cross(vTrack);
+    double value = -vDist*(vAxis.Unit());
+    return value;
 }

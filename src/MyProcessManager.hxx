@@ -4,22 +4,22 @@
 #include <stdio.h>
 
 class MyProcessManager{
-	public:
-		MyProcessManager();
-		virtual ~MyProcessManager();
+    public:
+        MyProcessManager();
+        virtual ~MyProcessManager();
 
-		static MyProcessManager* GetMyProcessManager();
+        static MyProcessManager* GetMyProcessManager();
 
-		int OpenFile();
-		void CloseFile();
+        int OpenFile();
+        void CloseFile();
 
-		double GetMemorySize();
+        double GetMemorySize();
 
-	private:
-		static MyProcessManager* fMyProcessManager;
-		int MemoryConsumption;
-		FILE *fin_card;
-		bool fileOpened;
+    private:
+        static MyProcessManager* fMyProcessManager;
+        int MemoryConsumption;
+        FILE *fin_card;
+        bool fileOpened;
 };
 
 #endif
