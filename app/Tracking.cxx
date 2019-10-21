@@ -61,36 +61,36 @@ int main(int argc, char** argv){
     std::map<std::string, Log::ErrorPriority> namedDebugLevel;
     std::map<std::string, Log::LogPriority> namedLogLevel;
     int    opt_result;
-	while((opt_result=getopt(argc,argv,"M:R:B:E:N:L:C:D:V:h"))!=-1){
-		switch(opt_result){
-			case 'M':
-			    m_modulo = atoi(optarg);
+    while((opt_result=getopt(argc,argv,"M:R:B:E:N:L:C:D:V:h"))!=-1){
+        switch(opt_result){
+            case 'M':
+                m_modulo = atoi(optarg);
                 printf("Printing modulo set to %d\n",m_modulo);
-				break;
-			case 'R':
-			    m_runNo = atoi(optarg);
+                break;
+            case 'R':
+                m_runNo = atoi(optarg);
                 printf("Run number set to %d\n",m_runNo);
-				break;
-			case 'B':
-			    m_iEntryStart = atoi(optarg);
+                break;
+            case 'B':
+                m_iEntryStart = atoi(optarg);
                 printf("Starting entry index set to %d\n",m_iEntryStart);
-				break;
-			case 'E':
-			    m_iEntryStop = atoi(optarg);
+                break;
+            case 'E':
+                m_iEntryStop = atoi(optarg);
                 printf("Stopping entry index set to %d\n",m_iEntryStop);
-				break;
-			case 'N':
-			    m_nEntries = atoi(optarg);
+                break;
+            case 'N':
+                m_nEntries = atoi(optarg);
                 printf("Number of entries set to %d\n",m_nEntries);
-				break;
-			case 'L':
-			    m_testLayer = atoi(optarg);
+                break;
+            case 'L':
+                m_testLayer = atoi(optarg);
                 printf("Test layer set to %d\n",m_testLayer);
-				break;
-			case 'C':
-			    getRunTimeParameters(optarg);
+                break;
+            case 'C':
+                getRunTimeParameters(optarg);
                 printf("Using configure file \"%s\"\n",optarg);
-				break;
+                break;
             case 'D':
                 {
                     // Set the debug level for a named trace.
@@ -167,21 +167,21 @@ int main(int argc, char** argv){
                     }
                     break;
                 }
-			case '?':
-				printf("Wrong option! optopt=%c, optarg=%s\n", optopt, optarg);
-			case 'h':
-			default:
-				print_usage(argv[0]);
-				return 1;
-		}
-	}
-	if (m_nEntries>0){
+            case '?':
+                printf("Wrong option! optopt=%c, optarg=%s\n", optopt, optarg);
+            case 'h':
+            default:
+                print_usage(argv[0]);
+                return 1;
+        }
+    }
+    if (m_nEntries>0){
         m_iEntryStop = m_iEntryStart+m_nEntries-1;
     }
 
-	if (argc-optind<2){
-	    print_usage(argv[0]);
-		return -1;
+    if (argc-optind<2){
+        print_usage(argv[0]);
+        return -1;
     }
     m_preRunName = argv[optind++];
     m_runName= argv[optind++];
@@ -345,22 +345,22 @@ void getRunTimeParameters(TString configureFile){
 
 void print_usage(char* prog_name)
 {
-	fprintf(stderr,"Usage %s [options] preRunName runName\n",prog_name);
-	fprintf(stderr,"[options]\n");
-	fprintf(stderr,"\t -D <name>=[error,severe,warn,debug,trace]\n");
-	fprintf(stderr,"\t\t Change the named debug level\n");
-	fprintf(stderr,"\t -V <name>=[quiet,log,info,verbose]\n");
-	fprintf(stderr,"\t\t Change the named log level\n");
-	fprintf(stderr,"\t -C <file>\n");
-	fprintf(stderr,"\t\t Set the configure file\n");
-	fprintf(stderr,"\t -M <n>\n");
-	fprintf(stderr,"\t\t Printing modulo set to n\n");
-	fprintf(stderr,"\t -R <run>\n");
-	fprintf(stderr,"\t\t Run number set to run\n");
-	fprintf(stderr,"\t -B <n>\n");
-	fprintf(stderr,"\t\t Starting entry index set to n\n");
-	fprintf(stderr,"\t -E <n>\n");
-	fprintf(stderr,"\t\t Stopping entry index set to n\n");
+    fprintf(stderr,"Usage %s [options] preRunName runName\n",prog_name);
+    fprintf(stderr,"[options]\n");
+    fprintf(stderr,"\t -D <name>=[error,severe,warn,debug,trace]\n");
+    fprintf(stderr,"\t\t Change the named debug level\n");
+    fprintf(stderr,"\t -V <name>=[quiet,log,info,verbose]\n");
+    fprintf(stderr,"\t\t Change the named log level\n");
+    fprintf(stderr,"\t -C <file>\n");
+    fprintf(stderr,"\t\t Set the configure file\n");
+    fprintf(stderr,"\t -M <n>\n");
+    fprintf(stderr,"\t\t Printing modulo set to n\n");
+    fprintf(stderr,"\t -R <run>\n");
+    fprintf(stderr,"\t\t Run number set to run\n");
+    fprintf(stderr,"\t -B <n>\n");
+    fprintf(stderr,"\t\t Starting entry index set to n\n");
+    fprintf(stderr,"\t -E <n>\n");
+    fprintf(stderr,"\t\t Stopping entry index set to n\n");
     fprintf(stderr,"\t -N <n>\n");
     fprintf(stderr,"\t\t Maximum number of entries set to n\n");
     fprintf(stderr,"\t -L <l>\n");
