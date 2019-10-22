@@ -280,7 +280,7 @@ int Tracker::fitting(int iselection){
                         // update chi2
                         if (inputType == InputOutputManager::kMCDriftD || inputType == InputOutputManager::kMCDriftT){
                             // FIXME: get mc input
-							//getchi2(chi2mc,chi2pmc,chi2amc,i_slxmc,i_inxmc,i_slzmc,i_inzmc,0,true);
+                            //getchi2(chi2mc,chi2pmc,chi2amc,i_slxmc,i_inxmc,i_slzmc,i_inzmc,0,true);
                         }
                         getchi2(chi2,chi2p,chi2a,slx,inx,slz,inz,0,true);
                         // check chi2 and see where the result fits
@@ -437,8 +437,8 @@ int Tracker::setPairPositionGraphs(bool withError){
             errorzMax1 = errorz;
             errorzMax1_i = ipair;
         }
-	    graph_pairZ->SetPointError(ipair,0,0.1);
-	    graph_pairX->SetPointError(ipair,0,0.1);
+        graph_pairZ->SetPointError(ipair,0,0.1);
+        graph_pairX->SetPointError(ipair,0,0.1);
     }
     if (errorzMax0>4) {
         graph_pairZ->SetPointError(errorzMax0_i,0,10);
@@ -519,111 +519,111 @@ void Tracker::pickUpHitsForFitting(double slx, double inx, double slz, double in
 void Tracker::doFitting(double sliX, double iniX,double sliZ, double iniZ){
     if (gMinuit) delete gMinuit;
     gMinuit = new TMinuit(5);  //initialize TMinuit with a maximum of 5 params
-	gMinuit->SetFCN(fcn);
-	gMinuit->SetPrintLevel(-1); // no print
+    gMinuit->SetFCN(fcn);
+    gMinuit->SetPrintLevel(-1); // no print
 
-	arglist[0] = 0;
-	gMinuit->mnexcm("SET NOW", arglist ,1,ierflg); // no warning 
-	arglist[0] = 1;
-	gMinuit->mnexcm("SET ERR", arglist ,1,ierflg);
+    arglist[0] = 0;
+    gMinuit->mnexcm("SET NOW", arglist ,1,ierflg); // no warning 
+    arglist[0] = 1;
+    gMinuit->mnexcm("SET ERR", arglist ,1,ierflg);
 
-	// Set starting values and step sizes for parameters
-	gMinuit->mnparm(0, "slopeX", sliX, slxStep, slxMin,slxMax,ierflg);
-	gMinuit->mnparm(1, "interceptX", iniX, inxStep, inxMin,inxMax,ierflg);
-	gMinuit->mnparm(2, "slopeZ", sliZ, slzStep, slzMin,slzMax,ierflg);
-	gMinuit->mnparm(3, "interceptZ", iniZ, inzStep, inzMin,inzMax,ierflg);
+    // Set starting values and step sizes for parameters
+    gMinuit->mnparm(0, "slopeX", sliX, slxStep, slxMin,slxMax,ierflg);
+    gMinuit->mnparm(1, "interceptX", iniX, inxStep, inxMin,inxMax,ierflg);
+    gMinuit->mnparm(2, "slopeZ", sliZ, slzStep, slzMin,slzMax,ierflg);
+    gMinuit->mnparm(3, "interceptZ", iniZ, inzStep, inzMin,inzMax,ierflg);
 
-	// Now ready for minimization step
-	arglist[0] = 5000.0;
-	arglist[1] = 1.0;
-	gMinuit->mnexcm("MIGRAD", arglist ,2,ierflg);
+    // Now ready for minimization step
+    arglist[0] = 5000.0;
+    arglist[1] = 1.0;
+    gMinuit->mnexcm("MIGRAD", arglist ,2,ierflg);
 
-	// Print results
-	gMinuit->mnstat(amin,edm,errdef,nvpar,nparx,icstat);
-	//printf("====Rrestul====\n");
-	//gMinuit->mnprin(3,amin);
+    // Print results
+    gMinuit->mnstat(amin,edm,errdef,nvpar,nparx,icstat);
+    //printf("====Rrestul====\n");
+    //gMinuit->mnprin(3,amin);
 }
 
 void Tracker::fcn(int &npar, double *gin, double &f, double *par, int iflag)
 {
-	double cp,ca;
+    double cp,ca;
     getchi2(f,cp,ca,*par,*(par+1),*(par+2),*(par+3),0,false);
 }
 
 void Tracker::getchi2(double &f, double & cp, double & ca, double slx, double inx, double slz, double inz, double t0Offset,bool all)
 {
-	//calculate chisquare
-	double chisq = 0;
-	double delta;
-	double dfit;
+    //calculate chisquare
+    double chisq = 0;
+    double delta;
+    double dfit;
 
     int N = -4;
-	for (int i=0;i<currentTrackResult.hitIndexSelected.size(); i++) {
-	    int iHit = currentTrackResult.hitIndexSelected[i];
-	    int lr = currentTrackResult.hitLeftRightSelected[i];
-	    int lid = InputOutputManager::Get().LayerID->at(iHit);
-	    int wid = InputOutputManager::Get().CellID->at(iHit);
-		dfit = GeometryManager::Get().GetDOCA(lid,wid,slx,inx,slz,inz);
-		double dd = lr>=0?hitIndexDriftDRightMap[iHit]:hitIndexDriftDLeftMap[iHit];
-		double error = XTManager::Get().GetError(fabs(dd));
+    for (int i=0;i<currentTrackResult.hitIndexSelected.size(); i++) {
+        int iHit = currentTrackResult.hitIndexSelected[i];
+        int lr = currentTrackResult.hitLeftRightSelected[i];
+        int lid = InputOutputManager::Get().LayerID->at(iHit);
+        int wid = InputOutputManager::Get().CellID->at(iHit);
+        dfit = GeometryManager::Get().GetDOCA(lid,wid,slx,inx,slz,inz);
+        double dd = lr>=0?hitIndexDriftDRightMap[iHit]:hitIndexDriftDLeftMap[iHit];
+        double error = XTManager::Get().GetError(fabs(dd));
         delta  = (dfit-dd)/error;
-		chisq += delta*delta;
-		N++;
-	}
-	if (N>0) chisq/=N;
-	f = chisq;
-	if (all){ // should calculate chi2_pValue (cp) and chi2_all (ca)
-		cp = TMath::Prob(f*N,N);
-		// now find the closest hit in the test layer and add it into ca
-		double minres = 1e9;
-		bool found = false;
-		double theDD = 0;
-		int thelid = 0;
-		int thewid = 0;
-		for (int i=0;i<hitIndexInTestLayer->size(); i++) {
+        chisq += delta*delta;
+        N++;
+    }
+    if (N>0) chisq/=N;
+    f = chisq;
+    if (all){ // should calculate chi2_pValue (cp) and chi2_all (ca)
+        cp = TMath::Prob(f*N,N);
+        // now find the closest hit in the test layer and add it into ca
+        double minres = 1e9;
+        bool found = false;
+        double theDD = 0;
+        int thelid = 0;
+        int thewid = 0;
+        for (int i=0;i<hitIndexInTestLayer->size(); i++) {
             int iHit = hitIndexInTestLayer->at(i);
             int lid = InputOutputManager::Get().LayerID->at(iHit);
             int wid = InputOutputManager::Get().CellID->at(iHit);
-			dfit = GeometryManager::Get().GetDOCA(lid,wid,slx,inx,slz,inz);
+            dfit = GeometryManager::Get().GetDOCA(lid,wid,slx,inx,slz,inz);
             double dd = dfit>=0?hitIndexDriftDRightMap[iHit]:hitIndexDriftDLeftMap[iHit];
-			if (fabs(minres)>fabs(dfit-dd)){
-				minres = dfit-dd;
-				theDD = dd;
-				found = true;
-				thelid = lid;
-				thewid = wid;
-			}
-		}
-		if (found){
+            if (fabs(minres)>fabs(dfit-dd)){
+                minres = dfit-dd;
+                theDD = dd;
+                found = true;
+                thelid = lid;
+                thewid = wid;
+            }
+        }
+        if (found){
             double error = XTManager::Get().GetError(fabs(theDD));
-			ca = f*N+minres*minres/error/error;
-			ca/=(N+1);
+            ca = f*N+minres*minres/error/error;
+            ca/=(N+1);
             MyNamedVerbose("Tracking","   Best hit in test layer "<<thelid<<" "<<thewid<<" "<<theDD<<" "<<minres<<" "<<error<<" "<<f<<" "<<N<<" "<<ca);
-		}
-		else{
-			ca = f;
-		}
-	}
+        }
+        else{
+            ca = f;
+        }
+    }
 }
 
 bool Tracker::checkResults(int nHitsSel, int icombi, int iselection){
-	bool covered = false;
-	int insertAt = -1;
-	int takeOut = -1;
+    bool covered = false;
+    int insertAt = -1;
+    int takeOut = -1;
     MyNamedVerbose("Tracking"," checking new result with "<<currentTrackResult.hitIndexSelected.size()<<" hits and chi2a = "<<currentTrackResult.chi2WithTestLayer);
     for (int i = 0; i<NCAND; i++){
         if (currentTrackResult.NDF<trackResults[i].NDF) continue;
         if (currentTrackResult == trackResults[i]){ // they have used the same hits (with same left/right)
             MyNamedVerbose("Tracking"," same with Cand#"<<i);
-			// FIXME: WARNING, now we rely on total chi2 including test layer hit, a slight bias
-			// TODO: make this an option
-    		if (currentTrackResult.chi2WithTestLayer<trackResults[i].chi2WithTestLayer){
+            // FIXME: WARNING, now we rely on total chi2 including test layer hit, a slight bias
+            // TODO: make this an option
+            if (currentTrackResult.chi2WithTestLayer<trackResults[i].chi2WithTestLayer){
                 MyNamedVerbose("Tracking","   better than Cand#"<<i<<" with "<<trackResults[i].hitIndexSelected.size()<<" hits and chi2a = "<<trackResults[i].chi2WithTestLayer);
                 takeOut = i;
-			}
-			break;
-    	}
-    	if (insertAt<0){ // modify the index to be insert at if it's not set yet. Keep on searching in case we may find a bad candidate later with the same hits.
+            }
+            break;
+        }
+        if (insertAt<0){ // modify the index to be insert at if it's not set yet. Keep on searching in case we may find a bad candidate later with the same hits.
             if (currentTrackResult.NDF>trackResults[i].NDF
                     ||currentTrackResult.chi2WithTestLayer<trackResults[i].chi2WithTestLayer){
                 MyNamedVerbose("Tracking"," better than Cand#"<<i<<" with "<<trackResults[i].hitIndexSelected.size()<<" hits and chi2a = "<<trackResults[i].chi2WithTestLayer);
@@ -635,13 +635,13 @@ bool Tracker::checkResults(int nHitsSel, int icombi, int iselection){
             if (insertAt>=0) nGoodTracks++; // decide to move out an empty slot for the new result, hence number of good tracks accumulates by one
             break; // stop searching after an empty result is reached
         }
-	}
-	if (insertAt<0) return false;
-	for (int i = takeOut; i>insertAt; i--){ // move the candidates back by 1 and kick out the one to be replaced
-	    trackResults[i] = trackResults[i-1];
-	}
-	trackResults[insertAt] = currentTrackResult; // put the new result in position
-	return true;
+    }
+    if (insertAt<0) return false;
+    for (int i = takeOut; i>insertAt; i--){ // move the candidates back by 1 and kick out the one to be replaced
+        trackResults[i] = trackResults[i-1];
+    }
+    trackResults[insertAt] = currentTrackResult; // put the new result in position
+    return true;
 }
 
 void Tracker::SetOutput(){

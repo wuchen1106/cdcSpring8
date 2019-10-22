@@ -49,12 +49,12 @@ private:
     TFile  * fInputFileRes;
     TF1    * fXTLeft[NLAY]; // TODO: support multiple XT relations in the future
     TF1    * fXTRight[NLAY];
-	TF1    * fXTLeftEven;
-	TF1    * fXTRightEven;
-	TF1    * fXTLeftOdd;
-	TF1    * fXTRightOdd;
-	TF1    * fXTLeftDefault;
-	TF1    * fXTRightDefault;
+    TF1    * fXTLeftEven;
+    TF1    * fXTRightEven;
+    TF1    * fXTLeftOdd;
+    TF1    * fXTRightOdd;
+    TF1    * fXTLeftDefault;
+    TF1    * fXTRightDefault;
     TGraph * fResIntrinsic; // TODO: support multiple resolution graphs in the future
 };
 

@@ -85,10 +85,10 @@ bool InputOutputManager::Initialize(){
     fInputTChain->SetBranchAddress("mpi",&iPeakInPacket);
     fInputTChain->SetBranchAddress("clk",&TDCClock);
     if (inputType==kMCDriftD||inputType==kMCDriftT){
-		fInputTChain->SetBranchAddress("inxmc",&interceptXmc);
-		fInputTChain->SetBranchAddress("inzmc",&interceptZmc);
-		fInputTChain->SetBranchAddress("slxmc",&slopeXmc);
-		fInputTChain->SetBranchAddress("slzmc",&slopeZmc);
+        fInputTChain->SetBranchAddress("inxmc",&interceptXmc);
+        fInputTChain->SetBranchAddress("inzmc",&interceptZmc);
+        fInputTChain->SetBranchAddress("slxmc",&slopeXmc);
+        fInputTChain->SetBranchAddress("slzmc",&slopeZmc);
     }
 
     //===================Prepare output ROOT file============================
@@ -126,11 +126,11 @@ bool InputOutputManager::Initialize(){
         fOutputTree->Branch("chi2mc",chi2mc,"chi2mc[nFind]/D");
         fOutputTree->Branch("chi2WithTestLayermc",chi2WithTestLayermc,"chi2WithTestLayermc[nFind]/D");
         fOutputTree->Branch("pValuemc",pValuemc,"pValuemc[nFind]/D");
-		fOutputTree->Branch("inxmc",&interceptXmc);
-		fOutputTree->Branch("inzmc",&interceptZmc);
-		fOutputTree->Branch("slxmc",&slopeXmc);
-		fOutputTree->Branch("slzmc",&slopeZmc);
-	}
+        fOutputTree->Branch("inxmc",&interceptXmc);
+        fOutputTree->Branch("inzmc",&interceptZmc);
+        fOutputTree->Branch("slxmc",&slopeXmc);
+        fOutputTree->Branch("slzmc",&slopeZmc);
+    }
 
     return true;
 }
