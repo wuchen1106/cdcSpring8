@@ -11,6 +11,12 @@
 InputOutputManager* InputOutputManager::fInputOutputManager = NULL;
 
 InputOutputManager::InputOutputManager():
+    readRawFile(false),
+    readPeakFile(false),
+    readHitFile(false),
+    readTrackFile(false),
+    writeTrackFile(false),
+    writeAnaFile(false),
     fCurrentEntry(0),
     triggerNumber(0),
     nHits(0),
@@ -37,9 +43,9 @@ InputOutputManager::InputOutputManager():
     slopeZmc(0),
     nHitsG(0),
     nCandidatesFound(0),
-    fOutputTree(0),
-    fOutputFile(0),
-    fInputTChain(0)
+    fOutputTrackTree(0),
+    fOutputTrackFile(0),
+    fInputHitChain(0)
 {
 }
 
@@ -53,84 +59,89 @@ bool InputOutputManager::Initialize(){
     int runNo = RunInfoManager::Get().runNo;
     TString runName = RunInfoManager::Get().runName;
     int testLayer = RunInfoManager::Get().testLayer;
-    InputType inputType = ParameterManager::Get().inputType;
-    if (fOutputTree) delete fOutputTree; // FIXME: double delete?
-    if (fOutputFile) fOutputFile->Close();
-    if (fInputTChain) delete fInputTChain;
-    fInputTChain = new TChain("t","t");
-    fOutputFile = new TFile(Form("%s/root/tracks/t_%d.%s.layer%d.root",HOME.Data(),runNo,runName.Data(),testLayer),"RECREATE");
-    fOutputTree = new TTree("t","t");
+    InputHitType inputHitType = ParameterManager::Get().inputHitType;
 
-    if (inputType==kData)
-        fInputTChain->Add(HOME+Form("/root/hits/h_%d.root",runNo));
-    else
-        fInputTChain->Add(HOME+Form("/root/hits/h_%d.MC.root",runNo));
-    fInputTChain->SetBranchAddress("triggerNumber",&triggerNumber);
-    fInputTChain->SetBranchAddress("nHits",&nHits);
-    fInputTChain->SetBranchAddress("driftT",&DriftT);
-    if (inputType==kMCDriftD||inputType==kMCDriftT) fInputTChain->SetBranchAddress("DOCA",&DOCA);
-    if (inputType==kMCDriftD) fInputTChain->SetBranchAddress("driftD",&DriftDmc);
-    fInputTChain->SetBranchAddress("layerID",&LayerID);
-    fInputTChain->SetBranchAddress("wireID",&CellID);
-    //fInputTChain->SetBranchAddress("type",&type); // 0 center, 1 left, 2 right, 3 guard, 4 dummy
-    fInputTChain->SetBranchAddress("ped",&Pedestal);
-    fInputTChain->SetBranchAddress("height",&ADCheight);
-    fInputTChain->SetBranchAddress("peak",&ADCpeak);
-    //fInputTChain->SetBranchAddress("rank",&rank);
-    fInputTChain->SetBranchAddress("sum",&ADCsumPacket);
-    fInputTChain->SetBranchAddress("aa",&ADCsumAll);
-    fInputTChain->SetBranchAddress("width",&PacketWidth);
-    fInputTChain->SetBranchAddress("np",&nPeaksInChannel);
-    fInputTChain->SetBranchAddress("ip",&iPeakInChannel);
-    fInputTChain->SetBranchAddress("mpn",&nPeaksInPacket);
-    fInputTChain->SetBranchAddress("mpi",&iPeakInPacket);
-    fInputTChain->SetBranchAddress("clk",&TDCClock);
-    if (inputType==kMCDriftD||inputType==kMCDriftT){
-        fInputTChain->SetBranchAddress("inxmc",&interceptXmc);
-        fInputTChain->SetBranchAddress("inzmc",&interceptZmc);
-        fInputTChain->SetBranchAddress("slxmc",&slopeXmc);
-        fInputTChain->SetBranchAddress("slzmc",&slopeZmc);
+    // Need to load hit file?
+    if (readHitFile){
+        if (fInputHitChain) delete fInputHitChain;
+        fInputHitChain = new TChain("t","t");
+        if (inputHitType==kData)
+            fInputHitChain->Add(HOME+Form("/root/hits/h_%d.root",runNo));
+        else
+            fInputHitChain->Add(HOME+Form("/root/hits/h_%d.MC.root",runNo));
+        fInputHitChain->SetBranchAddress("triggerNumber",&triggerNumber);
+        fInputHitChain->SetBranchAddress("nHits",&nHits);
+        fInputHitChain->SetBranchAddress("driftT",&DriftT);
+        if (inputHitType==kMCDriftD||inputHitType==kMCDriftT) fInputHitChain->SetBranchAddress("DOCA",&DOCA);
+        if (inputHitType==kMCDriftD) fInputHitChain->SetBranchAddress("driftD",&DriftDmc);
+        fInputHitChain->SetBranchAddress("layerID",&LayerID);
+        fInputHitChain->SetBranchAddress("wireID",&CellID);
+        //fInputHitChain->SetBranchAddress("type",&type); // 0 center, 1 left, 2 right, 3 guard, 4 dummy
+        fInputHitChain->SetBranchAddress("ped",&Pedestal);
+        fInputHitChain->SetBranchAddress("height",&ADCheight);
+        fInputHitChain->SetBranchAddress("peak",&ADCpeak);
+        //fInputHitChain->SetBranchAddress("rank",&rank);
+        fInputHitChain->SetBranchAddress("sum",&ADCsumPacket);
+        fInputHitChain->SetBranchAddress("aa",&ADCsumAll);
+        fInputHitChain->SetBranchAddress("width",&PacketWidth);
+        fInputHitChain->SetBranchAddress("np",&nPeaksInChannel);
+        fInputHitChain->SetBranchAddress("ip",&iPeakInChannel);
+        fInputHitChain->SetBranchAddress("mpn",&nPeaksInPacket);
+        fInputHitChain->SetBranchAddress("mpi",&iPeakInPacket);
+        fInputHitChain->SetBranchAddress("clk",&TDCClock);
+        if (inputHitType==kMCDriftD||inputHitType==kMCDriftT){
+            fInputHitChain->SetBranchAddress("inxmc",&interceptXmc);
+            fInputHitChain->SetBranchAddress("inzmc",&interceptZmc);
+            fInputHitChain->SetBranchAddress("slxmc",&slopeXmc);
+            fInputHitChain->SetBranchAddress("slzmc",&slopeZmc);
+        }
     }
 
     //===================Prepare output ROOT file============================
-    // from h_XXX
-    fOutputTree->Branch("triggerNumber",&triggerNumber);
-    // basic
-    fOutputTree->Branch("nHitsG",&nHitsG); // number of good hits in layers other than the test one: in t region and with good peak quality
-    fOutputTree->Branch("nFind",&nCandidatesFound);
-    fOutputTree->Branch("nPairs",nPairs,"nPairs[nFind]/I");
-    fOutputTree->Branch("nPairsG",nGoodPairs,"nPairsG[nFind]/I");
-    fOutputTree->Branch("iSelection",iSelection,"iSelection[nFind]/I");
-    fOutputTree->Branch("iCombination",iCombination,"iCombination[nFind]/I");
-    fOutputTree->Branch("nHitsS",nHitsS,"nHitsS[nFind]/I"); // number of hits selected from finding and fed to fitting
-    for (int iLayer = 0; iLayer<NLAY; iLayer++){
-        fOutputTree->Branch(Form("hitIndexSelectedInLayer%d",iLayer),hitIndexSelected[iLayer],Form("hitIndexSelectedInLayer%d[nFind]/I",iLayer)); // number of hits selected from finding and fed to fitting
-    }
-    fOutputTree->Branch("t0Offset",t0Offset,"t0Offset[nFind]/D");
-    fOutputTree->Branch("interceptXInput",interceptXInput,"interceptXInput[nFind]/D");
-    fOutputTree->Branch("interceptZInput",interceptZInput,"interceptZInput[nFind]/D");
-    fOutputTree->Branch("slopeXInput",slopeXInput,"slopeXInput[nFind]/D");
-    fOutputTree->Branch("slopeZInput",slopeZInput,"slopeZInput[nFind]/D");
-    fOutputTree->Branch("chi2XInput",chi2XInput,"chi2XInput[nFind]/D");
-    fOutputTree->Branch("chi2ZInput",chi2ZInput,"chi2ZInput[nFind]/D");
-    fOutputTree->Branch("chi2Input",chi2Input,"chi2Input[nFind]/D");
-    fOutputTree->Branch("chi2WithTestLayerInput",chi2WithTestLayerInput,"chi2WithTestLayerInput[nFind]/D");
-    fOutputTree->Branch("pValueInput",pValueInput,"pValueInput[nFind]/D");
-    fOutputTree->Branch("interceptX",interceptX,"interceptX[nFind]/D");
-    fOutputTree->Branch("interceptZ",interceptZ,"interceptZ[nFind]/D");
-    fOutputTree->Branch("slopeX",slopeX,"slopeX[nFind]/D");
-    fOutputTree->Branch("slopeZ",slopeZ,"slopeZ[nFind]/D");
-    fOutputTree->Branch("chi2",chi2,"chi2[nFind]/D");
-    fOutputTree->Branch("chi2WithTestLayer",chi2WithTestLayer,"chi2WithTestLayer[nFind]/D");
-    fOutputTree->Branch("pValue",pValue,"pValue[nFind]/D");
-    if (inputType){
-        fOutputTree->Branch("chi2mc",chi2mc,"chi2mc[nFind]/D");
-        fOutputTree->Branch("chi2WithTestLayermc",chi2WithTestLayermc,"chi2WithTestLayermc[nFind]/D");
-        fOutputTree->Branch("pValuemc",pValuemc,"pValuemc[nFind]/D");
-        fOutputTree->Branch("inxmc",&interceptXmc);
-        fOutputTree->Branch("inzmc",&interceptZmc);
-        fOutputTree->Branch("slxmc",&slopeXmc);
-        fOutputTree->Branch("slzmc",&slopeZmc);
+    if (writeTrackFile){
+        if (fOutputTrackTree) delete fOutputTrackTree; // FIXME: double delete?
+        if (fOutputTrackFile) fOutputTrackFile->Close();
+        fOutputTrackFile = new TFile(Form("%s/root/tracks/t_%d.%s.layer%d.root",HOME.Data(),runNo,runName.Data(),testLayer),"RECREATE");
+        fOutputTrackTree = new TTree("t","t");
+        // from h_XXX
+        fOutputTrackTree->Branch("triggerNumber",&triggerNumber);
+        // basic
+        fOutputTrackTree->Branch("nHitsG",&nHitsG); // number of good hits in layers other than the test one: in t region and with good peak quality
+        fOutputTrackTree->Branch("nFind",&nCandidatesFound);
+        fOutputTrackTree->Branch("nPairs",nPairs,"nPairs[nFind]/I");
+        fOutputTrackTree->Branch("nPairsG",nGoodPairs,"nPairsG[nFind]/I");
+        fOutputTrackTree->Branch("iSelection",iSelection,"iSelection[nFind]/I");
+        fOutputTrackTree->Branch("iCombination",iCombination,"iCombination[nFind]/I");
+        fOutputTrackTree->Branch("nHitsS",nHitsS,"nHitsS[nFind]/I"); // number of hits selected from finding and fed to fitting
+        for (int iLayer = 0; iLayer<NLAY; iLayer++){
+            fOutputTrackTree->Branch(Form("hitIndexSelectedInLayer%d",iLayer),hitIndexSelected[iLayer],Form("hitIndexSelectedInLayer%d[nFind]/I",iLayer)); // number of hits selected from finding and fed to fitting
+        }
+        fOutputTrackTree->Branch("t0Offset",t0Offset,"t0Offset[nFind]/D");
+        fOutputTrackTree->Branch("interceptXInput",interceptXInput,"interceptXInput[nFind]/D");
+        fOutputTrackTree->Branch("interceptZInput",interceptZInput,"interceptZInput[nFind]/D");
+        fOutputTrackTree->Branch("slopeXInput",slopeXInput,"slopeXInput[nFind]/D");
+        fOutputTrackTree->Branch("slopeZInput",slopeZInput,"slopeZInput[nFind]/D");
+        fOutputTrackTree->Branch("chi2XInput",chi2XInput,"chi2XInput[nFind]/D");
+        fOutputTrackTree->Branch("chi2ZInput",chi2ZInput,"chi2ZInput[nFind]/D");
+        fOutputTrackTree->Branch("chi2Input",chi2Input,"chi2Input[nFind]/D");
+        fOutputTrackTree->Branch("chi2WithTestLayerInput",chi2WithTestLayerInput,"chi2WithTestLayerInput[nFind]/D");
+        fOutputTrackTree->Branch("pValueInput",pValueInput,"pValueInput[nFind]/D");
+        fOutputTrackTree->Branch("interceptX",interceptX,"interceptX[nFind]/D");
+        fOutputTrackTree->Branch("interceptZ",interceptZ,"interceptZ[nFind]/D");
+        fOutputTrackTree->Branch("slopeX",slopeX,"slopeX[nFind]/D");
+        fOutputTrackTree->Branch("slopeZ",slopeZ,"slopeZ[nFind]/D");
+        fOutputTrackTree->Branch("chi2",chi2,"chi2[nFind]/D");
+        fOutputTrackTree->Branch("chi2WithTestLayer",chi2WithTestLayer,"chi2WithTestLayer[nFind]/D");
+        fOutputTrackTree->Branch("pValue",pValue,"pValue[nFind]/D");
+        if (inputHitType){
+            fOutputTrackTree->Branch("chi2mc",chi2mc,"chi2mc[nFind]/D");
+            fOutputTrackTree->Branch("chi2WithTestLayermc",chi2WithTestLayermc,"chi2WithTestLayermc[nFind]/D");
+            fOutputTrackTree->Branch("pValuemc",pValuemc,"pValuemc[nFind]/D");
+            fOutputTrackTree->Branch("inxmc",&interceptXmc);
+            fOutputTrackTree->Branch("inzmc",&interceptZmc);
+            fOutputTrackTree->Branch("slxmc",&slopeXmc);
+            fOutputTrackTree->Branch("slzmc",&slopeZmc);
+        }
     }
 
     return true;
@@ -174,58 +185,60 @@ void InputOutputManager::Reset(){ // called at the beginning of every event
 }
 
 void InputOutputManager::Fill(){
-    fOutputTree->Fill();
+    if (writeTrackFile) fOutputTrackTree->Fill();
 }
 
 void InputOutputManager::Write(){
-    fOutputTree->Write();
+    if (writeTrackFile) fOutputTrackTree->Write();
 }
 
 void InputOutputManager::Close(){
-    fOutputFile->Close();
+    if (writeTrackFile) fOutputTrackFile->Close();
 }
 
 void InputOutputManager::GetEntry(Long64_t iEntry){
-    if (fInputTChain) fInputTChain->GetEntry(iEntry); 
+    if (readHitFile&&fInputHitChain) fInputHitChain->GetEntry(iEntry); 
     fCurrentEntry = iEntry;
 }
 
 Long64_t InputOutputManager::GetEntries(){
-    if (fInputTChain)
-        return fInputTChain->GetEntries();
+    if (readHitFile&&fInputHitChain)
+        return fInputHitChain->GetEntries();
     else
         return 0;
 }
 
 void InputOutputManager::Print(TString opt){
     printf("Entry %d, triggerNumber %d:\n",fCurrentEntry,triggerNumber);
-    printf("  Total hits: %d, good hits after cuts: %d\n",nHits,nHitsG);
-    if (opt.Contains("h")){
-        int iPacket = 0;
-        for (int iHit = 0; iHit<nHits; iHit++){
-            int    lid    = LayerID->at(iHit);
-            int    cid    = CellID->at(iHit);
-            int    clock  = TDCClock->at(iHit);
-            int    nPeakA = nPeaksInChannel->at(iHit);
-            int    iPeakA = iPeakInChannel->at(iHit);
-            int    nPeakL = nPeaksInPacket->at(iHit);
-            int    iPeakL = iPeakInPacket->at(iHit);
-            int    width  = PacketWidth->at(iHit);
-            int    height = ADCheight->at(iHit);
-            int    peak   = ADCpeak->at(iHit);
-            double ped    = Pedestal->at(iHit);
-            double sumA   = ADCsumAll->at(iHit);
-            double sumL   = ADCsumPacket->at(iHit);
-            double driftT = DriftT->at(iHit);
-            if (iPeakA==0){
-                printf("[%2d,%2d] :  %3d TDCs,  total ADC sum %.1f, pedestal %.1f\n",lid,cid,nPeakA,sumA,ped);
-                iPacket = 0;
+    if (readHitFile){
+        printf("  Total hits: %d, good hits after cuts: %d\n",nHits,nHitsG);
+        if (opt.Contains("h")){
+            int iPacket = 0;
+            for (int iHit = 0; iHit<nHits; iHit++){
+                int    lid    = LayerID->at(iHit);
+                int    cid    = CellID->at(iHit);
+                int    clock  = TDCClock->at(iHit);
+                int    nPeakA = nPeaksInChannel->at(iHit);
+                int    iPeakA = iPeakInChannel->at(iHit);
+                int    nPeakL = nPeaksInPacket->at(iHit);
+                int    iPeakL = iPeakInPacket->at(iHit);
+                int    width  = PacketWidth->at(iHit);
+                int    height = ADCheight->at(iHit);
+                int    peak   = ADCpeak->at(iHit);
+                double ped    = Pedestal->at(iHit);
+                double sumA   = ADCsumAll->at(iHit);
+                double sumL   = ADCsumPacket->at(iHit);
+                double driftT = DriftT->at(iHit);
+                if (iPeakA==0){
+                    printf("[%2d,%2d] :  %3d TDCs,  total ADC sum %.1f, pedestal %.1f\n",lid,cid,nPeakA,sumA,ped);
+                    iPacket = 0;
+                }
+                if (iPeakL==0){
+                    printf("             packet with %2d peaks : ADC sum %.1f, peak %d, %d ticks wide.\n",nPeakL,sumL,peak,width);
+                    iPacket++;
+                }
+                printf("%4d        %.1f ns, ADC %d @ clk %d\n",iHit,driftT,height,clock);
             }
-            if (iPeakL==0){
-                printf("             packet with %2d peaks : ADC sum %.1f, peak %d, %d ticks wide.\n",nPeakL,sumL,peak,width);
-                iPacket++;
-            }
-            printf("%4d        %.1f ns, ADC %d @ clk %d\n",iHit,driftT,height,clock);
         }
     }
 }

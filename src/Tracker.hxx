@@ -13,7 +13,7 @@ class TGraphErrors;
 
 class Tracker{
 public:
-    Tracker(InputOutputManager::InputType theInputType);
+    Tracker(InputOutputManager::InputHitType theInputHitType);
     virtual ~Tracker();
 
     void Reset(); /// prepare for tracking. To be called every time given a new event
@@ -62,7 +62,7 @@ private:
     TGraphErrors * graph_pairX; /// a graph to store pair positions with error on Y-X plane;
     TGraphErrors * graph_pairZ; /// a graph to store pair positions with error on Y-X plane
 
-    InputOutputManager::InputType inputType;
+    InputOutputManager::InputHitType inputHitType;
 
     /// a list of parameters used for track fitting with TMinuit
     double arglist[10];

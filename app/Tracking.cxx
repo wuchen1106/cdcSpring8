@@ -61,7 +61,7 @@ int main(int argc, char** argv){
     std::map<std::string, Log::ErrorPriority> namedDebugLevel;
     std::map<std::string, Log::LogPriority> namedLogLevel;
     int    opt_result;
-    while((opt_result=getopt(argc,argv,"M:R:B:E:N:L:C:D:V:h"))!=-1){
+    while((opt_result=getopt(argc,argv,"B:C:D:E:L:M:N:R:V:h"))!=-1){
         switch(opt_result){
             case 'M':
                 m_modulo = atoi(optarg);
@@ -214,6 +214,8 @@ int main(int argc, char** argv){
     if (!success) MyWarn("Cannot load offset file for wire adjustment. Will ignore this step.");
     success = XTManager::Get().Initialize();
     if (!success) {MyError("Cannot initialize XTManager"); return 1;}
+    InputOutputManager::Get().readHitFile = true;
+    InputOutputManager::Get().writeTrackFile = true;
     success = InputOutputManager::Get().Initialize();
     if (!success) {MyError("Cannot initialize InputOutputManager"); return 1;}
 
@@ -236,10 +238,10 @@ int main(int argc, char** argv){
     double tmin = ParameterManager::Get().TrackingParameters.tmin;
     double tmax = ParameterManager::Get().TrackingParameters.tmax;
     TrackingPara::PeakType peakType = ParameterManager::Get().peakType;
-    InputOutputManager::InputType inputType = ParameterManager::Get().inputType;
+    InputOutputManager::InputHitType inputHitType = ParameterManager::Get().inputHitType;
 
     // Prepare Tracker
-    Tracker * tracker = new Tracker(inputType);
+    Tracker * tracker = new Tracker(inputHitType);
 
     //===================Tracking====================================
     // Efficiency Counters

@@ -12,17 +12,27 @@ class TTree;
 class TChain;
 
 /// This class is to manage input and output files
-/// This is a singleton and you can use InputOutputManager::Get() to get its reference
-/// enum type InputType and OutputType are defined here to indicate the format of input and output files
-/// Initialize() function will set up input and output files according to types given by ParameterManager
-/// In each event the user should follow the example bellow:
+///
+/// This is a singleton and you can use InputOutputManager::Get() to get its reference \n
+/// Initialize() function will set up input and output files according to types given by ParameterManager \n
+/// This manager is supposed to manage all kinds of input and output files including \n
+/// -# raw data file as input
+/// -# peaks file as input
+/// -# hits file as input, including Data, MCDriftT, MCDriftD, defined as InputHitType
+/// -# track file as input
+/// -# track file as output
+/// -# analysis file as output
+///
+/// Set flags directly to enable/disable inputs/outputs. By default none of them are enabled \n
+/// In each event the user should follow the example bellow: \n
 ///\code{.cpp}
-///InputOutputManager::Get().Reset();
-///InputOutputManager::Get().GetEntry(iEntry);
-///// User code to get values and set to InputOutputManager...
-///InputOutputManager::Get().Fill();
+///    InputOutputManager::Get().Reset();
+///    InputOutputManager::Get().GetEntry(iEntry);
+///    // User code to get values and set to InputOutputManager...
+///    InputOutputManager::Get().Fill();
 ///\endcode
-/// Don't forget to call Write() and Close() at the end of your user code.
+///
+/// Don't forget to call Write() and Close() at the end of your user code. \n
 class InputOutputManager{
 public:
     InputOutputManager();
@@ -38,7 +48,7 @@ public:
         return *fInputOutputManager;
     }
 
-    enum InputType{
+    enum InputHitType{
         kData,
         kMCDriftT,
         kMCDriftD
@@ -54,6 +64,14 @@ public:
     void Print(TString opt = "");
 
     int                   fCurrentEntry;
+
+    // flags about which to read and which to write
+    bool                  readRawFile;
+    bool                  readPeakFile;
+    bool                  readHitFile;
+    bool                  readTrackFile;
+    bool                  writeTrackFile;
+    bool                  writeAnaFile;
 
     // raw hits from input
     int                   triggerNumber;
@@ -114,9 +132,9 @@ private:
     /// The static pointer to the singleton instance.
     static InputOutputManager* fInputOutputManager;
 
-    TFile  * fOutputFile;
-    TTree  * fOutputTree;
-    TChain * fInputTChain;
+    TFile  * fOutputTrackFile;
+    TTree  * fOutputTrackTree;
+    TChain * fInputHitChain;
 };
 
 #endif

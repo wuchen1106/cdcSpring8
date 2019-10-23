@@ -9,7 +9,7 @@ ParameterManager::ParameterManager()
     chamberType = GeometryManager::kProto4;
     connectionType = GeometryManager::kSPring8;
     beamType = BeamManager::kSPring8;
-    inputType = InputOutputManager::kData;
+    inputHitType = InputOutputManager::kData;
     peakType = TrackingPara::kFirstPeak;
 }
 
@@ -40,12 +40,12 @@ void ParameterManager::LoadParameters(ParaBlock theParaBlock){
         else if (name == "spring8tilted") beamType = BeamManager::kSPring8;
         else if (name == "cosmic") beamType = BeamManager::kCosmic;
     }
-    if (MyRuntimeParameters::Get().HasParameter("inputType")){
-        TString name = MyRuntimeParameters::Get().GetParameterS("inputType");
+    if (MyRuntimeParameters::Get().HasParameter("inputHitType")){
+        TString name = MyRuntimeParameters::Get().GetParameterS("inputHitType");
         name.ToLower();
-        if (name == "data") inputType = InputOutputManager::kData;
-        else if (name == "mc" || name == "mcdriftt") inputType = InputOutputManager::kMCDriftT;
-        else if (name == "mcdriftd") inputType = InputOutputManager::kMCDriftD;
+        if (name == "data") inputHitType = InputOutputManager::kData;
+        else if (name == "mc" || name == "mcdriftt") inputHitType = InputOutputManager::kMCDriftT;
+        else if (name == "mcdriftd") inputHitType = InputOutputManager::kMCDriftD;
     }
     if (MyRuntimeParameters::Get().HasParameter("peakType")){
         TString name = MyRuntimeParameters::Get().GetParameterS("peakType");
@@ -80,7 +80,7 @@ void ParameterManager::Print(){
     printf("  connection type:   %d\n",connectionType);
     printf("  geometry setup:    %d\n",geoSetup);
     printf("  beam type:         %d\n",beamType);
-    printf("  input type:        %d\n",inputType);
+    printf("  input type:        %d\n",inputHitType);
     printf("  peak type:         %d\n",peakType);
     TrackingParameters.Print();
     CalibParameters.Print();

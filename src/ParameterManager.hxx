@@ -100,7 +100,7 @@ public:
     GeometryManager::ChamberType chamberType;
     GeometryManager::ConnectionType connectionType;
     BeamManager::BeamType beamType;
-    InputOutputManager::InputType inputType;
+    InputOutputManager::InputHitType inputHitType;
     TrackingPara::PeakType peakType;
 
     TrackingPara    TrackingParameters;

@@ -21,7 +21,7 @@ std::map <int, int>    Tracker::hitIndexLeftRight;
 std::map <int, double> Tracker::hitIndexDriftDLeftMap;
 std::map <int, double> Tracker::hitIndexDriftDRightMap;
 
-Tracker::Tracker(InputOutputManager::InputType theInputType):
+Tracker::Tracker(InputOutputManager::InputHitType theInputHitType):
     nGoodTracks(0),
     pairableLayers(0),
     nPairs(0),
@@ -30,7 +30,7 @@ Tracker::Tracker(InputOutputManager::InputType theInputType):
     func_pairYZ(0),
     graph_pairX(0),
     graph_pairZ(0),
-    inputType(theInputType),
+    inputHitType(theInputHitType),
     ierflg(0),
     amin(0),
     edm(0),
@@ -278,7 +278,7 @@ int Tracker::fitting(int iselection){
                     fromSource = BeamManager::Get().IsInBeam(slx,slz);
                     if (inScint&&fromSource){
                         // update chi2
-                        if (inputType == InputOutputManager::kMCDriftD || inputType == InputOutputManager::kMCDriftT){
+                        if (inputHitType == InputOutputManager::kMCDriftD || inputHitType == InputOutputManager::kMCDriftT){
                             // FIXME: get mc input
                             //getchi2(chi2mc,chi2pmc,chi2amc,i_slxmc,i_inxmc,i_slzmc,i_inzmc,0,true);
                         }
