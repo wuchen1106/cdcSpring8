@@ -668,6 +668,9 @@ void Tracker::SetOutput(){
         InputOutputManager::Get().chi2[iFound] = trackResults[iFound].chi2;
         InputOutputManager::Get().pValue[iFound] = trackResults[iFound].pValue;
         InputOutputManager::Get().chi2WithTestLayer[iFound] = trackResults[iFound].chi2WithTestLayer;
+        for (int lid = 0; lid<NLAY; lid++){
+            InputOutputManager::Get().hitIndexSelected[lid][iFound] = -1;
+        }
         for (unsigned int iHit = 0; iHit<trackResults[iFound].hitIndexSelected.size(); iHit++){
             int lid = InputOutputManager::Get().LayerID->at(trackResults[iFound].hitIndexSelected[iHit]);
             if (lid>=0&&lid<NLAY){
