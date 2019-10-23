@@ -63,7 +63,7 @@ Chamber::Chamber(GeometryManager::GeoSetup theGeoSetup, GeometryManager::Connect
 void Chamber::SetGeometry(GeometryManager::GeoSetup theGeoSetup, GeometryManager::ConnectionType theConnectionType, GeometryManager::ChamberType theChamberType){
     cellHeight = 16;
     cellWidth = 16.8;
-    if (theChamberType == GeometryManager::kSPring8){
+    if (theChamberType == GeometryManager::kProto4){
         chamberLength = 599.17;
         chamberHeight = 170.05;
         chamberPositionX = 0;
@@ -73,8 +73,8 @@ void Chamber::SetGeometry(GeometryManager::GeoSetup theGeoSetup, GeometryManager
 }
 
 void Chamber::Initialize(){
-    for(int lid = 0; lid<NLAY; lid++){
-        for (int wid = 0; wid<NCEL; wid++){
+    for(unsigned int lid = 0; lid<NLAY; lid++){
+        for (unsigned int wid = 0; wid<NCEL; wid++){
             wire_x[lid][wid][0] = 0;
             wire_y[lid][wid][0] = 0;
             wire_z[lid][wid][0] = 0;
@@ -86,7 +86,7 @@ void Chamber::Initialize(){
             wire_adjustX[lid][wid] = 0;
             wire_adjustY[lid][wid] = 0;
             wire_adjustZ[lid][wid] = 0;
-            for (int wjd = 0; wjd<NCEL; wjd++){
+            for (unsigned int wjd = 0; wjd<NCEL; wjd++){
                 wirecross_x[lid][wid][wjd] = 999;
                 wirecross_z[lid][wid][wjd] = 999;
             }
@@ -117,7 +117,7 @@ bool Chamber::LoadWireMap(TString file){
     iChain->SetBranchAddress("yhv",&yhv);
     iChain->SetBranchAddress("xro",&xro);
     iChain->SetBranchAddress("yro",&yro);
-    for (int i = 0; i<iChain->GetEntries(); i++){
+    for (unsigned int i = 0; i<iChain->GetEntries(); i++){
         iChain->GetEntry(i);
         if (lid>=0&&lid<NLAY&&wid>=0&&wid<NCEL){
             wire_x[lid][wid][0] = xhv+wire_adjustX[lid][wid];
@@ -158,7 +158,7 @@ bool Chamber::LoadCrossPoints(TString file){
     iChain->SetBranchAddress("z",&zc);
     iChain->SetBranchAddress("x",&xc);
     int nEntries = iChain->GetEntries();
-    for (int iEntry = 0; iEntry<nEntries; iEntry++){
+    for (Long64_t iEntry = 0; iEntry<nEntries; iEntry++){
         iChain->GetEntry(iEntry);
         if (l1>=0&&l1<NLAY&&w1>=0&&w1<NCEL&&l2>=0&&l2<NLAY&&w2>=0&&w2<NCEL){
             wirecross_x[l1][w1][w2] = xc;
@@ -182,7 +182,7 @@ bool Chamber::AdjustWirePosition(TString file){
     iChain->SetBranchAddress("adjust",&off_adjustment);
     iChain->SetBranchAddress("lid",&off_lid);
     iChain->SetBranchAddress("wid",&off_wid);
-    for (int iEntry = 0; iEntry<iChain->GetEntries(); iEntry++){
+    for (Long64_t iEntry = 0; iEntry<iChain->GetEntries(); iEntry++){
         iChain->GetEntry(iEntry);
         wire_adjustX[off_lid][off_wid] = off_adjustment;
     }

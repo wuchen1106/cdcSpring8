@@ -117,16 +117,16 @@ void Tracker::Reset(){
 }
 
 void Tracker::DoTracking(){
-    int nSelections = 0;
+    unsigned int nSelections = 0;
     updateDriftD();
     tracking(0,nSelections); // 0 means starting from the 1st pick; nSelections is the number of possible choices by selecting one hit per layer;
 }
 
 void Tracker::updateDriftD(){
     MyNamedVerbose("Tracking","  Assigning driftD to good hits");
-    for (int lid = 0; lid<hitLayerIndexMap->size(); lid++){
-        int nHits = hitLayerIndexMap->at(lid)->size();
-        for (int i = 0; i<nHits; i++){
+    for (unsigned int lid = 0; lid<hitLayerIndexMap->size(); lid++){
+        unsigned int nHits = hitLayerIndexMap->at(lid)->size();
+        for (unsigned int i = 0; i<nHits; i++){
             int hitIndex = hitLayerIndexMap->at(lid)->at(i);
             double driftT = InputOutputManager::Get().DriftT->at(hitIndex); // FIXME: should add t0 offset consideration here
             int wid = InputOutputManager::Get().CellID->at(hitIndex);
@@ -137,9 +137,9 @@ void Tracker::updateDriftD(){
             MyNamedVerbose("Tracking","   ["<<lid<<","<<wid<<"] "<<driftT<<" ns, R "<<hitIndexDriftDLeftMap[hitIndex]<<" mm, L "<<hitIndexDriftDRightMap[hitIndex]<<" mm");
         }
     }
-    int nHits = hitIndexInTestLayer->size();
+    unsigned int nHits = hitIndexInTestLayer->size();
     MyNamedVerbose("Tracking","  Assigning driftD to "<<hitIndexInTestLayer->size()<<" hits in test layer");
-    for (int i = 0; i<nHits; i++){
+    for (unsigned int i = 0; i<nHits; i++){
         int hitIndex = hitIndexInTestLayer->at(i);
         double driftT = InputOutputManager::Get().DriftT->at(hitIndex); // FIXME: should add t0 offset consideration here
         int lid = InputOutputManager::Get().LayerID->at(hitIndex);
@@ -152,7 +152,7 @@ void Tracker::updateDriftD(){
     }
 }
 
-int Tracker::tracking(int ipick,int & iselection){
+int Tracker::tracking(unsigned int ipick,unsigned int & iselection){
     if (ipick == pairableLayers->size()){ // finished picking hits
         MyNamedVerbose("Tracking",Form(" Finished picking selection %d:",iselection));
         fitting(iselection);
@@ -160,7 +160,7 @@ int Tracker::tracking(int ipick,int & iselection){
     }
     else{
         int lid = pairableLayers->at(ipick);
-        for (int i = 0; i<hitLayerIndexMap->at(lid)->size(); i++){
+        for (unsigned int i = 0; i<hitLayerIndexMap->at(lid)->size(); i++){
             int ihit = hitLayerIndexMap->at(lid)->at(i);
             int wid = InputOutputManager::Get().CellID->at(ihit);
             MyNamedVerbose("Tracking",Form(" => pick # %d, layer %d, wire %d, hit[%d], ihit = %d",ipick,lid,wid,i,ihit));
@@ -178,7 +178,7 @@ int Tracker::tracking(int ipick,int & iselection){
 
 int Tracker::fitting(int iselection){
     /// calculate number of left/right combinations and start a loop in them and tracking them individually
-    int nPicks = pairableLayers->size();
+    unsigned int nPicks = pairableLayers->size();
     int ncombi = pow(2,nPicks);
     MyNamedVerbose("Tracking",Form("  %d picked layers -> %d combinations",nPicks,ncombi));
     for (int icombi = 0; icombi<ncombi; icombi++){ // each combination corresponds to a unique left/right selection set
@@ -303,8 +303,8 @@ int Tracker::fitting(int iselection){
 }
 
 void Tracker::setLeftRight(int icombi){
-    int nPicks = pairableLayers->size();
-    for (int iPick = 0; iPick<nPicks; iPick++){
+    unsigned int nPicks = pairableLayers->size();
+    for (unsigned int iPick = 0; iPick<nPicks; iPick++){
         int ilr = (icombi&(1<<iPick))>>iPick;
         if (ilr==0) ilr = -1; // 1 for right, -1 for left
         pickLR[iPick] = ilr;
@@ -320,7 +320,7 @@ void Tracker::Reset2DFunctions(double MoveRatioX, double MoveRatioZ){
 }
 
 bool Tracker::Fit2D(double safetyFactor, bool fitWithError, double & chi2X, double & chi2Z, bool & inScint, bool & fromSource){
-    int nPicks = pairableLayers->size();
+    unsigned int nPicks = pairableLayers->size();
     updateWirePositionOnHit(); // fix wy positions
     if (updatePairPositions()) return false; // cannot make pairs
     setPairPositionGraphs(fitWithError);
@@ -343,9 +343,9 @@ bool Tracker::Fit2D(double safetyFactor, bool fitWithError, double & chi2X, doub
 }
 
 int Tracker::updateWirePositionOnHit(){
-    int nPicks = pairableLayers->size();
+    unsigned int nPicks = pairableLayers->size();
     // calculate pickWireY
-    for (int ipick = 0; ipick<nPicks; ipick++){
+    for (unsigned int ipick = 0; ipick<nPicks; ipick++){
         // Get hit information
         int ihit = pickIndex[ipick];
         int lid = InputOutputManager::Get().LayerID->at(ihit);
@@ -368,10 +368,10 @@ int Tracker::updateWirePositionOnHit(){
 
 int Tracker::updatePairPositions(){
     double chamberHL = GeometryManager::Get().fChamber->chamberLength/2;
-    int nPicks = pairableLayers->size();
+    unsigned int nPicks = pairableLayers->size();
     // calculate pairXyz
     nPairs = 0;
-    int ipick = 0;
+    unsigned int ipick = 0;
     for (; ipick<nPicks-1; ipick++){
         int ihit = pickIndex[ipick];
         int jhit = pickIndex[ipick+1];
@@ -393,7 +393,7 @@ int Tracker::updatePairPositions(){
         pairY[nPairs] = (pickWireY[ipick+1]+pickWireY[ipick])/2.;
         pairZ[nPairs] = zc;
         MyNamedVerbose("updatePairPositions",Form("        xc = %.3e+%.3e*sin(%.3e)/(-sin(%.3e-%.3e))+%.3e*sin(%.3e)/sin(%.3e-%.3e)",GeometryManager::Get().fChamber->wirecross_x[lid][wid][wjd],dd1,theta2,theta1,theta2,dd2,theta1,theta1,theta2));
-        MyNamedVerbose("updatePairPositions",Form("        zc = %.3e+%.3e*cos(%.3e)/(-sin(%.3e-%.3e))+%.3e*cos(%.3e)/sin(%.3e-%.3e)+%.3e",GeometryManager::Get().fChamber->wirecross_z[lid][wid][wjd],dd1,theta2,theta1,theta2,dd2,theta1,theta1,theta2,zc_fix_slx,zc_fix_slx));
+        MyNamedVerbose("updatePairPositions",Form("        zc = %.3e+%.3e*cos(%.3e)/(-sin(%.3e-%.3e))+%.3e*cos(%.3e)/sin(%.3e-%.3e)+%.3e",GeometryManager::Get().fChamber->wirecross_z[lid][wid][wjd],dd1,theta2,theta1,theta2,dd2,theta1,theta1,theta2,zc_fix_slx));
         MyNamedVerbose("updatePairPositions",Form("       cp[%d,%d]: w(%d,%d) i(%d,%d) dd(%f,%f) xyz(%f,%f,%f)",lid,ljd,wid,wjd,ihit,jhit,dd1,dd2,xc,(pickWireY[ipick+1]+pickWireY[ipick])/2.,zc));
         if (zc<-chamberHL||zc>chamberHL){
             MyNamedVerbose("updatePairPositions",Form("       BAD combination!"));
@@ -481,13 +481,13 @@ void Tracker::pickUpHitsForFitting(double slx, double inx, double slz, double in
     currentTrackResult.hitLeftRightSelected.clear();
     MyNamedVerbose("Tracking","Picking up hits according to track "<<inx<<", "<<inz<<", "<<slx<<", "<<slz);
     // loop in all hits and pick up hits close to the track
-    for (int lid = 0; lid<hitLayerIndexMap->size(); lid++){ // note that the hits here are already selected in main function, and hits from the test layer are not included in this map
+    for (unsigned int lid = 0; lid<hitLayerIndexMap->size(); lid++){ // note that the hits here are already selected in main function, and hits from the test layer are not included in this map
         double resMin = 1e9;
         int    theHitIndex = -1;
         int    theLR = 0;
         double thefitD = 0;
         double theDD = 0;
-        for (int i = 0; i<hitLayerIndexMap->at(lid)->size(); i++){
+        for (unsigned int i = 0; i<hitLayerIndexMap->at(lid)->size(); i++){
             int iHit = hitLayerIndexMap->at(lid)->at(i);
             int wid = InputOutputManager::Get().CellID->at(iHit);
             double doca = GeometryManager::Get().GetDOCA(lid,wid,slx,inx,slz,inz);
@@ -558,7 +558,7 @@ void Tracker::getchi2(double &f, double & cp, double & ca, double slx, double in
     double dfit;
 
     int N = -4;
-    for (int i=0;i<currentTrackResult.hitIndexSelected.size(); i++) {
+    for (unsigned int i=0;i<currentTrackResult.hitIndexSelected.size(); i++) {
         int iHit = currentTrackResult.hitIndexSelected[i];
         int lr = currentTrackResult.hitLeftRightSelected[i];
         int lid = InputOutputManager::Get().LayerID->at(iHit);
@@ -580,7 +580,7 @@ void Tracker::getchi2(double &f, double & cp, double & ca, double slx, double in
         double theDD = 0;
         int thelid = 0;
         int thewid = 0;
-        for (int i=0;i<hitIndexInTestLayer->size(); i++) {
+        for (unsigned int i=0;i<hitIndexInTestLayer->size(); i++) {
             int iHit = hitIndexInTestLayer->at(i);
             int lid = InputOutputManager::Get().LayerID->at(iHit);
             int wid = InputOutputManager::Get().CellID->at(iHit);
@@ -668,7 +668,7 @@ void Tracker::SetOutput(){
         InputOutputManager::Get().chi2[iFound] = trackResults[iFound].chi2;
         InputOutputManager::Get().pValue[iFound] = trackResults[iFound].pValue;
         InputOutputManager::Get().chi2WithTestLayer[iFound] = trackResults[iFound].chi2WithTestLayer;
-        for (int iHit = 0; iHit<trackResults[iFound].hitIndexSelected.size(); iHit++){
+        for (unsigned int iHit = 0; iHit<trackResults[iFound].hitIndexSelected.size(); iHit++){
             int lid = InputOutputManager::Get().LayerID->at(trackResults[iFound].hitIndexSelected[iHit]);
             if (lid>=0&&lid<NLAY){
                 InputOutputManager::Get().hitIndexSelected[lid][iFound] = trackResults[iFound].hitIndexSelected[iHit];

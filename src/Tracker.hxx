@@ -42,7 +42,7 @@ public:
 
 private:
     void updateDriftD(); /// calculate drift distance for every hit in the given maps with both left and right assumptions. Will be stored in hitIndexDriftDLeftMap and hitIndexDriftDRightMap
-    int tracking(int ipick,int & iselection); /// Loop in the given layer hits map (hitLayerIndexMap). Called recursively. In each iterative call, pick up one hit per layer in the pairable layers and perform tracking.
+    int tracking(unsigned int ipick,unsigned int & iselection); /// Loop in the given layer hits map (hitLayerIndexMap). Called recursively. In each iterative call, pick up one hit per layer in the pairable layers and perform tracking.
     int fitting(int iselection); /// Fit the track with given selection of hits
     void setLeftRight(int icombi); /// get left/right from the given combination index
     void Reset2DFunctions(double MoveRatioX = 0, double MoveRatioZ = 0); /// get the 2-D fitting functions reset to default values. If arguements are given, then set with them as offsets

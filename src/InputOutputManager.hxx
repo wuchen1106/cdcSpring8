@@ -63,9 +63,7 @@ public:
     Long64_t GetEntries();
     void Print(TString opt = "");
 
-    int                   fCurrentEntry;
-
-    // flags about which to read and which to write
+    /// flags about which to read and which to write
     bool                  readRawFile;
     bool                  readPeakFile;
     bool                  readHitFile;
@@ -73,7 +71,10 @@ public:
     bool                  writeTrackFile;
     bool                  writeAnaFile;
 
-    // raw hits from input
+    /// the current entry; increment once GetEntry(iEntry) is called
+    int                   fCurrentEntry;
+
+    /// raw hits from input
     int                   triggerNumber;
     int                   nHits;
     std::vector<int> *    LayerID;
@@ -132,8 +133,8 @@ private:
     /// The static pointer to the singleton instance.
     static InputOutputManager* fInputOutputManager;
 
-    TFile  * fOutputTrackFile;
     TTree  * fOutputTrackTree;
+    TFile  * fOutputTrackFile;
     TChain * fInputHitChain;
 };
 

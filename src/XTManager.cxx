@@ -21,7 +21,7 @@ XTManager::XTManager():
     fResIntrinsic(0)
 {
     xtType = kSingleFolded;
-    for (int i = 0; i<NLAY; i++){
+    for (unsigned int i = 0; i<NLAY; i++){
         fXTLeft[i] = 0; 
         fXTRight[i] = 0;
     }
@@ -37,7 +37,7 @@ XTManager::~XTManager(){
     if (fXTRightOdd) delete fXTRightOdd;
     if (fXTLeftDefault) delete fXTLeftDefault;
     if (fXTRightDefault) delete fXTRightDefault;
-    for (int i = 0; i<NLAY; i++){
+    for (unsigned int i = 0; i<NLAY; i++){
         if (fXTLeft[i]) delete fXTLeft[i]; 
         if (fXTRight[i]) delete fXTRight[i];
     }
@@ -61,7 +61,7 @@ bool XTManager::Initialize(){
             return false;
         }
     }
-    for (int i = 1; i<NLAY; i++){ // first layer (0) is dummy
+    for (unsigned int i = 1; i<NLAY; i++){ // first layer (0) is dummy
         fXTLeft[i] = (TF1*) fInputFileXT->Get(Form("fl_%d",i));
         fXTRight[i] = (TF1*) fInputFileXT->Get(Form("fr_%d",i));
     }
@@ -161,7 +161,7 @@ double XTManager::t2x(double time, int lid, int wid, int lr, int & status){ // 1
 double XTManager::GetError(double dd){
     double error = 0.2; // default value 200 um
     int N = fResIntrinsic->GetN();
-    for (int i = 0; i<N-1; i++){
+    for (unsigned int i = 0; i<N-1; i++){
         double d1,sig1;
         double d2,sig2;
         fResIntrinsic->GetPoint(i,d1,sig1);
@@ -180,7 +180,7 @@ double XTManager::GetError(double dd){
 
 void XTManager::Print(){
     printf("XTManager: \n"); 
-    for (int i = 1; i<NLAY; i++){ // first layer (0) is dummy
+    for (unsigned int i = 1; i<NLAY; i++){ // first layer (0) is dummy
         printf("  XT in layer[%d]: ",i);
         PrintXTfunc(fXTLeft[i],fXTRight[i]);
     }

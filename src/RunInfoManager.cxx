@@ -7,8 +7,8 @@
 RunInfoManager* RunInfoManager::fRunInfoManager = NULL;
 
 RunInfoManager::RunInfoManager():
-    runName(""),
     preRunName(""),
+    runName(""),
     testLayer(0),
     runNo(0),
     gasType(""),
@@ -52,7 +52,7 @@ bool RunInfoManager::Initialize(int theRunNo, TString thePreRunName, TString the
     iChain->SetBranchAddress("t01",&t01);
     iChain->SetBranchAddress("aa",&aacut);
     iChain->SetBranchAddress("sum",&sumcut);
-    for(int i = 0; i<iChain->GetEntries(); i++){
+    for(unsigned int i = 0; i<iChain->GetEntries(); i++){
         iChain->GetEntry(i);
         if (runNo == theRunNo) break;
     }

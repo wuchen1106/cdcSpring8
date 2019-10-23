@@ -28,11 +28,11 @@ public:
     TString gasType;
     TString gasTypeShort;
     int     gasID;
+    double  W;
+    double  npair_per_cm;
     TString duration;
     double  durationTime;
     int     runGr;
-    double  W;
-    double  npair_per_cm;
     int     HV;
     int     THR;
     double  t00;
