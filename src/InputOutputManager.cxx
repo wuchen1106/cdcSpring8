@@ -45,7 +45,8 @@ InputOutputManager::InputOutputManager():
     nCandidatesFound(0),
     fOutputTrackTree(0),
     fOutputTrackFile(0),
-    fInputHitChain(0)
+    fInputHitChain(0),
+    fInputTrackChain(0)
 {
 }
 
@@ -96,6 +97,50 @@ bool InputOutputManager::Initialize(){
             fInputHitChain->SetBranchAddress("slzmc",&slopeZmc);
         }
     }
+    if (readTrackFile){
+        if (fInputTrackChain) delete fInputTrackChain; // FIXME: double delete?
+        fInputTrackChain = new TChain("t","t");
+        fInputTrackChain->Add(Form("%s/root/tracks/t_%d.%s.layer%d.root",HOME.Data(),runNo,runName.Data(),testLayer));
+        // from h_XXX
+        fInputTrackChain->SetBranchAddress("triggerNumber",&triggerNumber);
+        // basic
+        fInputTrackChain->SetBranchAddress("nHitsG",&nHitsG); // number of good hits in layers other than the test one: in t region and with good peak quality
+        fInputTrackChain->SetBranchAddress("nFind",&nCandidatesFound);
+        fInputTrackChain->SetBranchAddress("nPairs",nPairs);
+        fInputTrackChain->SetBranchAddress("nPairsG",nGoodPairs);
+        fInputTrackChain->SetBranchAddress("iSelection",iSelection);
+        fInputTrackChain->SetBranchAddress("iCombination",iCombination);
+        fInputTrackChain->SetBranchAddress("nHitsS",nHitsS); // number of hits selected from finding and fed to fitting
+        for (unsigned int iLayer = 0; iLayer<NLAY; iLayer++){
+            fInputTrackChain->SetBranchAddress(Form("hitIndexSelectedInLayer%d",iLayer),hitIndexSelected[iLayer]); // number of hits selected from finding and fed to fitting
+        }
+        fInputTrackChain->SetBranchAddress("t0Offset",t0Offset);
+        fInputTrackChain->SetBranchAddress("interceptXInput",interceptXInput);
+        fInputTrackChain->SetBranchAddress("interceptZInput",interceptZInput);
+        fInputTrackChain->SetBranchAddress("slopeXInput",slopeXInput);
+        fInputTrackChain->SetBranchAddress("slopeZInput",slopeZInput);
+        fInputTrackChain->SetBranchAddress("chi2XInput",chi2XInput);
+        fInputTrackChain->SetBranchAddress("chi2ZInput",chi2ZInput);
+        fInputTrackChain->SetBranchAddress("chi2Input",chi2Input);
+        fInputTrackChain->SetBranchAddress("chi2WithTestLayerInput",chi2WithTestLayerInput);
+        fInputTrackChain->SetBranchAddress("pValueInput",pValueInput);
+        fInputTrackChain->SetBranchAddress("interceptX",interceptX);
+        fInputTrackChain->SetBranchAddress("interceptZ",interceptZ);
+        fInputTrackChain->SetBranchAddress("slopeX",slopeX);
+        fInputTrackChain->SetBranchAddress("slopeZ",slopeZ);
+        fInputTrackChain->SetBranchAddress("chi2",chi2);
+        fInputTrackChain->SetBranchAddress("chi2WithTestLayer",chi2WithTestLayer);
+        fInputTrackChain->SetBranchAddress("pValue",pValue);
+        if (inputHitType!=kData){
+            fInputTrackChain->SetBranchAddress("chi2mc",chi2mc);
+            fInputTrackChain->SetBranchAddress("chi2WithTestLayermc",chi2WithTestLayermc);
+            fInputTrackChain->SetBranchAddress("pValuemc",pValuemc);
+            fInputTrackChain->SetBranchAddress("inxmc",&interceptXmc);
+            fInputTrackChain->SetBranchAddress("inzmc",&interceptZmc);
+            fInputTrackChain->SetBranchAddress("slxmc",&slopeXmc);
+            fInputTrackChain->SetBranchAddress("slzmc",&slopeZmc);
+        }
+    }
 
     //===================Prepare output ROOT file============================
     if (writeTrackFile){
@@ -133,7 +178,7 @@ bool InputOutputManager::Initialize(){
         fOutputTrackTree->Branch("chi2",chi2,"chi2[nFind]/D");
         fOutputTrackTree->Branch("chi2WithTestLayer",chi2WithTestLayer,"chi2WithTestLayer[nFind]/D");
         fOutputTrackTree->Branch("pValue",pValue,"pValue[nFind]/D");
-        if (inputHitType){
+        if (inputHitType!=kData){
             fOutputTrackTree->Branch("chi2mc",chi2mc,"chi2mc[nFind]/D");
             fOutputTrackTree->Branch("chi2WithTestLayermc",chi2WithTestLayermc,"chi2WithTestLayermc[nFind]/D");
             fOutputTrackTree->Branch("pValuemc",pValuemc,"pValuemc[nFind]/D");
@@ -198,12 +243,15 @@ void InputOutputManager::Close(){
 
 void InputOutputManager::GetEntry(Long64_t iEntry){
     if (readHitFile&&fInputHitChain) fInputHitChain->GetEntry(iEntry); 
+    if (readTrackFile&&fInputTrackChain) fInputTrackChain->GetEntry(iEntry); 
     fCurrentEntry = iEntry;
 }
 
 Long64_t InputOutputManager::GetEntries(){
     if (readHitFile&&fInputHitChain)
         return fInputHitChain->GetEntries();
+    else if (readTrackFile&&fInputTrackChain)
+        return fInputTrackChain->GetEntries();
     else
         return 0;
 }

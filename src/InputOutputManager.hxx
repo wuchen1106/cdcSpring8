@@ -136,6 +136,7 @@ private:
     TTree  * fOutputTrackTree;
     TFile  * fOutputTrackFile;
     TChain * fInputHitChain;
+    TChain * fInputTrackChain;
 };
 
 #endif
