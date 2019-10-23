@@ -11,6 +11,18 @@ class TFile;
 class TTree;
 class TChain;
 
+/// This class is to manage input and output files
+/// This is a singleton and you can use InputOutputManager::Get() to get its reference
+/// enum type InputType and OutputType are defined here to indicate the format of input and output files
+/// Initialize() function will set up input and output files according to types given by ParameterManager
+/// In each event the user should follow the example bellow:
+///\code{.cpp}
+///InputOutputManager::Get().Reset();
+///InputOutputManager::Get().GetEntry(iEntry);
+///// User code to get values and set to InputOutputManager...
+///InputOutputManager::Get().Fill();
+///\endcode
+/// Don't forget to call Write() and Close() at the end of your user code.
 class InputOutputManager{
 public:
     InputOutputManager();
@@ -32,12 +44,12 @@ public:
         kMCDriftD
     };
 
-    bool Initialize(); /// called at the beginning of the run
-    void Reset(); /// called at the beginning of every event
-    void Fill();
-    void Write();
-    void Close();
-    void GetEntry(Long64_t iEntry);
+    bool Initialize(); ///< Should be called at the beginning of the run
+    void Reset(); ///< Should be called at the beginning of every event
+    void Fill(); ///< Fill the branches in the output file
+    void Write(); ///< Write the tree to the output file
+    void Close(); ///< Close the output file
+    void GetEntry(Long64_t iEntry); ///< Should be called at the beginning of every event AFTER Reset()
     Long64_t GetEntries();
     void Print(TString opt = "");
 

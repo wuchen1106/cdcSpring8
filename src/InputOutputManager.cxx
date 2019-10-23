@@ -46,6 +46,7 @@ InputOutputManager::InputOutputManager():
 InputOutputManager::~InputOutputManager(){
 }
 
+/// This is to set branches for input and output files
 bool InputOutputManager::Initialize(){
     fCurrentEntry = 0;
     TString HOME=getenv("CDCS8WORKING_DIR");;
@@ -135,6 +136,7 @@ bool InputOutputManager::Initialize(){
     return true;
 }
 
+/// Will set initial values to input information so that if the GetEntry() function doesn't work, the user will get illegal values instead of misleading values from a previous entry
 void InputOutputManager::Reset(){ // called at the beginning of every event
     // prepare
     nHitsG = 0;
