@@ -68,6 +68,10 @@ void ParameterManager::LoadParameters(ParaBlock theParaBlock){
         if (MyRuntimeParameters::Get().HasParameter("tracking.lidStart")) TrackingParameters.lidStart = MyRuntimeParameters::Get().GetParameterI("tracking.lidStart");;
         if (MyRuntimeParameters::Get().HasParameter("tracking.lidStop")) TrackingParameters.lidStop = MyRuntimeParameters::Get().GetParameterI("tracking.lidStop");;
     }
+    if (theParaBlock==kAll||theParaBlock==kXTAnalyzer){
+        if (MyRuntimeParameters::Get().HasParameter("XTAnalyzer.XTType")) XTAnalylzerParameters.XTType = MyRuntimeParameters::Get().GetParameterI("XTAnalyzer.XTType");
+        if (MyRuntimeParameters::Get().HasParameter("XTAnalyzer.AsymXT")) XTAnalylzerParameters.AsymXT = MyRuntimeParameters::Get().GetParameterI("XTAnalyzer.AsymXT");
+    }
 }
 
 void ParameterManager::ReadInputFile(TString filename, TString dirName, bool tryFile, bool fixParameters){
@@ -127,9 +131,14 @@ void CalibPara::Print(){
 }
 
 XTAnalylzerPara::XTAnalylzerPara(){
+    XTType = 55; // use pol5 and pol5 to describe an XT function
+    AsymXT = false; // don't use asymmetric XT
 }
 
 void XTAnalylzerPara::Print(){
+    printf("XTAnalyzer Parameters:\n");
+    printf("  XTType = %d\n",XTType);
+    printf("  AsymXT = %d\n",AsymXT);
 }
 
 AnaPara::AnaPara(){

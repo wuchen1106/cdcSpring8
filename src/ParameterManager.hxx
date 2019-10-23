@@ -50,6 +50,8 @@ public:
     XTAnalylzerPara();
     virtual ~XTAnalylzerPara(){};
     void Print();
+    int XTType;
+    bool AsymXT;
 };
 
 // parameter block for Ana
