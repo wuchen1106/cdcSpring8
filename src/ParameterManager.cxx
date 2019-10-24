@@ -69,8 +69,21 @@ void ParameterManager::LoadParameters(ParaBlock theParaBlock){
         if (MyRuntimeParameters::Get().HasParameter("tracking.lidStop")) TrackingParameters.lidStop = MyRuntimeParameters::Get().GetParameterI("tracking.lidStop");;
     }
     if (theParaBlock==kAll||theParaBlock==kXTAnalyzer){
-        if (MyRuntimeParameters::Get().HasParameter("XTAnalyzer.XTType")) XTAnalylzerParameters.XTType = MyRuntimeParameters::Get().GetParameterI("XTAnalyzer.XTType");
-        if (MyRuntimeParameters::Get().HasParameter("XTAnalyzer.AsymXT")) XTAnalylzerParameters.AsymXT = MyRuntimeParameters::Get().GetParameterI("XTAnalyzer.AsymXT");
+        if (MyRuntimeParameters::Get().HasParameter("XTAnalyzer.CandSelBy")) XTAnalyzerParameters.CandSelBy = MyRuntimeParameters::Get().GetParameterS("XTAnalyzer.CandSelBy");
+        if (MyRuntimeParameters::Get().HasParameter("XTAnalyzer.XTType")) XTAnalyzerParameters.XTType = MyRuntimeParameters::Get().GetParameterI("XTAnalyzer.XTType");
+        if (MyRuntimeParameters::Get().HasParameter("XTAnalyzer.AsymXT")) XTAnalyzerParameters.AsymXT = MyRuntimeParameters::Get().GetParameterB("XTAnalyzer.AsymXT");
+        if (MyRuntimeParameters::Get().HasParameter("XTAnalyzer.RequireInTriggerCounter")) XTAnalyzerParameters.RequireInTriggerCounter = MyRuntimeParameters::Get().GetParameterB("XTAnalyzer.RequireInTriggerCounter");
+        if (MyRuntimeParameters::Get().HasParameter("XTAnalyzer.RequireAllGoldenHits")) XTAnalyzerParameters.RequireAllGoldenHits = MyRuntimeParameters::Get().GetParameterB("XTAnalyzer.RequireAllGoldenHits");
+        if (MyRuntimeParameters::Get().HasParameter("XTAnalyzer.ClosestPeak")) XTAnalyzerParameters.ClosestPeak = MyRuntimeParameters::Get().GetParameterB("XTAnalyzer.ClosestPeak");
+        if (MyRuntimeParameters::Get().HasParameter("XTAnalyzer.UseGoodHit")) XTAnalyzerParameters.UseGoodHit = MyRuntimeParameters::Get().GetParameterB("XTAnalyzer.UseGoodHit");
+        if (MyRuntimeParameters::Get().HasParameter("XTAnalyzer.AllGoodHitsUsed")) XTAnalyzerParameters.AllGoodHitsUsed = MyRuntimeParameters::Get().GetParameterB("XTAnalyzer.AllGoodHitsUsed");
+        if (MyRuntimeParameters::Get().HasParameter("XTAnalyzer.nHits_max")) XTAnalyzerParameters.nHits_max = MyRuntimeParameters::Get().GetParameterI("XTAnalyzer.nHits_max");
+        if (MyRuntimeParameters::Get().HasParameter("XTAnalyzer.nHitsS_min")) XTAnalyzerParameters.nHitsS_min = MyRuntimeParameters::Get().GetParameterI("XTAnalyzer.nHitsS_min");
+        if (MyRuntimeParameters::Get().HasParameter("XTAnalyzer.chi2_max")) XTAnalyzerParameters.chi2_max = MyRuntimeParameters::Get().GetParameterD("XTAnalyzer.chi2_max");
+        if (MyRuntimeParameters::Get().HasParameter("XTAnalyzer.slz_min")) XTAnalyzerParameters.slz_min = MyRuntimeParameters::Get().GetParameterD("XTAnalyzer.slz_min");
+        if (MyRuntimeParameters::Get().HasParameter("XTAnalyzer.slz_max")) XTAnalyzerParameters.slz_max = MyRuntimeParameters::Get().GetParameterD("XTAnalyzer.slz_max");
+        if (MyRuntimeParameters::Get().HasParameter("XTAnalyzer.gold_t_min")) XTAnalyzerParameters.gold_t_min = MyRuntimeParameters::Get().GetParameterD("XTAnalyzer.gold_t_min");
+        if (MyRuntimeParameters::Get().HasParameter("XTAnalyzer.gold_t_max")) XTAnalyzerParameters.gold_t_max = MyRuntimeParameters::Get().GetParameterD("XTAnalyzer.gold_t_max");
     }
 }
 
@@ -88,7 +101,7 @@ void ParameterManager::Print(){
     printf("  peak type:         %d\n",peakType);
     TrackingParameters.Print();
     CalibParameters.Print();
-    XTAnalylzerParameters.Print();
+    XTAnalyzerParameters.Print();
     AnaParameters.Print();
 }
 
@@ -130,15 +143,44 @@ CalibPara::CalibPara(){
 void CalibPara::Print(){
 }
 
-XTAnalylzerPara::XTAnalylzerPara(){
+XTAnalyzerPara::XTAnalyzerPara(){
     XTType = 55; // use pol5 and pol5 to describe an XT function
     AsymXT = false; // don't use asymmetric XT
+    CandSelBy = "Original"; // Just use the first candidate
+    RequireInTriggerCounter = true;
+    RequireAllGoldenHits = false;
+    ClosestPeak = false;
+    UseGoodHit = false;
+    AllGoodHitsUsed = false;
+    nHits_max = 30;
+    nHitsS_min = 7;
+    chi2_max = 2;
+    slz_min = -0.1;
+    slz_max = 0.1;
+    gold_t_min = 50;
+    gold_t_max = 300;
 }
 
-void XTAnalylzerPara::Print(){
+void XTAnalyzerPara::Print(){
     printf("XTAnalyzer Parameters:\n");
+    printf(" About event selection:\n");
+    printf("  Select candidate by = %s\n",CandSelBy.Data());
+    printf("  RequireInTriggerCounter = %s\n",RequireInTriggerCounter?"true":"false");
+    printf("  RequireAllGoldenHits = %s\n",RequireAllGoldenHits?"true":"false");
+    printf("  UseGoodHit = %s\n",UseGoodHit?"true":"false");
+    printf("  AllGoodHitsUsed = %s\n",AllGoodHitsUsed?"true":"false");
+    printf("  nHits_max = %d\n",nHits_max);
+    printf("  nHitsS_min = %d\n",nHitsS_min);
+    printf("  chi2_max = %f\n",chi2_max);
+    printf("  slz_min = %f\n",slz_min);
+    printf("  slz_max = %f\n",slz_max);
+    printf(" About hit selection:\n");
+    printf("  ClosestPeak = %s\n",ClosestPeak?"true":"false");
+    printf("  golden hit t_min = %f\n",gold_t_min);
+    printf("  golden hit t_max = %f\n",gold_t_max);
+    printf(" About XT function:\n");
     printf("  XTType = %d\n",XTType);
-    printf("  AsymXT = %d\n",AsymXT);
+    printf("  AsymXT = %s\n",AsymXT?"true":"false");
 }
 
 AnaPara::AnaPara(){

@@ -27,39 +27,20 @@
 #define NWIRES4CALIB 4
 #define FIRSTWIRE4CALIB 3
 
-// run time parameters
-TString m_CandSelBy = "Original"; // find the candidate with the smallest chi2 without the test layer; otherwise use chi2 wit the test layer (default order from tracking);
-
-// for cutting
-bool m_RequireInTriggerCounter = true;
-bool m_RequireAllGoldenHits = false;
-bool m_ClosestPeak = false;
-bool m_UseGoodHit = false;
-bool m_SaveHists = false;
-bool m_AllGoodHitsUsed = false;
-int m_nHits_max = 30;
-int m_nHitsS_min = 7;
-int m_sumCut = -30;
-int m_aaCut = 0;
-double m_chi2_max = 2;
-double m_slz_max = 0.1;
-double m_FD_max = 6; // only count hits with DOCA smaller than 6 mm
-int    m_tmaxSet = 0;
-//for binning
-double m_t_min = -25-1/0.96/2; // t range for one x bin
-double m_t_max = 800+1/0.96/2;
-double m_x_min = -0.02; // x range for one t bin
-double m_x_max = 10.02; // x range for one t bin
-int    m_NbinT = 792+1;
-int    m_NbinX = 501;
-int    m_NbinRes = 256;
-double m_chi2p_min = 1;
-double m_Res_max = 2;
+// for selecting good hits in tracking
+double t_min = 0;
+double t_max = 0;
+double sumCut = 0;
+double aaCut = 0;
+// definition of golden hit
+double gold_t_min = 0;
+double gold_t_max = 0;
 
 void print_usage(char * prog_name);
 bool isGoodHit(int iHit);
+bool isGoldenHit(int iHit);
 int CountGoodHitBeforeIt(int iHit);
-int CountBadHitSelected(int iCand);
+int CountNotGoldenHitSelected(int iCand);
 int GetCandidate(TString & candSelBy);
 void getRunTimeParameters(TString configureFile);
 
@@ -77,6 +58,7 @@ int main(int argc, char** argv){
     bool m_memdebug = false;
     int m_defaultLayerID = 4;
     bool m_DrawDetails = false;
+    bool m_SaveHists = false;
 
     // Load options
     std::map<std::string, Log::ErrorPriority> namedDebugLevel;
@@ -248,17 +230,25 @@ int main(int argc, char** argv){
     InputOutputManager::Get().readTrackFile = true;
 
     // for getting XT
-    int nPairsMin = ParameterManager::Get().TrackingParameters.nPairsMin;
-    int nHitsMax = ParameterManager::Get().TrackingParameters.nHitsMax;
-    int nHitsSMin = ParameterManager::Get().TrackingParameters.nHitsSMin;
-    double sumCut = ParameterManager::Get().TrackingParameters.sumCut;
-    double aaCut = ParameterManager::Get().TrackingParameters.aaCut;
-    double tmin = ParameterManager::Get().TrackingParameters.tmin;
-    double tmax = ParameterManager::Get().TrackingParameters.tmax;
-    TrackingPara::PeakType peakType = ParameterManager::Get().peakType;
-    // TODO: implement XTAnalylzerPara
-    int xtType = ParameterManager::Get().XTAnalylzerParameters.XTType; // XYZ means polX for center, polY for middle and polZ for tail. If X is 0 then let middle function fit the center region.
-    bool AsymXT = ParameterManager::Get().XTAnalylzerParameters.AsymXT; // use asymmetric xt curve or not
+    sumCut = ParameterManager::Get().TrackingParameters.sumCut;
+    aaCut = ParameterManager::Get().TrackingParameters.aaCut;
+    t_min = ParameterManager::Get().TrackingParameters.tmin;
+    t_max = ParameterManager::Get().TrackingParameters.tmax;
+    gold_t_min = ParameterManager::Get().XTAnalyzerParameters.gold_t_min;
+    gold_t_max = ParameterManager::Get().XTAnalyzerParameters.gold_t_max;
+    int xtType = ParameterManager::Get().XTAnalyzerParameters.XTType; // XYZ means polX for center, polY for middle and polZ for tail. If X is 0 then let middle function fit the center region.
+    bool AsymXT = ParameterManager::Get().XTAnalyzerParameters.AsymXT; // use asymmetric xt curve or not
+    TString CandSelBy = ParameterManager::Get().XTAnalyzerParameters.CandSelBy;
+    bool RequireInTriggerCounter = ParameterManager::Get().XTAnalyzerParameters.RequireInTriggerCounter;
+    bool RequireAllGoldenHits = ParameterManager::Get().XTAnalyzerParameters.RequireAllGoldenHits;
+    bool ClosestPeak = ParameterManager::Get().XTAnalyzerParameters.ClosestPeak;
+    bool UseGoodHit = ParameterManager::Get().XTAnalyzerParameters.UseGoodHit;
+    bool AllGoodHitsUsed = ParameterManager::Get().XTAnalyzerParameters.AllGoodHitsUsed;
+    int nHits_max = ParameterManager::Get().XTAnalyzerParameters.nHits_max;
+    int nHitsS_min = ParameterManager::Get().XTAnalyzerParameters.nHitsS_min;
+    double chi2_max = ParameterManager::Get().XTAnalyzerParameters.chi2_max;
+    double slz_min = ParameterManager::Get().XTAnalyzerParameters.slz_min;
+    double slz_max = ParameterManager::Get().XTAnalyzerParameters.slz_max;
 
     // Get the previous XT file used to do this tracking
     // NOTE: this will be used by XTAnalyzer to compare with the new XT as an iteration feedback
@@ -295,7 +285,6 @@ int main(int argc, char** argv){
 
     // Prepare XTAnalyzer
     XTAnalyzer * fXTAnalyzer = new XTAnalyzer(RunInfoManager::Get().gasID);
-    fXTAnalyzer->SetBinning(m_NbinT,m_t_min,m_t_max,m_NbinX,m_x_min,m_x_max);
 
     //=================================================Loop in layers to get XTs====================================================
     // Loop in layers
@@ -333,20 +322,22 @@ int main(int argc, char** argv){
             InputOutputManager::Get().GetEntry(iEntry);
 
             // decide which candidate to use
-            int theCand = GetCandidate(m_CandSelBy);
+            int theCand = GetCandidate(CandSelBy);
             double slx = InputOutputManager::Get().slopeX[theCand];
             double inx = InputOutputManager::Get().interceptX[theCand];
             double slz = InputOutputManager::Get().slopeZ[theCand];
             double inz = InputOutputManager::Get().interceptZ[theCand];
 
             // ignore events with bad fitting
-            if (InputOutputManager::Get().nHitsS[theCand]<m_nHitsS_min) continue;
-            if (InputOutputManager::Get().chi2[theCand]>m_chi2_max) continue;
-            if (m_AllGoodHitsUsed&&InputOutputManager::Get().nHitsG>InputOutputManager::Get().nHitsS[theCand]) continue;
-            if (m_RequireInTriggerCounter&&!GeometryManager::Get().IsInScinti(1.5,inx,slx,inz,slz)) continue;
-            if (m_nHits_max&&InputOutputManager::Get().nHits>m_nHits_max) continue;
-            if (m_RequireAllGoldenHits){
-                if (CountBadHitSelected(theCand)) continue;
+            if (InputOutputManager::Get().nHitsS[theCand]<nHitsS_min) continue;
+            if (InputOutputManager::Get().chi2[theCand]>chi2_max) continue;
+            if (InputOutputManager::Get().slopeZ[theCand]<slz_min) continue;
+            if (InputOutputManager::Get().slopeZ[theCand]>slz_max) continue;
+            if (AllGoodHitsUsed&&InputOutputManager::Get().nHitsG>InputOutputManager::Get().nHitsS[theCand]) continue;
+            if (RequireInTriggerCounter&&!GeometryManager::Get().IsInScinti(1.5,inx,slx,inz,slz)) continue;
+            if (nHits_max&&InputOutputManager::Get().nHits>nHits_max) continue;
+            if (RequireAllGoldenHits){
+                if (CountNotGoldenHitSelected(theCand)) continue;
             }
 
             MyNamedVerbose("GetXT","  Good Event! Looping in "<<InputOutputManager::Get().nHits<<" hits");
@@ -358,8 +349,8 @@ int main(int argc, char** argv){
                 int layerID = InputOutputManager::Get().LayerID->at(iHit);
                 if (layerID!=testLayer) continue;
                 int cellID = InputOutputManager::Get().CellID->at(iHit);
-                if (m_UseGoodHit&&!isGoodHit(iHit)) continue; // only use good hit in the test layer if required
-                if (m_ClosestPeak&&CountGoodHitBeforeIt(iHit)) continue; // if there is a good hit before this hit in the same cell, then skip it
+                if (UseGoodHit&&!isGoodHit(iHit)) continue; // only use good hit in the test layer if required
+                if (ClosestPeak&&CountGoodHitBeforeIt(iHit)) continue; // if there is a good hit before this hit in the same cell, then skip it
                 double tfitD = GeometryManager::Get().GetDOCA(layerID,cellID,slx,inx,slz,inz);
                 double tdriftT = InputOutputManager::Get().DriftT->at(iHit)-InputOutputManager::Get().t0Offset[theCand]; // consider the t0 offset suggested by this candidate
                 int status;
@@ -387,9 +378,15 @@ int main(int argc, char** argv){
 
 bool isGoodHit(int iHit){ // Here I neglected the cut on ipeak, layerID cause when I call this function I'm counting hits in a selected cell or a cell in test layer
     if (iHit<0||iHit>=InputOutputManager::Get().nHits) return false;
-    if (InputOutputManager::Get().DriftT->at(iHit)<m_t_min||InputOutputManager::Get().DriftT->at(iHit)>m_t_max) return false;
-    if (InputOutputManager::Get().ADCsumAll->at(iHit)<m_aaCut) return false;
-    if (InputOutputManager::Get().ADCsumPacket->at(iHit)<m_sumCut) return false;
+    if (InputOutputManager::Get().DriftT->at(iHit)<t_min||InputOutputManager::Get().DriftT->at(iHit)>t_max) return false;
+    if (InputOutputManager::Get().ADCsumAll->at(iHit)<aaCut) return false;
+    if (InputOutputManager::Get().ADCsumPacket->at(iHit)<sumCut) return false;
+    return true;
+}
+
+bool isGoldenHit(int iHit){ // Here I neglected the cut on ipeak, layerID cause when I call this function I'm counting hits in a selected cell or a cell in test layer
+    if (!isGoodHit(iHit)) return false;
+    if (InputOutputManager::Get().DriftT->at(iHit)<gold_t_min||InputOutputManager::Get().DriftT->at(iHit)>gold_t_max) return false;
     return true;
 }
 
@@ -414,13 +411,13 @@ int CountLateHitSelected(int iCand){
     return nLateHits;
 }
 
-int CountBadHitSelected(int iCand){
+int CountNotGoldenHitSelected(int iCand){
     int nHits = InputOutputManager::Get().nHits;
     int nBadHits = 0;
     for (int lid = 0; lid<NLAY; lid++){
         int iHit = InputOutputManager::Get().hitIndexSelected[lid][iCand];
         if (iHit>=0&&iHit<nHits){
-            if (!isGoodHit(iHit)) nBadHits++;
+            if (!isGoldenHit(iHit)) nBadHits++;
         }
     }
     return nBadHits;
@@ -497,6 +494,7 @@ void print_usage(char * prog_name){
 void getRunTimeParameters(TString configureFile){
     if (configureFile!=""){
         ParameterManager::Get().ReadInputFile(configureFile,"",false,false);
+        ParameterManager::Get().LoadParameters(ParameterManager::kTracking);
         ParameterManager::Get().LoadParameters(ParameterManager::kXTAnalyzer);
     }
 }

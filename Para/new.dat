@@ -28,6 +28,24 @@ tracking parameters
     < tracking.lidStop = 8 >
 
 *******************************************************************************                                                                   
+XTAnalyzer parameters
+*******************************************************************************                                                                   
+    < XTAnalyzer.lidStop = 8 >
+    < XTAnalyzer.CandSelBy = Original > Original LeastLateHit FittingChi2 GlobalChi2
+    < XTAnalyzer.RequireInTriggerCounter = false >
+    < XTAnalyzer.RequireAllGoldenHits = false >
+    < XTAnalyzer.ClosestPeak = false >
+    < XTAnalyzer.UseGoodHit = false >
+    < XTAnalyzer.AllGoodHitsUsed = false >
+    < XTAnalyzer.nHits_max = 25 >
+    < XTAnalyzer.nHitsS_min = 7 >
+    < XTAnalyzer.chi2_max = 2 >
+    < XTAnalyzer.slz_min = -0.1 >
+    < XTAnalyzer.slz_max = -0.1 >
+    < XTAnalyzer.gold_t_min = 50 >
+    < XTAnalyzer.gold_t_max = 350 >
+
+*******************************************************************************                                                                   
 ana parameters
 *******************************************************************************                                                                   
 

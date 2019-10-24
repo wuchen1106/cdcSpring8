@@ -45,13 +45,26 @@ public:
 };
 
 // parameter block for XTAnalyzer
-class XTAnalylzerPara{
+class XTAnalyzerPara{
 public:
-    XTAnalylzerPara();
-    virtual ~XTAnalylzerPara(){};
+    XTAnalyzerPara();
+    virtual ~XTAnalyzerPara(){};
     void Print();
     int XTType;
     bool AsymXT;
+    TString CandSelBy;
+    bool RequireInTriggerCounter;
+    bool RequireAllGoldenHits;
+    bool ClosestPeak;
+    bool UseGoodHit;
+    bool AllGoodHitsUsed;
+    int nHits_max;
+    int nHitsS_min;
+    double chi2_max;
+    double slz_min;
+    double slz_max;
+    double gold_t_min;
+    double gold_t_max;
 };
 
 // parameter block for Ana
@@ -107,7 +120,7 @@ public:
 
     TrackingPara    TrackingParameters;
     CalibPara       CalibParameters;
-    XTAnalylzerPara XTAnalylzerParameters;
+    XTAnalyzerPara XTAnalyzerParameters;
     AnaPara         AnaParameters;
 
 private:
