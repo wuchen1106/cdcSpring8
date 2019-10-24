@@ -17,6 +17,8 @@ MYEXCEPTION(EOARuntimeParameters,COMET::EoaCore);
 MYEXCEPTION(ENonexistantDatabaseParameter,EOARuntimeParameters);
 // Exception for reading parameter file
 MYEXCEPTION(EBadParameterFile,EOARuntimeParameters);
+MYEXCEPTION(EBadParameterConversion,EOARuntimeParameters);
+MYEXCEPTION(EDuplicateParameterInCurrentFile,EOARuntimeParameters);
 
 /// This class is meant to provide access to a set of parameters
 /// that are defined in a set of text files; in particular, the text files
@@ -42,6 +44,9 @@ class MyRuntimeParameters {
   /// Check if parameter with prefix is stored in database
   bool HasPrefix(std::string);
 
+  /// Get parameter.  Value is returned as bool. 
+  bool GetParameterB(std::string);
+
   /// Get parameter.  Value is returned as integer. 
   int GetParameterI(std::string);
 
@@ -51,7 +56,10 @@ class MyRuntimeParameters {
   /// Get parameter.  Value is returned as string. 
   std::string GetParameterS(std::string);
 
-   
+  /// Get parameter. Value type is defined by template
+  /// throw exception when parameter is not found
+  template<typename T> void GetParameter(std::string, T&);
+
   void ClearMapOfMyRuntimeParameters();
 
   MyUnitsTableParser* GetUnitsTableParser(){
