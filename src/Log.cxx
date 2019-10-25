@@ -393,3 +393,70 @@ void Log::Configure(const char* conf) {
         if (!success) MyLog("MyLog configuration file was not read.");
     }
 }
+
+bool Log::ConfigureD(const char * conf){
+    Log::ErrorPriority level;
+    // Set the debug level for a named trace.
+    std::string arg(conf);
+    std::size_t sep = arg.find("=");
+    if (sep != std::string::npos) {
+        std::string name = arg.substr(0,sep);
+        std::string levelName = arg.substr(sep+1);
+        switch (levelName[0]) {
+            case 'e': case 'E':
+                level = Log::ErrorLevel;
+                break;
+            case 's': case 'S':
+                level = Log::SevereLevel;
+                break;
+            case 'w': case 'W':
+                level = Log::WarnLevel;
+                break;
+            case 'd': case 'D':
+                level = Log::DebugLevel;
+                break;
+            case 't': case 'T':
+                level = Log::TraceLevel;
+                break;
+            default:
+                return false;
+        }
+        if (name=="general")
+            Log::SetDebugLevel(level);
+        else
+            Log::SetDebugLevel(name.c_str(), level);
+    }
+    return true;
+}
+
+bool Log::ConfigureV(const char * conf){
+    Log::LogPriority level;
+    // Set the debug level for a named trace.
+    std::string arg(conf);
+    std::size_t sep = arg.find("=");
+    if (sep != std::string::npos) {
+        std::string name = arg.substr(0,sep);
+        std::string levelName = arg.substr(sep+1);
+        switch (levelName[0]) {
+            case 'q': case 'Q':
+                level = Log::QuietLevel;
+                break;
+            case 'l': case 'L':
+                level = Log::LogLevel;
+                break;
+            case 'i': case 'I':
+                level = Log::InfoLevel;
+                break;
+            case 'v': case 'V':
+                level = Log::VerboseLevel;
+                break;
+            default:
+                return false;
+        }
+        if (name=="general")
+            Log::SetLogLevel(level);
+        else
+            Log::SetLogLevel(name.c_str(), level);
+    }
+    return true;
+}

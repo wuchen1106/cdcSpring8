@@ -58,12 +58,13 @@ int main(int argc, char** argv){
     int m_testLayer = 4;
 
     // Load options
-    std::map<std::string, Log::ErrorPriority> namedDebugLevel;
-    std::map<std::string, Log::LogPriority> namedLogLevel;
     int    opt_result;
-    while((opt_result=getopt(argc,argv,"B:C:D:E:L:M:N:R:V:h"))!=-1){
+    while((opt_result=getopt(argc,argv,"B:C:D:E:L:MN:P:R:V:h"))!=-1){
         switch(opt_result){
             case 'M':
+                m_memdebug = true;
+                printf("Turning on memory debug\n");
+            case 'P':
                 m_modulo = atoi(optarg);
                 printf("Printing modulo set to %d\n",m_modulo);
                 break;
@@ -93,78 +94,12 @@ int main(int argc, char** argv){
                 break;
             case 'D':
                 {
-                    // Set the debug level for a named trace.
-                    std::string arg(optarg);
-                    std::size_t sep = arg.find("=");
-                    if (sep != std::string::npos) {
-                        std::string name = arg.substr(0,sep);
-                        if (name=="Memory"||name=="memory") m_memdebug = true;
-                        std::string levelName = arg.substr(sep+1);
-                        switch (levelName[0]) {
-                            case 'e': case 'E':
-                                namedDebugLevel[name.c_str()] = Log::ErrorLevel;
-                                break;
-                            case 's': case 'S':
-                                namedDebugLevel[name.c_str()] = Log::SevereLevel;
-                                break;
-                            case 'w': case 'W':
-                                namedDebugLevel[name.c_str()] = Log::WarnLevel;
-                                break;
-                            case 'd': case 'D':
-                                namedDebugLevel[name.c_str()] = Log::DebugLevel;
-                                break;
-                            case 't': case 'T':
-                                namedDebugLevel[name.c_str()] = Log::TraceLevel;
-                                break;
-                            default:
-                                print_usage(argv[0]);
-                        }
-                        for (std::map<std::string,Log::ErrorPriority>::iterator i 
-                                = namedDebugLevel.begin();
-                                i != namedDebugLevel.end();
-                                ++i) {
-                            if (i->first=="general")
-                                Log::SetDebugLevel(i->second);
-                            else
-                                Log::SetDebugLevel(i->first.c_str(), i->second);
-                        }
-                    }
+                    if (!Log::ConfigureD(optarg)) print_usage(argv[0]);
                     break;
                 }
             case 'V':
                 {
-                    // Set the debug level for a named trace.
-                    std::string arg(optarg);
-                    std::size_t sep = arg.find("=");
-                    if (sep != std::string::npos) {
-                        std::string name = arg.substr(0,sep);
-                        std::string levelName = arg.substr(sep+1);
-                        switch (levelName[0]) {
-                            case 'q': case 'Q':
-                                namedLogLevel[name.c_str()] = Log::QuietLevel;
-                                break;
-                            case 'l': case 'L':
-                                namedLogLevel[name.c_str()] = Log::LogLevel;
-                                break;
-                            case 'i': case 'I':
-                                namedLogLevel[name.c_str()] = Log::InfoLevel;
-                                break;
-                            case 'v': case 'V':
-                                namedLogLevel[name.c_str()] = Log::VerboseLevel;
-                                break;
-                            default:
-                                print_usage(argv[0]);
-                        }
-                    }
-                    for (std::map<std::string,Log::LogPriority>::iterator i 
-                            = namedLogLevel.begin();
-                            i != namedLogLevel.end();
-                            ++i) {
-                        if (i->first=="general")
-                            Log::SetLogLevel(i->second);
-                        else
-                            Log::SetLogLevel(i->first.c_str(), i->second);
-                    }
+                    if (!Log::ConfigureV(optarg)) print_usage(argv[0]);
                     break;
                 }
             case '?':
@@ -352,11 +287,15 @@ void print_usage(char* prog_name)
     fprintf(stderr,"[options]\n");
     fprintf(stderr,"\t -D <name>=[error,severe,warn,debug,trace]\n");
     fprintf(stderr,"\t\t Change the named debug level\n");
+    fprintf(stderr,"\t\t if the given name is \"general\" then set the default debug level\n");
     fprintf(stderr,"\t -V <name>=[quiet,log,info,verbose]\n");
     fprintf(stderr,"\t\t Change the named log level\n");
+    fprintf(stderr,"\t\t if the given name is \"general\" then set the default log level\n");
+    fprintf(stderr,"\t -M\n");
+    fprintf(stderr,"\t\t Turning on memory debug mode\n");
     fprintf(stderr,"\t -C <file>\n");
     fprintf(stderr,"\t\t Set the configure file\n");
-    fprintf(stderr,"\t -M <n>\n");
+    fprintf(stderr,"\t -P <n>\n");
     fprintf(stderr,"\t\t Printing modulo set to n\n");
     fprintf(stderr,"\t -R <run>\n");
     fprintf(stderr,"\t\t Run number set to run\n");

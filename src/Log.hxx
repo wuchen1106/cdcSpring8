@@ -396,6 +396,12 @@ public:
     /// described elsewhere.
     static void Configure(const char* conf=NULL);
 
+    /// Set the log level accoring to option D
+    static bool ConfigureD(const char * conf);
+
+    /// Set the log level accoring to option V
+    static bool ConfigureV(const char * conf);
+
     /// Set the output stream to be used for error messages.
     static void SetDebugStream(std::ostream* err);
 
