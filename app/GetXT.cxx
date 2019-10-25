@@ -236,8 +236,6 @@ int main(int argc, char** argv){
     t_max = ParameterManager::Get().TrackingParameters.tmax;
     gold_t_min = ParameterManager::Get().XTAnalyzerParameters.gold_t_min;
     gold_t_max = ParameterManager::Get().XTAnalyzerParameters.gold_t_max;
-    int xtType = ParameterManager::Get().XTAnalyzerParameters.XTType; // XYZ means polX for center, polY for middle and polZ for tail. If X is 0 then let middle function fit the center region.
-    bool AsymXT = ParameterManager::Get().XTAnalyzerParameters.AsymXT; // use asymmetric xt curve or not
     TString CandSelBy = ParameterManager::Get().XTAnalyzerParameters.CandSelBy;
     bool RequireInTriggerCounter = ParameterManager::Get().XTAnalyzerParameters.RequireInTriggerCounter;
     bool RequireAllGoldenHits = ParameterManager::Get().XTAnalyzerParameters.RequireAllGoldenHits;
@@ -284,7 +282,7 @@ int main(int argc, char** argv){
     newXTTree->Branch("type",&mType);
 
     // Prepare XTAnalyzer
-    XTAnalyzer * fXTAnalyzer = new XTAnalyzer(RunInfoManager::Get().gasID);
+    XTAnalyzer * fXTAnalyzer = new XTAnalyzer(Form("%d.%s",m_runNo,m_runName.Data()),RunInfoManager::Get().gasID,preXTFile,newXTFile,newXTTree,m_defaultLayerID,m_SaveHists,m_DrawDetails);
 
     //=================================================Loop in layers to get XTs====================================================
     // Loop in layers
@@ -302,8 +300,8 @@ int main(int argc, char** argv){
 
         //----------------------------------Start to get XT--------------------------------------------
         //Initialize the analyzer
-        int saveEvenOdd = 0; if (testLayer==4) saveEvenOdd = 1; else if (testLayer==5) saveEvenOdd = -1;
-        int statusInitialize = fXTAnalyzer->Initialize(Form("%d.%s.layer%d",m_runNo,m_runName.Data(),testLayer),testLayer,preXTFile,newXTFile,newXTTree,xtType,!AsymXT,m_SaveHists,m_DrawDetails, testLayer==m_defaultLayerID, saveEvenOdd, testLayer!=0);
+        fXTAnalyzer->SetTestLayer(testLayer);
+        int statusInitialize = fXTAnalyzer->Initialize();
         if (statusInitialize){
             fprintf(stderr,"WARNING: something wrong with initializing XTAnalyzer for layer[%d], will ignore this layer!\n",testLayer);
             continue;

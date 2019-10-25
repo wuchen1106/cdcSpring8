@@ -11,23 +11,26 @@
 #include "TLine.h"
 #include "TStyle.h"
 
-#include "Log.hxx"
-
 #include <math.h>
 
-XTAnalyzer::XTAnalyzer(int gasID, int debug)
-        :mGasID(gasID), mDebugLevel(debug), mSaveHists(0), mDrawDetails(false), mSaveXT0(false), mSaveXTEO(0), mUpdateXT(true), mSymmetric(true),
+#include "ParameterManager.hxx"
+#include "XTManager.hxx"
+#include "Log.hxx"
+
+XTAnalyzer::XTAnalyzer(TString runname, int gasID, TFile * infile, TFile * outfile, TTree * otree, int defaultLayer, int savehists, bool drawDetails)
+        :mRunName(runname), mGasID(gasID), mSaveHists(savehists), mDrawDetails(drawDetails), mSaveXT0(false), mSaveXTEO(false), mUpdateXT(true), mSymmetric(true),
+        mInFile(infile), 
+        mOutFile(outfile), 
+        mOutTree(otree), 
+        mLayerID(0),
         mXTType(55), mCentPolN(0), mMidPolN(5), mEndPolN(5),
-        mRunName(""), mEOsuffix("even"),
+        mEOsuffix("even"),
         mEntriesMin(0), mSigXmax(0.5), mSigTmax(20),
-        mX(0), mT(0), mLayerID(0), mSig(0), mChi2(0), mEntries(0), mType(0), 
+        mX(0), mT(0), mSig(0), mChi2(0), mEntries(0), mType(0), 
         mBWT(0), mBWX(0), mXLEFT(0), mXRIGHT(0), mTLEFT(0), mTRIGHT(0), 
-        mTmin(0), mTmax(0), mNbint(0), mXmin(0), mXmax(0), mNbinx(0), 
+        m_bin_t_min(0), m_bin_t_max(0), m_bin_t_num(0), m_bin_x_min(0), m_bin_x_max(0), m_bin_x_num(0), 
         m_sig_sel(0), m_t_sel(0), m_n_sel(0), m_i_sel(0), 
         m_RLmB_dx_max(0), m_TmL_LR_max(0), m_TmL_B_max(0), 
-        mInFile(0), 
-        mOutFile(0), 
-        mOutTree(0), 
         h2_xt(0), 
         h2_xtn(0), 
         f_gaus(0), 
@@ -145,12 +148,12 @@ XTAnalyzer::XTAnalyzer(int gasID, int debug)
         h_xn_tsum[islice] = 0;
     }
     // set for binning
-    mTmin = -25-1/0.96/2; // t range for one x bin
-    mTmax = 800+1/0.96/2;
-    mNbint = 792+1;
-    mXmin = -0.02;
-    mXmax = 10.02; // x range for one t bin
-    mNbinx = 501;
+    m_bin_t_min = -25-1/0.96/2; // t range for one x bin
+    m_bin_t_max = 800+1/0.96/2;
+    m_bin_t_num = 792+1;
+    m_bin_x_min = -0.02;
+    m_bin_x_max = 10.02; // x range for one t bin
+    m_bin_x_num = 501;
 }
 
 XTAnalyzer::~XTAnalyzer(void){
@@ -171,32 +174,23 @@ void XTAnalyzer::SetSaveHists(int save){
     mSaveHists = save;
 }
 
-void XTAnalyzer::SetBinning(int nt, double tmin, double tmax, int nx, double xmin, double xmax){
-    // set for binning
-    mTmin = tmin; // t range for one x bin
-    mTmax = tmax;
-    mNbint = nt;
-    mXmin = xmin;
-    mXmax = xmax; // x range for one t bin
-    mNbinx = nx;
-}
-
-int XTAnalyzer::Initialize(TString runname, int lid, TFile * infile, TFile * outfile, TTree * otree, int xttype, bool sym, int savehists, bool drawDetails, bool saveXT0, int saveOddEven, bool updateXT){
+int XTAnalyzer::Initialize(){
     // Set options
-    mRunName = runname;
-    mLayerID = lid;
-    mInFile = infile;
-    mOutFile = outfile;
-    mOutTree = otree;
-    SetXTType(xttype);
-    mSymmetric = sym;
-    mSaveHists = savehists;
-    mDrawDetails = drawDetails;
-    mSaveXT0 = saveXT0;
-    mSaveXTEO = saveOddEven;
+    SetXTType(ParameterManager::Get().XTAnalyzerParameters.XTType);
+    mSymmetric = ParameterManager::Get().XTAnalyzerParameters.AsymXT;
+    // Set binning
+    m_bin_t_min = ParameterManager::Get().XTAnalyzerParameters.bin_t_min; // t range for one x bin
+    m_bin_t_max = ParameterManager::Get().XTAnalyzerParameters.bin_t_max;
+    m_bin_t_num = ParameterManager::Get().XTAnalyzerParameters.bin_t_num;
+    m_bin_x_min = ParameterManager::Get().XTAnalyzerParameters.bin_x_min;
+    m_bin_x_max = ParameterManager::Get().XTAnalyzerParameters.bin_x_max; // x range for one t bin
+    m_bin_x_num = ParameterManager::Get().XTAnalyzerParameters.bin_x_num;
+    // TODO: add a rule to decide these options
+    mSaveXT0 = false;
+    mSaveXTEO = false;
     mEOsuffix = "even";
     if (mSaveXTEO<0) mEOsuffix = "odd";
-    mUpdateXT = updateXT;
+    mUpdateXT = false;
 
     mEntriesMin = 30;
     mSigTmax = 20;
@@ -251,10 +245,10 @@ int XTAnalyzer::Initialize(TString runname, int lid, TFile * infile, TFile * out
     mTRIGHT = mBWT*NSLICET/2;
 
     // prepare 2D histograms
-    h2_xt = new TH2D(Form("h2_xt_%d",mLayerID),"XT Relation",mNbint,mTmin,mTmax,mNbinx,-mXmax,mXmax);
+    h2_xt = new TH2D(Form("h2_xt_%d",mLayerID),"XT Relation",m_bin_t_num,m_bin_t_min,m_bin_t_max,m_bin_x_num,-m_bin_x_max,m_bin_x_max);
     h2_xt->GetXaxis()->SetTitle("T [ns]");
     h2_xt->GetYaxis()->SetTitle("X [mm]");
-    h2_xtn = new TH2D(Form("h2_xtn_%d",mLayerID),"XT Relation",mNbint,mTmin,mTmax,mNbinx/2,-mXmin,mXmax);
+    h2_xtn = new TH2D(Form("h2_xtn_%d",mLayerID),"XT Relation",m_bin_t_num,m_bin_t_min,m_bin_t_max,m_bin_x_num/2,-m_bin_x_min,m_bin_x_max);
     h2_xtn->GetXaxis()->SetTitle("T [ns]");
     h2_xtn->GetYaxis()->SetTitle("X [mm]");
 
@@ -262,26 +256,26 @@ int XTAnalyzer::Initialize(TString runname, int lid, TFile * infile, TFile * out
     for (int ix = 0; ix<NSLICEX; ix++){
         double fdmin,fdmid,fdmax;
         i2x(ix,fdmin,fdmid,fdmax);
-        h_t[ix] = new TH1D(Form("h_t_%d_%d",mLayerID,ix),Form("T_{drift} distribution with DOCA [%.2f~%.2f] mm",fdmin,fdmax),mNbint,mTmin,mTmax);
-        h_t_xsum[ix] = new TH1D(Form("h_t_xsum_%d_%d",mLayerID,ix),Form("Average DOCA in slice [%.2f~%.2f] mm",fdmin,fdmax),mNbint,mTmin,mTmax);
-        h_tn[ix] = new TH1D(Form("h_tn_%d_%d",mLayerID,ix),Form("T_{drift} distribution with DOCA [%.2f~%.2f] mm",fdmin,fdmax),mNbint,mTmin,mTmax);
-        h_tn_xsum[ix] = new TH1D(Form("h_tn_xsum_%d_%d",mLayerID,ix),Form("Average DOCA in slice [%.2f~%.2f] mm",fdmin,fdmax),mNbint,mTmin,mTmax);
+        h_t[ix] = new TH1D(Form("h_t_%d_%d",mLayerID,ix),Form("T_{drift} distribution with DOCA [%.2f~%.2f] mm",fdmin,fdmax),m_bin_t_num,m_bin_t_min,m_bin_t_max);
+        h_t_xsum[ix] = new TH1D(Form("h_t_xsum_%d_%d",mLayerID,ix),Form("Average DOCA in slice [%.2f~%.2f] mm",fdmin,fdmax),m_bin_t_num,m_bin_t_min,m_bin_t_max);
+        h_tn[ix] = new TH1D(Form("h_tn_%d_%d",mLayerID,ix),Form("T_{drift} distribution with DOCA [%.2f~%.2f] mm",fdmin,fdmax),m_bin_t_num,m_bin_t_min,m_bin_t_max);
+        h_tn_xsum[ix] = new TH1D(Form("h_tn_xsum_%d_%d",mLayerID,ix),Form("Average DOCA in slice [%.2f~%.2f] mm",fdmin,fdmax),m_bin_t_num,m_bin_t_min,m_bin_t_max);
     }
     for (int it = 0; it<NSLICET; it++){
         double dtmin,dtmid,dtmax;
         i2t(it,dtmin,dtmid,dtmax);
-        h_x[it] = new TH1D(Form("h_x_%d_%d",mLayerID,it),Form("DOCA (left) distribution with T_{drift} [%.0f~%.0f] ns",dtmin,dtmax),mNbinx,-mXmax,mXmax);
-        h_mx[it] = new TH1D(Form("h_mx_%d_%d",mLayerID,it),Form("-DOCA (left) distribution with T_{drift} [%.0f~%.0f] ns",dtmin,dtmax),mNbinx,-mXmax,mXmax);
-        h_x_tsum[it] = new TH1D(Form("h_x_tsum_%d_%d",mLayerID,it),Form("Average T_{drift} in slice [%.0f~%.0f] ns",dtmin,dtmax),mNbinx,-mXmax,mXmax);
-        h_xn[it] = new TH1D(Form("h_xn_%d_%d",mLayerID,it),Form("DOCA (left) distribution with T_{drift} [%.0f~%.0f] ns",dtmin,dtmax),mNbinx,-mXmax,mXmax);
-        h_mxn[it] = new TH1D(Form("h_mxn_%d_%d",mLayerID,it),Form("-DOCA (left) distribution with T_{drift} [%.0f~%.0f] ns",dtmin,dtmax),mNbinx,-mXmax,mXmax);
-        h_xn_tsum[it] = new TH1D(Form("h_xn_tsum_%d_%d",mLayerID,it),Form("Average T_{drift} in slice [%.0f~%.0f] ns",dtmin,dtmax),mNbinx,-mXmax,mXmax);
+        h_x[it] = new TH1D(Form("h_x_%d_%d",mLayerID,it),Form("DOCA (left) distribution with T_{drift} [%.0f~%.0f] ns",dtmin,dtmax),m_bin_x_num,-m_bin_x_max,m_bin_x_max);
+        h_mx[it] = new TH1D(Form("h_mx_%d_%d",mLayerID,it),Form("-DOCA (left) distribution with T_{drift} [%.0f~%.0f] ns",dtmin,dtmax),m_bin_x_num,-m_bin_x_max,m_bin_x_max);
+        h_x_tsum[it] = new TH1D(Form("h_x_tsum_%d_%d",mLayerID,it),Form("Average T_{drift} in slice [%.0f~%.0f] ns",dtmin,dtmax),m_bin_x_num,-m_bin_x_max,m_bin_x_max);
+        h_xn[it] = new TH1D(Form("h_xn_%d_%d",mLayerID,it),Form("DOCA (left) distribution with T_{drift} [%.0f~%.0f] ns",dtmin,dtmax),m_bin_x_num,-m_bin_x_max,m_bin_x_max);
+        h_mxn[it] = new TH1D(Form("h_mxn_%d_%d",mLayerID,it),Form("-DOCA (left) distribution with T_{drift} [%.0f~%.0f] ns",dtmin,dtmax),m_bin_x_num,-m_bin_x_max,m_bin_x_max);
+        h_xn_tsum[it] = new TH1D(Form("h_xn_tsum_%d_%d",mLayerID,it),Form("Average T_{drift} in slice [%.0f~%.0f] ns",dtmin,dtmax),m_bin_x_num,-m_bin_x_max,m_bin_x_max);
     }
 
     // prepare functions for slice analysis
-    f_gaus = myNewTF1("fgaus","gaus",-mTmax,mTmax);
-    f_land = myNewTF1("fland","landau",-mTmax,mTmax);
-    f_2gaus = myNewTF1("f2gaus","(x>[1])*[0]*exp(-0.5*((x-[1])/[2])**2)+(x<=[1])*[0]*exp(-0.5*((x-[1])/[3])**2)",-mTmax,mTmax);
+    f_gaus = myNewTF1("fgaus","gaus",-m_bin_t_max,m_bin_t_max);
+    f_land = myNewTF1("fland","landau",-m_bin_t_max,m_bin_t_max);
+    f_2gaus = myNewTF1("f2gaus","(x>[1])*[0]*exp(-0.5*((x-[1])/[2])**2)+(x<=[1])*[0]*exp(-0.5*((x-[1])/[3])**2)",-m_bin_t_max,m_bin_t_max);
     l_left = new TLine(0,0,1,1);
     l_right = new TLine(0,0,1,1);
     l_center = new TLine(0,0,1,1);
@@ -341,22 +335,22 @@ int XTAnalyzer::Initialize(TString runname, int lid, TFile * infile, TFile * out
     m_TmL_B_max = 0;
 
     // prepare new XT functions
-    f_left_cen = myNewTF1(Form("flce_%d",mLayerID),Form("pol%d",mCentPolN),mTmin,mTmax);
-    f_right_cen = myNewTF1(Form("frce_%d",mLayerID),Form("pol%d",mCentPolN),mTmin,mTmax);
-    f_both_cen = myNewTF1(Form("fbce_%d",mLayerID),Form("pol%d",mCentPolN),mTmin,mTmax);
-    f_left_mid = myNewTF1(Form("flm_%d",mLayerID),Form("pol%d",mMidPolN),mTmin,mTmax);
-    f_right_mid = myNewTF1(Form("frm_%d",mLayerID),Form("pol%d",mMidPolN),mTmin,mTmax);
-    f_both_mid = myNewTF1(Form("fbm_%d",mLayerID),Form("pol%d",mMidPolN),mTmin,mTmax);
-    f_left_end = myNewTF1(Form("fle_%d",mLayerID),Form("pol%d",mEndPolN),mTmin,mTmax);
-    f_right_end = myNewTF1(Form("fre_%d",mLayerID),Form("pol%d",mEndPolN),mTmin,mTmax);
-    f_both_end = myNewTF1(Form("fbe_%d",mLayerID),Form("pol%d",mEndPolN),mTmin,mTmax);
+    f_left_cen = myNewTF1(Form("flce_%d",mLayerID),Form("pol%d",mCentPolN),m_bin_t_min,m_bin_t_max);
+    f_right_cen = myNewTF1(Form("frce_%d",mLayerID),Form("pol%d",mCentPolN),m_bin_t_min,m_bin_t_max);
+    f_both_cen = myNewTF1(Form("fbce_%d",mLayerID),Form("pol%d",mCentPolN),m_bin_t_min,m_bin_t_max);
+    f_left_mid = myNewTF1(Form("flm_%d",mLayerID),Form("pol%d",mMidPolN),m_bin_t_min,m_bin_t_max);
+    f_right_mid = myNewTF1(Form("frm_%d",mLayerID),Form("pol%d",mMidPolN),m_bin_t_min,m_bin_t_max);
+    f_both_mid = myNewTF1(Form("fbm_%d",mLayerID),Form("pol%d",mMidPolN),m_bin_t_min,m_bin_t_max);
+    f_left_end = myNewTF1(Form("fle_%d",mLayerID),Form("pol%d",mEndPolN),m_bin_t_min,m_bin_t_max);
+    f_right_end = myNewTF1(Form("fre_%d",mLayerID),Form("pol%d",mEndPolN),m_bin_t_min,m_bin_t_max);
+    f_both_end = myNewTF1(Form("fbe_%d",mLayerID),Form("pol%d",mEndPolN),m_bin_t_min,m_bin_t_max);
 
-    if (mDebugLevel>=1) {printf("XTAnalyzer successfully initialized!\n");fflush(stdout);}
+    MyNamedLog("XTAnalyzer","XTAnalyzer successfully initialized!");
     return 0;
 }
 
 void XTAnalyzer::Push(double t, double x){
-    if (mDebugLevel>=20) printf("XTAnalyzer::push(%.2e,%.2e)\n",t,x);
+    MyNamedTrace("XTAnalyzer","XTAnalyzer::push("<<t<<","<<x<<")");
     double absx = fabs(x);
     h2_xt->Fill(t,x);
     h2_xtn->Fill(t,absx);
@@ -386,24 +380,24 @@ void XTAnalyzer::Push(double t, double x){
         int ibin = h_xn_tsum[i]->FindBin(absx);
         h_xn_tsum[i]->AddBinContent(ibin,t);
     }
-    if (mDebugLevel>=20) printf("            pushed\n",t,x);
+    MyNamedTrace("XTAnalyzer","            pushed");
 }
 
 void XTAnalyzer::Process(void){
-    if (mDebugLevel>0) {printf("In XTAnalyzer::Process\n");fflush(stdout);}
+    MyNamedLog("XTAnalyzer","In XTAnalyzer::Process");
     //==========================Taking Samples from Slices==============================
     // fit x histograms, and push to vectors & tree
     TCanvas * canv_fitting = new TCanvas("cfit","cfit",1024,768);
     int minEntries = 100;
     for (int i = 0; i<NSLICET; i++){
-        if (mDebugLevel>2) {printf("=>h_x[%d\]\n",i);fflush(stdout);}
+        MyNamedInfo("XTAnalyzer","=>h_x["<<i<<"\]");
         mType = 0;
         double left, right;
         double divleft,divright;
         i2t(i,divleft,mT,divright);
         mEntries = h_x[i]->Integral();
         fitSliceHistFloat(h_x[i],0.5,mX,mSig,mChi2,left,right);
-        if (mDebugLevel>2) {printf("h_x[%d] (%d) after fitSliceHistFloat: x=%.2f, sig=%.2f, chi2=%.2f, left = %.2f, right = %.2f\n",i,(int)mEntries,mX,mSig,mChi2,left,right);fflush(stdout);}
+        MyNamedInfo("XTAnalyzer",Form("h_x[%d] (%d) after fitSliceHistFloat: x=%.2f, sig=%.2f, chi2=%.2f, left = %.2f, right = %.2f",i,(int)mEntries,mX,mSig,mChi2,left,right));
         if (mEntries>minEntries){
             TF1 * f = 0;
             bool flipped = false;
@@ -425,15 +419,15 @@ void XTAnalyzer::Process(void){
             else{
                 f = fitSliceGaus(h_x[i],mX,mSig,mChi2,left,right);
             }
-            if (mDebugLevel>2) {printf("h_x[%d] after fitSlice: x=%.2f, sig=%.2f, chi2=%.2f, left = %.2f, right = %.2f\n",i,mX,mSig,mChi2,left,right);fflush(stdout);}
+            MyNamedInfo("XTAnalyzer",Form("h_x[%d] after fitSlice: x=%.2f, sig=%.2f, chi2=%.2f, left = %.2f, right = %.2f",i,mX,mSig,mChi2,left,right));
             mT = getMean(h_x[i],h_x_tsum[i],left,right);
             if (flipped){
                 h_mx[i]->GetXaxis()->SetRangeUser(-mX-mSigXmax*3,-mX+mSigXmax*3);
-                if (mSaveHists>=2) drawFitting(h_mx[i],f,canv_fitting,Form("%.1f-%.1f-%.1f ns, N=%d, x=%.2f mm, #sigma=%.0f um, #chi^{2}=%.1f",divleft,mT,divright,mEntries,mX,mSig*1000,mChi2),Form("h_x%d_%s.png",i,mRunName.Data()),-right,-mX,-left);
+                if (mSaveHists>=2) drawFitting(h_mx[i],f,canv_fitting,Form("%.1f-%.1f-%.1f ns, N=%d, x=%.2f mm, #sigma=%.0f um, #chi^{2}=%.1f",divleft,mT,divright,mEntries,mX,mSig*1000,mChi2),Form("h_x%d_%s.layer%d.png",i,mRunName.Data(),mLayerID),-right,-mX,-left);
             }
             else{
                 h_x[i]->GetXaxis()->SetRangeUser(mX-mSigXmax*3,mX+mSigXmax*3);
-                if (mSaveHists>=2) drawFitting(h_x[i],f,canv_fitting,Form("%.1f-%.1f-%.1f ns, N=%d, x=%.2f mm, #sigma=%.0f um, #chi^{2}=%.1f",divleft,mT,divright,mEntries,mX,mSig*1000,mChi2),Form("h_x%d_%s.png",i,mRunName.Data()),left,mX,right);
+                if (mSaveHists>=2) drawFitting(h_x[i],f,canv_fitting,Form("%.1f-%.1f-%.1f ns, N=%d, x=%.2f mm, #sigma=%.0f um, #chi^{2}=%.1f",divleft,mT,divright,mEntries,mX,mSig*1000,mChi2),Form("h_x%d_%s.layer%d.png",i,mRunName.Data(),mLayerID),left,mX,right);
             }
         }
         else mT = getMean(h_x[i],h_x_tsum[i],left,right);
@@ -463,7 +457,7 @@ void XTAnalyzer::Process(void){
             }
             mX = getMean(h_t[i],h_t_xsum[i],left,right);
             h_t[i]->GetXaxis()->SetRangeUser(mT-mSigTmax*3,mT+mSigTmax*3);
-            if (mSaveHists>=2) drawFitting(h_t[i],f,canv_fitting,Form("%.2f-%.2f-%.2f mm, N=%d, t=%.1f ns, #sigma=%.1f ns, #chi^{2}=%.1f",divleft,mX,divright,mEntries,mT,mSig,mChi2),Form("h_t%d_%s.png",i,mRunName.Data()),left,mT,right);
+            if (mSaveHists>=2) drawFitting(h_t[i],f,canv_fitting,Form("%.2f-%.2f-%.2f mm, N=%d, t=%.1f ns, #sigma=%.1f ns, #chi^{2}=%.1f",divleft,mX,divright,mEntries,mT,mSig,mChi2),Form("h_t%d_%s.layer%d.png",i,mRunName.Data(),mLayerID),left,mT,right);
         }
         else mX = getMean(h_t[i],h_t_xsum[i],left,right);
         v_n_slicex[i] = mEntries;
@@ -475,14 +469,14 @@ void XTAnalyzer::Process(void){
     }
     // fit x histograms for both-side case, and push to vectors & tree
     for (int i = NSLICET/2; i<NSLICET; i++){
-        if (mDebugLevel>2) {printf("=>h_xn[%d\]\n",i);fflush(stdout);}
+        MyNamedInfo("XTAnalyzer","=>h_xn["<<i<<"\]");
         mType = 2;
         double left, right;
         double divleft,divright;
         i2t(i,divleft,mT,divright);
         mEntries = h_xn[i]->Integral();
         fitSliceHistFloat(h_xn[i],0.5,mX,mSig,mChi2,left,right);
-        if (mDebugLevel>2) {printf("   h_xn[%d] (%d) after fitSliceHistFloat: x=%.2f, sig=%.2f, chi2=%.2f, left = %.2f, right = %.2f\n",i,(int)mEntries,mX,mSig,mChi2,left,right);fflush(stdout);}
+        MyNamedInfo("XTAnalyzer",Form("   h_xn[%d] (%d) after fitSliceHistFloat: x=%.2f, sig=%.2f, chi2=%.2f, left = %.2f, right = %.2f",i,(int)mEntries,mX,mSig,mChi2,left,right));
         if (mEntries>minEntries){
             TF1 * f = 0;
             if (fabs(mX)>7.15&&fabs(mX)<7.8){ // FIXME: boundary up to tuning
@@ -493,16 +487,16 @@ void XTAnalyzer::Process(void){
                 left = -right;
                 right = -temp;
                 mT = getMean(h_xn[i],h_xn_tsum[i],left,right);
-                if (mDebugLevel>2) {printf("   h_xn[%d] after fitSlice: x=%.2f, sig=%.2f, chi2=%.2f, left = %.2f, right = %.2f\n",i,mX,mSig,mChi2,left,right);fflush(stdout);}
+                MyNamedInfo("XTAnalyzer",Form("   h_xn[%d] after fitSlice: x=%.2f, sig=%.2f, chi2=%.2f, left = %.2f, right = %.2f",i,mX,mSig,mChi2,left,right));
                 h_mxn[i]->GetXaxis()->SetRangeUser(-mX-mSigXmax*3,-mX+mSigXmax*3);
-                if (mSaveHists>=1) drawFitting(h_mxn[i],f,canv_fitting,Form("%.1f-%.1f-%.1f ns, N=%d, x=%.2f mm, #sigma=%.0f um, #chi^{2}=%.1f",divleft,mT,divright,mEntries,mX,mSig*1000,mChi2),Form("h_xn%d_%s.png",i,mRunName.Data()),-right,-mX,-left);
+                if (mSaveHists>=1) drawFitting(h_mxn[i],f,canv_fitting,Form("%.1f-%.1f-%.1f ns, N=%d, x=%.2f mm, #sigma=%.0f um, #chi^{2}=%.1f",divleft,mT,divright,mEntries,mX,mSig*1000,mChi2),Form("h_xn%d_%s.layer%d.png",i,mRunName.Data(),mLayerID),-right,-mX,-left);
             }
             else{
                 f = fitSliceGaus(h_xn[i],mX,mSig,mChi2,left,right);
                 mT = getMean(h_xn[i],h_xn_tsum[i],left,right);
-                if (mDebugLevel>2) {printf("   h_xn[%d] after fitSlice: x=%.2f, sig=%.2f, chi2=%.2f, left = %.2f, right = %.2f\n",i,mX,mSig,mChi2,left,right);fflush(stdout);}
+                MyNamedInfo("XTAnalyzer",Form("   h_xn[%d] after fitSlice: x=%.2f, sig=%.2f, chi2=%.2f, left = %.2f, right = %.2f",i,mX,mSig,mChi2,left,right));
                 h_xn[i]->GetXaxis()->SetRangeUser(mX-mSigXmax*3,mX+mSigXmax*3);
-                if (mSaveHists>=1) drawFitting(h_xn[i],f,canv_fitting,Form("%.1f-%.1f-%.1f ns, N=%d, x=%.2f mm, #sigma=%.0f um, #chi^{2}=%.1f",divleft,mT,divright,mEntries,mX,mSig*1000,mChi2),Form("h_xn%d_%s.png",i,mRunName.Data()),left,mX,right);
+                if (mSaveHists>=1) drawFitting(h_xn[i],f,canv_fitting,Form("%.1f-%.1f-%.1f ns, N=%d, x=%.2f mm, #sigma=%.0f um, #chi^{2}=%.1f",divleft,mT,divright,mEntries,mX,mSig*1000,mChi2),Form("h_xn%d_%s.layer%d.png",i,mRunName.Data(),mLayerID),left,mX,right);
             }
         }
         else mT = getMean(h_xn[i],h_xn_tsum[i],left,right);
@@ -532,7 +526,7 @@ void XTAnalyzer::Process(void){
             }
             mX = getMean(h_tn[i],h_tn_xsum[i],left,right);
             h_tn[i]->GetXaxis()->SetRangeUser(mT-mSigTmax*3,mT+mSigTmax*3);
-            if (mSaveHists>=1) drawFitting(h_tn[i],f,canv_fitting,Form("%.2f-%.2f-%.2f mm, N=%d, t=%.1f ns, #sigma=%.1f ns, #chi^{2}=%.1f",divleft,mX,divright,mEntries,mT,mSig,mChi2),Form("h_tn%d_%s.png",i,mRunName.Data()),left,mT,right);
+            if (mSaveHists>=1) drawFitting(h_tn[i],f,canv_fitting,Form("%.2f-%.2f-%.2f mm, N=%d, t=%.1f ns, #sigma=%.1f ns, #chi^{2}=%.1f",divleft,mX,divright,mEntries,mT,mSig,mChi2),Form("h_tn%d_%s.layer%d.png",i,mRunName.Data(),mLayerID),left,mT,right);
         }
         else mX = getMean(h_tn[i],h_tn_xsum[i],left,right);
         v_n_slicexn[i] = mEntries;
@@ -546,7 +540,7 @@ void XTAnalyzer::Process(void){
     //==========================Select Samples==============================
     // select sample points and make graphs
     // FIXME: Currently seperate the mid/end graphs by 8 mm line, and search for the real one from 7 mm line.
-    // FIXME: Currently seperate the cen/mid graphs by 1.5 mm line, and search for the real one from mTmin.
+    // FIXME: Currently seperate the cen/mid graphs by 1.5 mm line, and search for the real one from m_bin_t_min.
     double xCenter2Mid = 1.5;
     if (mCentPolN==0) xCenter2Mid = 0;
     double xStart2Turn = 7;
@@ -563,23 +557,20 @@ void XTAnalyzer::Process(void){
     double t7Left = v_t_slicex[deltaBin];
     double t7Right = v_t_slicex[NSLICEX-deltaBin];
     double t7Both = v_t_slicexn[NSLICEX-deltaBin];
-    if (mDebugLevel>=1){
-        printf("Before selecting samples:\n");
-        printf(" tTl: %.1f @%d, tTr: %.1f @%d, tTb: %.1f @%d \n",v_t_slicet[iTLeft],iTLeft,v_t_slicet[iTRight],iTRight,v_t_slicetn[iTBoth],iTBoth);
-        printf(" t7l:%.1f, t7r:%.1f, t7b:%.1f\n",t7Left,t7Right,t7Both);
-    }
+    MyNamedLog("XTAnalyzer",Form(" tTl: %.1f @%d, tTr: %.1f @%d, tTb: %.1f @%d ",v_t_slicet[iTLeft],iTLeft,v_t_slicet[iTRight],iTRight,v_t_slicetn[iTBoth],iTBoth));
+    MyNamedLog("XTAnalyzer",Form(" t7l:%.1f, t7r:%.1f, t7b:%.1f",t7Left,t7Right,t7Both));
     sigmaXReset();
     for (int i = 0; i<NSLICET/2; i++){ // x samples in t slices, left
-        if (mDebugLevel>2) printf("  LR T slice[%d]: x=%.2f, t=%.1f, n=%.0f, sig=%.2f\n",i,v_x_slicet[i],v_t_slicet[i],v_n_slicet[i],v_sig_slicet[i]);
+        MyNamedInfo("XTAnalyzer",Form("  LR T slice[%d]: x=%.2f, t=%.1f, n=%.0f, sig=%.2f",i,v_x_slicet[i],v_t_slicet[i],v_n_slicet[i],v_sig_slicet[i]));
         if (v_n_slicet[i]<mEntriesMin||v_sig_slicet[i]>mSigXmax||v_sig_slicet[i]<=0) continue;
-        if (mDebugLevel>2) printf("                  Passed!\n");
+        MyNamedInfo("XTAnalyzer",Form("                  Passed!"));
         if (i<=iTLeft+1){ // left end
-            if (mDebugLevel>2) printf("                  t>%.1f, push to left_end!\n",t8Left);
+            MyNamedInfo("XTAnalyzer",Form("                  t>%.1f, push to left_end!",t8Left));
             v_left_end_x.push_back(v_x_slicet[i]);
             v_left_end_t.push_back(v_t_slicet[i]);
         }
         if (i>=iTLeft-1&&v_x_slicet[i]<=-xCenter2Mid){ // turning part
-            if (mDebugLevel>2) printf("                  t<%.1f x<%.2f, push to left_mid!\n",t8Left+tMargin,-xCenter2Mid);
+            MyNamedInfo("XTAnalyzer",Form("                  t<%.1f x<%.2f, push to left_mid!",t8Left+tMargin,-xCenter2Mid));
             v_left_mid_x.push_back(v_x_slicet[i]);
             v_left_mid_t.push_back(v_t_slicet[i]);
         }
@@ -591,9 +582,9 @@ void XTAnalyzer::Process(void){
     }
     sigmaXFinalcheck(v_t_slicetls,v_sig_slicetls);
     // t samples in x slices, find out the minimum t first
-    double mint_t_slicex_l = mTmax;
+    double mint_t_slicex_l = m_bin_t_max;
     double mint_x_slicex_l = 0;
-    double mint_t_slicex_r = mTmax;
+    double mint_t_slicex_r = m_bin_t_max;
     double mint_x_slicex_r = 0;
     for (int i = 0; i<NSLICEX; i++){
         if (v_n_slicex[i]<mEntriesMin||v_sig_slicex[i]>mSigTmax||v_sig_slicex[i]<=0) continue;
@@ -615,18 +606,18 @@ void XTAnalyzer::Process(void){
     for (int i = 0; i<NSLICEX; i++){ // t samples in x slices
         double t = v_t_slicex[i];
         double x = v_x_slicex[i];
-        if (mDebugLevel>2) printf("  LR X slice[%d]: x=%.2f, t=%.1f, n=%.0f, sig=%.1f\n",i,x,t,v_n_slicex[i],v_sig_slicex[i]);
+        MyNamedInfo("XTAnalyzer",Form("  LR X slice[%d]: x=%.2f, t=%.1f, n=%.0f, sig=%.1f",i,x,t,v_n_slicex[i],v_sig_slicex[i]));
         if (v_n_slicex[i]<mEntriesMin||v_sig_slicex[i]>mSigTmax||v_sig_slicex[i]<=0) continue;
-        if (mDebugLevel>2) printf("                  Passed!\n");
+        MyNamedInfo("XTAnalyzer",Form("                  Passed!"));
         if (i<=NSLICEX/2){ // left
             if (x>mint_x_slicex_l) t = mint_t_slicex_l;
             if (x>-xStart2Turn){ // middle part
                 if (x>-xCenter2Mid){
-                    if (mDebugLevel>2) printf("                  %.2f<x, push to left_cen!\n",-xCenter2Mid);
+                    MyNamedInfo("XTAnalyzer",Form("                  %.2f<x, push to left_cen!",-xCenter2Mid));
                     v_left_cen_x.push_back(x);
                     v_left_cen_t.push_back(t);
                     if (x<-xCenter2Mid+xMargin){
-                        if (mDebugLevel>2) printf("                  %.2f<x<%.2f, push to left_mid!\n",-xCenter2Mid,-xCenter2Mid+xMargin);
+                        MyNamedInfo("XTAnalyzer",Form("                  %.2f<x<%.2f, push to left_mid!",-xCenter2Mid,-xCenter2Mid+xMargin));
                         v_left_mid_x.push_back(x);
                         v_left_mid_t.push_back(t);
                     }
@@ -637,11 +628,11 @@ void XTAnalyzer::Process(void){
             if (x<mint_x_slicex_r) t = mint_t_slicex_r;
             if (x<xStart2Turn){ // middle part
                 if (x<xCenter2Mid){
-                    if (mDebugLevel>2) printf("                  x<%.2f, push to right_cen!\n",xCenter2Mid);
+                    MyNamedInfo("XTAnalyzer",Form("                  x<%.2f, push to right_cen!",xCenter2Mid));
                     v_right_cen_x.push_back(x);
                     v_right_cen_t.push_back(t);
                     if (x>xCenter2Mid-xMargin){
-                        if (mDebugLevel>2) printf("                  %.2f<x<%.2f, push to right_mid!\n",xCenter2Mid-xMargin,xCenter2Mid);
+                        MyNamedInfo("XTAnalyzer",Form("                  %.2f<x<%.2f, push to right_mid!",xCenter2Mid-xMargin,xCenter2Mid));
                         v_right_mid_x.push_back(x);
                         v_right_mid_t.push_back(t);
                     }
@@ -651,15 +642,15 @@ void XTAnalyzer::Process(void){
     }
     sigmaXReset();
     for (int i = NSLICET/2; i<NSLICET; i++){ // x samples in t slices, right 
-        if (mDebugLevel>2) printf("  LR T slice[%d]: x=%.2f, t=%.1f, n=%.0f, sig=%.2f\n",i,v_x_slicet[i],v_t_slicet[i],v_n_slicet[i],v_sig_slicet[i]);
+        MyNamedInfo("XTAnalyzer",Form("  LR T slice[%d]: x=%.2f, t=%.1f, n=%.0f, sig=%.2f",i,v_x_slicet[i],v_t_slicet[i],v_n_slicet[i],v_sig_slicet[i]));
         if (v_n_slicet[i]<mEntriesMin||v_sig_slicet[i]>mSigXmax||v_sig_slicet[i]<=0) continue;
         if (i>=iTRight-1){ // right end
-            if (mDebugLevel>2) printf("                  t>%.1f, push to right_end!\n",t8Right);
+            MyNamedInfo("XTAnalyzer",Form("                  t>%.1f, push to right_end!",t8Right));
             v_right_end_x.push_back(v_x_slicet[i]);
             v_right_end_t.push_back(v_t_slicet[i]);
         }
         if (i<=iTRight+1&&v_x_slicet[i]>=xCenter2Mid){ // turning part
-            if (mDebugLevel>2) printf("                  t<%.1f x>%.2f, push to right_mid!\n",t8Right+tMargin,xCenter2Mid);
+            MyNamedInfo("XTAnalyzer",Form("                  t<%.1f x>%.2f, push to right_mid!",t8Right+tMargin,xCenter2Mid));
             v_right_mid_x.push_back(v_x_slicet[i]);
             v_right_mid_t.push_back(v_t_slicet[i]);
         }
@@ -671,7 +662,7 @@ void XTAnalyzer::Process(void){
     }
     sigmaXFinalcheck(v_t_slicetrs,v_sig_slicetrs);
     // t samples in x slices, both, find out the minimum t first
-    double mint_t_slicex_b = mTmax; // minimum t for x slices for both-side
+    double mint_t_slicex_b = m_bin_t_max; // minimum t for x slices for both-side
     double mint_x_slicex_b = 0;
     for (int i = NSLICEX/2; i<NSLICEX; i++){
         if (v_n_slicexn[i]<mEntriesMin||v_sig_slicexn[i]>mSigTmax||v_sig_slicexn[i]<=0) continue;
@@ -686,17 +677,17 @@ void XTAnalyzer::Process(void){
         double t = v_t_slicexn[i];
         double x = v_x_slicexn[i];
         if (x<mint_x_slicex_b) t = mint_t_slicex_b;
-        if (mDebugLevel>2) printf("  BS X slice[%d]: x=%.2f, t=%.1f, n=%.0f, sig=%.1f\n",i,x,t,v_n_slicexn[i],v_sig_slicexn[i]);
+        MyNamedInfo("XTAnalyzer",Form("  BS X slice[%d]: x=%.2f, t=%.1f, n=%.0f, sig=%.1f",i,x,t,v_n_slicexn[i],v_sig_slicexn[i]));
         if (v_n_slicexn[i]<mEntriesMin||v_sig_slicexn[i]>mSigTmax||v_sig_slicexn[i]<=0) continue;
-        if (mDebugLevel>2) printf("                  Passed!\n");
+        MyNamedInfo("XTAnalyzer",Form("                  Passed!"));
         if (x<xStart2Turn){ // middle part
             if (x<xCenter2Mid){
-                if (mDebugLevel>2) printf("                  %.2f<x, push to both_cen!\n",xCenter2Mid);
+                MyNamedInfo("XTAnalyzer",Form("                  %.2f<x, push to both_cen!",xCenter2Mid));
                 v_both_cen_x.push_back(x);
                 v_bothL_cen_x.push_back(-x);
                 v_both_cen_t.push_back(t);
                 if (x>xCenter2Mid-xMargin){
-                    if (mDebugLevel>2) printf("                  %.2f<x<%.2f, push to both_mid!\n",xCenter2Mid-xMargin,xCenter2Mid);
+                    MyNamedInfo("XTAnalyzer",Form("                  %.2f<x<%.2f, push to both_mid!",xCenter2Mid-xMargin,xCenter2Mid));
                     v_both_mid_x.push_back(x);
                     v_bothL_mid_x.push_back(-x);
                     v_both_mid_t.push_back(t);
@@ -706,17 +697,17 @@ void XTAnalyzer::Process(void){
     }
     sigmaXReset();
     for (int i = NSLICET/2; i<NSLICET; i++){ // x samples in t slices, both-side
-        if (mDebugLevel>2) printf("  BS T slice[%d]: x=%.2f, t=%.1f, n=%.0f, sig=%.2f\n",i,v_x_slicetn[i],v_t_slicetn[i],v_n_slicetn[i],v_sig_slicetn[i]);
+        MyNamedInfo("XTAnalyzer",Form("  BS T slice[%d]: x=%.2f, t=%.1f, n=%.0f, sig=%.2f",i,v_x_slicetn[i],v_t_slicetn[i],v_n_slicetn[i],v_sig_slicetn[i]));
         if (v_n_slicetn[i]<mEntriesMin||v_sig_slicetn[i]>mSigXmax||v_sig_slicetn[i]<=0) continue;
-        if (mDebugLevel>2) printf("                  Passed!\n");
+        MyNamedInfo("XTAnalyzer",Form("                  Passed!"));
         if (i>=iTBoth-1){ // both-side end
-            if (mDebugLevel>2) printf("                  t>%.1f, push to both_end!\n",t8Both);
+            MyNamedInfo("XTAnalyzer",Form("                  t>%.1f, push to both_end!",t8Both));
             v_both_end_x.push_back(v_x_slicetn[i]);
             v_bothL_end_x.push_back(-v_x_slicetn[i]);
             v_both_end_t.push_back(v_t_slicetn[i]);
         }
         if (i<=iTBoth+1&&v_x_slicetn[i]>=xCenter2Mid){ // turning part
-            if (mDebugLevel>2) printf("                  t<%.1f, x>=%.2f, push to both_mid!\n",t8Both+tMargin,xCenter2Mid);
+            MyNamedInfo("XTAnalyzer",Form("                  t<%.1f, x>=%.2f, push to both_mid!",t8Both+tMargin,xCenter2Mid));
             v_both_mid_x.push_back(v_x_slicetn[i]);
             v_bothL_mid_x.push_back(-v_x_slicetn[i]);
             v_both_mid_t.push_back(v_t_slicetn[i]);
@@ -747,54 +738,52 @@ void XTAnalyzer::Process(void){
     if (!gr_both_end||!gr_both_end->GetN()) fprintf(stderr,"WARNING: gr_both_end is empty!\n"); else gr_both_end->Fit(Form("fbe_%d",mLayerID),"qN0","");;
 
     // get ranges for XT functions
-    f_left_deltac = minusPolN(Form("fldc_%d",mLayerID),f_left_cen,f_left_mid,mTmin,mTmax);
-    f_right_deltac = minusPolN(Form("frdc_%d",mLayerID),f_right_cen,f_right_mid,mTmin,mTmax);
-    f_both_deltac = minusPolN(Form("fbdc_%d",mLayerID),f_both_cen,f_both_mid,mTmin,mTmax);
-    f_left_delta = minusPolN(Form("fld_%d",mLayerID),f_left_mid,f_left_end,0,mTmax);
-    f_right_delta = minusPolN(Form("frd_%d",mLayerID),f_right_mid,f_right_end,0,mTmax);
-    f_both_delta = minusPolN(Form("fbd_%d",mLayerID),f_both_mid,f_both_end,0,mTmax);
+    f_left_deltac = minusPolN(Form("fldc_%d",mLayerID),f_left_cen,f_left_mid,m_bin_t_min,m_bin_t_max);
+    f_right_deltac = minusPolN(Form("frdc_%d",mLayerID),f_right_cen,f_right_mid,m_bin_t_min,m_bin_t_max);
+    f_both_deltac = minusPolN(Form("fbdc_%d",mLayerID),f_both_cen,f_both_mid,m_bin_t_min,m_bin_t_max);
+    f_left_delta = minusPolN(Form("fld_%d",mLayerID),f_left_mid,f_left_end,0,m_bin_t_max);
+    f_right_delta = minusPolN(Form("frd_%d",mLayerID),f_right_mid,f_right_end,0,m_bin_t_max);
+    f_both_delta = minusPolN(Form("fbd_%d",mLayerID),f_both_mid,f_both_end,0,m_bin_t_max);
     double tZeroLeft = 0;
     double tZeroRight = 0;
     double tZeroBoth = 0;
     if (mCentPolN==0){
-        tZeroLeft = findFirstZero(f_left_mid,mTmin,mTmax,1);
-        tZeroRight = findFirstZero(f_right_mid,mTmin,mTmax,1);
-        tZeroBoth = findFirstZero(f_both_mid,mTmin,mTmax,1);
+        tZeroLeft = findFirstZero(f_left_mid,m_bin_t_min,m_bin_t_max,1);
+        tZeroRight = findFirstZero(f_right_mid,m_bin_t_min,m_bin_t_max,1);
+        tZeroBoth = findFirstZero(f_both_mid,m_bin_t_min,m_bin_t_max,1);
     }
     else{
-        tZeroLeft = findFirstZero(f_left_cen,mTmin,mTmax,1);
-        tZeroRight = findFirstZero(f_right_cen,mTmin,mTmax,1);
-        tZeroBoth = findFirstZero(f_both_cen,mTmin,mTmax,1);
+        tZeroLeft = findFirstZero(f_left_cen,m_bin_t_min,m_bin_t_max,1);
+        tZeroRight = findFirstZero(f_right_cen,m_bin_t_min,m_bin_t_max,1);
+        tZeroBoth = findFirstZero(f_both_cen,m_bin_t_min,m_bin_t_max,1);
     }
-    double tCentLeft = findFirstZero(f_left_deltac,5,mTmax,1); // FIXME: better to use driftT at 0.5 mm to start searching
-    double tCentRight = findFirstZero(f_right_deltac,5,mTmax,1);
-    double tCentBoth = findFirstZero(f_both_deltac,5,mTmax,1);
-    double tTurnLeft = findFirstZero(f_left_delta,t7Left,mTmax,1);
-    double tTurnRight = findFirstZero(f_right_delta,t7Right,mTmax,1);
-    double tTurnBoth = findFirstZero(f_both_delta,t7Both,mTmax,1);
+    double tCentLeft = findFirstZero(f_left_deltac,5,m_bin_t_max,1); // FIXME: better to use driftT at 0.5 mm to start searching
+    double tCentRight = findFirstZero(f_right_deltac,5,m_bin_t_max,1);
+    double tCentBoth = findFirstZero(f_both_deltac,5,m_bin_t_max,1);
+    double tTurnLeft = findFirstZero(f_left_delta,t7Left,m_bin_t_max,1);
+    double tTurnRight = findFirstZero(f_right_delta,t7Right,m_bin_t_max,1);
+    double tTurnBoth = findFirstZero(f_both_delta,t7Both,m_bin_t_max,1);
     double tEndLeft = v_left_end_t.size()>0?v_left_end_t[0]:0;
     double tEndRight = v_right_end_t.size()>0?v_right_end_t[(int)(v_right_end_t.size())-1]:0;
     double tEndBoth = v_both_end_t.size()>0?v_both_end_t[(int)(v_both_end_t.size())-1]:0;
-    if (mDebugLevel>=1){
-        printf("After selecting samples:\n");
-        printf(" t0l:%.1f, t0r:%.1f, t0b:%.1f\n",tZeroLeft,tZeroRight,tZeroBoth);
-        printf(" tcl:%.1f, tcr:%.1f, tcb:%.1f\n",tCentLeft,tCentRight,tCentBoth);
-        printf(" ttl:%.1f, ttr:%.1f, ttb:%.1f\n",tTurnLeft,tTurnRight,tTurnBoth);
-        printf(" tel:%.1f, ter:%.1f, teb:%.1f\n",tEndLeft,tEndRight,tEndBoth);
-    }
+    MyNamedLog("XTAnalyzer","After selecting samples:");
+    MyNamedLog("XTAnalyzer",Form(" t0l:%.1f, t0r:%.1f, t0b:%.1f",tZeroLeft,tZeroRight,tZeroBoth));
+    MyNamedLog("XTAnalyzer",Form(" tcl:%.1f, tcr:%.1f, tcb:%.1f",tCentLeft,tCentRight,tCentBoth));
+    MyNamedLog("XTAnalyzer",Form(" ttl:%.1f, ttr:%.1f, ttb:%.1f",tTurnLeft,tTurnRight,tTurnBoth));
+    MyNamedLog("XTAnalyzer",Form(" tel:%.1f, ter:%.1f, teb:%.1f",tEndLeft,tEndRight,tEndBoth));
 
     // combine functions
     if (mCentPolN==0){
-        f_left_com = combinePolN(Form("flc_%d",mLayerID),f_left_mid,f_left_end,tZeroLeft,tTurnLeft,tEndLeft,mTmin,tEndLeft);
-        f_right_com = combinePolN(Form("frc_%d",mLayerID),f_right_mid,f_right_end,tZeroRight,tTurnRight,tEndRight,mTmin,tEndRight);
-        f_both_com = combinePolN(Form("fbc_%d",mLayerID),f_both_mid,f_both_end,tZeroBoth,tTurnBoth,tEndBoth,mTmin,tEndBoth);
-        f_bothL_com = combinePolN(Form("fblc_%d",mLayerID),scalePolN(f_both_mid,-1),scalePolN(f_both_end,-1),tZeroBoth,tTurnBoth,tEndBoth,mTmin,tEndBoth);
+        f_left_com = combinePolN(Form("flc_%d",mLayerID),f_left_mid,f_left_end,tZeroLeft,tTurnLeft,tEndLeft,m_bin_t_min,tEndLeft);
+        f_right_com = combinePolN(Form("frc_%d",mLayerID),f_right_mid,f_right_end,tZeroRight,tTurnRight,tEndRight,m_bin_t_min,tEndRight);
+        f_both_com = combinePolN(Form("fbc_%d",mLayerID),f_both_mid,f_both_end,tZeroBoth,tTurnBoth,tEndBoth,m_bin_t_min,tEndBoth);
+        f_bothL_com = combinePolN(Form("fblc_%d",mLayerID),scalePolN(f_both_mid,-1),scalePolN(f_both_end,-1),tZeroBoth,tTurnBoth,tEndBoth,m_bin_t_min,tEndBoth);
     }
     else{
-        f_left_com = combinePolN(Form("flc_%d",mLayerID),f_left_cen,f_left_mid,f_left_end,tZeroLeft,tCentLeft,tTurnLeft,tEndLeft,mTmin,tEndLeft);
-        f_right_com = combinePolN(Form("frc_%d",mLayerID),f_right_cen,f_right_mid,f_right_end,tZeroRight,tCentRight,tTurnRight,tEndRight,mTmin,tEndRight);
-        f_both_com = combinePolN(Form("fbc_%d",mLayerID),f_both_cen,f_both_mid,f_both_end,tZeroBoth,tCentBoth,tTurnBoth,tEndBoth,mTmin,tEndBoth);
-        f_bothL_com = combinePolN(Form("fblc_%d",mLayerID),scalePolN(f_both_cen,-1),scalePolN(f_both_mid,-1),scalePolN(f_both_end,-1),tZeroBoth,tCentBoth,tTurnBoth,tEndBoth,mTmin,tEndBoth);
+        f_left_com = combinePolN(Form("flc_%d",mLayerID),f_left_cen,f_left_mid,f_left_end,tZeroLeft,tCentLeft,tTurnLeft,tEndLeft,m_bin_t_min,tEndLeft);
+        f_right_com = combinePolN(Form("frc_%d",mLayerID),f_right_cen,f_right_mid,f_right_end,tZeroRight,tCentRight,tTurnRight,tEndRight,m_bin_t_min,tEndRight);
+        f_both_com = combinePolN(Form("fbc_%d",mLayerID),f_both_cen,f_both_mid,f_both_end,tZeroBoth,tCentBoth,tTurnBoth,tEndBoth,m_bin_t_min,tEndBoth);
+        f_bothL_com = combinePolN(Form("fblc_%d",mLayerID),scalePolN(f_both_cen,-1),scalePolN(f_both_mid,-1),scalePolN(f_both_end,-1),tZeroBoth,tCentBoth,tTurnBoth,tEndBoth,m_bin_t_min,tEndBoth);
     }
     f_left_com->SetLineColor(kMagenta);
     f_both_com->SetLineColor(kBlack);
@@ -802,40 +791,40 @@ void XTAnalyzer::Process(void){
 
     // get the final xt functions
     if (!mSymmetric){ // use Left/Right case
-        f_left = combinePolN(Form("fl_%d",mLayerID),f_left_cen,f_left_mid,f_left_end,tZeroLeft,tCentLeft,tTurnLeft,tEndLeft,mTmin,tEndLeft);
-        f_right = combinePolN(Form("fr_%d",mLayerID),f_right_cen,f_right_mid,f_right_end,tZeroRight,tCentRight,tTurnRight,tEndRight,mTmin,tEndRight);
+        f_left = combinePolN(Form("fl_%d",mLayerID),f_left_cen,f_left_mid,f_left_end,tZeroLeft,tCentLeft,tTurnLeft,tEndLeft,m_bin_t_min,tEndLeft);
+        f_right = combinePolN(Form("fr_%d",mLayerID),f_right_cen,f_right_mid,f_right_end,tZeroRight,tCentRight,tTurnRight,tEndRight,m_bin_t_min,tEndRight);
         if (mSaveXT0){
-            f_left0 = combinePolN(Form("fl_%d",0),f_left_cen,f_left_mid,f_left_end,tZeroLeft,tCentLeft,tTurnLeft,tEndLeft,mTmin,tEndLeft);
-            f_right0 = combinePolN(Form("fr_%d",0),f_right_cen,f_right_mid,f_right_end,tZeroRight,tCentRight,tTurnRight,tEndRight,mTmin,tEndRight);
+            f_left0 = combinePolN(Form("fl_%d",0),f_left_cen,f_left_mid,f_left_end,tZeroLeft,tCentLeft,tTurnLeft,tEndLeft,m_bin_t_min,tEndLeft);
+            f_right0 = combinePolN(Form("fr_%d",0),f_right_cen,f_right_mid,f_right_end,tZeroRight,tCentRight,tTurnRight,tEndRight,m_bin_t_min,tEndRight);
         }
         if (mSaveXTEO){
-            f_leftEO = combinePolN("fl_"+mEOsuffix,f_left_cen,f_left_mid,f_left_end,tZeroLeft,tCentLeft,tTurnLeft,tEndLeft,mTmin,tEndLeft);
-            f_rightEO = combinePolN("fr_"+mEOsuffix,f_right_cen,f_right_mid,f_right_end,tZeroRight,tCentRight,tTurnRight,tEndRight,mTmin,tEndRight);
+            f_leftEO = combinePolN("fl_"+mEOsuffix,f_left_cen,f_left_mid,f_left_end,tZeroLeft,tCentLeft,tTurnLeft,tEndLeft,m_bin_t_min,tEndLeft);
+            f_rightEO = combinePolN("fr_"+mEOsuffix,f_right_cen,f_right_mid,f_right_end,tZeroRight,tCentRight,tTurnRight,tEndRight,m_bin_t_min,tEndRight);
         }
     }
     else{ // use Both-Side case
         if (mCentPolN==0){
-            f_left = combinePolN(Form("fl_%d",mLayerID),scalePolN(f_both_mid,-1),scalePolN(f_both_end,-1),tZeroBoth,tTurnBoth,tEndBoth,mTmin,tEndBoth);
-            f_right = combinePolN(Form("fr_%d",mLayerID),f_both_mid,f_both_end,tZeroBoth,tTurnBoth,tEndBoth,mTmin,tEndBoth);
+            f_left = combinePolN(Form("fl_%d",mLayerID),scalePolN(f_both_mid,-1),scalePolN(f_both_end,-1),tZeroBoth,tTurnBoth,tEndBoth,m_bin_t_min,tEndBoth);
+            f_right = combinePolN(Form("fr_%d",mLayerID),f_both_mid,f_both_end,tZeroBoth,tTurnBoth,tEndBoth,m_bin_t_min,tEndBoth);
             if (mSaveXT0){
-                f_left0 = combinePolN(Form("fl_%d",0),scalePolN(f_both_mid,-1),scalePolN(f_both_end,-1),tZeroBoth,tTurnBoth,tEndBoth,mTmin,tEndBoth);
-                f_right0 = combinePolN(Form("fr_%d",0),f_both_mid,f_both_end,tZeroBoth,tTurnBoth,tEndBoth,mTmin,tEndBoth);
+                f_left0 = combinePolN(Form("fl_%d",0),scalePolN(f_both_mid,-1),scalePolN(f_both_end,-1),tZeroBoth,tTurnBoth,tEndBoth,m_bin_t_min,tEndBoth);
+                f_right0 = combinePolN(Form("fr_%d",0),f_both_mid,f_both_end,tZeroBoth,tTurnBoth,tEndBoth,m_bin_t_min,tEndBoth);
             }
             if (mSaveXTEO){
-                f_leftEO = combinePolN("fl_"+mEOsuffix,scalePolN(f_both_mid,-1),scalePolN(f_both_end,-1),tZeroBoth,tTurnBoth,tEndBoth,mTmin,tEndBoth);
-                f_rightEO = combinePolN("fr_"+mEOsuffix,f_both_mid,f_both_end,tZeroBoth,tTurnBoth,tEndBoth,mTmin,tEndBoth);
+                f_leftEO = combinePolN("fl_"+mEOsuffix,scalePolN(f_both_mid,-1),scalePolN(f_both_end,-1),tZeroBoth,tTurnBoth,tEndBoth,m_bin_t_min,tEndBoth);
+                f_rightEO = combinePolN("fr_"+mEOsuffix,f_both_mid,f_both_end,tZeroBoth,tTurnBoth,tEndBoth,m_bin_t_min,tEndBoth);
             }
         }
         else{
-            f_left = combinePolN(Form("fl_%d",mLayerID),scalePolN(f_both_cen,-1),scalePolN(f_both_mid,-1),scalePolN(f_both_end,-1),tZeroBoth,tCentBoth,tTurnBoth,tEndBoth,mTmin,tEndBoth);
-            f_right = combinePolN(Form("fr_%d",mLayerID),f_both_cen,f_both_mid,f_both_end,tZeroBoth,tCentBoth,tTurnBoth,tEndBoth,mTmin,tEndBoth);
+            f_left = combinePolN(Form("fl_%d",mLayerID),scalePolN(f_both_cen,-1),scalePolN(f_both_mid,-1),scalePolN(f_both_end,-1),tZeroBoth,tCentBoth,tTurnBoth,tEndBoth,m_bin_t_min,tEndBoth);
+            f_right = combinePolN(Form("fr_%d",mLayerID),f_both_cen,f_both_mid,f_both_end,tZeroBoth,tCentBoth,tTurnBoth,tEndBoth,m_bin_t_min,tEndBoth);
             if (mSaveXT0){
-                f_left0 = combinePolN(Form("fl_%d",0),scalePolN(f_both_cen,-1),scalePolN(f_both_mid,-1),scalePolN(f_both_end,-1),tZeroBoth,tCentBoth,tTurnBoth,tEndBoth,mTmin,tEndBoth);
-                f_right0 = combinePolN(Form("fr_%d",0),f_both_cen,f_both_mid,f_both_end,tZeroBoth,tCentBoth,tTurnBoth,tEndBoth,mTmin,tEndBoth);
+                f_left0 = combinePolN(Form("fl_%d",0),scalePolN(f_both_cen,-1),scalePolN(f_both_mid,-1),scalePolN(f_both_end,-1),tZeroBoth,tCentBoth,tTurnBoth,tEndBoth,m_bin_t_min,tEndBoth);
+                f_right0 = combinePolN(Form("fr_%d",0),f_both_cen,f_both_mid,f_both_end,tZeroBoth,tCentBoth,tTurnBoth,tEndBoth,m_bin_t_min,tEndBoth);
             }
             if (mSaveXTEO){
-                f_leftEO = combinePolN("fl_"+mEOsuffix,scalePolN(f_both_cen,-1),scalePolN(f_both_mid,-1),scalePolN(f_both_end,-1),tZeroBoth,tCentBoth,tTurnBoth,tEndBoth,mTmin,tEndBoth);
-                f_rightEO = combinePolN("fr_"+mEOsuffix,f_both_cen,f_both_mid,f_both_end,tZeroBoth,tCentBoth,tTurnBoth,tEndBoth,mTmin,tEndBoth);
+                f_leftEO = combinePolN("fl_"+mEOsuffix,scalePolN(f_both_cen,-1),scalePolN(f_both_mid,-1),scalePolN(f_both_end,-1),tZeroBoth,tCentBoth,tTurnBoth,tEndBoth,m_bin_t_min,tEndBoth);
+                f_rightEO = combinePolN("fr_"+mEOsuffix,f_both_cen,f_both_mid,f_both_end,tZeroBoth,tCentBoth,tTurnBoth,tEndBoth,m_bin_t_min,tEndBoth);
             }
         }
     }
@@ -843,7 +832,7 @@ void XTAnalyzer::Process(void){
     //==========================Prepare more graphs==============================
     // get Left/Right/Both-sides differences by functions
     for (int i = 0; i<1024; i++){
-        double t = mTmax*(i+0.5)/1024;
+        double t = m_bin_t_max*(i+0.5)/1024;
         double xl = f_left_com->Eval(t);
         double xr = f_right_com->Eval(t);
         double xb = f_both_com->Eval(t);
@@ -862,7 +851,7 @@ void XTAnalyzer::Process(void){
         double tEndRightPre = fo_right->GetXmax();
         double tEndBothPre = fo_both->GetXmax();
         for (int i = 0; i<1024; i++){
-            double t = mTmax*(i+0.5)/1024;
+            double t = m_bin_t_max*(i+0.5)/1024;
             if (t<=tEndLeft&&t<=tEndLeftPre){
                 double x = f_left_com->Eval(t);
                 double xo = fo_left->Eval(t);
@@ -1088,22 +1077,22 @@ void XTAnalyzer::fitSliceHistFloat(TH1D * h, double ratio, double & mean, double
 }
 
 TF1 * XTAnalyzer::fitSliceGaus(TH1D * h, double & mean, double & sigma, double & chi2, double & left, double & right){
-    if (mDebugLevel>3) printf("in fitSliceGaus: \"%s\" has %d(%d) entries\n",h->GetName(),(int)h->GetEntries(),(int)h->Integral());
+    MyNamedVerbose("XTAnalyzer",Form("in fitSliceGaus: \"%s\" has %d(%d) entries",h->GetName(),(int)h->GetEntries(),(int)h->Integral()));
     TF1 * f = f_gaus;
     int bmax = h->GetMaximumBin();
     mean = h->GetBinCenter(bmax);
     double lrange = mean-left;
     double rrange = right-mean;
-    if (mDebugLevel>3) printf("  %.2f - %.2f - %.2f, lrange = %.2f, rrange = %.2f\n",left,mean,right,lrange,rrange);
+    MyNamedVerbose("XTAnalyzer",Form("  %.2f - %.2f - %.2f, lrange = %.2f, rrange = %.2f",left,mean,right,lrange,rrange));
     h->Fit("fgaus","qN0","",left,right);
     for (int i = 0; i<10; i++){
         mean = f->GetParameter(1);
         sigma = fabs(f->GetParameter(2));
-        if (mDebugLevel>3) printf("      sigma: %.2f mean: %.2f\n",i,sigma,mean);
+        MyNamedVerbose("XTAnalyzer",Form("      sigma: %.2f mean: %.2f",i,sigma,mean));
         if (sigma<rrange*5&&sigma>rrange/5&&mean>left&&mean<right) break;
         left-=lrange/10;
         right+=rrange/10;
-        if (mDebugLevel>3) printf("   -> %d: %.2f -- %.2f\n",i,left,right);
+        MyNamedVerbose("XTAnalyzer",Form("   -> %d: %.2f -- %.2f",i,left,right));
         h->Fit("fgaus","qN0","",left,right);
         mean = f->GetParameter(1);
         sigma = fabs(f->GetParameter(2));
@@ -1114,22 +1103,22 @@ TF1 * XTAnalyzer::fitSliceGaus(TH1D * h, double & mean, double & sigma, double &
 }
 
 TF1 * XTAnalyzer::fitSliceLand(TH1D * h, double & mean, double & sigma, double & chi2, double & left, double & right){
-    if (mDebugLevel>3) printf("in fitSliceLand: \"%s\" has %d(%d) entries\n",h->GetName(),(int)h->GetEntries(),(int)h->Integral());
+    MyNamedVerbose("XTAnalyzer",Form("in fitSliceLand: \"%s\" has %d(%d) entries",h->GetName(),(int)h->GetEntries(),(int)h->Integral()));
     TF1 * f = f_land;
     int bmax = h->GetMaximumBin();
     mean = h->GetBinCenter(bmax);
     double lrange = mean-left;
     double rrange = right-mean;
-    if (mDebugLevel>3) printf("  %.2f - %.2f - %.2f, lrange = %.2f, rrange = %.2f\n",left,mean,right,lrange,rrange);
+    MyNamedVerbose("XTAnalyzer",Form("  %.2f - %.2f - %.2f, lrange = %.2f, rrange = %.2f",left,mean,right,lrange,rrange));
     h->Fit("fland","qN0","",left,right);
     for (int i = 0; i<10; i++){
         mean = f->GetParameter(1);
         sigma = fabs(f->GetParameter(2));
-        if (mDebugLevel>3) printf("      sigma: %.2f mean: %.2f\n",i,sigma,mean);
+        MyNamedVerbose("XTAnalyzer",Form("      sigma: %.2f mean: %.2f",i,sigma,mean));
         if (sigma<rrange*5&&sigma>rrange/5&&mean>left&&mean<right) break;
         left-=lrange/10;
         right+=rrange/10;
-        if (mDebugLevel>3) printf("   -> %d: %.2f -- %.2f\n",i,left,right);
+        MyNamedVerbose("XTAnalyzer",Form("   -> %d: %.2f -- %.2f",i,left,right));
         h->Fit("fland","qN0","",left,right);
         mean = f->GetParameter(1);
         sigma = fabs(f->GetParameter(2));
@@ -1185,7 +1174,7 @@ double XTAnalyzer::findFirstZero(TF1 * f, double xmin, double xmax, double delta
             break;
         }
     }
-    if (mDebugLevel>=3) printf("findFirstZero: theX = %.2f from [%.2f,%.2f]\n",theX,xmin,xmax);
+    MyNamedInfo("XTAnalyzer",Form("findFirstZero: theX = %.2f from [%.2f,%.2f]",theX,xmin,xmax));
     return theX;
 }
 
@@ -1225,7 +1214,7 @@ void XTAnalyzer::getTT(int & iT, std::vector<double> & vx, std::vector<double> &
         }
         if (negtive) vel*=-1;
         theIT = iT;
-        if (mDebugLevel>=1) fprintf(stdout,"%d~%d: t:%.1f~%.1f ns, x:%.1f~%.1f mm, vel = %.3e mm/ns\n",iT,j,vt[iT],vt[j],vx[iT],vx[j],vel);
+        MyNamedLog("XTAnalyzer",Form("%d~%d: t:%.1f~%.1f ns, x:%.1f~%.1f mm, vel = %.3e mm/ns",iT,j,vt[iT],vt[j],vx[iT],vx[j],vel));
         if (vel<velocity/3) break;
         if (fabs(vx[iT])>7.8) break;
     }
@@ -1522,7 +1511,7 @@ void XTAnalyzer::drawFitting(TH1D* h,TF1 * f, TCanvas * c,TString title, TString
     if (!f) fprintf(stderr,"ERROR: in drawFitting, input function does not exist!\n");
     if (!c) fprintf(stderr,"ERROR: in drawFitting, input canvas does not exist!\n");
     if (!h||!f||!c) return;
-    if (mDebugLevel>2) printf("drawFitting %s",h->GetName());
+    MyNamedInfo("XTAnalyzer","drawFitting "<<h->GetName());
     c->cd();
     h->SetTitle(title);
     h->Draw();
@@ -1575,12 +1564,12 @@ void XTAnalyzer::drawSamplingsLR(){
     f_left_com->Draw("SAME");
     f_right_com->Draw("SAME");
     pad_xtsamples[1]->cd();
-    TH2D * h2_samplings = new TH2D("h2_samplings",(gr_SmF_left?gr_SmF_left->GetTitle():"h2_samplings"),mNbint,mTmin,mTmax,512,-200,200);
+    TH2D * h2_samplings = new TH2D("h2_samplings",(gr_SmF_left?gr_SmF_left->GetTitle():"h2_samplings"),m_bin_t_num,m_bin_t_min,m_bin_t_max,512,-200,200);
     h2_samplings->Draw();
     if (gr_SmF_left) gr_SmF_left->Draw("PLSAME");
     if (gr_SmF_right) gr_SmF_right->Draw("PLSAME");
-    canv_xtsamples->SaveAs("xtsamples_"+mRunName+".png");
-    canv_xtsamples->SaveAs("xtsamples_"+mRunName+".pdf");
+    canv_xtsamples->SaveAs(Form("xtsamples_%s.layer%d.png",mRunName.Data(),mLayerID));
+    canv_xtsamples->SaveAs(Form("xtsamples_%s.layer%d.pdf",mRunName.Data(),mLayerID));
     // Add zoom-in plots
     if (mDrawDetails){
         TCanvas * canv_xtsamplesz = new TCanvas("canv_xtsamplesz","canv_xtsamplesz",800,1000);
@@ -1621,8 +1610,8 @@ void XTAnalyzer::drawSamplingsLR(){
         if (gr_right_mid) gr_right_mid->Draw("PSAME");
         f_left_com->Draw("SAME");
         f_right_com->Draw("SAME");
-        canv_xtsamplesz->SaveAs("xtsamples_center_"+mRunName+".png");
-        canv_xtsamplesz->SaveAs("xtsamples_center_"+mRunName+".pdf");
+        canv_xtsamplesz->SaveAs(Form("xtsamples_center_%s.layer%d.png",mRunName.Data(),mLayerID));
+        canv_xtsamplesz->SaveAs(Form("xtsamples_center_%s.layer%d.pdf",mRunName.Data(),mLayerID));
         if (mGasID==1){ // He:iC4H10 (90:10)
             h2_xt->GetXaxis()->SetRangeUser(250,450);
         }
@@ -1636,8 +1625,8 @@ void XTAnalyzer::drawSamplingsLR(){
         if (gr_right_mid) gr_right_mid->Draw("PSAME");
         if (gr_right_end) gr_right_end->Draw("PSAME");
         f_right_com->Draw("SAME");
-        canv_xtsamplesz->SaveAs("xtsamples_endR_"+mRunName+".png");
-        canv_xtsamplesz->SaveAs("xtsamples_endR_"+mRunName+".pdf");
+        canv_xtsamplesz->SaveAs(Form("xtsamples_endR_%s.layer%d.png",mRunName.Data(),mLayerID));
+        canv_xtsamplesz->SaveAs(Form("xtsamples_endR_%s.layer%d.pdf",mRunName.Data(),mLayerID));
         h2_xt->GetYaxis()->SetRangeUser(-8.5,-7);
         h2_xt->Draw("COLZ");
         if (gr_xt_slicet) gr_xt_slicet->Draw("PSAME");
@@ -1645,8 +1634,8 @@ void XTAnalyzer::drawSamplingsLR(){
         if (gr_left_mid) gr_left_mid->Draw("PSAME");
         if (gr_left_end) gr_left_end->Draw("PSAME");
         f_left_com->Draw("SAME");
-        canv_xtsamplesz->SaveAs("xtsamples_endL_"+mRunName+".png");
-        canv_xtsamplesz->SaveAs("xtsamples_endL_"+mRunName+".pdf");
+        canv_xtsamplesz->SaveAs(Form("xtsamples_endL_%s.layer%d.png",mRunName.Data(),mLayerID));
+        canv_xtsamplesz->SaveAs(Form("xtsamples_endL_%s.layer%d.pdf",mRunName.Data(),mLayerID));
         h2_xt->GetXaxis()->UnZoom();
         h2_xt->GetYaxis()->UnZoom();
     }
@@ -1684,8 +1673,8 @@ void XTAnalyzer::drawSamplingsLR(){
     pad_xtslices[5]->cd();
     if (gr_chi2t_slicetl) gr_chi2t_slicetl->Draw("AP");
     if (gr_chi2t_slicetr) gr_chi2t_slicetr->Draw("PSAME");
-    canv_xtslices->SaveAs("xtslices_"+mRunName+".png");
-    canv_xtslices->SaveAs("xtslices_"+mRunName+".pdf");
+    canv_xtslices->SaveAs(Form("xtslices_%s.layer%d.png",mRunName.Data(),mLayerID));
+    canv_xtslices->SaveAs(Form("xtslices_%s.layer%d.pdf",mRunName.Data(),mLayerID));
 }
 
 void XTAnalyzer::drawSamplingsB(){
@@ -1713,11 +1702,11 @@ void XTAnalyzer::drawSamplingsB(){
     if (gr_both_end) gr_both_end->Draw("PSAME");
     f_both_com->Draw("SAME");
     pad_xtsamplesn[1]->cd();
-    TH2D * h2_samplingsn = new TH2D("h2_samplingsn",(gr_SmF_both?gr_SmF_both->GetTitle():"h2_samplingsn"),mNbint,mTmin,mTmax,512,-200,200);
+    TH2D * h2_samplingsn = new TH2D("h2_samplingsn",(gr_SmF_both?gr_SmF_both->GetTitle():"h2_samplingsn"),m_bin_t_num,m_bin_t_min,m_bin_t_max,512,-200,200);
     h2_samplingsn->Draw();
     if (gr_SmF_both) gr_SmF_both->Draw("PLSAME");
-    canv_xtsamplesn->SaveAs("xtsamplesn_"+mRunName+".png");
-    canv_xtsamplesn->SaveAs("xtsamplesn_"+mRunName+".pdf");
+    canv_xtsamplesn->SaveAs(Form("xtsamplesn_%s.layer%d.png",mRunName.Data(),mLayerID));
+    canv_xtsamplesn->SaveAs(Form("xtsamplesn_%s.layer%d.pdf",mRunName.Data(),mLayerID));
     // Add zoom-in plots
     if (mDrawDetails){
         TCanvas * canv_xtsamplesnz = new TCanvas("canv_xtsamplesnz","canv_xtsamplesnz",800,1000);
@@ -1745,8 +1734,8 @@ void XTAnalyzer::drawSamplingsB(){
         if (gr_both_cen) gr_both_cen->Draw("PSAME");
         if (gr_both_mid) gr_both_mid->Draw("PSAME");
         f_both_com->Draw("SAME");
-        canv_xtsamplesnz->SaveAs("xtsamplesn_center_"+mRunName+".png");
-        canv_xtsamplesnz->SaveAs("xtsamplesn_center_"+mRunName+".pdf");
+        canv_xtsamplesnz->SaveAs(Form("xtsamplesn_center_%s.layer%d.png",mRunName.Data(),mLayerID));
+        canv_xtsamplesnz->SaveAs(Form("xtsamplesn_center_%s.layer%d.pdf",mRunName.Data(),mLayerID));
         if (mGasID==1){ // He:iC4H10 (90:10)
             h2_xtn->GetXaxis()->SetRangeUser(250,450);
         }
@@ -1760,8 +1749,8 @@ void XTAnalyzer::drawSamplingsB(){
         if (gr_both_mid) gr_both_mid->Draw("PSAME");
         if (gr_both_end) gr_both_end->Draw("PSAME");
         f_both_com->Draw("SAME");
-        canv_xtsamplesnz->SaveAs("xtsamplesn_end_"+mRunName+".png");
-        canv_xtsamplesnz->SaveAs("xtsamplesn_end_"+mRunName+".pdf");
+        canv_xtsamplesnz->SaveAs(Form("xtsamplesn_end_%s.layer%d.png",mRunName.Data(),mLayerID));
+        canv_xtsamplesnz->SaveAs(Form("xtsamplesn_end_%s.layer%d.pdf",mRunName.Data(),mLayerID));
         h2_xtn->GetXaxis()->UnZoom();
         h2_xtn->GetYaxis()->UnZoom();
     }
@@ -1796,8 +1785,8 @@ void XTAnalyzer::drawSamplingsB(){
     if (gr_sigt_slicetn) gr_sigt_slicetn->Draw("AP");
     pad_xtslicesn[5]->cd();
     if (gr_chi2t_slicetn) gr_chi2t_slicetn->Draw("AP");
-    canv_xtslicesn->SaveAs("xtslicesn_"+mRunName+".png");
-    canv_xtslicesn->SaveAs("xtslicesn_"+mRunName+".pdf");
+    canv_xtslicesn->SaveAs(Form("xtslicesn_%s.layer%d.png",mRunName.Data(),mLayerID));
+    canv_xtslicesn->SaveAs(Form("xtslicesn_%s.layer%d.pdf",mRunName.Data(),mLayerID));
 }
 
 void XTAnalyzer::drawLRB(){
@@ -1836,14 +1825,14 @@ void XTAnalyzer::drawLRB(){
     f_bothL_com->Draw("SAME");
     pad_LRB[1]->cd();
     if (m_RLmB_dx_max<200) m_RLmB_dx_max = 200; // set constant range as +-200 um for later iteration phases.
-    TH2D * h2_LRmB_dx = new TH2D("h2_LRmB_dx","XT Differences with Both-side Combined Case",mNbint,mTmin,mTmax,512,-m_RLmB_dx_max*1.05,m_RLmB_dx_max*1.05);
+    TH2D * h2_LRmB_dx = new TH2D("h2_LRmB_dx","XT Differences with Both-side Combined Case",m_bin_t_num,m_bin_t_min,m_bin_t_max,512,-m_RLmB_dx_max*1.05,m_RLmB_dx_max*1.05);
     h2_LRmB_dx->GetXaxis()->SetTitle("T [ns]");
     h2_LRmB_dx->GetYaxis()->SetTitle("#Delta_{X} [um]");
     h2_LRmB_dx->Draw();
     if (gr_RmB_func) gr_RmB_func->Draw("LSAME");
     if (gr_LmB_func) gr_LmB_func->Draw("LSAME");
-    canv_LRB->SaveAs("LRB_"+mRunName+".png");
-    canv_LRB->SaveAs("LRB_"+mRunName+".pdf");
+    canv_LRB->SaveAs(Form("LRB_%s.layer%d.png",mRunName.Data(),mLayerID));
+    canv_LRB->SaveAs(Form("LRB_%s.layer%d.pdf",mRunName.Data(),mLayerID));
 }
 
 void XTAnalyzer::drawIteration(){
@@ -1873,13 +1862,13 @@ void XTAnalyzer::drawIteration(){
     }
     pad_IterN[1]->cd();
     if (m_TmL_B_max<100) m_TmL_B_max = 100; // set constant range as +-100 um for later iteration phases.
-    TH2D * h2_IterN = new TH2D("h2_IterN","XT Differences Comparing with Last Time",mNbint,mTmin,mTmax,1024,-m_TmL_B_max*1.05,m_TmL_B_max*1.05);
+    TH2D * h2_IterN = new TH2D("h2_IterN","XT Differences Comparing with Last Time",m_bin_t_num,m_bin_t_min,m_bin_t_max,1024,-m_TmL_B_max*1.05,m_TmL_B_max*1.05);
     h2_IterN->GetXaxis()->SetTitle("T [ns]");
     h2_IterN->GetYaxis()->SetTitle("#Delta_{X} [um]");
     h2_IterN->Draw();
     if (gr_TmL_both) gr_TmL_both->Draw("LSAME");
-    canv_xtiterationn->SaveAs("IterN_"+mRunName+".png");
-    canv_xtiterationn->SaveAs("IterN_"+mRunName+".pdf");
+    canv_xtiterationn->SaveAs(Form("IterN_%s.layer%d.png",mRunName.Data(),mLayerID));
+    canv_xtiterationn->SaveAs(Form("IterN_%s.layer%d.pdf",mRunName.Data(),mLayerID));
     TCanvas * canv_xtiteration = new TCanvas("canv_xtiteration","canv_xtiteration",800,1000);
     TPad * pad_Iter[2];
     for (int il = 0; il<1; il++){
@@ -1911,14 +1900,14 @@ void XTAnalyzer::drawIteration(){
     }
     pad_Iter[1]->cd();
     if (m_TmL_LR_max<100) m_TmL_LR_max = 100; // set constant range as +-100 um for later iteration phases.
-    TH2D * h2_Iter = new TH2D("h2_Iter","XT Differences Comparing with Last Time",mNbint,mTmin,mTmax,1024,-m_TmL_LR_max*1.05,m_TmL_LR_max*1.05);
+    TH2D * h2_Iter = new TH2D("h2_Iter","XT Differences Comparing with Last Time",m_bin_t_num,m_bin_t_min,m_bin_t_max,1024,-m_TmL_LR_max*1.05,m_TmL_LR_max*1.05);
     h2_Iter->GetXaxis()->SetTitle("T [ns]");
     h2_Iter->GetYaxis()->SetTitle("#Delta_{X} [um]");
     h2_Iter->Draw();
     if (gr_TmL_left) gr_TmL_left->Draw("LSAME");
     if (gr_TmL_right) gr_TmL_right->Draw("LSAME");
-    canv_xtiteration->SaveAs("Iter_"+mRunName+".png");
-    canv_xtiteration->SaveAs("Iter_"+mRunName+".pdf");
+    canv_xtiteration->SaveAs(Form("Iter_%s.layer%d.png",mRunName.Data(),mLayerID));
+    canv_xtiteration->SaveAs(Form("Iter_%s.layer%d.pdf",mRunName.Data(),mLayerID));
 }
 
 void XTAnalyzer::writeObjects(){

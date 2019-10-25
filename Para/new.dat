@@ -44,6 +44,12 @@ XTAnalyzer parameters
     < XTAnalyzer.slz_max = -0.1 >
     < XTAnalyzer.gold_t_min = 50 >
     < XTAnalyzer.gold_t_max = 350 >
+    < m_bin_t_min = -25.520833 > -25-1/0.96/2
+    < m_bin_t_max = 800.52083 > 800+1/0.96/2
+    < m_bin_t_num = 793 > 792+1
+    < m_bin_x_min = -0.02 >
+    < m_bin_x_max = 10.02 >
+    < m_bin_x_num = 501 >
 
 *******************************************************************************                                                                   
 ana parameters

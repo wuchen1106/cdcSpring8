@@ -65,6 +65,12 @@ public:
     double slz_max;
     double gold_t_min;
     double gold_t_max;
+    double bin_t_min;
+    double bin_t_max;
+    int    bin_t_num;
+    double bin_x_min;
+    double bin_x_max;
+    int    bin_x_num;
 };
 
 // parameter block for Ana

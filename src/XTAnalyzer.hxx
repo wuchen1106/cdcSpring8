@@ -5,8 +5,7 @@
 
 #include "TString.h"
 
-#define NSLICEX 401 // 401 bins from -8.02 mm to 8.02 mm, binning every 40 um
-//#define NSLICEX 201 // 201 bins from -8.04 mm to 8.04 mm, binning every 80 um
+#define NSLICEX 421 // 421 bins from -8.42 mm to 8.42 mm, binning every 40 um
 #define NSLICET 513 // 257 bins from -1.5625 ns to 801.5625 ns including left and right side, bining every 3.125 ns (3 TDC)
 //#define NSLICET 309 // 155 bins from -2.60416 ns to 802.60416 ns including left and right side, bining every 5.2083 ns (5 TDC)
 //#define NSLICET 221 // 110 bins from -3.64583 ns to 803.64583 ns including left and right side, bining every 7.2916 ns (7 TDC)
@@ -23,20 +22,19 @@ class TH2D;
 
 class XTAnalyzer{
     public:
-        XTAnalyzer(int gasID, int debug = 0);
+        XTAnalyzer(TString runname, int gasID, TFile * infile, TFile * outfile, TTree * otree, int defaultLayer = 4, int savehists = false, bool drawDetails = false);
         virtual ~XTAnalyzer(void);
 
         void SetXTType(int type);
         void SetSaveHists(int save);
+        void SetTestLayer(int lid){mLayerID = lid;}
 
-        int  Initialize(TString runname, int lid, TFile * infile, TFile * outfile, TTree * otree, int xttype, bool sym, int savehists, bool drawDetails, bool saveXT0 = false,int saveOddEven = 0, bool updateXT = true);
+        int  Initialize();
         void Process(void);
 
         void Push(double t, double x);
 
         int t2d(double t, double & d, bool isRight);
-
-        void SetBinning(int nt, double tmin, double tmax, int nx, double xmin, double xmax);
 
     private:
 
@@ -71,34 +69,32 @@ class XTAnalyzer{
 
     private:
         // options
+        TString mRunName;
         int mGasID;
-        int mDebugLevel;
         int mSaveHists;
         bool mDrawDetails;
         bool mSaveXT0;
         int mSaveXTEO;
         bool mUpdateXT;
         bool mSymmetric;
+        TFile * mInFile;
+        TFile * mOutFile;
+        TTree * mOutTree;
+        int mLayerID;
+
         int mXTType;
         int mCentPolN;
         int mMidPolN;
         int mEndPolN;
-        TString mRunName;
         TString mEOsuffix;
 
         int mEntriesMin;
         double mSigXmax;
         double mSigTmax;
 
-        // input file
-        TFile * mInFile;
-
         // for output xt tree
-        TFile * mOutFile;
-        TTree * mOutTree;
         double mX;
         double mT;
-        int mLayerID;
         double mSig;
         double mChi2;
         int mEntries;
@@ -113,13 +109,12 @@ class XTAnalyzer{
         double mTRIGHT;
 
         // about binning
-        double mTmin;
-        double mTmax;
-        double mNbint;
-
-        double mXmin;
-        double mXmax;
-        double mNbinx;
+        double m_bin_t_min;
+        double m_bin_t_max;
+        int    m_bin_t_num;
+        double m_bin_x_min;
+        double m_bin_x_max;
+        int    m_bin_x_num;
 
         // Histograms for data points
         TH2D * h2_xt;
