@@ -248,10 +248,10 @@ void InputOutputManager::GetEntry(Long64_t iEntry){
 }
 
 Long64_t InputOutputManager::GetEntries(){
-    if (readHitFile&&fInputHitChain)
-        return fInputHitChain->GetEntries();
-    else if (readTrackFile&&fInputTrackChain)
+    if (readTrackFile&&fInputTrackChain)
         return fInputTrackChain->GetEntries();
+    else if (readHitFile&&fInputHitChain)
+        return fInputHitChain->GetEntries();
     else
         return 0;
 }

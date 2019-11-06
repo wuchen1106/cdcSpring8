@@ -7,7 +7,12 @@
 #include "TString.h"
 #include "TChain.h"
 #include "TFile.h"
-#include "TTree.h"
+#include "TCanvas.h"
+#include "TH1D.h"
+#include "TH2D.h"
+#include "TLine.h"
+#include "TLatex.h"
+#include "TStyle.h"
 
 #include "MyProcessManager.hxx"
 #include "Log.hxx"
@@ -19,7 +24,7 @@
 #include "XTManager.hxx"
 #include "InputOutputManager.hxx"
 
-#include "XTAnalyzer.hxx"
+#include "XTBinAnalyzer.hxx"
 
 #define NBINS    20
 #define MAXTRUNC 6
@@ -54,7 +59,7 @@ int main(int argc, char** argv){
     int m_iEntryStart = -1;
     int m_iEntryStop = -1;
     int m_nEntries = 0;
-    int m_modulo = 100;
+    int m_modulo = 10000;
     bool m_memdebug = false;
     int m_defaultLayerID = 4;
     bool m_DrawDetails = false;
@@ -62,7 +67,7 @@ int main(int argc, char** argv){
 
     // Load options
     int    opt_result;
-    while((opt_result=getopt(argc,argv,"B:C:D:E:HL:MN:P:R:S:V:h"))!=-1){
+    while((opt_result=getopt(argc,argv,"B:C:D:E:HL:MN:P:R:SV:h"))!=-1){
         switch(opt_result){
             /* INPUTS */
             case 'M':
@@ -97,8 +102,8 @@ int main(int argc, char** argv){
                 printf("Using configure file \"%s\"\n",optarg);
                 break;
             case 'S':
-                m_SaveHists = atoi(optarg);
-                printf("Histogram saving level set to %d\n",m_SaveHists);
+                m_SaveHists = true;
+                printf("Save bin-by-bin histograms\n");
                 break;
             case 'H':
                 m_DrawDetails = atoi(optarg);
@@ -180,11 +185,12 @@ int main(int argc, char** argv){
     int nHits_max = ParameterManager::Get().XTAnalyzerParameters.nHits_max;
     int nHitsS_min = ParameterManager::Get().XTAnalyzerParameters.nHitsS_min;
     double chi2_max = ParameterManager::Get().XTAnalyzerParameters.chi2_max;
+    double pValue_min = ParameterManager::Get().XTAnalyzerParameters.pValue_min;
     double slz_min = ParameterManager::Get().XTAnalyzerParameters.slz_min;
     double slz_max = ParameterManager::Get().XTAnalyzerParameters.slz_max;
 
     // Get the previous XT file used to do this tracking
-    // NOTE: this will be used by XTAnalyzer to compare with the new XT as an iteration feedback
+    // NOTE: this will be used by XTBinAnalyzer to compare with the new XT as an iteration feedback
     TFile * preXTFile = 0;
     preXTFile = new TFile(Form("%s/info/xt.%d.%s.root",HOME.Data(),m_runNo,m_preRunName.Data()));
     if (!preXTFile||preXTFile->IsZombie()){
@@ -198,26 +204,14 @@ int main(int argc, char** argv){
 
     // prepare XT files
     TFile * newXTFile = 0;
-    TTree * newXTTree = 0;
     newXTFile = new TFile(Form("%s/info/xt.%d.%s.root",HOME.Data(),m_runNo,m_runName.Data()),"RECREATE");
-    newXTTree = new TTree("t","t");
-    double mX;
-    double mT;
-    int mLayerID;
-    double mSig;
-    double mChi2;
-    int mEntries;
-    int mType;
-    newXTTree->Branch("x",&mX);
-    newXTTree->Branch("t",&mT);
-    newXTTree->Branch("lid",&mLayerID);
-    newXTTree->Branch("sig",&mSig);
-    newXTTree->Branch("chi2",&mChi2);
-    newXTTree->Branch("n",&mEntries);
-    newXTTree->Branch("type",&mType);
 
-    // Prepare XTAnalyzer
-    XTAnalyzer * fXTAnalyzer = new XTAnalyzer(Form("%d.%s",m_runNo,m_runName.Data()),RunInfoManager::Get().gasID,preXTFile,newXTFile,newXTTree,m_defaultLayerID,m_SaveHists,m_DrawDetails);
+    // Prepare XTBinAnalyzer
+    XTBinAnalyzer * fXTBinAnalyzer = new XTBinAnalyzer(Form("%d.%s",m_runNo,m_runName.Data()),newXTFile,m_SaveHists,m_DrawDetails);
+
+    gStyle->SetOptStat(0);
+    gStyle->SetPadTickX(1);
+    gStyle->SetPadTickY(1);
 
     //=================================================Loop in layers to get XTs====================================================
     // Loop in layers
@@ -229,16 +223,24 @@ int main(int argc, char** argv){
         if (!success) {MyError("Cannot initialize InputOutputManager for layer "<<testLayer); continue;}
         Long64_t N = InputOutputManager::Get().GetEntries();
         if (N==0){
-            MyError("Input file for layer "<<testLayer<<" is empty!");
+            MyWarn("Input file for layer "<<testLayer<<" is empty!");
             continue;
         }
 
+        // Prepare histograms for efficiency
+        TH1I * h_nHits = new TH1I(Form("h_track_%d_nHits",testLayer),"Number of hits",100,0,100); h_nHits->GetXaxis()->SetTitle("Number of hits"); h_nHits->GetYaxis()->SetTitle("Counts");
+        TH2I * h_nHitsGS = new TH2I(Form("h_track_%d_nHitsGS",testLayer),"Number of selected hits VS number of left good hits",25,0,25,10,0,10); h_nHitsGS->GetXaxis()->SetTitle("Number of left good hits"); h_nHitsGS->GetYaxis()->SetTitle("Number of selected hits"); h_nHitsGS->SetContour(100);
+        TH1D * h_chi2 = new TH1D(Form("h_track_%d_chi2",testLayer),"#chi^{2} of fitting",256,0,10); h_chi2->GetXaxis()->SetTitle("#chi^{2}"); h_chi2->GetYaxis()->SetTitle("Counts");
+        TH1D * h_pValue = new TH1D(Form("h_track_%d_pValue",testLayer),"P Value of fitting",256,0,1); h_pValue->GetXaxis()->SetTitle("P Value"); h_pValue->GetYaxis()->SetTitle("Counts");
+        TH1D * h_slopeZ = new TH1D(Form("h_track_%d_slopeZ",testLayer),"Slope on Z direction",256,-0.3,0.3); h_slopeZ->GetXaxis()->SetTitle("slope_{Z}"); h_slopeZ->GetYaxis()->SetTitle("Counts");
+        TH1D * h_slopeZAfterCuts = new TH1D(Form("h_track_%d_slopeZAfterCuts",testLayer),"Slope on Z direction",256,-0.3,0.3); h_slopeZAfterCuts->SetLineColor(kRed);
+
         //----------------------------------Start to get XT--------------------------------------------
         //Initialize the analyzer
-        fXTAnalyzer->SetTestLayer(testLayer);
-        int statusInitialize = fXTAnalyzer->Initialize();
+        fXTBinAnalyzer->SetTestLayer(testLayer);
+        int statusInitialize = fXTBinAnalyzer->Initialize();
         if (statusInitialize){
-            fprintf(stderr,"WARNING: something wrong with initializing XTAnalyzer for layer[%d], will ignore this layer!\n",testLayer);
+            fprintf(stderr,"WARNING: something wrong with initializing XTBinAnalyzer for layer[%d], will ignore this layer!\n",testLayer);
             continue;
         }
         MyNamedInfo("GetXT",Form("##############Layer %d: loop to get new XTs#############",testLayer));
@@ -262,16 +264,25 @@ int main(int argc, char** argv){
             double inz = InputOutputManager::Get().interceptZ[theCand];
 
             // ignore events with bad fitting
+            //  Total number of hits
+            h_nHits->Fill(InputOutputManager::Get().nHits);
+            if (nHits_max&&InputOutputManager::Get().nHits>nHits_max) continue;
+            //  Good hits and selected hits
+            h_nHitsGS->Fill(InputOutputManager::Get().nHitsG-InputOutputManager::Get().nHitsS[theCand],InputOutputManager::Get().nHitsS[theCand]);
+            if (AllGoodHitsUsed&&InputOutputManager::Get().nHitsG>InputOutputManager::Get().nHitsS[theCand]) continue;
             if (InputOutputManager::Get().nHitsS[theCand]<nHitsS_min) continue;
-            if (InputOutputManager::Get().chi2[theCand]>chi2_max) continue;
+            //  Fitting quality?
+            h_chi2->Fill(InputOutputManager::Get().chi2[theCand]);
+            h_pValue->Fill(InputOutputManager::Get().pValue[theCand]);
+            if (chi2_max&&InputOutputManager::Get().chi2[theCand]>chi2_max) continue;
+            if (InputOutputManager::Get().pValue[theCand]<pValue_min) continue;
+            // slope distribution?
+            h_slopeZ->Fill(InputOutputManager::Get().slopeZ[theCand]);
+            if (RequireInTriggerCounter&&!GeometryManager::Get().IsInScinti(1.5,inx,slx,inz,slz)) continue;
+            if (RequireAllGoldenHits&&CountNotGoldenHitSelected(theCand)) continue;
+            h_slopeZAfterCuts->Fill(InputOutputManager::Get().slopeZ[theCand]);
             if (InputOutputManager::Get().slopeZ[theCand]<slz_min) continue;
             if (InputOutputManager::Get().slopeZ[theCand]>slz_max) continue;
-            if (AllGoodHitsUsed&&InputOutputManager::Get().nHitsG>InputOutputManager::Get().nHitsS[theCand]) continue;
-            if (RequireInTriggerCounter&&!GeometryManager::Get().IsInScinti(1.5,inx,slx,inz,slz)) continue;
-            if (nHits_max&&InputOutputManager::Get().nHits>nHits_max) continue;
-            if (RequireAllGoldenHits){
-                if (CountNotGoldenHitSelected(theCand)) continue;
-            }
 
             MyNamedVerbose("GetXT","  Good Event! Looping in "<<InputOutputManager::Get().nHits<<" hits");
             // find the closest hit in the test layer
@@ -297,14 +308,63 @@ int main(int argc, char** argv){
             }
             if (!foundTheHitInTestLayer) continue; // no good hits found in test layer
 
-            MyNamedVerbose("GetXT","  Found hit! pushing to XTAnalyzer");
+            MyNamedVerbose("GetXT","  Found hit! pushing to XTBinAnalyzer");
             // tell analyzer a new data point
-            fXTAnalyzer->Push(driftT,fitD);
+            fXTBinAnalyzer->Fill(driftT,fitD);
         }
         MyNamedVerbose("GetXT","Starting XT analysis");
         // fit histograms/graphs, make plots, and save new xt file
-        fXTAnalyzer->Process();
+        fXTBinAnalyzer->Process();
+
+        // Draw the plots
+        int lowBin, highBin; double integral; double nTotal = h_nHits->GetEntries(); double hist_height = 0;
+        TCanvas * canv = new TCanvas(Form("canv%d",testLayer),"",1024,800);
+        canv->Divide(2,2);
+        canv->cd(1);gPad->SetGridx(1);gPad->SetGridy(1);
+        h_nHits->Draw(); hist_height = h_nHits->GetMaximum();
+        TLine * line_nHits = new TLine(nHits_max,0,nHits_max,hist_height); line_nHits->SetLineColor(kRed); line_nHits->Draw();
+        lowBin = h_nHits->FindBin(nHits_max);highBin = h_nHits->GetNbinsX(); integral = h_nHits->Integral(lowBin,highBin);
+        TLatex * text_nHits = new TLatex(nHits_max,hist_height*0.8,Form("%d (%.1f %%)",(int)integral,integral/h_nHits->Integral()*100)); text_nHits->SetTextColor(kRed); text_nHits->Draw();
+        canv->cd(2);gPad->SetGridx(1);gPad->SetGridy(1); gPad->SetLogz(1);
+        h_nHitsGS->Draw("COLZ");
+        TLine * line_nHitsS = new TLine(0,nHitsS_min,h_nHitsGS->GetXaxis()->GetXmax(),nHitsS_min); line_nHitsS->SetLineColor(kRed); line_nHitsS->Draw();
+        TH1D * h_nHitsS = h_nHitsGS->ProjectionY("h_nHitsS",1,h_nHitsGS->GetNbinsX());
+        lowBin = h_nHitsS->FindBin(nHitsS_min);highBin = h_nHitsS->GetNbinsX(); integral = h_nHitsS->Integral(lowBin,highBin);
+        TLatex * text_nHitsS = new TLatex(10,nHitsS_min,Form("%d (%.1f %%)",(int)integral,integral/h_nHitsGS->Integral()*100)); text_nHitsS->SetTextColor(kRed); text_nHitsS->Draw();
+        if (AllGoodHitsUsed){
+            TLine * line_nHitsG = new TLine(1,0,1,h_nHitsGS->GetYaxis()->GetXmax()); line_nHitsG->SetLineColor(kBlue); line_nHitsG->Draw();
+            TH1D * h_nHitsG = h_nHitsGS->ProjectionX("h_nHitsG",lowBin,highBin);
+            lowBin = 1;highBin = h_nHitsG->FindBin(0); integral = h_nHitsG->Integral(lowBin,highBin);
+            TLatex * text_nHitsG = new TLatex(1,nHitsS_min+1,Form("%d (%.1f %%)",(int)integral,integral/h_nHitsG->Integral()*100)); text_nHitsG->SetTextColor(kBlue); text_nHitsG->Draw();
+        }
+        canv->cd(3);gPad->SetGridx(1);gPad->SetGridy(1);
+        if (chi2_max) {
+            h_chi2->Draw(); hist_height = h_chi2->GetMaximum();
+            TLine * line_chi2 = new TLine(chi2_max,0,chi2_max,hist_height); line_chi2->SetLineColor(kRed); line_chi2->Draw();
+            lowBin = h_chi2->FindBin(chi2_max);highBin = h_chi2->GetNbinsX(); integral = h_chi2->Integral(lowBin,highBin);
+            TLatex * text_chi2 = new TLatex(chi2_max,hist_height*0.8,Form("%d (%.1f %%)",(int)integral,integral/h_chi2->Integral()*100)); text_chi2->SetTextColor(kRed); text_chi2->Draw();
+        }
+        else {
+            h_pValue->Draw(); hist_height = h_pValue->GetMaximum();
+            TLine * line_pValue = new TLine(pValue_min,0,pValue_min,hist_height); line_pValue->SetLineColor(kRed); line_pValue->Draw();
+            lowBin = h_pValue->FindBin(pValue_min);highBin = h_pValue->GetNbinsX(); integral = h_pValue->Integral(lowBin,highBin);
+            TLatex * text_pValue = new TLatex(pValue_min,hist_height*0.8,Form("%d (%.1f %%)",(int)integral,integral/h_pValue->Integral()*100)); text_pValue->SetTextColor(kRed); text_pValue->Draw();
+        }
+        canv->cd(4);gPad->SetGridx(1);gPad->SetGridy(1);
+        h_slopeZ->Draw(); hist_height = h_slopeZ->GetMaximum();
+        TLine * line_slopeZmin = new TLine(slz_min,0,slz_min,hist_height); line_slopeZmin->SetLineColor(kRed); line_slopeZmin->Draw();
+        TLine * line_slopeZmax = new TLine(slz_max,0,slz_max,hist_height); line_slopeZmax->SetLineColor(kRed); line_slopeZmax->Draw();
+        lowBin = h_slopeZ->FindBin(slz_min);highBin = h_slopeZ->FindBin(slz_max); integral = h_slopeZ->Integral(lowBin,highBin);
+        TLatex * text_slz = new TLatex(slz_max,hist_height*0.8,Form("%d (%.1f %%)",(int)integral,integral/h_slopeZ->Integral()*100)); text_slz->SetTextColor(kRed); text_slz->Draw();
+        if (RequireInTriggerCounter||RequireAllGoldenHits){
+            text_slz->SetTextColor(kBlue);
+            h_slopeZAfterCuts->Draw("SAME");
+            lowBin = h_slopeZAfterCuts->FindBin(slz_min);highBin = h_slopeZAfterCuts->FindBin(slz_max); integral = h_slopeZAfterCuts->Integral(lowBin,highBin);
+            TLatex * text_slzAfterCuts = new TLatex(slz_max,hist_height*0.5,Form("%d (%.1f %%)",(int)integral,integral/h_slopeZAfterCuts->Integral()*100)); text_slzAfterCuts->SetTextColor(kRed); text_slzAfterCuts->Draw();
+        }
+        canv->SaveAs(Form("%s/result/track_%d.%s.layer%d.png",HOME.Data(),m_runNo,m_runName.Data(),testLayer));
     }
+    newXTFile->Write();
 
     return 0;
 }

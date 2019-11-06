@@ -80,16 +80,28 @@ void ParameterManager::LoadParameters(ParaBlock theParaBlock){
         if (MyRuntimeParameters::Get().HasParameter("XTAnalyzer.nHits_max")) XTAnalyzerParameters.nHits_max = MyRuntimeParameters::Get().GetParameterI("XTAnalyzer.nHits_max");
         if (MyRuntimeParameters::Get().HasParameter("XTAnalyzer.nHitsS_min")) XTAnalyzerParameters.nHitsS_min = MyRuntimeParameters::Get().GetParameterI("XTAnalyzer.nHitsS_min");
         if (MyRuntimeParameters::Get().HasParameter("XTAnalyzer.chi2_max")) XTAnalyzerParameters.chi2_max = MyRuntimeParameters::Get().GetParameterD("XTAnalyzer.chi2_max");
+        if (MyRuntimeParameters::Get().HasParameter("XTAnalyzer.pValue_min")) XTAnalyzerParameters.pValue_min = MyRuntimeParameters::Get().GetParameterD("XTAnalyzer.pValue_min");
         if (MyRuntimeParameters::Get().HasParameter("XTAnalyzer.slz_min")) XTAnalyzerParameters.slz_min = MyRuntimeParameters::Get().GetParameterD("XTAnalyzer.slz_min");
         if (MyRuntimeParameters::Get().HasParameter("XTAnalyzer.slz_max")) XTAnalyzerParameters.slz_max = MyRuntimeParameters::Get().GetParameterD("XTAnalyzer.slz_max");
         if (MyRuntimeParameters::Get().HasParameter("XTAnalyzer.gold_t_min")) XTAnalyzerParameters.gold_t_min = MyRuntimeParameters::Get().GetParameterD("XTAnalyzer.gold_t_min");
         if (MyRuntimeParameters::Get().HasParameter("XTAnalyzer.gold_t_max")) XTAnalyzerParameters.gold_t_max = MyRuntimeParameters::Get().GetParameterD("XTAnalyzer.gold_t_max");
+        if (MyRuntimeParameters::Get().HasParameter("XTAnalyzer.bin_n_min")) XTAnalyzerParameters.bin_n_min = MyRuntimeParameters::Get().GetParameterI("XTAnalyzer.bin_n_min");;
         if (MyRuntimeParameters::Get().HasParameter("XTAnalyzer.bin_t_min")) XTAnalyzerParameters.bin_t_min = MyRuntimeParameters::Get().GetParameterD("XTAnalyzer.bin_t_min");;
         if (MyRuntimeParameters::Get().HasParameter("XTAnalyzer.bin_t_max")) XTAnalyzerParameters.bin_t_max = MyRuntimeParameters::Get().GetParameterD("XTAnalyzer.bin_t_max");;
         if (MyRuntimeParameters::Get().HasParameter("XTAnalyzer.bin_t_num")) XTAnalyzerParameters.bin_t_num = MyRuntimeParameters::Get().GetParameterI("XTAnalyzer.bin_t_num");;
         if (MyRuntimeParameters::Get().HasParameter("XTAnalyzer.bin_x_min")) XTAnalyzerParameters.bin_x_min = MyRuntimeParameters::Get().GetParameterD("XTAnalyzer.bin_x_min");;
         if (MyRuntimeParameters::Get().HasParameter("XTAnalyzer.bin_x_max")) XTAnalyzerParameters.bin_x_max = MyRuntimeParameters::Get().GetParameterD("XTAnalyzer.bin_x_max");;
         if (MyRuntimeParameters::Get().HasParameter("XTAnalyzer.bin_x_num")) XTAnalyzerParameters.bin_x_num = MyRuntimeParameters::Get().GetParameterI("XTAnalyzer.bin_x_num");;
+        if (MyRuntimeParameters::Get().HasParameter("XTAnalyzer.bin_t_landTmin")) XTAnalyzerParameters.bin_t_landTmin = MyRuntimeParameters::Get().GetParameterD("XTAnalyzer.bin_t_landTmin");;
+        if (MyRuntimeParameters::Get().HasParameter("XTAnalyzer.bin_t_landTmax")) XTAnalyzerParameters.bin_t_landTmax = MyRuntimeParameters::Get().GetParameterD("XTAnalyzer.bin_t_landTmax");;
+        if (MyRuntimeParameters::Get().HasParameter("XTAnalyzer.bin_x_landXmin")) XTAnalyzerParameters.bin_x_landXmin = MyRuntimeParameters::Get().GetParameterD("XTAnalyzer.bin_x_landXmin");;
+        if (MyRuntimeParameters::Get().HasParameter("XTAnalyzer.bin_x_landXmax")) XTAnalyzerParameters.bin_x_landXmax = MyRuntimeParameters::Get().GetParameterD("XTAnalyzer.bin_x_landXmax");;
+        if (MyRuntimeParameters::Get().HasParameter("XTAnalyzer.bin_x_fit_num")) XTAnalyzerParameters.bin_x_fit_num = MyRuntimeParameters::Get().GetParameterI("XTAnalyzer.bin_x_fit_num");;
+        if (MyRuntimeParameters::Get().HasParameter("XTAnalyzer.bin_t_fit_num")) XTAnalyzerParameters.bin_t_fit_num = MyRuntimeParameters::Get().GetParameterI("XTAnalyzer.bin_t_fit_num");;
+        if (MyRuntimeParameters::Get().HasParameter("XTAnalyzer.bin_t_fit_num_tail")) XTAnalyzerParameters.bin_t_fit_num_tail = MyRuntimeParameters::Get().GetParameterI("XTAnalyzer.bin_t_fit_num_tail");;
+        if (MyRuntimeParameters::Get().HasParameter("XTAnalyzer.bin_t_tailTime")) XTAnalyzerParameters.bin_t_tailTime = MyRuntimeParameters::Get().GetParameterD("XTAnalyzer.bin_t_tailTime");;
+        if (MyRuntimeParameters::Get().HasParameter("XTAnalyzer.bin_t_ratio")) XTAnalyzerParameters.bin_t_ratio = MyRuntimeParameters::Get().GetParameterD("XTAnalyzer.bin_t_ratio");;
+        if (MyRuntimeParameters::Get().HasParameter("XTAnalyzer.bin_x_ratio")) XTAnalyzerParameters.bin_x_ratio = MyRuntimeParameters::Get().GetParameterD("XTAnalyzer.bin_x_ratio");;
     }
 }
 
@@ -160,11 +172,29 @@ XTAnalyzerPara::XTAnalyzerPara(){
     AllGoodHitsUsed = false;
     nHits_max = 30;
     nHitsS_min = 7;
-    chi2_max = 2;
+    chi2_max = 0;
+    pValue_min = 0.05;
     slz_min = -0.1;
     slz_max = 0.1;
     gold_t_min = 50;
     gold_t_max = 300;
+    bin_n_min = 0; // minimum number of entries in one slice to apply fitting function; Otherwise use mean value & RMS instead.
+    bin_t_min = -25-1/0.96/2; // t range for one x bin
+    bin_t_max = 800+1/0.96/2;
+    bin_t_num = 792+1;
+    bin_t_fit_num = 3; //  number of T bins to project
+    bin_t_tailTime = 350; // starting tail mode from here: different number of bins as a T slice to fit X
+    bin_t_fit_num_tail = 3; //  number of T bins to project
+    bin_x_min = -0.02;
+    bin_x_max = 10.02; // x range for one t bin
+    bin_x_num = 501;
+    bin_t_landTmin = 330;
+    bin_t_landTmax = 450;
+    bin_x_landXmin = 7;
+    bin_x_landXmax = 8.5;
+    bin_x_fit_num = 3; //  number of X bins to project
+    bin_t_ratio = 0.5;
+    bin_x_ratio = 0.5;
 }
 
 void XTAnalyzerPara::Print(){
@@ -178,12 +208,30 @@ void XTAnalyzerPara::Print(){
     printf("  nHits_max = %d\n",nHits_max);
     printf("  nHitsS_min = %d\n",nHitsS_min);
     printf("  chi2_max = %f\n",chi2_max);
+    printf("  pValue_min = %f\n",pValue_min);
     printf("  slz_min = %f\n",slz_min);
     printf("  slz_max = %f\n",slz_max);
     printf(" About hit selection:\n");
     printf("  ClosestPeak = %s\n",ClosestPeak?"true":"false");
     printf("  golden hit t_min = %f\n",gold_t_min);
     printf("  golden hit t_max = %f\n",gold_t_max);
+    printf(" About bin-by-bin analysis :\n");
+    printf("  X axis: number of bins = %d\n",bin_x_num);
+    printf("  X axis: minimum = %f\n",bin_x_min);
+    printf("  X axis: maximum = %f\n",bin_x_max);
+    printf("  T axis: number of bins = %d\n",bin_t_num);
+    printf("  T axis: minimum = %f\n",bin_t_min);
+    printf("  T axis: maximum = %f\n",bin_t_max);
+    printf("  X fitting: Landau function range lower edge = %f\n",bin_t_landTmin);
+    printf("  X fitting: Landau function range lower edge = %f\n",bin_t_landTmax);
+    printf("  X fitting: tail starting from t = %.1f ns\n",bin_t_tailTime);
+    printf("  X fitting: number of T bins to project before tail: %d\n",bin_t_fit_num);
+    printf("  X fitting: number of T bins to project in tail : %d\n",bin_t_fit_num_tail);
+    printf("  X fitting: fit in X range according to cut ratio: %.1f\n",bin_t_ratio);
+    printf("  T fitting: number of X bins to project: %d\n",bin_x_fit_num);
+    printf("  T fitting: fit in T range according to cut ratio: %.1f\n",bin_x_ratio);
+    printf("  T fitting: Landau function range lower edge = %f\n",bin_x_landXmin);
+    printf("  T fitting: Landau function range lower edge = %f\n",bin_x_landXmax);
     printf(" About XT function:\n");
     printf("  XTType = %d\n",XTType);
     printf("  AsymXT = %s\n",AsymXT?"true":"false");

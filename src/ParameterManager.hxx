@@ -61,16 +61,33 @@ public:
     int nHits_max;
     int nHitsS_min;
     double chi2_max;
+    double pValue_min;
     double slz_min;
     double slz_max;
     double gold_t_min;
     double gold_t_max;
+    // about minimum entries to apply fitting
+    int    bin_n_min;
+    // about binning
     double bin_t_min;
     double bin_t_max;
     int    bin_t_num;
     double bin_x_min;
     double bin_x_max;
     int    bin_x_num;
+    // about projection
+    int    bin_t_fit_num;
+    double bin_t_tailTime;
+    int    bin_t_fit_num_tail;
+    int    bin_x_fit_num;
+    // about the range for using Landau function
+    double bin_t_landTmin;
+    double bin_t_landTmax;
+    double bin_x_landXmin;
+    double bin_x_landXmax;
+    // about fitting range
+    double bin_t_ratio;
+    double bin_x_ratio;
 };
 
 // parameter block for Ana
