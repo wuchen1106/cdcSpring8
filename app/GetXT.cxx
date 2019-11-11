@@ -26,12 +26,6 @@
 
 #include "XTBinAnalyzer.hxx"
 
-#define NBINS    20
-#define MAXTRUNC 6
-
-#define NWIRES4CALIB 4
-#define FIRSTWIRE4CALIB 3
-
 // for selecting good hits in tracking
 double t_min = 0;
 double t_max = 0;
@@ -63,11 +57,10 @@ int main(int argc, char** argv){
     bool m_memdebug = false;
     int m_defaultLayerID = 4;
     bool m_DrawDetails = false;
-    bool m_SaveHists = false;
 
     // Load options
     int    opt_result;
-    while((opt_result=getopt(argc,argv,"B:C:D:E:HL:MN:P:R:SV:h"))!=-1){
+    while((opt_result=getopt(argc,argv,"B:C:D:E:HL:MN:P:R:V:h"))!=-1){
         switch(opt_result){
             /* INPUTS */
             case 'M':
@@ -101,12 +94,8 @@ int main(int argc, char** argv){
                 getRunTimeParameters(optarg);
                 printf("Using configure file \"%s\"\n",optarg);
                 break;
-            case 'S':
-                m_SaveHists = true;
-                printf("Save bin-by-bin histograms\n");
-                break;
             case 'H':
-                m_DrawDetails = atoi(optarg);
+                m_DrawDetails = true;
                 printf("Draw bin-by-bin histogram \n");
                 break;
             case 'D':
@@ -189,25 +178,12 @@ int main(int argc, char** argv){
     double slz_min = ParameterManager::Get().XTAnalyzerParameters.slz_min;
     double slz_max = ParameterManager::Get().XTAnalyzerParameters.slz_max;
 
-    // Get the previous XT file used to do this tracking
-    // NOTE: this will be used by XTBinAnalyzer to compare with the new XT as an iteration feedback
-    TFile * preXTFile = 0;
-    preXTFile = new TFile(Form("%s/info/xt.%d.%s.root",HOME.Data(),m_runNo,m_preRunName.Data()));
-    if (!preXTFile||preXTFile->IsZombie()){
-        MyNamedWarn("GetXT","Cannot find xt file according to the given prerunname. Will use garfield xt instead.");
-        preXTFile = new TFile(HOME+Form("/info/xt.%s.%d.root",RunInfoManager::Get().gasTypeShort.Data(),RunInfoManager::Get().HV));
-        if (!preXTFile||preXTFile->IsZombie()){
-            MyError("Cannot find the default garfield xt: "<<HOME+Form("/info/xt.%s.%d.root",RunInfoManager::Get().gasTypeShort.Data(),RunInfoManager::Get().HV));
-            return -1;
-        }
-    }
-
     // prepare XT files
     TFile * newXTFile = 0;
     newXTFile = new TFile(Form("%s/info/xt.%d.%s.root",HOME.Data(),m_runNo,m_runName.Data()),"RECREATE");
 
     // Prepare XTBinAnalyzer
-    XTBinAnalyzer * fXTBinAnalyzer = new XTBinAnalyzer(Form("%d.%s",m_runNo,m_runName.Data()),newXTFile,m_SaveHists,m_DrawDetails);
+    XTBinAnalyzer * fXTBinAnalyzer = new XTBinAnalyzer(Form("%d.%s",m_runNo,m_runName.Data()),newXTFile,m_DrawDetails);
 
     gStyle->SetOptStat(0);
     gStyle->SetPadTickX(1);
@@ -313,8 +289,18 @@ int main(int argc, char** argv){
             fXTBinAnalyzer->Fill(driftT,fitD);
         }
         MyNamedVerbose("GetXT","Starting XT analysis");
+
+        // save the objects
+        h_nHits->Write();
+        h_nHitsGS->Write();
+        h_chi2->Write();
+        h_pValue->Write();
+        h_slopeZ->Write();
+        h_slopeZAfterCuts->Write();
+
         // fit histograms/graphs, make plots, and save new xt file
-        fXTBinAnalyzer->Process();
+        fXTBinAnalyzer->BinAnalysis();
+        fXTBinAnalyzer->FitXT();
 
         // Draw the plots
         int lowBin, highBin; double integral; double nTotal = h_nHits->GetEntries(); double hist_height = 0;
@@ -328,14 +314,12 @@ int main(int argc, char** argv){
         canv->cd(2);gPad->SetGridx(1);gPad->SetGridy(1); gPad->SetLogz(1);
         h_nHitsGS->Draw("COLZ");
         TLine * line_nHitsS = new TLine(0,nHitsS_min,h_nHitsGS->GetXaxis()->GetXmax(),nHitsS_min); line_nHitsS->SetLineColor(kRed); line_nHitsS->Draw();
-        TH1D * h_nHitsS = h_nHitsGS->ProjectionY("h_nHitsS",1,h_nHitsGS->GetNbinsX());
-        lowBin = h_nHitsS->FindBin(nHitsS_min);highBin = h_nHitsS->GetNbinsX(); integral = h_nHitsS->Integral(lowBin,highBin);
+        lowBin = h_nHitsGS->GetYaxis()->FindBin(nHitsS_min);highBin = h_nHitsGS->GetYaxis()->GetNbins(); integral = h_nHitsGS->Integral(1,25,lowBin,highBin);
         TLatex * text_nHitsS = new TLatex(10,nHitsS_min,Form("%d (%.1f %%)",(int)integral,integral/h_nHitsGS->Integral()*100)); text_nHitsS->SetTextColor(kRed); text_nHitsS->Draw();
         if (AllGoodHitsUsed){
             TLine * line_nHitsG = new TLine(1,0,1,h_nHitsGS->GetYaxis()->GetXmax()); line_nHitsG->SetLineColor(kBlue); line_nHitsG->Draw();
-            TH1D * h_nHitsG = h_nHitsGS->ProjectionX("h_nHitsG",lowBin,highBin);
-            lowBin = 1;highBin = h_nHitsG->FindBin(0); integral = h_nHitsG->Integral(lowBin,highBin);
-            TLatex * text_nHitsG = new TLatex(1,nHitsS_min+1,Form("%d (%.1f %%)",(int)integral,integral/h_nHitsG->Integral()*100)); text_nHitsG->SetTextColor(kBlue); text_nHitsG->Draw();
+            int lowBinX = 1; int highBinX = h_nHitsGS->GetXaxis()->FindBin(0.); integral = h_nHitsGS->Integral(lowBinX,highBinX,lowBin,highBin);
+            TLatex * text_nHitsG = new TLatex(1,nHitsS_min+1,Form("%d (%.1f %%)",(int)integral,integral/h_nHitsGS->Integral(1,10,lowBin,highBin)*100)); text_nHitsG->SetTextColor(kBlue); text_nHitsG->Draw();
         }
         canv->cd(3);gPad->SetGridx(1);gPad->SetGridy(1);
         if (chi2_max) {
@@ -364,7 +348,9 @@ int main(int argc, char** argv){
         }
         canv->SaveAs(Form("%s/result/track_%d.%s.layer%d.png",HOME.Data(),m_runNo,m_runName.Data(),testLayer));
     }
-    newXTFile->Write();
+    // Finally write the layer-irrelavant objects in the analyzer
+    fXTBinAnalyzer->Write();
+    newXTFile->Close();
 
     return 0;
 }
@@ -484,8 +470,6 @@ void print_usage(char * prog_name){
     fprintf(stderr,"\t\t Test layer set to l\n");
     fprintf(stderr,"\t -H \n");
     fprintf(stderr,"\t\t Draw bin-by-bin histograms\n");
-    fprintf(stderr,"\t -S <h>\n");
-    fprintf(stderr,"\t\t Histogram saving level set to h\n");
 }
 
 void getRunTimeParameters(TString configureFile){

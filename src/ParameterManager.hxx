@@ -88,6 +88,9 @@ public:
     // about fitting range
     double bin_t_ratio;
     double bin_x_ratio;
+    // about forming graphs
+    int    graph_n_min;
+    double graph_chi2_max;
 };
 
 // parameter block for Ana

@@ -13,6 +13,8 @@ class TCanvas;
 class TTree;
 class TH1D;
 class TH2D;
+class TDirectory;
+class TGraphErrors;
 
 /// This is a class to collect XT relation samples and to analyze them bin by bin
 ///
@@ -42,21 +44,23 @@ class XTBinAnalyzer{
             kDoubleGaussian
         };
 
-        XTBinAnalyzer(TString runname, TFile * outfile, bool savehists = false, bool drawDetails = false);
+        XTBinAnalyzer(TString runname, TFile * outfile, bool drawDetails = false);
         virtual ~XTBinAnalyzer(void);
 
-        void SetSaveHists(bool save){mSaveHists = save;}
         void SetDrawDetails(bool draw){mDrawDetails = draw;}
-        void SetTestLayer(int lid){mLayerID = lid;}
+        void SetTestLayer(int lid){mTestLayerID = lid;}
 
-        int  Initialize(void);
-        void Process(void);
-
+        int  Initialize(bool reLoad=false); ///< If reLoad is set to true, then the objects will be loaded instead of being created
         void Fill(double t, double x);
+        void BinAnalysis(void);
+        void FitXT(void);
+        void Write(void);
 
     private:
         void fitSlice(TH1D * h,TCanvas * canv, TString drawTitle, double &mean, double &error, double &sigma, double &chi2, double &left, double &right, int &function, int &previousFunction, double ratio = 0.3, bool tryLandau = false, bool flippedLandau = false);
         void getRange(TH1D * h, int & bmax, int & binl, int & binr, double ratio = 0.3);
+        TGraphErrors * minusGraph(const TGraphErrors * gr_left, const TGraphErrors * gr_right, TString name, bool isNegative = false);
+        double interpolate(const TGraphErrors * graph, double theX);
         void fitSliceFloat(TH1D * h, double & mean, double & meanErr, double & sigma, double & chi2, double & left, double & right, double ratio = 0.3);
         TF1 * fitSliceGaus(TH1D * h, double & mean, double & meanErr, double & sigma, double & chi2, double & left, double & right);
         TF1 * fitSliceLand(TH1D * h, double & mean, double & meanErr, double & sigma, double & chi2, double & left, double & right);
@@ -64,16 +68,18 @@ class XTBinAnalyzer{
         TF1 * fitSlice2Gaus(TH1D * h, double & mean, double & meanErr, double & sigma, double & chi2, double & left, double & right);
         TF1 * myNewTF1(TString name, TString form, double left, double right);
         void drawFitting(TH1D* h,TF1 * f,TCanvas * c,TString title, TString filename,double left, double center, double right);
+        void formXTGraphs(void);
 
     private:
         // options
         TString mRunName;
-        bool mSaveHists;
         bool mDrawDetails;
 
         // for output xt tree
         TFile * mOutFile;
         TTree * mOutTree;
+        TDirectory * mSliceDir;
+        int mTestLayerID;
         int mLayerID;
         int mCellID;
         double mX;
@@ -86,30 +92,6 @@ class XTBinAnalyzer{
         int mType;
         int mFunction;
 
-        int    minEntries;
-        // about binning
-        double m_bin_t_min;
-        double m_bin_t_max;
-        int    m_bin_t_num;
-        double m_bin_x_min;
-        double m_bin_x_max;
-        int    m_bin_x_num;
-        // about projection
-        int    m_bin_t_fit_num;
-        int    m_bin_t_fit_num_tail;
-        double m_bin_t_tailTime;
-        int    m_bin_x_fit_num;
-        // about the range for using Landau function
-        //   time slice to fit space
-        double m_bin_t_landTmin;
-        double m_bin_t_landTmax;
-        //   space slice to fit time
-        double m_bin_x_landXmin;
-        double m_bin_x_landXmax;
-        // about fitting range
-        double m_bin_t_ratio; // for the given T slice, get a range on X using this ratio*maximum_height as a threshold, do the fitting on X within this range
-        double m_bin_x_ratio; // for the given X slice, get a range on T using this ratio*maximum_height as a threshold, do the fitting on T within this range
-
         // Histograms for data points
         TH2D * h2_xt;
         TH2D * h2_xtn; // for neutral driftD
@@ -119,7 +101,6 @@ class XTBinAnalyzer{
         TF1 * f_land;
         TF1 * f_landF;
         TF1 * f_2gaus;
-
 };
 
 #endif

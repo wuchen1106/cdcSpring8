@@ -102,6 +102,8 @@ void ParameterManager::LoadParameters(ParaBlock theParaBlock){
         if (MyRuntimeParameters::Get().HasParameter("XTAnalyzer.bin_t_tailTime")) XTAnalyzerParameters.bin_t_tailTime = MyRuntimeParameters::Get().GetParameterD("XTAnalyzer.bin_t_tailTime");;
         if (MyRuntimeParameters::Get().HasParameter("XTAnalyzer.bin_t_ratio")) XTAnalyzerParameters.bin_t_ratio = MyRuntimeParameters::Get().GetParameterD("XTAnalyzer.bin_t_ratio");;
         if (MyRuntimeParameters::Get().HasParameter("XTAnalyzer.bin_x_ratio")) XTAnalyzerParameters.bin_x_ratio = MyRuntimeParameters::Get().GetParameterD("XTAnalyzer.bin_x_ratio");;
+        if (MyRuntimeParameters::Get().HasParameter("XTAnalyzer.graph_n_min")) XTAnalyzerParameters.graph_n_min = MyRuntimeParameters::Get().GetParameterI("XTAnalyzer.graph_n_min");;
+        if (MyRuntimeParameters::Get().HasParameter("XTAnalyzer.graph_chi2_max")) XTAnalyzerParameters.graph_chi2_max = MyRuntimeParameters::Get().GetParameterD("XTAnalyzer.graph_chi2_max");;
     }
 }
 
@@ -195,6 +197,8 @@ XTAnalyzerPara::XTAnalyzerPara(){
     bin_x_fit_num = 3; //  number of X bins to project
     bin_t_ratio = 0.5;
     bin_x_ratio = 0.5;
+    graph_n_min = 50;
+    graph_chi2_max = 100;
 }
 
 void XTAnalyzerPara::Print(){
@@ -232,6 +236,9 @@ void XTAnalyzerPara::Print(){
     printf("  T fitting: fit in T range according to cut ratio: %.1f\n",bin_x_ratio);
     printf("  T fitting: Landau function range lower edge = %f\n",bin_x_landXmin);
     printf("  T fitting: Landau function range lower edge = %f\n",bin_x_landXmax);
+    printf(" About XT graphs:\n");
+    printf("  Minimum number of entries of the sample point to be included in graph: %d\n",graph_n_min);
+    printf("  Maximum chi2 of the sample point to be included in graph: %d\n",graph_chi2_max);
     printf(" About XT function:\n");
     printf("  XTType = %d\n",XTType);
     printf("  AsymXT = %s\n",AsymXT?"true":"false");

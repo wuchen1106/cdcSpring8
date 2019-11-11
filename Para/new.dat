@@ -30,26 +30,43 @@ tracking parameters
 *******************************************************************************                                                                   
 XTAnalyzer parameters
 *******************************************************************************                                                                   
+  event selection
     < XTAnalyzer.lidStop = 8 >
     < XTAnalyzer.CandSelBy = Original > Original LeastLateHit FittingChi2 GlobalChi2
     < XTAnalyzer.RequireInTriggerCounter = false >
     < XTAnalyzer.RequireAllGoldenHits = false >
-    < XTAnalyzer.ClosestPeak = false >
-    < XTAnalyzer.UseGoodHit = false >
-    < XTAnalyzer.AllGoodHitsUsed = false >
-    < XTAnalyzer.nHits_max = 25 >
+    < XTAnalyzer.AllGoodHitsUsed = true > no good hits left aside from the track
+    < XTAnalyzer.nHits_max = 0 >
     < XTAnalyzer.nHitsS_min = 7 >
-    < XTAnalyzer.chi2_max = 2 >
+    < XTAnalyzer.pValue_min = 0.05 >
+    < XTAnalyzer.chi2_max = 0 >
     < XTAnalyzer.slz_min = -0.1 >
-    < XTAnalyzer.slz_max = -0.1 >
-    < XTAnalyzer.gold_t_min = 50 >
-    < XTAnalyzer.gold_t_max = 350 >
-    < m_bin_t_min = -25.520833 > -25-1/0.96/2
-    < m_bin_t_max = 800.52083 > 800+1/0.96/2
-    < m_bin_t_num = 793 > 792+1
-    < m_bin_x_min = -0.02 >
-    < m_bin_x_max = 10.02 >
-    < m_bin_x_num = 501 >
+    < XTAnalyzer.slz_max =  0.12 >
+  hit selection
+    < XTAnalyzer.UseGoodHit = false >
+    < XTAnalyzer.ClosestPeak = false >
+    < XTAnalyzer.gold_t_min = 20 >
+    < XTAnalyzer.gold_t_max = 340 >
+  bin-by-bin analysis
+    < XTAnalyzer.bin_n_min = 40 >
+    < XTAnalyzer.bin_t_min = -23.4375 >
+    < XTAnalyzer.bin_t_max = 801.5626 >
+    < XTAnalyzer.bin_t_num = 792 >
+    < XTAnalyzer.bin_t_fit_num = 3 > number of T bins to project;
+    < XTAnalyzer.bin_t_fit_num_tail = 6 > number of T bins to project in tail;
+    < XTAnalyzer.bin_t_tailTime = 380 ns > starting time of tail
+    < XTAnalyzer.bin_t_landTmin = 300 > landau region on T slicing for X fitting
+    < XTAnalyzer.bin_t_landTmax = 450 > landau region on T slicing for X fitting
+    < XTAnalyzer.bin_x_landXmin = 7 > landau region on X slicing for T fitting
+    < XTAnalyzer.bin_x_landXmax = 8.5 > landau region on X slicing for T fitting
+    < XTAnalyzer.bin_t_ratio = 0.5 > fit X on this T slice within the X range cut according to this ratio times maximum height
+    < XTAnalyzer.bin_x_min = -0.02 >
+    < XTAnalyzer.bin_x_max = 10.02 >
+    < XTAnalyzer.bin_x_num = 501 > this should be an odd number
+    < XTAnalyzer.bin_x_fit_num = 1 > number of X bins to project; should be an odd number and dividable by bin_x_num and bin_x_num/2+1
+    < XTAnalyzer.bin_x_ratio = 0.5 > fit T on this X slice within the T range cut according to this ratio times maximum height
+    < XTAnalyzer.graph_n_min = 50 >
+    < XTAnalyzer.graph_chi2_max = 100 >
 
 *******************************************************************************                                                                   
 ana parameters
