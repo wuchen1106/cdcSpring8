@@ -68,6 +68,7 @@ class XTBinAnalyzer{
         TF1 * fitSlice2Gaus(TH1D * h, double & mean, double & meanErr, double & sigma, double & chi2, double & left, double & right);
         TF1 * myNewTF1(TString name, TString form, double left, double right);
         void drawFitting(TH1D* h,TF1 * f,TCanvas * c,TString title, TString filename,double left, double center, double right);
+        void drawSamples(void);
         void formXTGraphs(void);
 
     private:

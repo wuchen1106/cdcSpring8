@@ -283,6 +283,7 @@ void XTBinAnalyzer::BinAnalysis(void){
 
     //==========================Form the graphs==============================
     gStyle->SetOptStat(0);
+    drawSamples();
     formXTGraphs();
 
     // set the style back
@@ -339,6 +340,55 @@ TGraphErrors * XTBinAnalyzer::minusGraph(const TGraphErrors * gr_left, const TGr
     return gr_new;
 }
 
+void XTBinAnalyzer::drawSamples(){
+    mOutTree->SetMarkerStyle(20);mOutTree->SetMarkerSize(0.5);
+    TCanvas * canv= new TCanvas("csample","csample",1024,768);
+    // firstly, get the maximum number of entries in one sample
+    int mEntriesXMax = 0;
+    int mEntriesTMax = 0;
+    for (Long64_t iEntry = 0; iEntry<mOutTree->GetEntries(); iEntry++){
+        mOutTree->GetEntry(iEntry);
+        if (mLayerID!=mTestLayerID) continue;
+        if ((mType==kSpaceSliceUnfolded||mType==kSpaceSliceFolded)&&mEntries>mEntriesXMax) mEntriesXMax = mEntries;
+        if ((mType==kTimeSliceUnfolded||mType==kTimeSliceFolded)&&mEntries>mEntriesTMax) mEntriesTMax = mEntries;
+    }
+    canv->Divide(3,2);
+    canv->cd(1);gPad->SetGridx(1);gPad->SetGridy(1);
+    TH2D * h2_bkg_entriesX = new TH2D("h2_bkg_entriesX","Number of entries in each X slice",512,-10,10,1024,0,mEntriesXMax*1.1);
+    h2_bkg_entriesX->Draw();
+    mOutTree->SetMarkerColor(kBlack); mOutTree->Draw("n:x",Form("type==%d",kSpaceSliceFolded),"PSAME");
+    mOutTree->SetMarkerColor(kMagenta); mOutTree->Draw("n:x",Form("type==%d",kSpaceSliceUnfolded),"PSAME");
+    canv->cd(2);gPad->SetGridx(1);gPad->SetGridy(1);
+    TH2D * h2_bkg_sigX = new TH2D("h2_bkg_sigX","#sigma of T fitting in each X slice",512,-10,10,512,0,20);
+    h2_bkg_sigX->Draw();
+    mOutTree->SetMarkerColor(kBlack); mOutTree->Draw("sig:x",Form("type==%d",kSpaceSliceFolded),"PSAME");
+    mOutTree->SetMarkerColor(kMagenta); mOutTree->Draw("sig:x",Form("type==%d",kSpaceSliceUnfolded),"PSAME");
+    canv->cd(3);gPad->SetGridx(1);gPad->SetGridy(1);
+    TH2D * h2_bkg_chi2X = new TH2D("h2_bkg_chi2X","#chi^{2} of T fitting in each X slice",512,-10,10,512,0,50);
+    h2_bkg_chi2X->Draw();
+    mOutTree->SetMarkerColor(kBlack); mOutTree->Draw("chi2:x",Form("type==%d",kSpaceSliceFolded),"PSAME");
+    mOutTree->SetMarkerColor(kMagenta); mOutTree->Draw("chi2:x",Form("type==%d",kSpaceSliceUnfolded),"PSAME");
+    canv->cd(4);gPad->SetGridx(1);gPad->SetGridy(1);
+    TH2D * h2_bkg_entriesT = new TH2D("h2_bkg_entriesT","Number of entries in each T slice",512,-25,800,1024,0,mEntriesTMax*1.1);
+    h2_bkg_entriesT->Draw();
+    mOutTree->SetMarkerColor(kBlack); mOutTree->Draw("n:t",Form("type==%d",kTimeSliceFolded),"PSAME");
+    mOutTree->SetMarkerColor(kRed); mOutTree->Draw("n:t",Form("type==%d&&x>=0",kTimeSliceUnfolded),"PSAME");
+    mOutTree->SetMarkerColor(kBlue); mOutTree->Draw("n:t",Form("type==%d&&x<0",kTimeSliceUnfolded),"PSAME");
+    canv->cd(5);gPad->SetGridx(1);gPad->SetGridy(1);
+    TH2D * h2_bkg_sigT = new TH2D("h2_bkg_sigT","#sigma of X fitting in each T slice",512,-25,800,512,0,0.5);
+    h2_bkg_sigT->Draw();
+    mOutTree->SetMarkerColor(kBlack); mOutTree->Draw("sig:t",Form("type==%d",kTimeSliceFolded),"PSAME");
+    mOutTree->SetMarkerColor(kRed); mOutTree->Draw("sig:t",Form("type==%d&&x>=0",kTimeSliceUnfolded),"PSAME");
+    mOutTree->SetMarkerColor(kBlue); mOutTree->Draw("sig:t",Form("type==%d&&x<0",kTimeSliceUnfolded),"PSAME");
+    canv->cd(6);gPad->SetGridx(1);gPad->SetGridy(1);
+    TH2D * h2_bkg_chi2T = new TH2D("h2_bkg_chi2T","#chi^{2} of X fitting in each T slice",512,-25,800,512,0,100);
+    h2_bkg_chi2T->Draw();
+    mOutTree->SetMarkerColor(kBlack); mOutTree->Draw("chi2:t",Form("type==%d",kTimeSliceFolded),"PSAME");
+    mOutTree->SetMarkerColor(kRed); mOutTree->Draw("chi2:t",Form("type==%d&&x>=0",kTimeSliceUnfolded),"PSAME");
+    mOutTree->SetMarkerColor(kBlue); mOutTree->Draw("chi2:t",Form("type==%d&&x<0",kTimeSliceUnfolded),"PSAME");
+    canv->SaveAs(Form("result/samples_%s.layer%d.png",mRunName.Data(),mTestLayerID));
+}
+
 void XTBinAnalyzer::formXTGraphs(){
     // set parameters
     double bin_x_min = ParameterManager::Get().XTAnalyzerParameters.bin_x_min;
@@ -348,11 +398,11 @@ void XTBinAnalyzer::formXTGraphs(){
 
     // make graphs from different samplings: left/right/folded TIMES time/space
     TGraphErrors * gr_timeSlices_unfolded_left = new TGraphErrors(); gr_timeSlices_unfolded_left->SetName(Form("gr_%d_t_l",mTestLayerID));
-    gr_timeSlices_unfolded_left->Set(mOutTree->GetEntries(Form("type==%d&&n>=%d&&chi2<=%.7e&&func!=0&&x<%.7e",kTimeSliceUnfolded,graph_n_min,graph_chi2_max,0)));
+    gr_timeSlices_unfolded_left->Set(mOutTree->GetEntries(Form("type==%d&&n>=%d&&chi2<=%.7e&&func!=0&&x<%.7e",kTimeSliceUnfolded,graph_n_min,graph_chi2_max,0.)));
     gr_timeSlices_unfolded_left->SetMarkerStyle(24);gr_timeSlices_unfolded_left->SetMarkerSize(markerSize);
     gr_timeSlices_unfolded_left->SetMarkerColor(kRed);gr_timeSlices_unfolded_left->SetLineColor(kRed);
     TGraphErrors * gr_timeSlices_unfolded_right = new TGraphErrors(); gr_timeSlices_unfolded_right->SetName(Form("gr_%d_t_r",mTestLayerID));
-    gr_timeSlices_unfolded_right->Set(mOutTree->GetEntries(Form("type==%d&&n>=%d&&chi2<=%.7e&&func!=0&&x>%.7e",kTimeSliceUnfolded,graph_n_min,graph_chi2_max,0)));
+    gr_timeSlices_unfolded_right->Set(mOutTree->GetEntries(Form("type==%d&&n>=%d&&chi2<=%.7e&&func!=0&&x>%.7e",kTimeSliceUnfolded,graph_n_min,graph_chi2_max,0.)));
     gr_timeSlices_unfolded_right->SetMarkerStyle(24);gr_timeSlices_unfolded_right->SetMarkerSize(markerSize);
     gr_timeSlices_unfolded_right->SetMarkerColor(kRed);gr_timeSlices_unfolded_right->SetLineColor(kRed);
     TGraphErrors * gr_spaceSlices_unfolded_left = new TGraphErrors(); gr_spaceSlices_unfolded_left->SetName(Form("gr_%d_x_l",mTestLayerID));
@@ -383,6 +433,7 @@ void XTBinAnalyzer::formXTGraphs(){
         if (mLayerID!=mTestLayerID);
         if (mType==kTimeSliceUnfolded&&mEntries>=graph_n_min&&mChi2<=graph_chi2_max&&mFunction!=0){
             if (mX<0){
+                printf("X %.14e < 0\n",mX);
                 gr_timeSlices_unfolded_left->SetPoint(count_timeSlices_unfolded_left,mT,mX);
                 gr_timeSlices_unfolded_left->SetPointError(count_timeSlices_unfolded_left,mTerr,mXerr);
                 count_timeSlices_unfolded_left++;
@@ -426,7 +477,7 @@ void XTBinAnalyzer::formXTGraphs(){
     gr_spaceSlices_folded->Write();
 
     // draw the unfolded histogram first
-    TCanvas * canv= new TCanvas("csample","csample",1024,768);canv->SetGridx(1);canv->SetGridy(1);
+    TCanvas * canv= new TCanvas("cgraph","cgraph",1024,768);canv->SetGridx(1);canv->SetGridy(1);
     h2_xt->Draw("COLZ");
     gr_timeSlices_unfolded_left->Draw("PLSAME");
     gr_timeSlices_unfolded_right->Draw("PLSAME");
@@ -495,7 +546,7 @@ void XTBinAnalyzer::formXTGraphs(){
     gr_timeMinusSpace_left->Draw("PLSAME");
     gr_timeMinusSpace_right->Draw("PLSAME");
     gr_timeMinusSpace_folded->Draw("PLSAME");
-    canv->SaveAs(Form("result/sampleDiff_%s.layer%d.png",mRunName.Data(),mTestLayerID));
+    canv->SaveAs(Form("result/graph_%s.layer%d.png",mRunName.Data(),mTestLayerID));
 }
 
 TF1 * XTBinAnalyzer::myNewTF1(TString name, TString form, double left, double right){
