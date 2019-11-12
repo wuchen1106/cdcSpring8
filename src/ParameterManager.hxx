@@ -91,6 +91,7 @@ public:
     // about forming graphs
     int    graph_n_min;
     double graph_chi2_max;
+    double graph_sepX;
 };
 
 // parameter block for Ana

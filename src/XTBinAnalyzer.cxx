@@ -154,11 +154,67 @@ void XTBinAnalyzer::BinAnalysis(void){
     int previousFunction = kGaussian;
     // set the layer ID for this process
     mLayerID = mTestLayerID;
+    TString drawTitle;
+
+    //==========================Fit T along X slices (unfolded)==============================
+    MyNamedInfo("XTBinAnalyzer","Fit time slice (unfolded)");
+    mType = kSpaceSliceUnfolded; // set the type of this round of fittings
+    previousFunction = kGaussian;// record the previous used function to mark the function switching point so that the turning point can be smoothed out.
+    current_nbins_to_fit = bin_x_fit_num;
+    for (int iLR = 0; iLR<2; iLR++){
+        for (int i = (iLR==0?h2_xt->GetYaxis()->FindBin(0.):h2_xt->GetYaxis()->FindBin(0.)+1); i>=1&&(iLR==0?true:i<=h2_xt->GetYaxis()->GetNbins()); i+=(iLR==0?-current_nbins_to_fit:current_nbins_to_fit)){
+            // fist, get the time histogram for this x slice
+            double divleft = h2_xt->GetYaxis()->GetBinLowEdge(i);
+            double divmiddle = current_nbins_to_fit%2==0?h2_xt->GetYaxis()->GetBinLowEdge(i+current_nbins_to_fit/2):h2_xt->GetYaxis()->GetBinCenter(i+current_nbins_to_fit/2);
+            double divright = h2_xt->GetYaxis()->GetBinLowEdge(i+current_nbins_to_fit);
+            TH1D * h = h2_xt->ProjectionX(Form("h_x_%d_%s_%d",mTestLayerID,iLR==0?"L":"R",i),i,i+current_nbins_to_fit-1);
+            h->Write();
+            mEntries = h->Integral();
+            // second, get the average T value within this T division and the X fit range
+            h2_xt->GetYaxis()->SetRangeUser(divleft,divright);
+            mX = h2_xt->GetMean(2);
+            mXerr = h2_xt->GetRMS(2);
+            h2_xt->GetYaxis()->UnZoom();
+            drawTitle = Form("x slice (%.3f,%.3f) mm, mean %.3f mm, ",divleft,divright,mX);
+            MyNamedInfo("XTBinAnalyzer","=>"<<h->GetName()<<": "<<drawTitle<<", "<<mEntries<<" entries");
+            // then, fit this histogram
+            double left,right;
+            fitSlice(h,canv,drawTitle,mT,mTerr,mSig,mChi2,left,right,mFunction,previousFunction,bin_t_ratio,fabs(mX)>=bin_x_landXmin&&fabs(mX)<=bin_x_landXmax,false);
+            // at last, fill the tree
+            mOutTree->Fill();
+        }
+    }
+
+    //==========================Fit T along X slices (folded)==============================
+    MyNamedInfo("XTBinAnalyzer","Fit time slice (unfolded)");
+    mType = kSpaceSliceFolded; // set the type of this round of fittings
+    previousFunction = kGaussian;// record the previous used function to mark the function switching point so that the turning point can be smoothed out.
+    current_nbins_to_fit = bin_x_fit_num;
+    for (int i = 1; i<=h2_xtn->GetYaxis()->GetNbins(); i+=current_nbins_to_fit){
+        // fist, get the time histogram for this x slice
+        double divleft = h2_xtn->GetYaxis()->GetBinLowEdge(i);
+        double divmiddle = current_nbins_to_fit%2==0?h2_xtn->GetYaxis()->GetBinLowEdge(i+current_nbins_to_fit/2):h2_xtn->GetYaxis()->GetBinCenter(i+current_nbins_to_fit/2);
+        double divright = h2_xtn->GetYaxis()->GetBinLowEdge(i+current_nbins_to_fit);
+        TH1D * h = h2_xtn->ProjectionX(Form("h_x_%d_F_%d",mTestLayerID,i),i,i+current_nbins_to_fit-1);
+        h->Write();
+        mEntries = h->Integral();
+        // second, get the average T value within this T division and the X fit range
+        h2_xtn->GetYaxis()->SetRangeUser(divleft,divright);
+        mX = h2_xtn->GetMean(2);
+        mXerr = h2_xtn->GetRMS(2);
+        h2_xtn->GetYaxis()->UnZoom();
+        drawTitle = Form("x slice (%.3f,%.3f) mm, mean %.3f mm, ",divleft,divright,mX);
+        MyNamedInfo("XTBinAnalyzer","=>"<<h->GetName()<<": "<<drawTitle<<", "<<mEntries<<" entries");
+        // then, fit this histogram
+        double left,right;
+        fitSlice(h,canv,drawTitle,mT,mTerr,mSig,mChi2,left,right,mFunction,previousFunction,bin_t_ratio,fabs(mX)>=bin_x_landXmin&&fabs(mX)<=bin_x_landXmax,false);
+        // at last, fill the tree
+        mOutTree->Fill();
+    }
 
     //==========================Fit X along T slices (unfolded)==============================
     MyNamedInfo("XTBinAnalyzer","Fit time slice (unfolded)");
     mType = kTimeSliceUnfolded; // set the type of this round of fittings
-    TString drawTitle;
     double x_max = h2_xt->GetYaxis()->GetXmax();
     double x_min = h2_xt->GetYaxis()->GetXmin();
     for (int iLR = 0; iLR<2; iLR++){
@@ -223,60 +279,6 @@ void XTBinAnalyzer::BinAnalysis(void){
         // then, fit this histogram
         double left,right;
         fitSlice(h,canv,drawTitle,mX,mXerr,mSig,mChi2,left,right,mFunction,previousFunction,bin_t_ratio,mT>=bin_t_landTmin&&mT<=bin_t_landTmax,true);
-        // at last, fill the tree
-        mOutTree->Fill();
-    }
-
-    //==========================Fit T along X slices (unfolded)==============================
-    MyNamedInfo("XTBinAnalyzer","Fit time slice (unfolded)");
-    mType = kSpaceSliceUnfolded; // set the type of this round of fittings
-    previousFunction = kGaussian;// record the previous used function to mark the function switching point so that the turning point can be smoothed out.
-    current_nbins_to_fit = bin_x_fit_num;
-    for (int i = 1; i<=h2_xt->GetYaxis()->GetNbins(); i+=current_nbins_to_fit){
-        // fist, get the time histogram for this x slice
-        double divleft = h2_xt->GetYaxis()->GetBinLowEdge(i);
-        double divmiddle = current_nbins_to_fit%2==0?h2_xt->GetYaxis()->GetBinLowEdge(i+current_nbins_to_fit/2):h2_xt->GetYaxis()->GetBinCenter(i+current_nbins_to_fit/2);
-        double divright = h2_xt->GetYaxis()->GetBinLowEdge(i+current_nbins_to_fit);
-        TH1D * h = h2_xt->ProjectionX(Form("h_x_%d_U_%d",mTestLayerID,i),i,i+current_nbins_to_fit-1);
-        h->Write();
-        mEntries = h->Integral();
-        // second, get the average T value within this T division and the X fit range
-        h2_xt->GetYaxis()->SetRangeUser(divleft,divright);
-        mX = h2_xt->GetMean(2);
-        mXerr = h2_xt->GetRMS(2);
-        h2_xt->GetYaxis()->UnZoom();
-        drawTitle = Form("x slice (%.3f,%.3f) mm, mean %.3f mm, ",divleft,divright,mX);
-        MyNamedInfo("XTBinAnalyzer","=>"<<h->GetName()<<": "<<drawTitle<<", "<<mEntries<<" entries");
-        // then, fit this histogram
-        double left,right;
-        fitSlice(h,canv,drawTitle,mT,mTerr,mSig,mChi2,left,right,mFunction,previousFunction,bin_t_ratio,fabs(mX)>=bin_x_landXmin&&fabs(mX)<=bin_x_landXmax,false);
-        // at last, fill the tree
-        mOutTree->Fill();
-    }
-
-    //==========================Fit T along X slices (folded)==============================
-    MyNamedInfo("XTBinAnalyzer","Fit time slice (unfolded)");
-    mType = kSpaceSliceFolded; // set the type of this round of fittings
-    previousFunction = kGaussian;// record the previous used function to mark the function switching point so that the turning point can be smoothed out.
-    current_nbins_to_fit = bin_x_fit_num;
-    for (int i = 1; i<=h2_xtn->GetYaxis()->GetNbins(); i+=current_nbins_to_fit){
-        // fist, get the time histogram for this x slice
-        double divleft = h2_xtn->GetYaxis()->GetBinLowEdge(i);
-        double divmiddle = current_nbins_to_fit%2==0?h2_xtn->GetYaxis()->GetBinLowEdge(i+current_nbins_to_fit/2):h2_xtn->GetYaxis()->GetBinCenter(i+current_nbins_to_fit/2);
-        double divright = h2_xtn->GetYaxis()->GetBinLowEdge(i+current_nbins_to_fit);
-        TH1D * h = h2_xtn->ProjectionX(Form("h_x_%d_F_%d",mTestLayerID,i),i,i+current_nbins_to_fit-1);
-        h->Write();
-        mEntries = h->Integral();
-        // second, get the average T value within this T division and the X fit range
-        h2_xtn->GetYaxis()->SetRangeUser(divleft,divright);
-        mX = h2_xtn->GetMean(2);
-        mXerr = h2_xtn->GetRMS(2);
-        h2_xtn->GetYaxis()->UnZoom();
-        drawTitle = Form("x slice (%.3f,%.3f) mm, mean %.3f mm, ",divleft,divright,mX);
-        MyNamedInfo("XTBinAnalyzer","=>"<<h->GetName()<<": "<<drawTitle<<", "<<mEntries<<" entries");
-        // then, fit this histogram
-        double left,right;
-        fitSlice(h,canv,drawTitle,mT,mTerr,mSig,mChi2,left,right,mFunction,previousFunction,bin_t_ratio,fabs(mX)>=bin_x_landXmin&&fabs(mX)<=bin_x_landXmax,false);
         // at last, fill the tree
         mOutTree->Fill();
     }
@@ -394,6 +396,7 @@ void XTBinAnalyzer::formXTGraphs(){
     double bin_x_min = ParameterManager::Get().XTAnalyzerParameters.bin_x_min;
     int    graph_n_min = ParameterManager::Get().XTAnalyzerParameters.graph_n_min;
     double graph_chi2_max = ParameterManager::Get().XTAnalyzerParameters.graph_chi2_max;
+    double graph_sepX = ParameterManager::Get().XTAnalyzerParameters.graph_sepX;
     double markerSize = 0.5;
 
     // make graphs from different samplings: left/right/folded TIMES time/space
@@ -421,12 +424,25 @@ void XTBinAnalyzer::formXTGraphs(){
     gr_spaceSlices_folded->Set(mOutTree->GetEntries(Form("type==%d&&n>=%d&&chi2<=%.7e&&func!=0",kSpaceSliceFolded,graph_n_min,graph_chi2_max)));
     gr_spaceSlices_folded->SetMarkerStyle(20);gr_spaceSlices_folded->SetMarkerSize(markerSize);
     gr_spaceSlices_folded->SetMarkerColor(kBlack);gr_spaceSlices_folded->SetLineColor(kBlack);
+    // combined graphs
+    TGraphErrors * gr_combined_unfolded_left = new TGraphErrors(); gr_combined_unfolded_left->SetName(Form("gr_%d_c_l",mTestLayerID));
+    gr_combined_unfolded_left->Set(mOutTree->GetEntries(Form("type==%d&&n>=%d&&chi2<=%.7e&&func!=0&&x<%.7e",kTimeSliceUnfolded,graph_n_min,graph_chi2_max,-graph_sepX))
+                                    +mOutTree->GetEntries(Form("type==%d&&n>=%d&&chi2<=%.7e&&func!=0&&x<0&&x>%.7e",kSpaceSliceUnfolded,graph_n_min,graph_chi2_max,-graph_sepX)));
+    TGraphErrors * gr_combined_unfolded_right = new TGraphErrors(); gr_combined_unfolded_right->SetName(Form("gr_%d_c_r",mTestLayerID));
+    gr_combined_unfolded_right->Set(mOutTree->GetEntries(Form("type==%d&&n>=%d&&chi2<=%.7e&&func!=0&&x>%.7e",kTimeSliceUnfolded,graph_n_min,graph_chi2_max,graph_sepX))
+                                    +mOutTree->GetEntries(Form("type==%d&&n>=%d&&chi2<=%.7e&&func!=0&&x>0&&x<%.7e",kSpaceSliceUnfolded,graph_n_min,graph_chi2_max,graph_sepX)));
+    TGraphErrors * gr_combined_folded = new TGraphErrors(); gr_combined_folded->SetName(Form("gr_%d_c_f",mTestLayerID));
+    gr_combined_folded->Set(mOutTree->GetEntries(Form("type==%d&&n>=%d&&chi2<=%.7e&&func!=0&&x>%.7e",kTimeSliceFolded,graph_n_min,graph_chi2_max,graph_sepX))
+                                    +mOutTree->GetEntries(Form("type==%d&&n>=%d&&chi2<=%.7e&&func!=0&&x<%.7e",kSpaceSliceFolded,graph_n_min,graph_chi2_max,graph_sepX)));
     int count_timeSlices_unfolded_left = 0;
     int count_timeSlices_unfolded_right = 0;
     int count_timeSlices_folded = 0;
     int count_spaceSlices_unfolded_left = 0;
     int count_spaceSlices_unfolded_right = 0;
     int count_spaceSlices_folded = 0;
+    int count_combined_unfolded_left = 0;
+    int count_combined_unfolded_right= 0;
+    int count_combined_folded = 0;
     MyNamedVerbose("XTBinAnalyzer","Looping in the output tree again, "<<mOutTree->GetEntries()<<" entries");
     for (Long64_t iEntry = 0; iEntry<mOutTree->GetEntries(); iEntry++){
         mOutTree->GetEntry(iEntry);
@@ -443,28 +459,58 @@ void XTBinAnalyzer::formXTGraphs(){
                 gr_timeSlices_unfolded_right->SetPointError(count_timeSlices_unfolded_right,mTerr,mXerr);
                 count_timeSlices_unfolded_right++;
             }
+            if (mX>graph_sepX){
+                gr_combined_unfolded_right->SetPoint(count_combined_unfolded_right,mT,mX);
+                gr_combined_unfolded_right->SetPointError(count_combined_unfolded_right,mTerr,mXerr);
+                count_combined_unfolded_right++;
+            }
+            if (mX<-graph_sepX){
+                gr_combined_unfolded_left->SetPoint(count_combined_unfolded_left,mT,mX);
+                gr_combined_unfolded_left->SetPointError(count_combined_unfolded_left,mTerr,mXerr);
+                count_combined_unfolded_left++;
+            }
         }
         else if (mType==kTimeSliceFolded&&mEntries>=graph_n_min&&mChi2<=graph_chi2_max&&mFunction!=0){
             gr_timeSlices_folded->SetPoint(count_timeSlices_folded,mT,mX);
             gr_timeSlices_folded->SetPointError(count_timeSlices_folded,mTerr,mXerr);
             count_timeSlices_folded++;
+            if (mX>graph_sepX){
+                gr_combined_folded->SetPoint(count_combined_folded,mT,mX);
+                gr_combined_folded->SetPointError(count_combined_folded,mTerr,mXerr);
+                count_combined_folded++;
+            }
         }
         else if (mType==kSpaceSliceUnfolded&&mEntries>=graph_n_min&&mChi2<=graph_chi2_max&&mFunction!=0){
             if (mX<=-bin_x_min){
                 gr_spaceSlices_unfolded_left->SetPoint(count_spaceSlices_unfolded_left,mT,mX);
                 gr_spaceSlices_unfolded_left->SetPointError(count_spaceSlices_unfolded_left,mTerr,mXerr);
                 count_spaceSlices_unfolded_left++;
+                if (mX>-graph_sepX){
+                    gr_combined_unfolded_left->SetPoint(count_combined_unfolded_left,mT,mX);
+                    gr_combined_unfolded_left->SetPointError(count_combined_unfolded_left,mTerr,mXerr);
+                    count_combined_unfolded_left++;
+                }
             }
             if (mX>=bin_x_min){
                 gr_spaceSlices_unfolded_right->SetPoint(count_spaceSlices_unfolded_right,mT,mX);
                 gr_spaceSlices_unfolded_right->SetPointError(count_spaceSlices_unfolded_right,mTerr,mXerr);
                 count_spaceSlices_unfolded_right++;
+                if (mX<graph_sepX){
+                    gr_combined_unfolded_right->SetPoint(count_combined_unfolded_right,mT,mX);
+                    gr_combined_unfolded_right->SetPointError(count_combined_unfolded_right,mTerr,mXerr);
+                    count_combined_unfolded_right++;
+                }
             }
         }
         else if (mType==kSpaceSliceFolded&&mEntries>=graph_n_min&&mChi2<=graph_chi2_max&&mFunction!=0){
             gr_spaceSlices_folded->SetPoint(count_spaceSlices_folded,mT,mX);
             gr_spaceSlices_folded->SetPointError(count_spaceSlices_folded,mTerr,mXerr);
             count_spaceSlices_folded++;
+            if (mX<graph_sepX){
+                gr_combined_folded->SetPoint(count_combined_folded,mT,mX);
+                gr_combined_folded->SetPointError(count_combined_folded,mTerr,mXerr);
+                count_combined_folded++;
+            }
         }
     }
     // go to the output file and save the graphs
@@ -475,6 +521,9 @@ void XTBinAnalyzer::formXTGraphs(){
     gr_spaceSlices_unfolded_left->Write();
     gr_spaceSlices_unfolded_right->Write();
     gr_spaceSlices_folded->Write();
+    gr_combined_unfolded_left->Write();
+    gr_combined_unfolded_right->Write();
+    gr_combined_folded->Write();
 
     // draw the unfolded histogram first
     TCanvas * canv= new TCanvas("cgraph","cgraph",1024,768);canv->SetGridx(1);canv->SetGridy(1);

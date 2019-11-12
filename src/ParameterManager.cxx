@@ -104,6 +104,7 @@ void ParameterManager::LoadParameters(ParaBlock theParaBlock){
         if (MyRuntimeParameters::Get().HasParameter("XTAnalyzer.bin_x_ratio")) XTAnalyzerParameters.bin_x_ratio = MyRuntimeParameters::Get().GetParameterD("XTAnalyzer.bin_x_ratio");;
         if (MyRuntimeParameters::Get().HasParameter("XTAnalyzer.graph_n_min")) XTAnalyzerParameters.graph_n_min = MyRuntimeParameters::Get().GetParameterI("XTAnalyzer.graph_n_min");;
         if (MyRuntimeParameters::Get().HasParameter("XTAnalyzer.graph_chi2_max")) XTAnalyzerParameters.graph_chi2_max = MyRuntimeParameters::Get().GetParameterD("XTAnalyzer.graph_chi2_max");;
+        if (MyRuntimeParameters::Get().HasParameter("XTAnalyzer.graph_sepX")) XTAnalyzerParameters.graph_sepX = MyRuntimeParameters::Get().GetParameterD("XTAnalyzer.graph_sepX");;
     }
 }
 
@@ -199,6 +200,7 @@ XTAnalyzerPara::XTAnalyzerPara(){
     bin_x_ratio = 0.5;
     graph_n_min = 50;
     graph_chi2_max = 100;
+    graph_sepX = 1;
 }
 
 void XTAnalyzerPara::Print(){
@@ -238,7 +240,8 @@ void XTAnalyzerPara::Print(){
     printf("  T fitting: Landau function range lower edge = %f\n",bin_x_landXmax);
     printf(" About XT graphs:\n");
     printf("  Minimum number of entries of the sample point to be included in graph: %d\n",graph_n_min);
-    printf("  Maximum chi2 of the sample point to be included in graph: %d\n",graph_chi2_max);
+    printf("  Maximum chi2 of the sample point to be included in graph: %.3e\n",graph_chi2_max);
+    printf("  Separation X to combine space samples and time samples: %.3e\n",graph_sepX);
     printf(" About XT function:\n");
     printf("  XTType = %d\n",XTType);
     printf("  AsymXT = %s\n",AsymXT?"true":"false");
