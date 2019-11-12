@@ -49,16 +49,16 @@ XTAnalyzer parameters
     < XTAnalyzer.gold_t_max = 340 >
   bin-by-bin analysis
     < XTAnalyzer.bin_n_min = 40 >
-    < XTAnalyzer.bin_t_min = -23.4375 >
-    < XTAnalyzer.bin_t_max = 801.5626 >
+    < XTAnalyzer.bin_t_min = -23.4375 ns >
+    < XTAnalyzer.bin_t_max = 801.5626 ns >
     < XTAnalyzer.bin_t_num = 792 >
     < XTAnalyzer.bin_t_fit_num = 3 > number of T bins to project;
     < XTAnalyzer.bin_t_fit_num_tail = 6 > number of T bins to project in tail;
     < XTAnalyzer.bin_t_tailTime = 380 ns > starting time of tail
-    < XTAnalyzer.bin_t_landTmin = 300 > landau region on T slicing for X fitting
-    < XTAnalyzer.bin_t_landTmax = 450 > landau region on T slicing for X fitting
-    < XTAnalyzer.bin_x_landXmin = 7 > landau region on X slicing for T fitting
-    < XTAnalyzer.bin_x_landXmax = 8.5 > landau region on X slicing for T fitting
+    < XTAnalyzer.bin_t_landTmin = 300 ns > landau region on T slicing for X fitting
+    < XTAnalyzer.bin_t_landTmax = 450 ns > landau region on T slicing for X fitting
+    < XTAnalyzer.bin_x_landXmin = 7 mm > landau region on X slicing for T fitting
+    < XTAnalyzer.bin_x_landXmax = 8.5 mm > landau region on X slicing for T fitting
     < XTAnalyzer.bin_t_ratio = 0.5 > fit X on this T slice within the X range cut according to this ratio times maximum height
     < XTAnalyzer.bin_x_min = -0.02 >
     < XTAnalyzer.bin_x_max = 10.02 >
@@ -67,6 +67,7 @@ XTAnalyzer parameters
     < XTAnalyzer.bin_x_ratio = 0.5 > fit T on this X slice within the T range cut according to this ratio times maximum height
     < XTAnalyzer.graph_n_min = 50 >
     < XTAnalyzer.graph_chi2_max = 100 >
+    < XTAnalyzer.graph_sepX = 1 mm >
 
 *******************************************************************************                                                                   
 ana parameters
