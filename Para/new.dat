@@ -39,12 +39,12 @@ XTAnalyzer parameters
     < XTAnalyzer.nHits_max = 0 >
     < XTAnalyzer.nHitsS_min = 7 >
     < XTAnalyzer.pValue_min = 0.05 >
-    < XTAnalyzer.chi2_max = 0 >
+    < XTAnalyzer.chi2_max = 0 > 0 means no cut
     < XTAnalyzer.slz_min = -0.1 >
     < XTAnalyzer.slz_max =  0.12 >
   hit selection
-    < XTAnalyzer.UseGoodHit = false >
-    < XTAnalyzer.ClosestPeak = false >
+    < XTAnalyzer.UseGoodHit = false > Only pick up good hit (tracking.tmin, tracking.tmax, tracking.aaCut, tracking.sumCut
+    < XTAnalyzer.FirstGoodPeak = false > Only use the first good peak (same cut as above for good hit)
     < XTAnalyzer.gold_t_min = 20 >
     < XTAnalyzer.gold_t_max = 340 >
   bin-by-bin analysis
@@ -68,6 +68,15 @@ XTAnalyzer parameters
     < XTAnalyzer.graph_n_min = 50 >
     < XTAnalyzer.graph_chi2_max = 100 >
     < XTAnalyzer.graph_sepX = 1 mm >
+    < XTAnalyzer.xt_center_nPol = 6 >
+    < XTAnalyzer.xt_center_tLeft = 2 ns >
+    < XTAnalyzer.xt_center_tRight = 70 ns >
+    < XTAnalyzer.xt_middle_nPol = 3 >
+    < XTAnalyzer.xt_middle_tLeft = 50 ns >
+    < XTAnalyzer.xt_middle_tRight = 345 ns >
+    < XTAnalyzer.xt_end_nPol = 3 >
+    < XTAnalyzer.xt_end_tLeft = 380 ns >
+    < XTAnalyzer.xt_end_tRight = 800ns >
 
 *******************************************************************************                                                                   
 ana parameters

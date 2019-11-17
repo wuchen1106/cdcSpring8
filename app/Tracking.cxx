@@ -7,15 +7,9 @@
 #include <map>
 #include <math.h>
 
-#include <TChain.h>
-#include <TTree.h>
-#include <TFile.h>
 #include <TF1.h>
-#include <TVector3.h>
 #include <TString.h>
-#include <TGraph.h>
 #include <TGraphErrors.h>
-#include <TMinuit.h>
 #include <TMath.h>
 
 #include "Log.hxx"
@@ -31,8 +25,6 @@
 
 #include "Track.hxx"
 #include "Hit.hxx"
-
-//#include "TrackerTMinuit.hxx"
 
 //============================================================
 // Global controlers
@@ -64,6 +56,7 @@ int main(int argc, char** argv){
             case 'M':
                 m_memdebug = true;
                 printf("Turning on memory debug\n");
+                break;
             case 'P':
                 m_modulo = atoi(optarg);
                 printf("Printing modulo set to %d\n",m_modulo);

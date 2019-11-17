@@ -102,6 +102,20 @@ class XTBinAnalyzer{
         TF1 * f_land;
         TF1 * f_landF;
         TF1 * f_2gaus;
+
+        // functions to fit XT relation
+        TF1 * f_left_cen;
+        TF1 * f_right_cen;
+        TF1 * f_folded_cen;
+        TF1 * f_left_mid;
+        TF1 * f_right_mid;
+        TF1 * f_folded_mid;
+        TF1 * f_left_end;
+        TF1 * f_right_end;
+        TF1 * f_folded_end;
+        TF1 * f_left;
+        TF1 * f_right;
+        TF1 * f_folded;
 };
 
 #endif

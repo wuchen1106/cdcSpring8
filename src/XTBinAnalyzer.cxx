@@ -23,7 +23,11 @@ XTBinAnalyzer::XTBinAnalyzer(TString runname, TFile * outfile, bool drawDetails)
         mTestLayerID(0),
         mLayerID(0), mCellID(0), mX(0), mXerr(0), mT(0), mTerr(0), mSig(0), mChi2(0), mEntries(0), mType(0), mFunction(0), 
         h2_xt(NULL), h2_xtn(NULL),
-        f_gaus(NULL), f_land(NULL), f_landF(NULL), f_2gaus(NULL)
+        f_gaus(NULL), f_land(NULL), f_landF(NULL), f_2gaus(NULL),
+        f_left_cen(NULL), f_left_mid(NULL), f_left_end(NULL),
+        f_right_cen(NULL), f_right_mid(NULL), f_right_end(NULL),
+        f_folded_cen(NULL), f_folded_mid(NULL), f_folded_end(NULL),
+        f_left(NULL), f_right(NULL), f_folded(NULL)
 {
     // prepare functions for slice analysis
     f_gaus = myNewTF1("fgaus","gaus",-1000,1000);
@@ -40,6 +44,13 @@ XTBinAnalyzer::~XTBinAnalyzer(void){
 }
 
 int XTBinAnalyzer::Initialize(bool reLoad){
+    // about binning
+    double bin_t_min = ParameterManager::Get().XTAnalyzerParameters.bin_t_min; // t range for one x bin
+    double bin_t_max = ParameterManager::Get().XTAnalyzerParameters.bin_t_max;
+    int    bin_t_num = ParameterManager::Get().XTAnalyzerParameters.bin_t_num;
+    double bin_x_min = ParameterManager::Get().XTAnalyzerParameters.bin_x_min;
+    double bin_x_max = ParameterManager::Get().XTAnalyzerParameters.bin_x_max; // x range for one t bin
+    int    bin_x_num = ParameterManager::Get().XTAnalyzerParameters.bin_x_num;
     if (reLoad){
         if (!mOutTree){
             mOutTree = (TTree*) mOutFile->Get("XTBins");
@@ -94,13 +105,6 @@ int XTBinAnalyzer::Initialize(bool reLoad){
         //if (h2_xt) delete h2_xt;
         //if (h2_xtn) delete h2_xtn;
         mOutFile->cd();
-        // about binning
-        double bin_t_min = ParameterManager::Get().XTAnalyzerParameters.bin_t_min; // t range for one x bin
-        double bin_t_max = ParameterManager::Get().XTAnalyzerParameters.bin_t_max;
-        int    bin_t_num = ParameterManager::Get().XTAnalyzerParameters.bin_t_num;
-        double bin_x_min = ParameterManager::Get().XTAnalyzerParameters.bin_x_min;
-        double bin_x_max = ParameterManager::Get().XTAnalyzerParameters.bin_x_max; // x range for one t bin
-        int    bin_x_num = ParameterManager::Get().XTAnalyzerParameters.bin_x_num;
         h2_xt = new TH2D(Form("h2_xt_%d",mTestLayerID),"XT Relation",bin_t_num,bin_t_min,bin_t_max,bin_x_num,-bin_x_max,bin_x_max);
         h2_xt->GetXaxis()->SetTitle("T [ns]");
         h2_xt->GetYaxis()->SetTitle("X [mm]");
@@ -108,6 +112,20 @@ int XTBinAnalyzer::Initialize(bool reLoad){
         h2_xtn->GetXaxis()->SetTitle("T [ns]");
         h2_xtn->GetYaxis()->SetTitle("X [mm]");
     }
+
+    // WARNING: this Initialize will only create these XT functions ONCE in XTBinAnalyzer's lifetime!!!
+    int mCentPolN = ParameterManager::Get().XTAnalyzerParameters.xt_center_nPol;
+    int mMidPolN = ParameterManager::Get().XTAnalyzerParameters.xt_middle_nPol;
+    int mEndPolN = ParameterManager::Get().XTAnalyzerParameters.xt_end_nPol;
+    if (!f_left_cen) f_left_cen = myNewTF1(Form("flce_%d",mLayerID),Form("pol%d",mCentPolN),bin_t_min,bin_t_max);
+    if (!f_right_cen) f_right_cen = myNewTF1(Form("frce_%d",mLayerID),Form("pol%d",mCentPolN),bin_t_min,bin_t_max);
+    if (!f_folded_cen) f_folded_cen = myNewTF1(Form("ffce_%d",mLayerID),Form("pol%d",mCentPolN),bin_t_min,bin_t_max);
+    if (!f_left_mid) f_left_mid = myNewTF1(Form("flm_%d",mLayerID),Form("pol%d",mMidPolN),bin_t_min,bin_t_max);
+    if (!f_right_mid) f_right_mid = myNewTF1(Form("frm_%d",mLayerID),Form("pol%d",mMidPolN),bin_t_min,bin_t_max);
+    if (!f_folded_mid) f_folded_mid = myNewTF1(Form("ffm_%d",mLayerID),Form("pol%d",mMidPolN),bin_t_min,bin_t_max);
+    if (!f_left_end) f_left_end = myNewTF1(Form("fle_%d",mLayerID),Form("pol%d",mEndPolN),bin_t_min,bin_t_max);
+    if (!f_right_end) f_right_end = myNewTF1(Form("fre_%d",mLayerID),Form("pol%d",mEndPolN),bin_t_min,bin_t_max);
+    if (!f_folded_end) f_folded_end = myNewTF1(Form("ffe_%d",mLayerID),Form("pol%d",mEndPolN),bin_t_min,bin_t_max);
 
     MyNamedLog("XTBinAnalyzer","XTBinAnalyzer successfully initialized!");
     return 0;
@@ -288,12 +306,23 @@ void XTBinAnalyzer::BinAnalysis(void){
     drawSamples();
     formXTGraphs();
 
+    //==========================Fit the XT relation functions==============================
+    FitXT();
+    f_left_cen->Write();
+    f_right_cen->Write();
+    f_folded_cen->Write();
+    f_left_mid->Write();
+    f_right_mid->Write();
+    f_folded_mid->Write();
+    f_left_end->Write();
+    f_right_end->Write();
+    f_folded_end->Write();
+
     // set the style back
     gStyle->SetOptStat(oldStyle);
 }
 
 void XTBinAnalyzer::FitXT(){
-
 }
 
 void XTBinAnalyzer::Write(){

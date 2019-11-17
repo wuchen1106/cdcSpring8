@@ -168,7 +168,7 @@ int main(int argc, char** argv){
     TString CandSelBy = ParameterManager::Get().XTAnalyzerParameters.CandSelBy;
     bool RequireInTriggerCounter = ParameterManager::Get().XTAnalyzerParameters.RequireInTriggerCounter;
     bool RequireAllGoldenHits = ParameterManager::Get().XTAnalyzerParameters.RequireAllGoldenHits;
-    bool ClosestPeak = ParameterManager::Get().XTAnalyzerParameters.ClosestPeak;
+    bool FirstGoodPeak = ParameterManager::Get().XTAnalyzerParameters.FirstGoodPeak;
     bool UseGoodHit = ParameterManager::Get().XTAnalyzerParameters.UseGoodHit;
     bool AllGoodHitsUsed = ParameterManager::Get().XTAnalyzerParameters.AllGoodHitsUsed;
     int nHits_max = ParameterManager::Get().XTAnalyzerParameters.nHits_max;
@@ -270,7 +270,7 @@ int main(int argc, char** argv){
                 if (layerID!=testLayer) continue;
                 int cellID = InputOutputManager::Get().CellID->at(iHit);
                 if (UseGoodHit&&!isGoodHit(iHit)) continue; // only use good hit in the test layer if required
-                if (ClosestPeak&&CountGoodHitBeforeIt(iHit)) continue; // if there is a good hit before this hit in the same cell, then skip it
+                if (FirstGoodPeak&&CountGoodHitBeforeIt(iHit)) continue; // if there is a good hit before this hit in the same cell, then skip it
                 double tfitD = GeometryManager::Get().GetDOCA(layerID,cellID,slx,inx,slz,inz);
                 double tdriftT = InputOutputManager::Get().DriftT->at(iHit)-InputOutputManager::Get().t0Offset[theCand]; // consider the t0 offset suggested by this candidate
                 int status;

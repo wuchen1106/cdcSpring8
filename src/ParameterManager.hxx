@@ -55,7 +55,7 @@ public:
     TString CandSelBy;
     bool RequireInTriggerCounter;
     bool RequireAllGoldenHits;
-    bool ClosestPeak;
+    bool FirstGoodPeak;
     bool UseGoodHit;
     bool AllGoodHitsUsed;
     int nHits_max;
@@ -92,6 +92,16 @@ public:
     int    graph_n_min;
     double graph_chi2_max;
     double graph_sepX;
+    // about XT function
+    int    xt_center_nPol;
+    double xt_center_tLeft;
+    double xt_center_tRight;
+    int    xt_middle_nPol;
+    double xt_middle_tLeft;
+    double xt_middle_tRight;
+    int    xt_end_nPol;
+    double xt_end_tLeft;
+    double xt_end_tRight;
 };
 
 // parameter block for Ana
