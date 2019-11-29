@@ -1,5 +1,5 @@
 #include "ParameterManager.hxx"
-#include "XTBinAnalyzer.hxx"
+#include "XTAnalyzer.hxx"
 #include "MyRuntimeParameters.hxx"
 
 ParameterManager* ParameterManager::fParameterManager = NULL;
@@ -237,7 +237,7 @@ XTAnalyzerPara::XTAnalyzerPara(){
         fitX_tSep[iRange] = 0;
         fitX_fitBoth[iRange] = false;
         fitX_SetEmptyBins[iRange] = false;
-        fitX_functionType[iRange] = XTBinAnalyzer::kGaussian;
+        fitX_functionType[iRange] = XTAnalyzer::kGaussian;
         fitX_peak_height_middle[iRange] = 0.9;
         fitX_peak_height_left[iRange] = 0;
         fitX_peak_height_right[iRange] = 2;
@@ -298,15 +298,15 @@ void XTAnalyzerPara::Print(){
     printf("  Number of ranges %d\n",fitX_nRanges);
     std::string functionName("");
     for (int iRange = 0; iRange<fitX_nRanges; iRange++){
-        if (fitX_functionType[iRange]==XTBinAnalyzer::kGaussian) functionName = "Gaussian";
-        else if (fitX_functionType[iRange]==XTBinAnalyzer::kLandau) functionName = "Landau";
-        else if (fitX_functionType[iRange]==XTBinAnalyzer::kDoubleGaussian) functionName = "Gaussian+Gaussian";
-        else if (fitX_functionType[iRange]==XTBinAnalyzer::kDoubleLandau) functionName = "Landau+Landau";
-        else if (fitX_functionType[iRange]==XTBinAnalyzer::kGaussianPlusLandau) functionName = "Gaussian+Landau";
-        else if (fitX_functionType[iRange]==XTBinAnalyzer::kLandauPlusGaussian) functionName = "Landau+Gaussian";
+        if (fitX_functionType[iRange]==XTAnalyzer::kGaussian) functionName = "Gaussian";
+        else if (fitX_functionType[iRange]==XTAnalyzer::kLandau) functionName = "Landau";
+        else if (fitX_functionType[iRange]==XTAnalyzer::kDoubleGaussian) functionName = "Gaussian+Gaussian";
+        else if (fitX_functionType[iRange]==XTAnalyzer::kDoubleLandau) functionName = "Landau+Landau";
+        else if (fitX_functionType[iRange]==XTAnalyzer::kGaussianPlusLandau) functionName = "Gaussian+Landau";
+        else if (fitX_functionType[iRange]==XTAnalyzer::kLandauPlusGaussian) functionName = "Landau+Gaussian";
         printf("    %d: %.1f ~ %.1f ns, minEntries = %d, nBins = %d, smooth %d, fit both sides together? %s, set empty bins? %s, fit function %s\n",iRange,iRange==0?bin_t_min:fitX_tSep[iRange-1],fitX_tSep[iRange],fitX_minEntries[iRange],fitX_nBins[iRange],fitX_smooth[iRange],fitX_fitBoth[iRange]?"yes":"no",fitX_SetEmptyBins[iRange]?"yes":"no",functionName.c_str());
         printf("        peak part: height (rel to hist) %.2f ~ %.2f ~ %.2f, sigma (mm) %.2f ~ %.2f ~ %.2f, x offset (to hist) range (mm) %.2f\n",fitX_peak_height_left[iRange],fitX_peak_height_middle[iRange],fitX_peak_height_right[iRange],fitX_peak_sigma_left[iRange],fitX_peak_sigma_middle[iRange],fitX_peak_sigma_right[iRange],fitX_peak_mean_range[iRange]);
-        if (fitX_functionType[iRange]!=XTBinAnalyzer::kGaussian&&fitX_functionType[iRange]!=XTBinAnalyzer::kLandau){
+        if (fitX_functionType[iRange]!=XTAnalyzer::kGaussian&&fitX_functionType[iRange]!=XTAnalyzer::kLandau){
             printf("        base part: height (rel to peak) %.2f ~ %.2f ~ %.2f, rel-sigma (peak sigma) %.2f ~ %.2f ~ %.2f, x offset (to peak) rel-range (peak sigma) %.2f\n",fitX_base_height_left[iRange],fitX_base_height_middle[iRange],fitX_base_height_right[iRange],fitX_base_sigma_left[iRange],fitX_base_sigma_middle[iRange],fitX_base_sigma_right[iRange],fitX_base_mean_range[iRange]);
         }
     }
@@ -334,26 +334,26 @@ int ParameterManager::getFunctionType(TString name){
     if (name.Contains("gaus",TString::kIgnoreCase)
       &&name.Contains("land",TString::kIgnoreCase)){
         if (name.Index("gaus",0,TString::kIgnoreCase)<name.Index("land",0,TString::kIgnoreCase)){
-            functionType = XTBinAnalyzer::kGaussianPlusLandau;
+            functionType = XTAnalyzer::kGaussianPlusLandau;
         }
         else{
-            functionType = XTBinAnalyzer::kLandauPlusGaussian;
+            functionType = XTAnalyzer::kLandauPlusGaussian;
         }
     }
     else if (name.Contains("gaus",TString::kIgnoreCase)){
         if (name.Contains("double",TString::kIgnoreCase)){
-            functionType = XTBinAnalyzer::kDoubleGaussian;
+            functionType = XTAnalyzer::kDoubleGaussian;
         }
         else{
-            functionType = XTBinAnalyzer::kGaussian;
+            functionType = XTAnalyzer::kGaussian;
         }
     }
     else if (name.Contains("land",TString::kIgnoreCase)){
         if (name.Contains("double",TString::kIgnoreCase)){
-            functionType = XTBinAnalyzer::kDoubleLandau;
+            functionType = XTAnalyzer::kDoubleLandau;
         }
         else{
-            functionType = XTBinAnalyzer::kLandau;
+            functionType = XTAnalyzer::kLandau;
         }
     }
     return functionType;
