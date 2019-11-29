@@ -47,36 +47,75 @@ XTAnalyzer parameters
     < XTAnalyzer.FirstGoodPeak = false > Only use the first good peak (same cut as above for good hit)
     < XTAnalyzer.gold_t_min = 20 >
     < XTAnalyzer.gold_t_max = 340 >
-  bin-by-bin analysis
-    < XTAnalyzer.bin_n_min = 40 >
+  binning of the 2D histograms
     < XTAnalyzer.bin_t_min = -23.4375 ns >
-    < XTAnalyzer.bin_t_max = 801.5626 ns >
+    < XTAnalyzer.bin_t_max = 801.5626 ns > Make sure that every TDC falls in the center of one bin
     < XTAnalyzer.bin_t_num = 792 >
-    < XTAnalyzer.bin_t_fit_num = 3 > number of T bins to project;
-    < XTAnalyzer.bin_t_fit_num_tail = 6 > number of T bins to project in tail;
-    < XTAnalyzer.bin_t_tailTime = 380 ns > starting time of tail
-    < XTAnalyzer.bin_t_landTmin = 300 ns > landau region on T slicing for X fitting
-    < XTAnalyzer.bin_t_landTmax = 450 ns > landau region on T slicing for X fitting
-    < XTAnalyzer.bin_x_landXmin = 7 mm > landau region on X slicing for T fitting
-    < XTAnalyzer.bin_x_landXmax = 8.5 mm > landau region on X slicing for T fitting
-    < XTAnalyzer.bin_t_ratio = 0.5 > fit X on this T slice within the X range cut according to this ratio times maximum height
-    < XTAnalyzer.bin_x_min = -0.02 >
-    < XTAnalyzer.bin_x_max = 10.02 >
-    < XTAnalyzer.bin_x_num = 501 > this should be an odd number
-    < XTAnalyzer.bin_x_fit_num = 1 > number of X bins to project; should be an odd number and dividable by bin_x_num and bin_x_num/2+1
-    < XTAnalyzer.bin_x_ratio = 0.5 > fit T on this X slice within the T range cut according to this ratio times maximum height
+     XTAnalyzer.bin_x_min = -0.005 mm >
+     XTAnalyzer.bin_x_max = 10.005 mm >
+     XTAnalyzer.bin_x_num = 2001 >
+    < XTAnalyzer.bin_x_min = -0.01 mm >
+    < XTAnalyzer.bin_x_max = 10.01 mm >
+    < XTAnalyzer.bin_x_num = 1001 >
+     XTAnalyzer.bin_x_min = -0.02 mm >
+     XTAnalyzer.bin_x_max = 10.02 mm >
+     XTAnalyzer.bin_x_num = 501 >
+     XTAnalyzer.bin_x_min = -0.04 mm >
+     XTAnalyzer.bin_x_max = 10.04 mm >
+     XTAnalyzer.bin_x_num = 251 >
+  regroup T bins to fit X
+    < XTAnalyzer.fitX_nRanges = 3 > should be smaller than 10; ALERT: THIS SHOULD BE PUT ON TOP OF OTHER fitX_* attributes!!!
+    < XTAnalyzer.fitX_0_tSep = 20 >
+    < XTAnalyzer.fitX_1_tSep = 380 >
+    < XTAnalyzer.fitX_2_tSep = 1000 >
+    < XTAnalyzer.fitX_0_minEntries = 40 >
+    < XTAnalyzer.fitX_1_minEntries = 40 >
+    < XTAnalyzer.fitX_2_minEntries = 40 >
+    < XTAnalyzer.fitX_0_nBins = 1 >
+    < XTAnalyzer.fitX_1_nBins = 3 >
+    < XTAnalyzer.fitX_2_nBins = 6 >
+    < XTAnalyzer.fitX_0_smooth = 1 > times to smooth. 0 means no smooth
+    < XTAnalyzer.fitX_1_smooth = 1 >
+    < XTAnalyzer.fitX_2_smooth = 1 >
+    < XTAnalyzer.fitX_0_fitBoth = true > fit both side together? or fit side by side?
+    < XTAnalyzer.fitX_1_fitBoth = false >
+    < XTAnalyzer.fitX_2_fitBoth = false >
+    < XTAnalyzer.fitX_0_SetEmptyBins = false > set the empty bins' contents to small numbers to force the fitting fall down at edge
+    < XTAnalyzer.fitX_1_SetEmptyBins = false >
+    < XTAnalyzer.fitX_2_SetEmptyBins = false >
+    < XTAnalyzer.fitX_0_functionType = "LandGaus" > "Gaus" "Land" "DoubleGaus" "DoubleLand" "GausLand" "LandGaus"
+    < XTAnalyzer.fitX_1_functionType = "LandGaus" >
+    < XTAnalyzer.fitX_2_functionType = "LandGaus" >
+    < XTAnalyzer.fitX_0_peak_height_middle = 0.9 > relative to hist height
+    < XTAnalyzer.fitX_0_peak_height_left = 0.3 >
+    < XTAnalyzer.fitX_0_peak_height_right = 1.5 >
+    < XTAnalyzer.fitX_0_peak_sigma_middle = 0 > mm; 0 means to use sigma_hist as initial value
+    < XTAnalyzer.fitX_0_peak_sigma_left = 0.05 >
+    < XTAnalyzer.fitX_0_peak_sigma_right = 1 >
+    < XTAnalyzer.fitX_0_peak_mean_range = 0.5 > mm; Fit range within x_hist_peak - range and x_hist_peak + range
+    < XTAnalyzer.fitX_0_base_height_middle = 0.1 > relative to peak part height
+    < XTAnalyzer.fitX_0_base_height_left = 0 >
+    < XTAnalyzer.fitX_0_base_height_right = 1 >
+    < XTAnalyzer.fitX_0_base_sigma_middle = 1 > real base sigma = peak_sigma*base_sigma
+    < XTAnalyzer.fitX_0_base_sigma_left = 0.5 >
+    < XTAnalyzer.fitX_0_base_sigma_right = 10 >
+    < XTAnalyzer.fitX_0_base_mean_range = 1 > real base mean = peak_mean+base_mean*peak_sigma
+ Select bins to form graphs
     < XTAnalyzer.graph_n_min = 50 >
-    < XTAnalyzer.graph_chi2_max = 100 >
+    < XTAnalyzer.graph_chi2_max = 0 > 0 means no cut
+    < XTAnalyzer.graph_prob_min = 0.1 >
     < XTAnalyzer.graph_sepX = 1 mm >
-    < XTAnalyzer.xt_center_nPol = 6 >
-    < XTAnalyzer.xt_center_tLeft = 2 ns >
-    < XTAnalyzer.xt_center_tRight = 70 ns >
-    < XTAnalyzer.xt_middle_nPol = 3 >
-    < XTAnalyzer.xt_middle_tLeft = 50 ns >
-    < XTAnalyzer.xt_middle_tRight = 345 ns >
-    < XTAnalyzer.xt_end_nPol = 3 >
-    < XTAnalyzer.xt_end_tLeft = 380 ns >
-    < XTAnalyzer.xt_end_tRight = 800ns >
+ Fit the XT relation functions
+    < XTAnalyzer.xt_nSegments = 4 >
+    < XTAnalyzer.xt_0_nPol = 6 >
+    < XTAnalyzer.xt_0_tLeft = 2 ns >
+    < XTAnalyzer.xt_0_tRight = 70 ns >
+    < XTAnalyzer.xt_1_nPol = 3 >
+    < XTAnalyzer.xt_1_tLeft = 50 ns >
+    < XTAnalyzer.xt_1_tRight = 345 ns >
+    < XTAnalyzer.xt_2_nPol = 3 >
+    < XTAnalyzer.xt_2_tLeft = 380 ns >
+    < XTAnalyzer.xt_2_tRight = 800ns >
 
 *******************************************************************************                                                                   
 ana parameters

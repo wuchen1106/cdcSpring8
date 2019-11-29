@@ -111,7 +111,7 @@ bool InputOutputManager::Initialize(){
         fInputTrackChain->SetBranchAddress("iSelection",iSelection);
         fInputTrackChain->SetBranchAddress("iCombination",iCombination);
         fInputTrackChain->SetBranchAddress("nHitsS",nHitsS); // number of hits selected from finding and fed to fitting
-        for (unsigned int iLayer = 0; iLayer<NLAY; iLayer++){
+        for (int iLayer = 0; iLayer<NLAY; iLayer++){
             fInputTrackChain->SetBranchAddress(Form("hitIndexSelectedInLayer%d",iLayer),hitIndexSelected[iLayer]); // number of hits selected from finding and fed to fitting
         }
         fInputTrackChain->SetBranchAddress("t0Offset",t0Offset);
@@ -158,7 +158,7 @@ bool InputOutputManager::Initialize(){
         fOutputTrackTree->Branch("iSelection",iSelection,"iSelection[nFind]/I");
         fOutputTrackTree->Branch("iCombination",iCombination,"iCombination[nFind]/I");
         fOutputTrackTree->Branch("nHitsS",nHitsS,"nHitsS[nFind]/I"); // number of hits selected from finding and fed to fitting
-        for (unsigned int iLayer = 0; iLayer<NLAY; iLayer++){
+        for (int iLayer = 0; iLayer<NLAY; iLayer++){
             fOutputTrackTree->Branch(Form("hitIndexSelectedInLayer%d",iLayer),hitIndexSelected[iLayer],Form("hitIndexSelectedInLayer%d[nFind]/I",iLayer)); // number of hits selected from finding and fed to fitting
         }
         fOutputTrackTree->Branch("t0Offset",t0Offset,"t0Offset[nFind]/D");
@@ -197,13 +197,13 @@ void InputOutputManager::Reset(){ // called at the beginning of every event
     // prepare
     nHitsG = 0;
     nCandidatesFound = 0;
-    for (unsigned int iCand = 0; iCand<NCAND; iCand++){
+    for (int iCand = 0; iCand<NCAND; iCand++){
         nPairs[iCand] = 0;
         nGoodPairs[iCand] = 0;
         iSelection[iCand] = -1;
         iCombination[iCand] = -1;
         nHitsS[iCand] = 0;
-        for (unsigned int iLayer = 0; iLayer<NLAY; iLayer++){
+        for (int iLayer = 0; iLayer<NLAY; iLayer++){
             hitIndexSelected[iLayer][iCand] = -1;
         }
         t0Offset[iCand] = 0; // in case t0 is set free to adjustment

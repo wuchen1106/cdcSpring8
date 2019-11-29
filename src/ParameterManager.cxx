@@ -1,4 +1,5 @@
 #include "ParameterManager.hxx"
+#include "XTBinAnalyzer.hxx"
 #include "MyRuntimeParameters.hxx"
 
 ParameterManager* ParameterManager::fParameterManager = NULL;
@@ -85,25 +86,56 @@ void ParameterManager::LoadParameters(ParaBlock theParaBlock){
         if (MyRuntimeParameters::Get().HasParameter("XTAnalyzer.slz_max")) XTAnalyzerParameters.slz_max = MyRuntimeParameters::Get().GetParameterD("XTAnalyzer.slz_max");
         if (MyRuntimeParameters::Get().HasParameter("XTAnalyzer.gold_t_min")) XTAnalyzerParameters.gold_t_min = MyRuntimeParameters::Get().GetParameterD("XTAnalyzer.gold_t_min");
         if (MyRuntimeParameters::Get().HasParameter("XTAnalyzer.gold_t_max")) XTAnalyzerParameters.gold_t_max = MyRuntimeParameters::Get().GetParameterD("XTAnalyzer.gold_t_max");
-        if (MyRuntimeParameters::Get().HasParameter("XTAnalyzer.bin_n_min")) XTAnalyzerParameters.bin_n_min = MyRuntimeParameters::Get().GetParameterI("XTAnalyzer.bin_n_min");
         if (MyRuntimeParameters::Get().HasParameter("XTAnalyzer.bin_t_min")) XTAnalyzerParameters.bin_t_min = MyRuntimeParameters::Get().GetParameterD("XTAnalyzer.bin_t_min");
         if (MyRuntimeParameters::Get().HasParameter("XTAnalyzer.bin_t_max")) XTAnalyzerParameters.bin_t_max = MyRuntimeParameters::Get().GetParameterD("XTAnalyzer.bin_t_max");
         if (MyRuntimeParameters::Get().HasParameter("XTAnalyzer.bin_t_num")) XTAnalyzerParameters.bin_t_num = MyRuntimeParameters::Get().GetParameterI("XTAnalyzer.bin_t_num");
         if (MyRuntimeParameters::Get().HasParameter("XTAnalyzer.bin_x_min")) XTAnalyzerParameters.bin_x_min = MyRuntimeParameters::Get().GetParameterD("XTAnalyzer.bin_x_min");
         if (MyRuntimeParameters::Get().HasParameter("XTAnalyzer.bin_x_max")) XTAnalyzerParameters.bin_x_max = MyRuntimeParameters::Get().GetParameterD("XTAnalyzer.bin_x_max");
         if (MyRuntimeParameters::Get().HasParameter("XTAnalyzer.bin_x_num")) XTAnalyzerParameters.bin_x_num = MyRuntimeParameters::Get().GetParameterI("XTAnalyzer.bin_x_num");
-        if (MyRuntimeParameters::Get().HasParameter("XTAnalyzer.bin_t_landTmin")) XTAnalyzerParameters.bin_t_landTmin = MyRuntimeParameters::Get().GetParameterD("XTAnalyzer.bin_t_landTmin");
-        if (MyRuntimeParameters::Get().HasParameter("XTAnalyzer.bin_t_landTmax")) XTAnalyzerParameters.bin_t_landTmax = MyRuntimeParameters::Get().GetParameterD("XTAnalyzer.bin_t_landTmax");
-        if (MyRuntimeParameters::Get().HasParameter("XTAnalyzer.bin_x_landXmin")) XTAnalyzerParameters.bin_x_landXmin = MyRuntimeParameters::Get().GetParameterD("XTAnalyzer.bin_x_landXmin");
-        if (MyRuntimeParameters::Get().HasParameter("XTAnalyzer.bin_x_landXmax")) XTAnalyzerParameters.bin_x_landXmax = MyRuntimeParameters::Get().GetParameterD("XTAnalyzer.bin_x_landXmax");
-        if (MyRuntimeParameters::Get().HasParameter("XTAnalyzer.bin_x_fit_num")) XTAnalyzerParameters.bin_x_fit_num = MyRuntimeParameters::Get().GetParameterI("XTAnalyzer.bin_x_fit_num");
-        if (MyRuntimeParameters::Get().HasParameter("XTAnalyzer.bin_t_fit_num")) XTAnalyzerParameters.bin_t_fit_num = MyRuntimeParameters::Get().GetParameterI("XTAnalyzer.bin_t_fit_num");
-        if (MyRuntimeParameters::Get().HasParameter("XTAnalyzer.bin_t_fit_num_tail")) XTAnalyzerParameters.bin_t_fit_num_tail = MyRuntimeParameters::Get().GetParameterI("XTAnalyzer.bin_t_fit_num_tail");
-        if (MyRuntimeParameters::Get().HasParameter("XTAnalyzer.bin_t_tailTime")) XTAnalyzerParameters.bin_t_tailTime = MyRuntimeParameters::Get().GetParameterD("XTAnalyzer.bin_t_tailTime");
-        if (MyRuntimeParameters::Get().HasParameter("XTAnalyzer.bin_t_ratio")) XTAnalyzerParameters.bin_t_ratio = MyRuntimeParameters::Get().GetParameterD("XTAnalyzer.bin_t_ratio");
-        if (MyRuntimeParameters::Get().HasParameter("XTAnalyzer.bin_x_ratio")) XTAnalyzerParameters.bin_x_ratio = MyRuntimeParameters::Get().GetParameterD("XTAnalyzer.bin_x_ratio");
+        if (MyRuntimeParameters::Get().HasParameter("XTAnalyzer.fitX_nRanges")){
+            XTAnalyzerParameters.fitX_nRanges = MyRuntimeParameters::Get().GetParameterI("XTAnalyzer.fitX_nRanges");
+            if (XTAnalyzerParameters.fitX_nRanges > NRANGES){
+                MyWarn("XTAnalyzerParameters.fitX_nRanges is set to "<<XTAnalyzerParameters.fitX_nRanges<<" but cannot be larger than "<<NRANGES);
+                XTAnalyzerParameters.fitX_nRanges = NRANGES;
+            }
+        }
+        for (int iRange = 0; iRange<XTAnalyzerParameters.fitX_nRanges; iRange++){
+            if (MyRuntimeParameters::Get().HasParameter(Form("XTAnalyzer.fitX_%d_nBins",iRange))) {XTAnalyzerParameters.fitX_nBins[iRange] = MyRuntimeParameters::Get().GetParameterI(Form("XTAnalyzer.fitX_%d_nBins",iRange)); for (int jRange = iRange+1; jRange<XTAnalyzerParameters.fitX_nRanges; jRange++){XTAnalyzerParameters.fitX_nBins[jRange] = XTAnalyzerParameters.fitX_nBins[iRange];}}
+            if (MyRuntimeParameters::Get().HasParameter(Form("XTAnalyzer.fitX_%d_smooth",iRange))) {XTAnalyzerParameters.fitX_smooth[iRange] = MyRuntimeParameters::Get().GetParameterI(Form("XTAnalyzer.fitX_%d_smooth",iRange)); for (int jRange = iRange+1; jRange<XTAnalyzerParameters.fitX_nRanges; jRange++){XTAnalyzerParameters.fitX_smooth[jRange] = XTAnalyzerParameters.fitX_smooth[iRange];}}
+            if (MyRuntimeParameters::Get().HasParameter(Form("XTAnalyzer.fitX_%d_minEntries",iRange))) {XTAnalyzerParameters.fitX_minEntries[iRange] = MyRuntimeParameters::Get().GetParameterI(Form("XTAnalyzer.fitX_%d_minEntries",iRange)); for (int jRange = iRange+1; jRange<XTAnalyzerParameters.fitX_nRanges; jRange++){XTAnalyzerParameters.fitX_minEntries[jRange] = XTAnalyzerParameters.fitX_minEntries[iRange];}}
+            if (MyRuntimeParameters::Get().HasParameter(Form("XTAnalyzer.fitX_%d_tSep",iRange))) {
+                XTAnalyzerParameters.fitX_tSep[iRange] = MyRuntimeParameters::Get().GetParameterD(Form("XTAnalyzer.fitX_%d_tSep",iRange));
+                if (XTAnalyzerParameters.fitX_tSep[iRange]<XTAnalyzerParameters.bin_t_min){
+                    MyWarn("XTAnalyzerParameters.fitX_tSep is set to "<<XTAnalyzerParameters.fitX_tSep[iRange]<<" but cannot be smaller than XTAnalyzerParameters.bin_t_min = "<<XTAnalyzerParameters.bin_t_min);
+                    XTAnalyzerParameters.fitX_tSep[iRange]=XTAnalyzerParameters.bin_t_min;
+                }
+                if (XTAnalyzerParameters.fitX_tSep[iRange]>XTAnalyzerParameters.bin_t_max){
+                    MyWarn("XTAnalyzerParameters.fitX_tSep is set to "<<XTAnalyzerParameters.fitX_tSep[iRange]<<" but cannot be larger than XTAnalyzerParameters.bin_t_max = "<<XTAnalyzerParameters.bin_t_max);
+                    XTAnalyzerParameters.fitX_tSep[iRange]=XTAnalyzerParameters.bin_t_max;
+                }
+                for (int jRange = iRange+1; jRange<XTAnalyzerParameters.fitX_nRanges; jRange++){XTAnalyzerParameters.fitX_tSep[jRange] = XTAnalyzerParameters.fitX_tSep[iRange];}
+            }
+            if (MyRuntimeParameters::Get().HasParameter(Form("XTAnalyzer.fitX_%d_fitBoth",iRange))) {XTAnalyzerParameters.fitX_fitBoth[iRange] = MyRuntimeParameters::Get().GetParameterB(Form("XTAnalyzer.fitX_%d_fitBoth",iRange)); for (int jRange = iRange+1; jRange<XTAnalyzerParameters.fitX_nRanges; jRange++){XTAnalyzerParameters.fitX_fitBoth[jRange] = XTAnalyzerParameters.fitX_fitBoth[iRange];}}
+            if (MyRuntimeParameters::Get().HasParameter(Form("XTAnalyzer.fitX_%d_SetEmptyBins",iRange))) {XTAnalyzerParameters.fitX_SetEmptyBins[iRange] = MyRuntimeParameters::Get().GetParameterB(Form("XTAnalyzer.fitX_%d_SetEmptyBins",iRange)); for (int jRange = iRange+1; jRange<XTAnalyzerParameters.fitX_nRanges; jRange++){XTAnalyzerParameters.fitX_SetEmptyBins[jRange] = XTAnalyzerParameters.fitX_SetEmptyBins[iRange];}}
+            if (MyRuntimeParameters::Get().HasParameter(Form("XTAnalyzer.fitX_%d_functionType",iRange))) {XTAnalyzerParameters.fitX_functionType[iRange] = getFunctionType(MyRuntimeParameters::Get().GetParameterS(Form("XTAnalyzer.fitX_%d_functionType",iRange))); for (int jRange = iRange+1; jRange<XTAnalyzerParameters.fitX_nRanges; jRange++){XTAnalyzerParameters.fitX_functionType[jRange] = XTAnalyzerParameters.fitX_functionType[iRange];}}
+            if (MyRuntimeParameters::Get().HasParameter(Form("XTAnalyzer.fitX_%d_peak_height_middle",iRange))) {XTAnalyzerParameters.fitX_peak_height_middle[iRange] = MyRuntimeParameters::Get().GetParameterD(Form("XTAnalyzer.fitX_%d_peak_height_middle",iRange)); for (int jRange = iRange+1; jRange<XTAnalyzerParameters.fitX_nRanges; jRange++){XTAnalyzerParameters.fitX_peak_height_middle[jRange] = XTAnalyzerParameters.fitX_peak_height_middle[iRange];}}
+            if (MyRuntimeParameters::Get().HasParameter(Form("XTAnalyzer.fitX_%d_peak_height_left",iRange))) {XTAnalyzerParameters.fitX_peak_height_left[iRange] = MyRuntimeParameters::Get().GetParameterD(Form("XTAnalyzer.fitX_%d_peak_height_left",iRange)); for (int jRange = iRange+1; jRange<XTAnalyzerParameters.fitX_nRanges; jRange++){XTAnalyzerParameters.fitX_peak_height_left[jRange] = XTAnalyzerParameters.fitX_peak_height_left[iRange];}}
+            if (MyRuntimeParameters::Get().HasParameter(Form("XTAnalyzer.fitX_%d_peak_height_right",iRange))) {XTAnalyzerParameters.fitX_peak_height_right[iRange] = MyRuntimeParameters::Get().GetParameterD(Form("XTAnalyzer.fitX_%d_peak_height_right",iRange)); for (int jRange = iRange+1; jRange<XTAnalyzerParameters.fitX_nRanges; jRange++){XTAnalyzerParameters.fitX_peak_height_right[jRange] = XTAnalyzerParameters.fitX_peak_height_right[iRange];}}
+            if (MyRuntimeParameters::Get().HasParameter(Form("XTAnalyzer.fitX_%d_peak_sigma_middle",iRange))) {XTAnalyzerParameters.fitX_peak_sigma_middle[iRange] = MyRuntimeParameters::Get().GetParameterD(Form("XTAnalyzer.fitX_%d_peak_sigma_middle",iRange)); for (int jRange = iRange+1; jRange<XTAnalyzerParameters.fitX_nRanges; jRange++){XTAnalyzerParameters.fitX_peak_sigma_middle[jRange] = XTAnalyzerParameters.fitX_peak_sigma_middle[iRange];}}
+            if (MyRuntimeParameters::Get().HasParameter(Form("XTAnalyzer.fitX_%d_peak_sigma_left",iRange))) {XTAnalyzerParameters.fitX_peak_sigma_left[iRange] = MyRuntimeParameters::Get().GetParameterD(Form("XTAnalyzer.fitX_%d_peak_sigma_left",iRange)); for (int jRange = iRange+1; jRange<XTAnalyzerParameters.fitX_nRanges; jRange++){XTAnalyzerParameters.fitX_peak_sigma_left[jRange] = XTAnalyzerParameters.fitX_peak_sigma_left[iRange];}}
+            if (MyRuntimeParameters::Get().HasParameter(Form("XTAnalyzer.fitX_%d_peak_sigma_right",iRange))) {XTAnalyzerParameters.fitX_peak_sigma_right[iRange] = MyRuntimeParameters::Get().GetParameterD(Form("XTAnalyzer.fitX_%d_peak_sigma_right",iRange)); for (int jRange = iRange+1; jRange<XTAnalyzerParameters.fitX_nRanges; jRange++){XTAnalyzerParameters.fitX_peak_sigma_right[jRange] = XTAnalyzerParameters.fitX_peak_sigma_right[iRange];}}
+            if (MyRuntimeParameters::Get().HasParameter(Form("XTAnalyzer.fitX_%d_peak_mean_range",iRange))) {XTAnalyzerParameters.fitX_peak_mean_range[iRange] = MyRuntimeParameters::Get().GetParameterD(Form("XTAnalyzer.fitX_%d_peak_mean_range",iRange)); for (int jRange = iRange+1; jRange<XTAnalyzerParameters.fitX_nRanges; jRange++){XTAnalyzerParameters.fitX_peak_mean_range[jRange] = XTAnalyzerParameters.fitX_peak_mean_range[iRange];}}
+            if (MyRuntimeParameters::Get().HasParameter(Form("XTAnalyzer.fitX_%d_base_height_middle",iRange))) {XTAnalyzerParameters.fitX_base_height_middle[iRange] = MyRuntimeParameters::Get().GetParameterD(Form("XTAnalyzer.fitX_%d_base_height_middle",iRange)); for (int jRange = iRange+1; jRange<XTAnalyzerParameters.fitX_nRanges; jRange++){XTAnalyzerParameters.fitX_base_height_middle[jRange] = XTAnalyzerParameters.fitX_base_height_middle[iRange];}}
+            if (MyRuntimeParameters::Get().HasParameter(Form("XTAnalyzer.fitX_%d_base_height_left",iRange))) {XTAnalyzerParameters.fitX_base_height_left[iRange] = MyRuntimeParameters::Get().GetParameterD(Form("XTAnalyzer.fitX_%d_base_height_left",iRange)); for (int jRange = iRange+1; jRange<XTAnalyzerParameters.fitX_nRanges; jRange++){XTAnalyzerParameters.fitX_base_height_left[jRange] = XTAnalyzerParameters.fitX_base_height_left[iRange];}}
+            if (MyRuntimeParameters::Get().HasParameter(Form("XTAnalyzer.fitX_%d_base_height_right",iRange))) {XTAnalyzerParameters.fitX_base_height_right[iRange] = MyRuntimeParameters::Get().GetParameterD(Form("XTAnalyzer.fitX_%d_base_height_right",iRange)); for (int jRange = iRange+1; jRange<XTAnalyzerParameters.fitX_nRanges; jRange++){XTAnalyzerParameters.fitX_base_height_right[jRange] = XTAnalyzerParameters.fitX_base_height_right[iRange];}}
+            if (MyRuntimeParameters::Get().HasParameter(Form("XTAnalyzer.fitX_%d_base_sigma_middle",iRange))) {XTAnalyzerParameters.fitX_base_sigma_middle[iRange] = MyRuntimeParameters::Get().GetParameterD(Form("XTAnalyzer.fitX_%d_base_sigma_middle",iRange)); for (int jRange = iRange+1; jRange<XTAnalyzerParameters.fitX_nRanges; jRange++){XTAnalyzerParameters.fitX_base_sigma_middle[jRange] = XTAnalyzerParameters.fitX_base_sigma_middle[iRange];}}
+            if (MyRuntimeParameters::Get().HasParameter(Form("XTAnalyzer.fitX_%d_base_sigma_left",iRange))) {XTAnalyzerParameters.fitX_base_sigma_left[iRange] = MyRuntimeParameters::Get().GetParameterD(Form("XTAnalyzer.fitX_%d_base_sigma_left",iRange)); for (int jRange = iRange+1; jRange<XTAnalyzerParameters.fitX_nRanges; jRange++){XTAnalyzerParameters.fitX_base_sigma_left[jRange] = XTAnalyzerParameters.fitX_base_sigma_left[iRange];}}
+            if (MyRuntimeParameters::Get().HasParameter(Form("XTAnalyzer.fitX_%d_base_sigma_right",iRange))) {XTAnalyzerParameters.fitX_base_sigma_right[iRange] = MyRuntimeParameters::Get().GetParameterD(Form("XTAnalyzer.fitX_%d_base_sigma_right",iRange)); for (int jRange = iRange+1; jRange<XTAnalyzerParameters.fitX_nRanges; jRange++){XTAnalyzerParameters.fitX_base_sigma_right[jRange] = XTAnalyzerParameters.fitX_base_sigma_right[iRange];}}
+            if (MyRuntimeParameters::Get().HasParameter(Form("XTAnalyzer.fitX_%d_base_mean_range",iRange))) {XTAnalyzerParameters.fitX_base_mean_range[iRange] = MyRuntimeParameters::Get().GetParameterD(Form("XTAnalyzer.fitX_%d_base_mean_range",iRange)); for (int jRange = iRange+1; jRange<XTAnalyzerParameters.fitX_nRanges; jRange++){XTAnalyzerParameters.fitX_base_mean_range[jRange] = XTAnalyzerParameters.fitX_base_mean_range[iRange];}}
+        }
         if (MyRuntimeParameters::Get().HasParameter("XTAnalyzer.graph_n_min")) XTAnalyzerParameters.graph_n_min = MyRuntimeParameters::Get().GetParameterI("XTAnalyzer.graph_n_min");
         if (MyRuntimeParameters::Get().HasParameter("XTAnalyzer.graph_chi2_max")) XTAnalyzerParameters.graph_chi2_max = MyRuntimeParameters::Get().GetParameterD("XTAnalyzer.graph_chi2_max");
+        if (MyRuntimeParameters::Get().HasParameter("XTAnalyzer.graph_prob_min")) XTAnalyzerParameters.graph_prob_min = MyRuntimeParameters::Get().GetParameterD("XTAnalyzer.graph_prob_min");
         if (MyRuntimeParameters::Get().HasParameter("XTAnalyzer.graph_sepX")) XTAnalyzerParameters.graph_sepX = MyRuntimeParameters::Get().GetParameterD("XTAnalyzer.graph_sepX");
         if (MyRuntimeParameters::Get().HasParameter("XTAnalyzer.xt_center_nPol")) XTAnalyzerParameters.xt_center_nPol = MyRuntimeParameters::Get().GetParameterI("XTAnalyzer.xt_center_nPol");
         if (MyRuntimeParameters::Get().HasParameter("XTAnalyzer.xt_center_tLeft")) XTAnalyzerParameters.xt_center_tLeft = MyRuntimeParameters::Get().GetParameterD("XTAnalyzer.xt_center_tLeft");
@@ -190,25 +222,41 @@ XTAnalyzerPara::XTAnalyzerPara(){
     slz_max = 0.1;
     gold_t_min = 50;
     gold_t_max = 300;
-    bin_n_min = 0; // minimum number of entries in one slice to apply fitting function; Otherwise use mean value & RMS instead.
     bin_t_min = -25-1/0.96/2; // t range for one x bin
     bin_t_max = 800+1/0.96/2;
     bin_t_num = 792+1;
-    bin_t_fit_num = 3; //  number of T bins to project
-    bin_t_tailTime = 350; // starting tail mode from here: different number of bins as a T slice to fit X
-    bin_t_fit_num_tail = 3; //  number of T bins to project
     bin_x_min = -0.02;
     bin_x_max = 10.02; // x range for one t bin
     bin_x_num = 501;
-    bin_t_landTmin = 330;
-    bin_t_landTmax = 450;
-    bin_x_landXmin = 7;
-    bin_x_landXmax = 8.5;
-    bin_x_fit_num = 3; //  number of X bins to project
-    bin_t_ratio = 0.5;
-    bin_x_ratio = 0.5;
+
+    fitX_nRanges = 1;
+    for (int iRange = 0; iRange<NRANGES; iRange++){
+        fitX_minEntries[iRange] = 0; // minimum number of entries in one slice to apply fitting function; Otherwise use mean value & RMS instead.
+        fitX_nBins[iRange] = 1;
+        fitX_smooth[iRange] = 0; // by default no smoothing
+        fitX_tSep[iRange] = 0;
+        fitX_fitBoth[iRange] = false;
+        fitX_SetEmptyBins[iRange] = false;
+        fitX_functionType[iRange] = XTBinAnalyzer::kGaussian;
+        fitX_peak_height_middle[iRange] = 0.9;
+        fitX_peak_height_left[iRange] = 0;
+        fitX_peak_height_right[iRange] = 2;
+        fitX_peak_sigma_middle[iRange] = 0;
+        fitX_peak_sigma_left[iRange] = 0;
+        fitX_peak_sigma_right[iRange] = 2;
+        fitX_peak_mean_range[iRange] = 1;
+        fitX_base_height_middle[iRange] = 0.1;
+        fitX_base_height_left[iRange] = 0;
+        fitX_base_height_right[iRange] = 1;
+        fitX_base_sigma_middle[iRange] = 0;
+        fitX_base_sigma_left[iRange] = 0.5;
+        fitX_base_sigma_right[iRange] = 5;
+        fitX_base_mean_range[iRange] = 3;
+    }
+
     graph_n_min = 50;
-    graph_chi2_max = 100;
+    graph_chi2_max = 0; // no cut
+    graph_prob_min = 0.1;
     graph_sepX = 1;
     xt_center_nPol = 3;
     xt_center_tLeft = 0;
@@ -239,26 +287,33 @@ void XTAnalyzerPara::Print(){
     printf("  FirstGoodPeak = %s\n",FirstGoodPeak?"true":"false");
     printf("  golden hit t_min = %f\n",gold_t_min);
     printf("  golden hit t_max = %f\n",gold_t_max);
-    printf(" About bin-by-bin analysis :\n");
+    printf(" About 2-D histogram binning :\n");
     printf("  X axis: number of bins = %d\n",bin_x_num);
     printf("  X axis: minimum = %f\n",bin_x_min);
     printf("  X axis: maximum = %f\n",bin_x_max);
     printf("  T axis: number of bins = %d\n",bin_t_num);
     printf("  T axis: minimum = %f\n",bin_t_min);
     printf("  T axis: maximum = %f\n",bin_t_max);
-    printf("  X fitting: Landau function range lower edge = %f\n",bin_t_landTmin);
-    printf("  X fitting: Landau function range lower edge = %f\n",bin_t_landTmax);
-    printf("  X fitting: tail starting from t = %.1f ns\n",bin_t_tailTime);
-    printf("  X fitting: number of T bins to project before tail: %d\n",bin_t_fit_num);
-    printf("  X fitting: number of T bins to project in tail : %d\n",bin_t_fit_num_tail);
-    printf("  X fitting: fit in X range according to cut ratio: %.1f\n",bin_t_ratio);
-    printf("  T fitting: number of X bins to project: %d\n",bin_x_fit_num);
-    printf("  T fitting: fit in T range according to cut ratio: %.1f\n",bin_x_ratio);
-    printf("  T fitting: Landau function range lower edge = %f\n",bin_x_landXmin);
-    printf("  T fitting: Landau function range lower edge = %f\n",bin_x_landXmax);
+    printf(" About X fitting on T bins :\n");
+    printf("  Number of ranges %d\n",fitX_nRanges);
+    std::string functionName("");
+    for (int iRange = 0; iRange<fitX_nRanges; iRange++){
+        if (fitX_functionType[iRange]==XTBinAnalyzer::kGaussian) functionName = "Gaussian";
+        else if (fitX_functionType[iRange]==XTBinAnalyzer::kLandau) functionName = "Landau";
+        else if (fitX_functionType[iRange]==XTBinAnalyzer::kDoubleGaussian) functionName = "Gaussian+Gaussian";
+        else if (fitX_functionType[iRange]==XTBinAnalyzer::kDoubleLandau) functionName = "Landau+Landau";
+        else if (fitX_functionType[iRange]==XTBinAnalyzer::kGaussianPlusLandau) functionName = "Gaussian+Landau";
+        else if (fitX_functionType[iRange]==XTBinAnalyzer::kLandauPlusGaussian) functionName = "Landau+Gaussian";
+        printf("    %d: %.1f ~ %.1f ns, minEntries = %d, nBins = %d, smooth %d, fit both sides together? %s, set empty bins? %s, fit function %s\n",iRange,iRange==0?bin_t_min:fitX_tSep[iRange-1],fitX_tSep[iRange],fitX_minEntries[iRange],fitX_nBins[iRange],fitX_smooth[iRange],fitX_fitBoth[iRange]?"yes":"no",fitX_SetEmptyBins[iRange]?"yes":"no",functionName.c_str());
+        printf("        peak part: height (rel to hist) %.2f ~ %.2f ~ %.2f, sigma (mm) %.2f ~ %.2f ~ %.2f, x offset (to hist) range (mm) %.2f\n",fitX_peak_height_left[iRange],fitX_peak_height_middle[iRange],fitX_peak_height_right[iRange],fitX_peak_sigma_left[iRange],fitX_peak_sigma_middle[iRange],fitX_peak_sigma_right[iRange],fitX_peak_mean_range[iRange]);
+        if (fitX_functionType[iRange]!=XTBinAnalyzer::kGaussian&&fitX_functionType[iRange]!=XTBinAnalyzer::kLandau){
+            printf("        base part: height (rel to peak) %.2f ~ %.2f ~ %.2f, rel-sigma (peak sigma) %.2f ~ %.2f ~ %.2f, x offset (to peak) rel-range (peak sigma) %.2f\n",fitX_base_height_left[iRange],fitX_base_height_middle[iRange],fitX_base_height_right[iRange],fitX_base_sigma_left[iRange],fitX_base_sigma_middle[iRange],fitX_base_sigma_right[iRange],fitX_base_mean_range[iRange]);
+        }
+    }
     printf(" About XT graphs:\n");
     printf("  Minimum number of entries of the sample point to be included in graph: %d\n",graph_n_min);
     printf("  Maximum chi2 of the sample point to be included in graph: %.3e\n",graph_chi2_max);
+    printf("  Minimum p-value of the sample point to be included in graph: %.3e\n",graph_prob_min);
     printf("  Separation X to combine space samples and time samples: %.3e\n",graph_sepX);
     printf(" About XT function:\n");
     printf("  XTType = %d\n",XTType);
@@ -272,4 +327,34 @@ AnaPara::AnaPara(){
 }
 
 void AnaPara::Print(){
+}
+
+int ParameterManager::getFunctionType(TString name){
+    int functionType = 0;
+    if (name.Contains("gaus",TString::kIgnoreCase)
+      &&name.Contains("land",TString::kIgnoreCase)){
+        if (name.Index("gaus",0,TString::kIgnoreCase)<name.Index("land",0,TString::kIgnoreCase)){
+            functionType = XTBinAnalyzer::kGaussianPlusLandau;
+        }
+        else{
+            functionType = XTBinAnalyzer::kLandauPlusGaussian;
+        }
+    }
+    else if (name.Contains("gaus",TString::kIgnoreCase)){
+        if (name.Contains("double",TString::kIgnoreCase)){
+            functionType = XTBinAnalyzer::kDoubleGaussian;
+        }
+        else{
+            functionType = XTBinAnalyzer::kGaussian;
+        }
+    }
+    else if (name.Contains("land",TString::kIgnoreCase)){
+        if (name.Contains("double",TString::kIgnoreCase)){
+            functionType = XTBinAnalyzer::kDoubleLandau;
+        }
+        else{
+            functionType = XTBinAnalyzer::kLandau;
+        }
+    }
+    return functionType;
 }

@@ -86,15 +86,11 @@ int main(int argc, char** argv){
                 printf("Using configure file \"%s\"\n",optarg);
                 break;
             case 'D':
-                {
-                    if (!Log::ConfigureD(optarg)) print_usage(argv[0]);
-                    break;
-                }
+                if (!Log::ConfigureD(optarg)) print_usage(argv[0]);
+                break;
             case 'V':
-                {
-                    if (!Log::ConfigureV(optarg)) print_usage(argv[0]);
-                    break;
-                }
+                if (!Log::ConfigureV(optarg)) print_usage(argv[0]);
+                break;
             case '?':
                 printf("Wrong option! optopt=%c, optarg=%s\n", optopt, optarg);
             case 'h':
@@ -150,12 +146,6 @@ int main(int argc, char** argv){
     // for track finding
     double sciYup = GeometryManager::Get().GetScintillator()->Yup;
     double sciYdown = GeometryManager::Get().GetScintillator()->Ydown;
-    TF1 * f_x = new TF1("f_x","pol1",sciYdown,sciYup); // x VS y
-    TGraphErrors * g_x = 0; // x VS y
-    TF1 * f_z = new TF1("f_z","pol1",sciYdown,sciYup); // z VS y
-    TGraphErrors * g_z = 0; // z VS y
-    g_x = new TGraphErrors(NLAY);
-    g_z = new TGraphErrors(NLAY);
     int lidStart = ParameterManager::Get().TrackingParameters.lidStart;
     int lidStop = ParameterManager::Get().TrackingParameters.lidStop;
     int nPairsMin = ParameterManager::Get().TrackingParameters.nPairsMin;

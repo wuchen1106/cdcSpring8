@@ -73,8 +73,8 @@ void Chamber::SetGeometry(GeometryManager::GeoSetup theGeoSetup, GeometryManager
 }
 
 void Chamber::Initialize(){
-    for(unsigned int lid = 0; lid<NLAY; lid++){
-        for (unsigned int wid = 0; wid<NCEL; wid++){
+    for(int lid = 0; lid<NLAY; lid++){
+        for (int wid = 0; wid<NCEL; wid++){
             wire_x[lid][wid][0] = 0;
             wire_y[lid][wid][0] = 0;
             wire_z[lid][wid][0] = 0;
@@ -86,7 +86,7 @@ void Chamber::Initialize(){
             wire_adjustX[lid][wid] = 0;
             wire_adjustY[lid][wid] = 0;
             wire_adjustZ[lid][wid] = 0;
-            for (unsigned int wjd = 0; wjd<NCEL; wjd++){
+            for (int wjd = 0; wjd<NCEL; wjd++){
                 wirecross_x[lid][wid][wjd] = 999;
                 wirecross_z[lid][wid][wjd] = 999;
             }
@@ -117,7 +117,7 @@ bool Chamber::LoadWireMap(TString file){
     iChain->SetBranchAddress("yhv",&yhv);
     iChain->SetBranchAddress("xro",&xro);
     iChain->SetBranchAddress("yro",&yro);
-    for (unsigned int i = 0; i<iChain->GetEntries(); i++){
+    for (Long64_t i = 0; i<iChain->GetEntries(); i++){
         iChain->GetEntry(i);
         if (lid>=0&&lid<NLAY&&wid>=0&&wid<NCEL){
             wire_x[lid][wid][0] = xhv+wire_adjustX[lid][wid];
