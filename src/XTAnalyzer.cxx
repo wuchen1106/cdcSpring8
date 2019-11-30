@@ -267,6 +267,7 @@ void XTAnalyzer::BinAnalysis(void){
         double divleft = h2_xt->GetXaxis()->GetBinLowEdge(i);
         double divmiddle = current_nbins_to_fit%2==0?h2_xt->GetXaxis()->GetBinLowEdge(i+current_nbins_to_fit/2):h2_xt->GetXaxis()->GetBinCenter(i+current_nbins_to_fit/2);
         double divright = h2_xt->GetXaxis()->GetBinLowEdge(i+current_nbins_to_fit);
+        if (divleft<ParameterManager::Get().XTAnalyzerParameters.fitX_tSep[current_iRange]){ continue; } // not started yet
         h2_xt->GetXaxis()->SetRangeUser(divleft,divright);
         int nLR = 2; if (fitBoth) nLR=1; // if we fit both sides, then don't loop L/R
         for (int iLR = 0; iLR<nLR; iLR++){
@@ -352,10 +353,10 @@ void XTAnalyzer::BinAnalysis(void){
             }
         }
         h2_xt->GetXaxis()->UnZoom();
-        if (divright>=ParameterManager::Get().XTAnalyzerParameters.fitX_tSep[current_iRange]){ // switch to the next range
+        if (divright>=ParameterManager::Get().XTAnalyzerParameters.fitX_tSep[current_iRange+1]){ // switch to the next range
             current_iRange++;
             if (current_iRange>=fitX_nRanges){
-                MyNamedInfo("XTAnalyzer",Form("Division right side %.1f ns assed the edge of the last range[%d]: t = %.1f ns. Stop sampling.",divright,fitX_nRanges,ParameterManager::Get().XTAnalyzerParameters.fitX_tSep[current_iRange]));
+                MyNamedInfo("XTAnalyzer",Form("Division right side %.1f ns assed the edge of the last range[%d]: t = %.1f ns. Stop sampling.",divright,fitX_nRanges,ParameterManager::Get().XTAnalyzerParameters.fitX_tSep[current_iRange+1]));
                 break;
             }
             current_nbins_to_fit = ParameterManager::Get().XTAnalyzerParameters.fitX_nBins[current_iRange];
@@ -564,7 +565,8 @@ TF1 * XTAnalyzer::fitSliceSingleSide(TH1D * hist, double & x1,double & xerr1,dou
         nPars = 3;
     }
     else{ // composite function
-        if (functionType==kGaussianPlusLandau){ // fit with gaussian plus landau
+        // Note that if fitFunctionType is kOptimal, do fitting with kGaussianPlusLandau first, then test kLandauPlusGaussian
+        if (functionType==kGaussianPlusLandau||functionType==kOptimal){ // fit with gaussian plus landau
             if (isLeft){
                 f = f_combGausLandL;
                 fp = f_gausL;
@@ -576,7 +578,7 @@ TF1 * XTAnalyzer::fitSliceSingleSide(TH1D * hist, double & x1,double & xerr1,dou
                 fb = f_land2R;
             }
         }
-        if (functionType==kLandauPlusGaussian){ // fit with gaussian plus landau
+        else if (functionType==kLandauPlusGaussian){ // fit with gaussian plus landau
             if (isLeft){
                 f = f_combLandGausL;
                 fp = f_landL;
@@ -614,7 +616,7 @@ TF1 * XTAnalyzer::fitSliceSingleSide(TH1D * hist, double & x1,double & xerr1,dou
         }
         f->SetParameters(h1*p_h_m,x1,p_s_m?p_s_m:sig1, // peak on the left
                          b_h_m,0.,b_s_m?b_s_m:0.1); // base part (relative to peak)
-        // peak on the left
+        // peak part
         f->SetParLimits(0,h1*p_h_l,h1*p_h_r);
         f->SetParLimits(1,x1-p_x_d,x1+p_x_d);
         f->SetParLimits(2,p_s_l,p_s_r);
@@ -643,6 +645,72 @@ TF1 * XTAnalyzer::fitSliceSingleSide(TH1D * hist, double & x1,double & xerr1,dou
         MyNamedVerbose("XTAnalyzer",Form("After fitting, chi2 = %.3e, prob = %.3e, result %d",chi2,prob,result));
         for (int i = 0; i<nPars; i++){
             MyNamedVerbose("XTAnalyzer",Form("  %d: %.3e +- %.3e",i,f->GetParameter(i),f->GetParError(i)));
+        }
+    }
+
+    if (functionType==kOptimal){ // try LandauPlusGaussian in this case
+        MyNamedVerbose("XTAnalyzer",Form("fitFunctionType is kOptimal. Try LandauPlusGaussian"));
+        if (isLeft){
+            f = f_combLandGausL;
+            fp = f_landL;
+            fb = f_gaus2L;
+        }
+        else{
+            f = f_combLandGausR;
+            fp = f_landR;
+            fb = f_gaus2R;
+        }
+        f->SetParameters(h1*p_h_m,x1,p_s_m?p_s_m:sig1, // peak on the left
+                         b_h_m,0.,b_s_m?b_s_m:0.1); // base part (relative to peak)
+        // peak part
+        f->SetParLimits(0,h1*p_h_l,h1*p_h_r);
+        f->SetParLimits(1,x1-p_x_d,x1+p_x_d);
+        f->SetParLimits(2,p_s_l,p_s_r);
+        // base part (relative to peak)
+        f->SetParLimits(3,b_h_l,b_h_r);
+        f->SetParLimits(4,-b_x_d,b_x_d);
+        f->SetParLimits(5,b_s_l,b_s_r);
+        int resultTemp = 0;
+        double probTemp = 0;
+        double chi2Temp = 0;
+        for (int iTry = 0; iTry<10; iTry++){
+            if (probTemp>1e-20) break;
+            MyNamedVerbose("XTAnalyzer","Before fitting. Set parameters:");
+            for (int i = 0; i<nPars; i++){
+                double parmin,parmax;
+                f->GetParLimits(i,parmin,parmax);
+                if (iTry!=0){
+                    double ratio = gRandom->Uniform(0.4,0.6);
+                    f->SetParameter(i,parmin*ratio+parmax*(1-ratio));
+                }
+                MyNamedVerbose("XTAnalyzer",Form("  %d: %.3e (%.3e ~ %.3e)",i,f->GetParameter(i),parmin,parmax));
+            }
+            resultTemp = hist->Fit(f,"qN0");
+            chi2Temp = f->GetChisquare();
+            probTemp = f->GetProb();
+            MyNamedVerbose("XTAnalyzer",Form("After fitting, chi2 = %.3e, prob = %.3e, result %d",chi2Temp,probTemp,resultTemp));
+            for (int i = 0; i<nPars; i++){
+                MyNamedVerbose("XTAnalyzer",Form("  %d: %.3e +- %.3e",i,f->GetParameter(i),f->GetParError(i)));
+            }
+        }
+        if (chi2Temp<chi2){
+            functionType = kLandauPlusGaussian;
+            chi2 = chi2Temp;
+            prob = probTemp;
+            result = resultTemp;
+        }
+        else{ // change the function back
+            functionType = kGaussianPlusLandau;
+            if (isLeft){
+                f = f_combGausLandL;
+                fp = f_gausL;
+                fb = f_land2L;
+            }
+            else{
+                f = f_combGausLandR;
+                fp = f_gausR;
+                fb = f_land2R;
+            }
         }
     }
 
@@ -732,7 +800,8 @@ TF1 * XTAnalyzer::fitSliceBothSides(TH1D * hist, double & x1,double & xerr1,doub
         nPars = 5;
     }
     else{ // composite function
-        if (fitFunctionType==kGaussianPlusLandau){ // fit with gaussian plus landau
+        // Note that if fitFunctionType is kOptimal, do fitting with kGaussianPlusLandau first, then test kLandauPlusGaussian
+        if (fitFunctionType==kGaussianPlusLandau||fitFunctionType==kOptimal){ // fit with gaussian plus landau
             functionType = kGaussianPlusLandauBothSides;
             f = f_combGausLandBoth;
             fpl = f_gausL;
@@ -742,7 +811,7 @@ TF1 * XTAnalyzer::fitSliceBothSides(TH1D * hist, double & x1,double & xerr1,doub
             fl = f_combGausLandL;
             fr = f_combGausLandR;
         }
-        if (fitFunctionType==kLandauPlusGaussian){ // fit with gaussian plus landau
+        else if (fitFunctionType==kLandauPlusGaussian){ // fit with gaussian plus landau
             functionType = kLandauPlusGaussianBothSides;
             f = f_combLandGausBoth;
             fpl = f_landL;
@@ -807,6 +876,70 @@ TF1 * XTAnalyzer::fitSliceBothSides(TH1D * hist, double & x1,double & xerr1,doub
         MyNamedVerbose("XTAnalyzer",Form("After fitting, chi2 = %.3e, prob = %.3e, result %d",chi2,prob,result));
         for (int i = 0; i<nPars; i++){
             MyNamedVerbose("XTAnalyzer",Form("  %d: %.3e +- %.3e",i,f->GetParameter(i),f->GetParError(i)));
+        }
+    }
+
+    if (fitFunctionType==kOptimal){ // try LandauPlusGaussian in this case
+        MyNamedVerbose("XTAnalyzer",Form("fitFunctionType is kOptimal. Try LandauPlusGaussian"));
+        functionType = kLandauPlusGaussianBothSides;
+        f = f_combLandGausBoth;
+        fpl = f_landL;
+        fpr = f_landR;
+        fbl = f_gaus2L;
+        fbr = f_gaus2R;
+        fl = f_combLandGausL;
+        fr = f_combLandGausR;
+        f->SetParameters(h1*p_h_m,x1,p_s_m?p_s_m:sig1, // peak on the left
+                b_h_m,0.,b_s_m?b_s_m:0.1, // base part (relative to peak)
+                h2*p_h_m,x2); // peak on the right
+        // peak on the left
+        f->SetParLimits(0,h1*p_h_l,h1*p_h_r);
+        f->SetParLimits(1,x1-p_x_d,x1+p_x_d);
+        f->SetParLimits(2,p_s_l,p_s_r);
+        // base part (relative to peak)
+        f->SetParLimits(3,b_h_l,b_h_r);
+        f->SetParLimits(4,-b_x_d,b_x_d);
+        f->SetParLimits(5,b_s_l,b_s_r);
+        // peak on the right
+        f->SetParLimits(6,h2*p_h_l,h2*p_h_r);
+        f->SetParLimits(7,x2-p_x_d,x2+p_x_d);
+        int resultTemp = 0;
+        double probTemp = 0;
+        double chi2Temp = 0;
+        for (int iTry = 0; iTry<10; iTry++){
+            if (probTemp>1e-20) break;
+            MyNamedVerbose("XTAnalyzer","Before fitting. Set parameters:");
+            for (int i = 0; i<nPars; i++){
+                double parmin,parmax;
+                f->GetParLimits(i,parmin,parmax);
+                if (iTry!=0){
+                    double ratio = gRandom->Uniform(0.4,0.6);
+                    f->SetParameter(i,parmin*ratio+parmax*(1-ratio));
+                }
+                MyNamedVerbose("XTAnalyzer",Form("  %d: %.3e (%.3e ~ %.3e)",i,f->GetParameter(i),parmin,parmax));
+            }
+            result = hist->Fit(f,"qN0");
+            chi2Temp = f->GetChisquare();
+            probTemp = f->GetProb();
+            MyNamedVerbose("XTAnalyzer",Form("After fitting, chi2 = %.3e, prob = %.3e, result %d",chi2Temp,probTemp,resultTemp));
+            for (int i = 0; i<nPars; i++){
+                MyNamedVerbose("XTAnalyzer",Form("  %d: %.3e +- %.3e",i,f->GetParameter(i),f->GetParError(i)));
+            }
+        }
+        if (chi2Temp<chi2){
+            chi2 = chi2Temp;
+            prob = probTemp;
+            result = resultTemp;
+        }
+        else{ // change the function back
+            functionType = kGaussianPlusLandauBothSides;
+            f = f_combGausLandBoth;
+            fpl = f_gausL;
+            fpr = f_gausR;
+            fbl = f_land2L;
+            fbr = f_land2R;
+            fl = f_combGausLandL;
+            fr = f_combGausLandR;
         }
     }
 

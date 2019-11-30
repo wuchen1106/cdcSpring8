@@ -133,6 +133,20 @@ void ParameterManager::LoadParameters(ParaBlock theParaBlock){
             if (MyRuntimeParameters::Get().HasParameter(Form("XTAnalyzer.fitX_%d_base_sigma_right",iRange))) {XTAnalyzerParameters.fitX_base_sigma_right[iRange] = MyRuntimeParameters::Get().GetParameterD(Form("XTAnalyzer.fitX_%d_base_sigma_right",iRange)); for (int jRange = iRange+1; jRange<XTAnalyzerParameters.fitX_nRanges; jRange++){XTAnalyzerParameters.fitX_base_sigma_right[jRange] = XTAnalyzerParameters.fitX_base_sigma_right[iRange];}}
             if (MyRuntimeParameters::Get().HasParameter(Form("XTAnalyzer.fitX_%d_base_mean_range",iRange))) {XTAnalyzerParameters.fitX_base_mean_range[iRange] = MyRuntimeParameters::Get().GetParameterD(Form("XTAnalyzer.fitX_%d_base_mean_range",iRange)); for (int jRange = iRange+1; jRange<XTAnalyzerParameters.fitX_nRanges; jRange++){XTAnalyzerParameters.fitX_base_mean_range[jRange] = XTAnalyzerParameters.fitX_base_mean_range[iRange];}}
         }
+        // get the last tSep
+        int iRange = XTAnalyzerParameters.fitX_nRanges;
+        if (MyRuntimeParameters::Get().HasParameter(Form("XTAnalyzer.fitX_%d_tSep",iRange))) {
+            XTAnalyzerParameters.fitX_tSep[iRange] = MyRuntimeParameters::Get().GetParameterD(Form("XTAnalyzer.fitX_%d_tSep",iRange));
+            if (XTAnalyzerParameters.fitX_tSep[iRange]<XTAnalyzerParameters.bin_t_min){
+                MyWarn("XTAnalyzerParameters.fitX_tSep is set to "<<XTAnalyzerParameters.fitX_tSep[iRange]<<" but cannot be smaller than XTAnalyzerParameters.bin_t_min = "<<XTAnalyzerParameters.bin_t_min);
+                XTAnalyzerParameters.fitX_tSep[iRange]=XTAnalyzerParameters.bin_t_min;
+            }
+            if (XTAnalyzerParameters.fitX_tSep[iRange]>XTAnalyzerParameters.bin_t_max){
+                MyWarn("XTAnalyzerParameters.fitX_tSep is set to "<<XTAnalyzerParameters.fitX_tSep[iRange]<<" but cannot be larger than XTAnalyzerParameters.bin_t_max = "<<XTAnalyzerParameters.bin_t_max);
+                XTAnalyzerParameters.fitX_tSep[iRange]=XTAnalyzerParameters.bin_t_max;
+            }
+            for (int jRange = iRange+1; jRange<XTAnalyzerParameters.fitX_nRanges; jRange++){XTAnalyzerParameters.fitX_tSep[jRange] = XTAnalyzerParameters.fitX_tSep[iRange];}
+        }
         if (MyRuntimeParameters::Get().HasParameter("XTAnalyzer.graph_n_min")) XTAnalyzerParameters.graph_n_min = MyRuntimeParameters::Get().GetParameterI("XTAnalyzer.graph_n_min");
         if (MyRuntimeParameters::Get().HasParameter("XTAnalyzer.graph_chi2_max")) XTAnalyzerParameters.graph_chi2_max = MyRuntimeParameters::Get().GetParameterD("XTAnalyzer.graph_chi2_max");
         if (MyRuntimeParameters::Get().HasParameter("XTAnalyzer.graph_prob_min")) XTAnalyzerParameters.graph_prob_min = MyRuntimeParameters::Get().GetParameterD("XTAnalyzer.graph_prob_min");
@@ -304,6 +318,7 @@ void XTAnalyzerPara::Print(){
         else if (fitX_functionType[iRange]==XTAnalyzer::kDoubleLandau) functionName = "Landau+Landau";
         else if (fitX_functionType[iRange]==XTAnalyzer::kGaussianPlusLandau) functionName = "Gaussian+Landau";
         else if (fitX_functionType[iRange]==XTAnalyzer::kLandauPlusGaussian) functionName = "Landau+Gaussian";
+        else if (fitX_functionType[iRange]==XTAnalyzer::kOptimal) functionName = "Optimal: Gaussian+Landau or Landau+Gaussian";
         printf("    %d: %.1f ~ %.1f ns, minEntries = %d, nBins = %d, smooth %d, fit both sides together? %s, set empty bins? %s, fit function %s\n",iRange,iRange==0?bin_t_min:fitX_tSep[iRange-1],fitX_tSep[iRange],fitX_minEntries[iRange],fitX_nBins[iRange],fitX_smooth[iRange],fitX_fitBoth[iRange]?"yes":"no",fitX_SetEmptyBins[iRange]?"yes":"no",functionName.c_str());
         printf("        peak part: height (rel to hist) %.2f ~ %.2f ~ %.2f, sigma (mm) %.2f ~ %.2f ~ %.2f, x offset (to hist) range (mm) %.2f\n",fitX_peak_height_left[iRange],fitX_peak_height_middle[iRange],fitX_peak_height_right[iRange],fitX_peak_sigma_left[iRange],fitX_peak_sigma_middle[iRange],fitX_peak_sigma_right[iRange],fitX_peak_mean_range[iRange]);
         if (fitX_functionType[iRange]!=XTAnalyzer::kGaussian&&fitX_functionType[iRange]!=XTAnalyzer::kLandau){
@@ -355,6 +370,9 @@ int ParameterManager::getFunctionType(TString name){
         else{
             functionType = XTAnalyzer::kLandau;
         }
+    }
+    else if (name.Contains("optimal",TString::kIgnoreCase)){
+        functionType = XTAnalyzer::kOptimal;
     }
     return functionType;
 }

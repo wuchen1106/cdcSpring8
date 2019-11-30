@@ -30,6 +30,7 @@ class XTAnalyzer{
     public:
         enum FunctionType{
             kNone,
+            kOptimal,
             kGaussian,
             kLandau,
             kDoubleGaussian,
