@@ -5,6 +5,7 @@
 #include <TFile.h>
 #include <TTree.h>
 #include <TF1.h>
+#include <TBackCompFitter.h>
 
 #include "GeometryManager.hxx"
 #include "Tracker.hxx"
@@ -20,6 +21,8 @@ TrackResult Tracker::trackResults[NCAND];
 std::map <int, int>    Tracker::hitIndexLeftRight;
 std::map <int, double> Tracker::hitIndexDriftDLeftMap;
 std::map <int, double> Tracker::hitIndexDriftDRightMap;
+TGraphErrors * Tracker::graph_pairX = NULL;
+TGraphErrors * Tracker::graph_pairZ = NULL;
 
 Tracker::Tracker(InputOutputManager::InputHitType theInputHitType):
     nGoodTracks(0),
@@ -28,8 +31,6 @@ Tracker::Tracker(InputOutputManager::InputHitType theInputHitType):
     nGoodPairs(0),
     func_pairYX(0),
     func_pairYZ(0),
-    graph_pairX(0),
-    graph_pairZ(0),
     inputHitType(theInputHitType),
     ierflg(0),
     amin(0),
@@ -324,8 +325,38 @@ bool Tracker::Fit2D(double safetyFactor, bool fitWithError, double & chi2X, doub
     updateWirePositionOnHit(); // fix wy positions
     if (updatePairPositions()) return false; // cannot make pairs
     setPairPositionGraphs(fitWithError);
-    graph_pairZ->Fit("func_pairYZ","QN0G","");
-    graph_pairX->Fit("func_pairYX","QN0G","");
+
+    // prepare to do the 1-D fitting
+    if (gMinuit) delete gMinuit;
+    gMinuit = new TMinuit(2);  //initialize TMinuit with a maximum of 2 params
+    gMinuit->SetFCN(fcnZ);
+    gMinuit->SetPrintLevel(-1); // no print
+    arglist[0] = 0;
+    gMinuit->mnexcm("SET NOW", arglist ,1,ierflg); // no warning 
+    arglist[0] = 1;
+    gMinuit->mnexcm("SET ERR", arglist ,1,ierflg);
+    // Do the fitting on Z pairs
+    double temp; double inz = func_pairYZ->GetParameter(0); double slz = func_pairYZ->GetParameter(1);
+    gMinuit->mnparm(0, "inz", inz, slzStep, slzMin,slzMax,ierflg);
+    gMinuit->mnparm(1, "slz", slz, inzStep, inzMin,inzMax,ierflg);
+    arglist[0] = 5000.0;
+    arglist[1] = 1.0;
+    gMinuit->mnexcm("MIGRAD", arglist ,2,ierflg);
+    gMinuit->GetParameter(0, inz, temp);
+    gMinuit->GetParameter(1, slz, temp);
+    func_pairYZ->SetParameter(0,inz); func_pairYZ->SetParameter(1,slz);
+    // Do the fitting on X pairs
+    gMinuit->SetFCN(fcnX);
+    double inx = func_pairYX->GetParameter(0); double slx = func_pairYX->GetParameter(1);
+    gMinuit->mnparm(0, "inx", inx, slxStep, slxMin,slxMax,ierflg);
+    gMinuit->mnparm(1, "slx", slx, inxStep, inxMin,inxMax,ierflg);
+    arglist[0] = 5000.0;
+    arglist[1] = 1.0;
+    gMinuit->mnexcm("MIGRAD", arglist ,2,ierflg);
+    gMinuit->GetParameter(0, inx, temp);
+    gMinuit->GetParameter(1, slx, temp);
+    func_pairYX->SetParameter(0,inx); func_pairYX->SetParameter(1,slx);
+
     double iinx = func_pairYX->Eval(GeometryManager::Get().ReferenceY);
     double iinz = func_pairYZ->Eval(GeometryManager::Get().ReferenceY);
     double islx = func_pairYX->GetParameter(1);
@@ -547,7 +578,7 @@ void Tracker::doFitting(double sliX, double iniX,double sliZ, double iniZ){
 void Tracker::fcn(int &npar, double *gin, double &f, double *par, int iflag)
 {
     double cp,ca;
-    if (npar<=4){
+    if (npar<4){
         MyError("Not enough par! npar = "<<npar<<", but we need 4");
     }
     else{
@@ -609,6 +640,26 @@ void Tracker::getchi2(double &f, double & cp, double & ca, double slx, double in
             ca = f;
         }
     }
+}
+
+void Tracker::fcnX(int &npar, double *gin, double &f, double *par, int iflag){
+    f = getchi2Graph(graph_pairX,*par,*(par+1));
+}
+
+void Tracker::fcnZ(int &npar, double *gin, double &f, double *par, int iflag){
+    f = getchi2Graph(graph_pairZ,*par,*(par+1));
+}
+
+double Tracker::getchi2Graph(TGraphErrors* graph, double v0, double sl){
+    double chi2 = 0;
+    for (size_t i = 0; i<graph->GetN(); i++){
+        double x,y; double yerr;
+        graph->GetPoint(i,x,y);
+        yerr = graph->GetErrorY(i);
+        double pred = v0+sl*x;
+        chi2+=pow((pred-y)/(yerr?yerr:1),2);
+    }
+    return chi2;
 }
 
 bool Tracker::checkResults(int nHitsSel, int icombi, int iselection){

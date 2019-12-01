@@ -54,13 +54,16 @@ private:
     void pickUpHitsForFitting(double slx, double inx, double slz, double inz, double residualCut); /// pick up hits from the given layer hit map. In each layer only choose one hit that is closest to the track. Abandon some layers if the residual of the closest one is still too larger than the residual cut
     void doFitting(double sliX, double iniX,double sliZ, double iniZ); /// The core part of track fitting
     static void fcn(int &npar, double *gin, double &f, double *par, int iflag); /// The function to be used by TMinuit
+    static void fcnZ(int &npar, double *gin, double &f, double *par, int iflag);
+    static void fcnX(int &npar, double *gin, double &f, double *par, int iflag);
     static void getchi2(double &f, double & cp, double & ca, double slx, double inx, double slz, double inz, double t0offset,bool all); /// get the chi2 with 3-D track
+    static double getchi2Graph(TGraphErrors* graph, double v0, double sl);
     bool checkResults(int nHitsSel, int icombi, int iselection); /// Compare the new tracking result (written in currentTrackResult) with previously stored candidates (stored in trackResults) and put it in correct place if needed.
 
     TF1 * func_pairYX; /// 2-D fitting function on Y-X plane
     TF1 * func_pairYZ; /// 2-D fitting function on Y-Z plane
-    TGraphErrors * graph_pairX; /// a graph to store pair positions with error on Y-X plane;
-    TGraphErrors * graph_pairZ; /// a graph to store pair positions with error on Y-X plane
+    static TGraphErrors * graph_pairX; /// a graph to store pair positions with error on Y-X plane;
+    static TGraphErrors * graph_pairZ; /// a graph to store pair positions with error on Y-X plane
 
     InputOutputManager::InputHitType inputHitType;
 

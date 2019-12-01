@@ -55,6 +55,7 @@ int main(int argc, char** argv){
         switch(opt_result){
             case 'M':
                 m_memdebug = true;
+                Log::ConfigureD("Memory=Debug");
                 printf("Turning on memory debug\n");
                 break;
             case 'P':
@@ -171,9 +172,8 @@ int main(int argc, char** argv){
     MyNamedDebug("Memory","Memory size: @"<<__LINE__<<": "<<pMyProcessManager->GetMemorySize());
     for (Long64_t iEntry = m_iEntryStart; iEntry<=m_iEntryStop; iEntry++){
         MyNamedInfo("Tracking","############ Entry "<<iEntry<<" #############");
-        MyNamedTrace("Memory","Memory size: @"<<__LINE__<<": "<<pMyProcessManager->GetMemorySize());
+        MyNamedDebug("Memory","Memory size: @"<<__LINE__<<": "<<pMyProcessManager->GetMemorySize());
         if (iEntry%m_modulo == 0){
-            MyNamedDebug("Memory","Memory size: @"<<__LINE__<<": "<<pMyProcessManager->GetMemorySize());
             std::cout<<iEntry<<std::endl;
         }
         InputOutputManager::Get().Reset();
@@ -245,7 +245,7 @@ int main(int argc, char** argv){
 
         tracker->SetOutput();
         InputOutputManager::Get().Fill();
-        MyNamedTrace("Memory","Memory size: @"<<__LINE__<<": "<<pMyProcessManager->GetMemorySize());
+        MyNamedDebug("Memory","Memory size: @"<<__LINE__<<": "<<pMyProcessManager->GetMemorySize());
     }// end of event loop
     MyNamedDebug("Memory","Memory size: @"<<__LINE__<<": "<<pMyProcessManager->GetMemorySize());
 
