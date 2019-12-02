@@ -1,6 +1,7 @@
 #include "ParameterManager.hxx"
 #include "XTAnalyzer.hxx"
 #include "MyRuntimeParameters.hxx"
+#include "HEPUnits.hxx"
 
 ParameterManager* ParameterManager::fParameterManager = NULL;
 
@@ -151,15 +152,25 @@ void ParameterManager::LoadParameters(ParaBlock theParaBlock){
         if (MyRuntimeParameters::Get().HasParameter("XTAnalyzer.graph_chi2_max")) XTAnalyzerParameters.graph_chi2_max = MyRuntimeParameters::Get().GetParameterD("XTAnalyzer.graph_chi2_max");
         if (MyRuntimeParameters::Get().HasParameter("XTAnalyzer.graph_prob_min")) XTAnalyzerParameters.graph_prob_min = MyRuntimeParameters::Get().GetParameterD("XTAnalyzer.graph_prob_min");
         if (MyRuntimeParameters::Get().HasParameter("XTAnalyzer.graph_sepX")) XTAnalyzerParameters.graph_sepX = MyRuntimeParameters::Get().GetParameterD("XTAnalyzer.graph_sepX");
-        if (MyRuntimeParameters::Get().HasParameter("XTAnalyzer.xt_center_nPol")) XTAnalyzerParameters.xt_center_nPol = MyRuntimeParameters::Get().GetParameterI("XTAnalyzer.xt_center_nPol");
-        if (MyRuntimeParameters::Get().HasParameter("XTAnalyzer.xt_center_tLeft")) XTAnalyzerParameters.xt_center_tLeft = MyRuntimeParameters::Get().GetParameterD("XTAnalyzer.xt_center_tLeft");
-        if (MyRuntimeParameters::Get().HasParameter("XTAnalyzer.xt_center_tRight")) XTAnalyzerParameters.xt_center_tRight = MyRuntimeParameters::Get().GetParameterD("XTAnalyzer.xt_center_tRight");
-        if (MyRuntimeParameters::Get().HasParameter("XTAnalyzer.xt_middle_nPol")) XTAnalyzerParameters.xt_middle_nPol = MyRuntimeParameters::Get().GetParameterI("XTAnalyzer.xt_middle_nPol");
-        if (MyRuntimeParameters::Get().HasParameter("XTAnalyzer.xt_middle_tLeft")) XTAnalyzerParameters.xt_middle_tLeft = MyRuntimeParameters::Get().GetParameterD("XTAnalyzer.xt_middle_tLeft");
-        if (MyRuntimeParameters::Get().HasParameter("XTAnalyzer.xt_middle_tRight")) XTAnalyzerParameters.xt_middle_tRight = MyRuntimeParameters::Get().GetParameterD("XTAnalyzer.xt_middle_tRight");
-        if (MyRuntimeParameters::Get().HasParameter("XTAnalyzer.xt_end_nPol")) XTAnalyzerParameters.xt_end_nPol = MyRuntimeParameters::Get().GetParameterI("XTAnalyzer.xt_end_nPol");
-        if (MyRuntimeParameters::Get().HasParameter("XTAnalyzer.xt_end_tLeft")) XTAnalyzerParameters.xt_end_tLeft = MyRuntimeParameters::Get().GetParameterD("XTAnalyzer.xt_end_tLeft");
-        if (MyRuntimeParameters::Get().HasParameter("XTAnalyzer.xt_end_tRight")) XTAnalyzerParameters.xt_end_tRight = MyRuntimeParameters::Get().GetParameterD("XTAnalyzer.xt_end_tRight");
+
+        if (MyRuntimeParameters::Get().HasParameter("XTAnalyzer.xtfunc_nRanges")){
+            XTAnalyzerParameters.xtfunc_nRanges = MyRuntimeParameters::Get().GetParameterI("XTAnalyzer.xtfunc_nRanges");
+            if (XTAnalyzerParameters.xtfunc_nRanges > NRANGES){
+                MyWarn("XTAnalyzerParameters.xtfunc_nRanges is set to "<<XTAnalyzerParameters.xtfunc_nRanges<<" but cannot be larger than "<<NRANGES);
+                XTAnalyzerParameters.xtfunc_nRanges = NRANGES;
+            }
+        }
+        if (MyRuntimeParameters::Get().HasParameter("XTAnalyzer.xtfunc_tHighEdge")) XTAnalyzerParameters.xtfunc_tHighEdge = MyRuntimeParameters::Get().GetParameterD("XTAnalyzer.xtfunc_tHighEdge");
+        for (int iRange = 0; iRange<XTAnalyzerParameters.xtfunc_nRanges; iRange++){
+            if (MyRuntimeParameters::Get().HasParameter(Form("XTAnalyzer.xtfunc_%d_nPol",iRange))) {XTAnalyzerParameters.xtfunc_nPol[iRange] = MyRuntimeParameters::Get().GetParameterI(Form("XTAnalyzer.xtfunc_%d_nPol",iRange)); for (int jRange = iRange+1; jRange<XTAnalyzerParameters.xtfunc_nRanges; jRange++){XTAnalyzerParameters.xtfunc_nPol[jRange] = XTAnalyzerParameters.xtfunc_nPol[iRange];}}
+            if (MyRuntimeParameters::Get().HasParameter(Form("XTAnalyzer.xtfunc_%d_tLeft",iRange))) {XTAnalyzerParameters.xtfunc_tLeft[iRange] = MyRuntimeParameters::Get().GetParameterD(Form("XTAnalyzer.xtfunc_%d_tLeft",iRange)); for (int jRange = iRange+1; jRange<XTAnalyzerParameters.xtfunc_nRanges; jRange++){XTAnalyzerParameters.xtfunc_tLeft[jRange] = XTAnalyzerParameters.xtfunc_tLeft[iRange];}}
+            if (MyRuntimeParameters::Get().HasParameter(Form("XTAnalyzer.xtfunc_%d_tRight",iRange))) {XTAnalyzerParameters.xtfunc_tRight[iRange] = MyRuntimeParameters::Get().GetParameterD(Form("XTAnalyzer.xtfunc_%d_tRight",iRange)); for (int jRange = iRange+1; jRange<XTAnalyzerParameters.xtfunc_nRanges; jRange++){XTAnalyzerParameters.xtfunc_tRight[jRange] = XTAnalyzerParameters.xtfunc_tRight[iRange];}}
+            if (MyRuntimeParameters::Get().HasParameter(Form("XTAnalyzer.xtfunc_%d_tLowEdge",iRange))) {XTAnalyzerParameters.xtfunc_tLowEdge[iRange] = MyRuntimeParameters::Get().GetParameterD(Form("XTAnalyzer.xtfunc_%d_tLowEdge",iRange)); for (int jRange = iRange+1; jRange<XTAnalyzerParameters.xtfunc_nRanges; jRange++){XTAnalyzerParameters.xtfunc_tLowEdge[jRange] = XTAnalyzerParameters.xtfunc_tLowEdge[iRange];}}
+        }
+        if (MyRuntimeParameters::Get().HasParameter("XTAnalyzer.draw_tmin")) XTAnalyzerParameters.draw_tmin = MyRuntimeParameters::Get().GetParameterD("XTAnalyzer.draw_tmin");
+        if (MyRuntimeParameters::Get().HasParameter("XTAnalyzer.draw_tmax")) XTAnalyzerParameters.draw_tmax = MyRuntimeParameters::Get().GetParameterD("XTAnalyzer.draw_tmax");
+        if (MyRuntimeParameters::Get().HasParameter("XTAnalyzer.draw_xmin")) XTAnalyzerParameters.draw_xmin = MyRuntimeParameters::Get().GetParameterD("XTAnalyzer.draw_xmin");
+        if (MyRuntimeParameters::Get().HasParameter("XTAnalyzer.draw_xmax")) XTAnalyzerParameters.draw_xmax = MyRuntimeParameters::Get().GetParameterD("XTAnalyzer.draw_xmax");
     }
 }
 
@@ -272,15 +283,20 @@ XTAnalyzerPara::XTAnalyzerPara(){
     graph_chi2_max = 0; // no cut
     graph_prob_min = 0.1;
     graph_sepX = 1;
-    xt_center_nPol = 3;
-    xt_center_tLeft = 0;
-    xt_center_tRight = 100;
-    xt_middle_nPol = 3;
-    xt_middle_tLeft = 50;
-    xt_middle_tRight = 340;
-    xt_end_nPol = 3;
-    xt_end_tLeft = 330;
-    xt_end_tRight = 800;
+
+    xtfunc_nRanges = 1;
+    xtfunc_tHighEdge = 0;
+    for (int iRange = 0; iRange<NRANGES; iRange++){
+        xtfunc_nPol[iRange] = 1;
+        xtfunc_tLeft[iRange] = 0;
+        xtfunc_tRight[iRange] = 0;
+        xtfunc_tLowEdge[iRange] = 0;
+    }
+
+    draw_tmin = -25*unit::ns;
+    draw_tmax = 800*unit::ns;
+    draw_xmin = -10*unit::mm;
+    draw_xmax = 10*unit::mm;
 }
 
 void XTAnalyzerPara::Print(){
@@ -330,12 +346,12 @@ void XTAnalyzerPara::Print(){
     printf("  Maximum chi2 of the sample point to be included in graph: %.3e\n",graph_chi2_max);
     printf("  Minimum p-value of the sample point to be included in graph: %.3e\n",graph_prob_min);
     printf("  Separation X to combine space samples and time samples: %.3e\n",graph_sepX);
-    printf(" About XT function:\n");
-    printf("  XTType = %d\n",XTType);
-    printf("  AsymXT = %s\n",AsymXT?"true":"false");
-    printf("  center: Pol%d, T %.0f ~ %.0f ns",xt_center_nPol,xt_center_tLeft,xt_center_tRight);
-    printf("  middle: Pol%d, T %.0f ~ %.0f ns",xt_middle_nPol,xt_middle_tLeft,xt_middle_tRight);
-    printf("  end: Pol%d, T %.0f ~ %.0f ns",xt_end_nPol,xt_end_tLeft,xt_end_tRight);
+    printf(" About XT functions fitting: valid range %.1f ~ %.1f ns\n",xtfunc_tLowEdge[0],xtfunc_tHighEdge);
+    printf("  Number of ranges %d\n",xtfunc_nRanges);
+    for (int iRange = 0; iRange<xtfunc_nRanges; iRange++){
+        printf("    %d: %.1f ~ %.1f ns, nPol = %d, connect to previous at %.1f ns\n",iRange,xtfunc_tLeft[iRange],xtfunc_tRight[iRange],xtfunc_nPol[iRange],xtfunc_tLowEdge[iRange]);
+    }
+    printf(" About drawing samples and fitting results: t %.1f ~ %.1f ns, x %.1f ~ %.1f mm\n",draw_tmin/unit::ns,draw_tmax/unit::ns,draw_xmin/unit::mm,draw_xmax/unit::mm);
 }
 
 AnaPara::AnaPara(){

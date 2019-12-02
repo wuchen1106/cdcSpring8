@@ -1,6 +1,9 @@
 #ifndef XTANALYZER_H
 #define XTANALYZER_H
 
+#define NRANGE 10
+#define NPOL   10
+
 #include <vector>
 
 #include "TString.h"
@@ -128,18 +131,9 @@ class XTAnalyzer{
         TF1 * f_combLandGausBoth;
 
         // functions to fit XT relation
-        TF1 * f_left_cen;
-        TF1 * f_left_mid;
-        TF1 * f_left_end;
-        TF1 * f_right_cen;
-        TF1 * f_right_mid;
-        TF1 * f_right_end;
-        TF1 * f_folded_cen;
-        TF1 * f_folded_mid;
-        TF1 * f_folded_end;
+        TF1 * f_basicXT[NRANGE][NPOL];
         TF1 * f_left;
         TF1 * f_right;
-        TF1 * f_folded;
 };
 
 #endif

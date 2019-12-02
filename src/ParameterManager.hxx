@@ -77,7 +77,7 @@ public:
     int    bin_x_num;
     // regroup T bins to fit X
     int    fitX_nRanges;
-    double fitX_tSep[NRANGES];
+    double fitX_tSep[NRANGES+1];
     int    fitX_minEntries[NRANGES];
     int    fitX_nBins[NRANGES];
     int    fitX_smooth[NRANGES];
@@ -104,15 +104,17 @@ public:
     double graph_prob_min;
     double graph_sepX;
     // about XT function
-    int    xt_center_nPol;
-    double xt_center_tLeft;
-    double xt_center_tRight;
-    int    xt_middle_nPol;
-    double xt_middle_tLeft;
-    double xt_middle_tRight;
-    int    xt_end_nPol;
-    double xt_end_tLeft;
-    double xt_end_tRight;
+    int    xtfunc_nRanges;
+    double xtfunc_tHighEdge;
+    double xtfunc_tLeft[NRANGES];
+    double xtfunc_tRight[NRANGES];
+    double xtfunc_tLowEdge[NRANGES];
+    int    xtfunc_nPol[NRANGES];
+    // about drawing samples and fitting results
+    double draw_tmin;
+    double draw_tmax;
+    double draw_xmin;
+    double draw_xmax;
 };
 
 // parameter block for Ana
