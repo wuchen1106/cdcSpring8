@@ -28,6 +28,14 @@ tracking parameters
     < tracking.lidStop = 8 >
 
 *******************************************************************************                                                                   
+XTManager parameters
+*******************************************************************************                                                                   
+    < XTManager.xtType = SingleLeftRight > SingleLeftRight SingleFolded AllLeftRight AllFolded EvenOddLeftRight EvenOddFolded
+    < XTManager.defaultLayer = 4 >
+    < XTManager.evenLayer = 4 >
+    < XTManager.oddLayer = 5 >
+
+*******************************************************************************                                                                   
 XTAnalyzer parameters
 *******************************************************************************                                                                   
   event selection
