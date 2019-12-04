@@ -6,24 +6,25 @@
 #include "Log.hxx"
 #include "XTManager.hxx"
 #include "RunInfoManager.hxx"
+#include "ParameterManager.hxx"
 
 XTManager* XTManager::fXTManager = NULL;
 
 XTManager::XTManager():
-    fInputFileXT(0),
-    fInputFileRes(0),
-    fXTLeftEven(0),
-    fXTRightEven(0),
-    fXTLeftOdd(0),
-    fXTRightOdd(0),
-    fXTLeftDefault(0),
-    fXTRightDefault(0),
-    fResIntrinsic(0)
+    fInputFileXT(NULL),
+    fInputFileRes(NULL),
+    fXTLeftEven(NULL),
+    fXTRightEven(NULL),
+    fXTLeftOdd(NULL),
+    fXTRightOdd(NULL),
+    fXTLeftDefault(NULL),
+    fXTRightDefault(NULL),
+    fResIntrinsic(NULL),
+    xtType(kSingleFolded)
 {
-    xtType = kSingleFolded;
     for (int i = 0; i<NLAY; i++){
-        fXTLeft[i] = 0; 
-        fXTRight[i] = 0;
+        fXTLeft[i] = NULL; 
+        fXTRight[i] = NULL;
     }
 }
 
@@ -51,6 +52,8 @@ bool XTManager::Initialize(){
     int HV = RunInfoManager::Get().HV;
     TString runName = RunInfoManager::Get().preRunName;
 
+    xtType = ParameterManager::Get().XTManagerParameters.xtType;
+
     // Prepare XT functions
     fInputFileXT = new TFile(HOME+Form("/info/xt.%d.",runNo)+runName+".root");
     if (!fInputFileXT||fInputFileXT->IsZombie()){
@@ -65,12 +68,18 @@ bool XTManager::Initialize(){
         fXTLeft[i] = (TF1*) fInputFileXT->Get(Form("fl_%d",i));
         fXTRight[i] = (TF1*) fInputFileXT->Get(Form("fr_%d",i));
     }
-    fXTLeftEven = (TF1*) fInputFileXT->Get("fl_even");
-    fXTRightEven = (TF1*) fInputFileXT->Get("fr_even");
-    fXTLeftOdd = (TF1*) fInputFileXT->Get("fl_odd");
-    fXTRightOdd = (TF1*) fInputFileXT->Get("fr_odd");
-    fXTLeftDefault = (TF1*) fInputFileXT->Get("fl_0");
-    fXTRightDefault = (TF1*) fInputFileXT->Get("fr_0");
+    int lid = ParameterManager::Get().XTManagerParameters.defaultLayer;
+    if (lid>=NLAY||lid<0) {MyError("Invalid default layer "<<lid); return false;}
+    fXTLeftDefault = fXTLeft[lid];
+    fXTRightDefault = fXTRight[lid];
+    lid = ParameterManager::Get().XTManagerParameters.evenLayer;
+    if (lid>=NLAY||lid<0) {MyError("Invalid even layer "<<lid); return false;}
+    fXTLeftEven = fXTLeft[lid];
+    fXTRightEven = fXTRight[lid];
+    lid = ParameterManager::Get().XTManagerParameters.oddLayer;
+    if (lid>=NLAY||lid<0) {MyError("Invalid odd layer "<<lid); return false;}
+    fXTLeftOdd = fXTLeft[lid];
+    fXTRightOdd = fXTRight[lid];
 
     // Prepare error function
     fInputFileRes = new TFile(HOME+Form("/info/reso.%d.",runNo)+runName+".root");
@@ -196,7 +205,7 @@ void XTManager::Print(){
 
 bool XTManager::PrintXTfunc(const TF1 * fl, const TF1 * fr){
     if (fl||fr){
-        printf("Empty!\n");
+        MyNamedLog("XTManager","Empty XT function!");
         return false;
     }
     double tmaxl = 0;

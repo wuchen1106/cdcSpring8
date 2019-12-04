@@ -1,6 +1,9 @@
 #ifndef XTANALYZER_H
 #define XTANALYZER_H
 
+#define NRANGE 10
+#define NPOL   10
+
 #include <vector>
 
 #include "TString.h"
@@ -56,19 +59,20 @@ class XTAnalyzer{
         int  PrepareTree(bool reLoad=false); ///< If reLoad is set to true, then the objects will be loaded instead of being created
         int  PrepareXTFunctions();
         void Fill(double t, double x);
+        void Write(void);
         void BinAnalysis(void);
         void FitXT(void);
-        void Write(void);
 
     private:
         TF1 * fitSliceBothSides(TH1D * h, double & x1,double & xerr1,double & sig1,double & x2,double & xerr2,double & sig2,double & chi2,double & prob, int & result, int & functionType, int iRange);
         TF1 * fitSliceSingleSide(TH1D * h, double & x,double & xerr,double & sig,double & chi2,double & prob, int & result, int & functionType, int iRange, bool isLeft);
         void getMaximum(TH1D * h, double & position, double & maximum, double left, double right);
         void plusGraph(TGraphErrors * gn, const TGraphErrors * gl, const TGraphErrors * gr, double sl = 1, double sr = 1);
-        double interpolate(const TGraphErrors * graph, double theX);
+        bool interpolate(const TGraphErrors * graph, double theX, double & theY);
         TF1 * myNewTF1(TString name, TString form, double left, double right);
         void drawFitting(TH1D* h,TCanvas * c,TString title, TString filename, int function, double center1, double center2, bool isLeft = false);
-        void drawSamples(void);
+        void drawSample2D(bool withFunction = false);
+        void drawSampleAtt(void);
         void formXTGraphs(void); //< scan through the tree and select points to form up the graphs.
         void getMeanRMS(TF1 * f, const TH1D * h, double & mean, double & sigma);
 
@@ -128,18 +132,9 @@ class XTAnalyzer{
         TF1 * f_combLandGausBoth;
 
         // functions to fit XT relation
-        TF1 * f_left_cen;
-        TF1 * f_left_mid;
-        TF1 * f_left_end;
-        TF1 * f_right_cen;
-        TF1 * f_right_mid;
-        TF1 * f_right_end;
-        TF1 * f_folded_cen;
-        TF1 * f_folded_mid;
-        TF1 * f_folded_end;
+        TF1 * f_basicXT[2][NRANGE][NPOL];
         TF1 * f_left;
         TF1 * f_right;
-        TF1 * f_folded;
 };
 
 #endif

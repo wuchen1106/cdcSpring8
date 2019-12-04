@@ -55,16 +55,16 @@ int main(int argc, char** argv){
     int m_nEntries = 0;
     int m_modulo = 10000;
     bool m_memdebug = false;
-    int m_defaultLayerID = 4;
     bool m_DrawDetails = false;
     int m_StartStage = 1;
     int m_StopStage = 3;
+    bool m_SeparateWires = false;
 
     // Load options
     int    opt_result;
     std::string opt_name;
     std::size_t opt_pos;
-    while((opt_result=getopt(argc,argv,"B:C:D:E:HL:MN:P:R:S:V:h"))!=-1){
+    while((opt_result=getopt(argc,argv,"B:C:D:E:HMN:P:R:S:V:Wh"))!=-1){
         switch(opt_result){
             /* INPUTS */
             case 'M':
@@ -90,10 +90,6 @@ int main(int argc, char** argv){
             case 'N':
                 m_nEntries = atoi(optarg);
                 printf("Number of entries set to %d\n",m_nEntries);
-                break;
-            case 'L':
-                m_defaultLayerID = atoi(optarg);
-                printf("Test layer set to %d\n",m_defaultLayerID);
                 break;
             case 'C':
                 getRunTimeParameters(optarg);
@@ -127,15 +123,15 @@ int main(int argc, char** argv){
                       );
                 break;
             case 'D':
-                {
                     if (!Log::ConfigureD(optarg)) print_usage(argv[0]);
                     break;
-                }
             case 'V':
-                {
                     if (!Log::ConfigureV(optarg)) print_usage(argv[0]);
                     break;
-                }
+            case 'W':
+                    m_SeparateWires = true;
+                    printf("Will separate wires\n");
+                    break;
             case '?':
                 printf("Wrong option! optopt=%c, optarg=%s\n", optopt, optarg);
             case 'h':
@@ -160,7 +156,6 @@ int main(int argc, char** argv){
     printf("runNo               = %d\n",m_runNo);
     printf("preRunName          = \"%s\"\n",m_preRunName.Data());
     printf("runName             = \"%s\"\n",m_runName.Data());
-    printf("default test layer  = %d\n",m_defaultLayerID);
     printf("Start Entry         = %d\n",m_iEntryStart);
     printf("Stop Entry          = %d\n",m_iEntryStop);
     ParameterManager::Get().Print();
@@ -173,7 +168,7 @@ int main(int argc, char** argv){
 
     // Prepare managers
     bool success = false;
-    success = RunInfoManager::Get().Initialize(m_runNo,m_preRunName,m_runName,m_defaultLayerID);RunInfoManager::Get().Print(); // note that the default layerID here is not important. We will set test layerID in the loop below
+    success = RunInfoManager::Get().Initialize(m_runNo,m_preRunName,m_runName,4);RunInfoManager::Get().Print(); // the default layerID here is not important so it's arbiturarily chosen as layer 4
     if (!success) {MyNamedError("GetXT","Cannot initialize RunInfoManager"); return 1;}
     success = BeamManager::Get().Initialize(ParameterManager::Get().beamType);BeamManager::Get().Print();
     if (!success) {MyNamedError("GetXT","Cannot initialize BeamManager"); return 1;}
@@ -224,36 +219,47 @@ int main(int argc, char** argv){
 
     //=================================================Loop in layers to get XTs====================================================
     // Loop in layers
+    int wireStart = 0; int wireStop = 0;
+    if (m_SeparateWires){wireStart = -1; wireStop = 10;}
     for (int testLayer = 0; testLayer<NLAY; testLayer++){
+    for (int testWire = wireStart; testWire<=wireStop; testWire++){
         MyNamedLog("GetXT","In Layer "<<testLayer);
         RunInfoManager::Get().testLayer = testLayer;
         //----------------------------------Prepare the 2D histogram--------------------------------------------
         MyNamedLog("GetXT","  Preparing the 2D histogram");
-        fXTAnalyzer->SetSuffix(Form("_%d",testLayer));
+        TString suffix("");
+        if (m_SeparateWires&&testWire>=0){
+            suffix = Form("_%d_%d",testLayer,testWire);
+        }
+        else{
+            suffix = Form("_%d",testLayer);
+        }
+        fXTAnalyzer->SetSuffix(suffix);
         fXTAnalyzer->Initialize();
         int statusInitialize;
         if (m_StartStage==1) statusInitialize=fXTAnalyzer->Prepare2DHists(false); // create
         else statusInitialize=fXTAnalyzer->Prepare2DHists(true); // reload
         if (statusInitialize){
-            MyNamedWarn("GetXT",Form("Something wrong with XTAnalyzer Prepare2DHists for layer[%d], will ignore this layer!",testLayer));
+            MyNamedWarn("GetXT",Form("Something wrong with XTAnalyzer Prepare2DHists for \"%s\", will ignore this layer!",suffix.Data()));
             continue;
         }
         if (m_StartStage==1){
-            if (!InputOutputManager::Get().Initialize()) {MyNamedError("GetXT","Cannot initialize InputOutputManager for layer "<<testLayer); continue;}
+            if (!InputOutputManager::Get().Initialize()) {MyNamedError("GetXT","Cannot initialize InputOutputManager for "<<suffix); continue;}
             Long64_t N = InputOutputManager::Get().GetEntries();
             if (N==0){
-                MyNamedWarn("GetXT","Input file for layer "<<testLayer<<" is empty!");
+                MyNamedWarn("GetXT","Input file for \""<<suffix<<"\" is empty!");
                 continue;
             }
             // Prepare histograms for efficiency
-            TH1I * h_nHits = new TH1I(Form("h_track_%d_nHits",testLayer),"Number of hits",100,0,100); h_nHits->GetXaxis()->SetTitle("Number of hits"); h_nHits->GetYaxis()->SetTitle("Counts");
-            TH2I * h_nHitsGS = new TH2I(Form("h_track_%d_nHitsGS",testLayer),"Number of selected hits VS number of left good hits",25,0,25,10,0,10); h_nHitsGS->GetXaxis()->SetTitle("Number of left good hits"); h_nHitsGS->GetYaxis()->SetTitle("Number of selected hits"); h_nHitsGS->SetContour(100);
-            TH1D * h_chi2 = new TH1D(Form("h_track_%d_chi2",testLayer),"#chi^{2} of fitting",256,0,10); h_chi2->GetXaxis()->SetTitle("#chi^{2}"); h_chi2->GetYaxis()->SetTitle("Counts");
-            TH1D * h_pValue = new TH1D(Form("h_track_%d_pValue",testLayer),"P Value of fitting",256,0,1); h_pValue->GetXaxis()->SetTitle("P Value"); h_pValue->GetYaxis()->SetTitle("Counts");
-            TH1D * h_slopeZ = new TH1D(Form("h_track_%d_slopeZ",testLayer),"Slope on Z direction",256,-0.3,0.3); h_slopeZ->GetXaxis()->SetTitle("slope_{Z}"); h_slopeZ->GetYaxis()->SetTitle("Counts");
-            TH1D * h_slopeZAfterCuts = new TH1D(Form("h_track_%d_slopeZAfterCuts",testLayer),"Slope on Z direction",256,-0.3,0.3); h_slopeZAfterCuts->SetLineColor(kRed);
+            TH1I * h_nHits = new TH1I(Form("h_track%s_nHits",suffix.Data()),"Number of hits",100,0,100); h_nHits->GetXaxis()->SetTitle("Number of hits"); h_nHits->GetYaxis()->SetTitle("Counts");
+            TH2I * h_nHitsGS = new TH2I(Form("h_track%s_nHitsGS",suffix.Data()),"Number of selected hits VS number of left good hits",25,0,25,10,0,10); h_nHitsGS->GetXaxis()->SetTitle("Number of left good hits"); h_nHitsGS->GetYaxis()->SetTitle("Number of selected hits"); h_nHitsGS->SetContour(100);
+            TH1D * h_chi2 = new TH1D(Form("h_track%s_chi2",suffix.Data()),"#chi^{2} of fitting",256,0,10); h_chi2->GetXaxis()->SetTitle("#chi^{2}"); h_chi2->GetYaxis()->SetTitle("Counts");
+            TH1D * h_pValue = new TH1D(Form("h_track%s_pValue",suffix.Data()),"P Value of fitting",256,0,1); h_pValue->GetXaxis()->SetTitle("P Value"); h_pValue->GetYaxis()->SetTitle("Counts");
+            TH1D * h_slopeZ = new TH1D(Form("h_track%s_slopeZ",suffix.Data()),"Slope on Z direction",256,-0.3,0.3); h_slopeZ->GetXaxis()->SetTitle("slope_{Z}"); h_slopeZ->GetYaxis()->SetTitle("Counts");
+            TH1D * h_slopeZAfterCuts = new TH1D(Form("h_track%s_slopeZAfterCuts",suffix.Data()),"Slope on Z direction",256,-0.3,0.3); h_slopeZAfterCuts->SetLineColor(kRed);
+            TH1D * h_slopeZHasHit = new TH1D(Form("h_track%s_slopeZHasHit",suffix.Data()),"Slope on Z direction",256,-0.3,0.3); h_slopeZHasHit->SetLineColor(kMagenta);
 
-            MyNamedInfo("GetXT",Form("##############Layer %d: loop to get new XTs#############",testLayer));
+            MyNamedInfo("GetXT",Form("##############%s: loop to get new XTs#############",suffix.Data()));
             if (m_iEntryStop<0||m_iEntryStart<0){m_iEntryStart = 0; m_iEntryStop=N-1;}
             MyNamedDebug("Memory","Memory size: @"<<__LINE__<<": "<<pMyProcessManager->GetMemorySize());
             for (Long64_t iEntry = m_iEntryStart; iEntry<=m_iEntryStop; iEntry++){
@@ -303,6 +309,7 @@ int main(int argc, char** argv){
                     int layerID = InputOutputManager::Get().LayerID->at(iHit);
                     if (layerID!=testLayer) continue;
                     int cellID = InputOutputManager::Get().CellID->at(iHit);
+                    if (m_SeparateWires&&testWire>=0&&cellID!=testWire) continue;
                     if (UseGoodHit&&!isGoodHit(iHit)) continue; // only use good hit in the test layer if required
                     if (FirstGoodPeak&&CountGoodHitBeforeIt(iHit)) continue; // if there is a good hit before this hit in the same cell, then skip it
                     double tfitD = GeometryManager::Get().GetDOCA(layerID,cellID,slx,inx,slz,inz);
@@ -317,11 +324,17 @@ int main(int argc, char** argv){
                     }
                 }
                 if (!foundTheHitInTestLayer) continue; // no good hits found in test layer
+                h_slopeZHasHit->Fill(InputOutputManager::Get().slopeZ[theCand]);
 
                 MyNamedVerbose("GetXT","  Found hit! pushing to XTAnalyzer");
                 // tell analyzer a new data point
                 fXTAnalyzer->Fill(driftT,fitD);
             }
+            if (h_slopeZHasHit->Integral()<1000){
+                MyNamedLog("GetXT",Form("Too few entries %d. Will skip \"%s\"",(int)(h_slopeZHasHit->Integral()),suffix.Data()));
+                continue;
+            }
+            fXTAnalyzer->Write();
             // save the objects
             h_nHits->Write();
             h_nHitsGS->Write();
@@ -329,10 +342,11 @@ int main(int argc, char** argv){
             h_pValue->Write();
             h_slopeZ->Write();
             h_slopeZAfterCuts->Write();
+            h_slopeZHasHit->Write();
 
             // Draw the plots
             int lowBin, highBin; double integral; double hist_height = 0;
-            TCanvas * canv = new TCanvas(Form("canv%d",testLayer),"",1024,800);
+            TCanvas * canv = new TCanvas(Form("canv%s",suffix.Data()),"",1024,800);
             canv->Divide(2,2);
             canv->cd(1);gPad->SetGridx(1);gPad->SetGridy(1);
             h_nHits->Draw(); hist_height = h_nHits->GetMaximum();
@@ -374,7 +388,10 @@ int main(int argc, char** argv){
                 lowBin = h_slopeZAfterCuts->FindBin(slz_min);highBin = h_slopeZAfterCuts->FindBin(slz_max); integral = h_slopeZAfterCuts->Integral(lowBin,highBin);
                 TLatex * text_slzAfterCuts = new TLatex(slz_max,hist_height*0.5,Form("%d (%.1f %%)",(int)integral,integral/h_slopeZAfterCuts->Integral()*100)); text_slzAfterCuts->SetTextColor(kRed); text_slzAfterCuts->Draw();
             }
-            canv->SaveAs(Form("%s/result/track_%d.%s.layer%d.png",HOME.Data(),m_runNo,m_runName.Data(),testLayer));
+            h_slopeZHasHit->Draw("SAME");
+            integral = h_slopeZHasHit->Integral();
+            TLatex * text_slzHasHit = new TLatex(slz_max,hist_height*0.3,Form("%d (%.1f %%)",(int)integral,integral/h_slopeZ->Integral()*100)); text_slzHasHit->SetTextColor(kMagenta); text_slzHasHit->Draw();
+            canv->SaveAs(Form("%s/result/track_%d.%s%s.png",HOME.Data(),m_runNo,m_runName.Data(),suffix.Data()));
         }
         if (m_StopStage>1) {
             //----------------------------------Bin-by-bin analysis--------------------------------------------
@@ -382,7 +399,7 @@ int main(int argc, char** argv){
             if (m_StartStage<=2) statusInitialize = fXTAnalyzer->PrepareTree(false); // create
             else statusInitialize = fXTAnalyzer->PrepareTree(true); // create
             if (statusInitialize){
-                MyNamedWarn("GetXT",Form("Something wrong with XTAnalyzer PrepareTree for layer[%d], will ignore this layer!",testLayer));
+                MyNamedWarn("GetXT",Form("Something wrong with XTAnalyzer PrepareTree for \"%s\", will ignore this layer!",suffix.Data()));
                 continue;
             }
             if (m_StartStage<=2) fXTAnalyzer->BinAnalysis();
@@ -395,7 +412,7 @@ int main(int argc, char** argv){
             }
         }
         MyNamedLog("GetXT","Finished");
-        fXTAnalyzer->Write();
+    }
     }
     newXTFile->Close();
 
@@ -513,8 +530,8 @@ void print_usage(char * prog_name){
     fprintf(stderr,"\t\t Stopping entry index set to n\n");
     fprintf(stderr,"\t -N <n>\n");
     fprintf(stderr,"\t\t Maximum number of entries set to n\n");
-    fprintf(stderr,"\t -L <l>\n");
-    fprintf(stderr,"\t\t Test layer set to l\n");
+    fprintf(stderr,"\t -W \n");
+    fprintf(stderr,"\t\t Seperate wires\n");
     fprintf(stderr,"\t -H \n");
     fprintf(stderr,"\t\t Draw bin-by-bin histograms\n");
 }

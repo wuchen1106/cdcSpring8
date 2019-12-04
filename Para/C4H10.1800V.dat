@@ -1,0 +1,64 @@
+*******************************************************************************                                                                   
+XTAnalyzer parameters
+*******************************************************************************                                                                   
+  hit selection
+    < XTAnalyzer.gold_t_min = 20 >
+    < XTAnalyzer.gold_t_max = 340 >
+ regroup T bins to fit X
+    < XTAnalyzer.fitX_nRanges = 3 > should be smaller than 10; ALERT: THIS SHOULD BE PUT ON TOP OF OTHER fitX_* attributes!!!
+    < XTAnalyzer.fitX_0_tSep = -25 ns >
+    < XTAnalyzer.fitX_1_tSep = 6 ns >
+    < XTAnalyzer.fitX_2_tSep = 380 ns >
+    < XTAnalyzer.fitX_3_tSep = 1000 ns >
+    < XTAnalyzer.fitX_0_minEntries = 40 >
+    < XTAnalyzer.fitX_1_minEntries = 40 >
+    < XTAnalyzer.fitX_2_minEntries = 40 >
+    < XTAnalyzer.fitX_0_nBins = 1 >
+    < XTAnalyzer.fitX_1_nBins = 3 >
+    < XTAnalyzer.fitX_2_nBins = 6 >
+    < XTAnalyzer.fitX_0_smooth = 0 > times to smooth. 0 means no smooth
+    < XTAnalyzer.fitX_1_smooth = 0 >
+    < XTAnalyzer.fitX_2_smooth = 0 >
+    < XTAnalyzer.fitX_0_fitBoth = true > fit both side together? or fit side by side?
+    < XTAnalyzer.fitX_1_fitBoth = false >
+    < XTAnalyzer.fitX_2_fitBoth = false >
+    < XTAnalyzer.fitX_0_SetEmptyBins = false > set the empty bins' contents to small numbers to force the fitting fall down at edge
+    < XTAnalyzer.fitX_1_SetEmptyBins = false >
+    < XTAnalyzer.fitX_2_SetEmptyBins = false >
+    < XTAnalyzer.fitX_0_functionType = "Optimal" > "Gaus" "Land" "DoubleGaus" "DoubleLand" "GausLand" "LandGaus"
+    < XTAnalyzer.fitX_1_functionType = "Optimal" >
+    < XTAnalyzer.fitX_2_functionType = "Optimal" >
+    < XTAnalyzer.fitX_0_peak_height_middle = 0.9 > relative to hist height
+    < XTAnalyzer.fitX_0_peak_height_left = 0.3 >
+    < XTAnalyzer.fitX_0_peak_height_right = 1.5 >
+    < XTAnalyzer.fitX_0_peak_sigma_middle = 0 > mm; 0 means to use sigma_hist as initial value
+    < XTAnalyzer.fitX_0_peak_sigma_left = 0.01 >
+    < XTAnalyzer.fitX_0_peak_sigma_right = 1 >
+    < XTAnalyzer.fitX_0_peak_mean_range = 0.5 > mm; Fit range within x_hist_peak - range and x_hist_peak + range
+    < XTAnalyzer.fitX_0_base_height_middle = 0.1 > relative to peak part height
+    < XTAnalyzer.fitX_0_base_height_left = 0 >
+    < XTAnalyzer.fitX_0_base_height_right = 1 >
+    < XTAnalyzer.fitX_0_base_sigma_middle = 1 > real base sigma = peak_sigma*base_sigma
+    < XTAnalyzer.fitX_0_base_sigma_left = 0.5 >
+    < XTAnalyzer.fitX_0_base_sigma_right = 10 >
+    < XTAnalyzer.fitX_0_base_mean_range = 1 > real base mean = peak_mean+base_mean*peak_sigma
+ Fit the XT relation functions
+    < XTAnalyzer.xtfunc_nRanges = 3 >
+    < XTAnalyzer.xtfunc_0_nPol = 3 >
+    < XTAnalyzer.xtfunc_1_nPol = 4 >
+    < XTAnalyzer.xtfunc_2_nPol = 2 >
+    < XTAnalyzer.xtfunc_0_tLeft = -25 ns >
+    < XTAnalyzer.xtfunc_0_tRight = 340 ns >
+    < XTAnalyzer.xtfunc_0_tLowEdge = -25 ns >
+    < XTAnalyzer.xtfunc_1_tLeft = 330 ns >
+    < XTAnalyzer.xtfunc_1_tRight = 390 ns >
+    < XTAnalyzer.xtfunc_1_tLowEdge = 335 ns >
+    < XTAnalyzer.xtfunc_2_tLeft = 360 ns >
+    < XTAnalyzer.xtfunc_2_tRight = 800 ns >
+    < XTAnalyzer.xtfunc_2_tLowEdge = 375 ns >
+    < XTAnalyzer.xtfunc_tHighEdge = 800 ns >
+ Drwaing samples
+    < XTAnalyzer.draw_tmin = -10 ns >
+    < XTAnalyzer.draw_tmax = 800 ns >
+    < XTAnalyzer.draw_xmin = -10 mm >
+    < XTAnalyzer.draw_xmax = 10 mm >
