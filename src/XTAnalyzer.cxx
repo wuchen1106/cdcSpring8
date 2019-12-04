@@ -265,6 +265,10 @@ void XTAnalyzer::Fill(double t, double x){
     h2_xt->Fill(t,x);
 }
 
+void XTAnalyzer::Write(){
+    h2_xt->Write();
+}
+
 void XTAnalyzer::BinAnalysis(void){
     if (!h2_xt){MyError("h2_xt is not prepared yet!"); return;}
     if (!mOutFile){MyError("output tree is not prepared yet!"); return;}
@@ -388,7 +392,6 @@ void XTAnalyzer::BinAnalysis(void){
     //==========================Draw the samples==============================
     mOutFile->cd();
     mOutTree->Write();
-    h2_xt->Write();
 }
 
 void XTAnalyzer::FitXT(){
@@ -1072,8 +1075,8 @@ void XTAnalyzer::drawSample2D(bool withFunction){
     gr_rightMinusLeft->Draw("PLSAME");
 
     if (withFunction){
-        double xtrange_tmin = f_right->GetXmin()>f_left->GetXmin()?f_left->GetXmin():f_right->GetXmin();
-        double xtrange_tmax = f_right->GetXmax()<f_left->GetXmax()?f_left->GetXmax():f_right->GetXmax();
+        double xtrange_tmin = f_right->GetXmin()<f_left->GetXmin()?f_left->GetXmin():f_right->GetXmin();
+        double xtrange_tmax = f_right->GetXmax()>f_left->GetXmax()?f_left->GetXmax():f_right->GetXmax();
         TF1 * f_diff = myNewTF1("f_diff",Form("(f_left%s+f_right%s)",m_suffix.Data(),m_suffix.Data()),xtrange_tmin,xtrange_tmax);
         int nParLeft=f_left->GetNpar();
         for (int iPar = 0; iPar<nParLeft; iPar++){

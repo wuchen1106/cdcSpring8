@@ -59,6 +59,7 @@ class XTAnalyzer{
         int  PrepareTree(bool reLoad=false); ///< If reLoad is set to true, then the objects will be loaded instead of being created
         int  PrepareXTFunctions();
         void Fill(double t, double x);
+        void Write(void);
         void BinAnalysis(void);
         void FitXT(void);
 
