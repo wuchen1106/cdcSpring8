@@ -16,94 +16,102 @@ ParameterManager::ParameterManager()
 }
 
 void ParameterManager::LoadParameters(ParaBlock theParaBlock){
-    if (MyRuntimeParameters::Get().HasParameter("geoSetup")){
-        TString name = MyRuntimeParameters::Get().GetParameterS("geoSetup");
+    std::string parName("");
+    parName="geoSetup";
+    if (MyRuntimeParameters::Get().HasParameter(parName)){
+        TString name = MyRuntimeParameters::Get().GetParameterS(parName);
         name.ToLower();
         if (name == "tilted") geoSetup = GeometryManager::kTilted;
         else if (name == "finger") geoSetup = GeometryManager::kFinger;
         else if (name == "normal") geoSetup = GeometryManager::kNormal;
     }
-    if (MyRuntimeParameters::Get().HasParameter("chamberType")){
-        TString name = MyRuntimeParameters::Get().GetParameterS("chamberType");
+    parName="chamberType";
+    if (MyRuntimeParameters::Get().HasParameter(parName)){
+        TString name = MyRuntimeParameters::Get().GetParameterS(parName);
         name.ToLower();
         if (name == "cdc") chamberType = GeometryManager::kCDC;
         else if (name == "proto4") chamberType = GeometryManager::kProto4;
     }
-    if (MyRuntimeParameters::Get().HasParameter("connectionType")){
-        TString name = MyRuntimeParameters::Get().GetParameterS("connectionType");
+    parName="connectionType";
+    if (MyRuntimeParameters::Get().HasParameter(parName)){
+        TString name = MyRuntimeParameters::Get().GetParameterS(parName);
         name.ToLower();
         if (name == "spring8") connectionType = GeometryManager::kSPring8;
         else if (name == "cosmic") connectionType = GeometryManager::kCosmic;
     }
-    if (MyRuntimeParameters::Get().HasParameter("beam")){
-        TString name = MyRuntimeParameters::Get().GetParameterS("beam");
+    parName="beam";
+    if (MyRuntimeParameters::Get().HasParameter(parName)){
+        TString name = MyRuntimeParameters::Get().GetParameterS(parName);
         name.ToLower();
         if (name == "spring8") beamType = BeamManager::kSPring8;
         else if (name == "spring8tilted") beamType = BeamManager::kSPring8;
         else if (name == "cosmic") beamType = BeamManager::kCosmic;
     }
-    if (MyRuntimeParameters::Get().HasParameter("inputHitType")){
-        TString name = MyRuntimeParameters::Get().GetParameterS("inputHitType");
+    parName="inputHitType";
+    if (MyRuntimeParameters::Get().HasParameter(parName)){
+        TString name = MyRuntimeParameters::Get().GetParameterS(parName);
         name.ToLower();
         if (name == "data") inputHitType = InputOutputManager::kData;
         else if (name == "mc" || name == "mcdriftt") inputHitType = InputOutputManager::kMCDriftT;
         else if (name == "mcdriftd") inputHitType = InputOutputManager::kMCDriftD;
     }
-    if (MyRuntimeParameters::Get().HasParameter("peakType")){
-        TString name = MyRuntimeParameters::Get().GetParameterS("peakType");
+    parName="peakType";
+    if (MyRuntimeParameters::Get().HasParameter(parName)){
+        TString name = MyRuntimeParameters::Get().GetParameterS(parName);
         name.ToLower();
         if (name == "firstpeak") peakType = TrackingPara::kFirstPeak;
         else if (name == "highestpeak") peakType = TrackingPara::kHighestPeak;
         else if (name == "allpeaks") peakType = TrackingPara::kAllPeaks;
     }
     if (theParaBlock==kAll||theParaBlock==kTracking){
-        if (MyRuntimeParameters::Get().HasParameter("tracking.nHitsMax")) TrackingParameters.nHitsMax = MyRuntimeParameters::Get().GetParameterI("tracking.nHitsMax");
-        if (MyRuntimeParameters::Get().HasParameter("tracking.nHitsSMin")) TrackingParameters.nHitsSMin = MyRuntimeParameters::Get().GetParameterI("tracking.nHitsSMin");
-        if (MyRuntimeParameters::Get().HasParameter("tracking.nPairsMin")) TrackingParameters.nPairsMin = MyRuntimeParameters::Get().GetParameterI("tracking.nPairsMin");
-        if (MyRuntimeParameters::Get().HasParameter("tracking.t0shift0")) TrackingParameters.t0shift0 = MyRuntimeParameters::Get().GetParameterI("tracking.t0shift0");
-        if (MyRuntimeParameters::Get().HasParameter("tracking.t0shift1")) TrackingParameters.t0shift1 = MyRuntimeParameters::Get().GetParameterI("tracking.t0shift1");
-        if (MyRuntimeParameters::Get().HasParameter("tracking.tmin")) TrackingParameters.tmin = MyRuntimeParameters::Get().GetParameterI("tracking.tmin");
-        if (MyRuntimeParameters::Get().HasParameter("tracking.tmax")) TrackingParameters.tmax = MyRuntimeParameters::Get().GetParameterI("tracking.tmax");
-        if (MyRuntimeParameters::Get().HasParameter("tracking.sumCut")) TrackingParameters.sumCut = MyRuntimeParameters::Get().GetParameterD("tracking.sumCut");
-        if (MyRuntimeParameters::Get().HasParameter("tracking.aaCut")) TrackingParameters.aaCut = MyRuntimeParameters::Get().GetParameterD("tracking.aaCut");
-        if (MyRuntimeParameters::Get().HasParameter("tracking.t0error")) TrackingParameters.t0error = MyRuntimeParameters::Get().GetParameterD("tracking.t0error");
-        if (MyRuntimeParameters::Get().HasParameter("tracking.lidStart")) TrackingParameters.lidStart = MyRuntimeParameters::Get().GetParameterI("tracking.lidStart");
-        if (MyRuntimeParameters::Get().HasParameter("tracking.lidStop")) TrackingParameters.lidStop = MyRuntimeParameters::Get().GetParameterI("tracking.lidStop");
+        parName="tracking.nHitsMax";if (MyRuntimeParameters::Get().HasParameter(parName)) TrackingParameters.nHitsMax = MyRuntimeParameters::Get().GetParameterI(parName);
+        parName="tracking.nHitsSMin";if (MyRuntimeParameters::Get().HasParameter(parName)) TrackingParameters.nHitsSMin = MyRuntimeParameters::Get().GetParameterI(parName);
+        parName="tracking.nPairsMin";if (MyRuntimeParameters::Get().HasParameter(parName)) TrackingParameters.nPairsMin = MyRuntimeParameters::Get().GetParameterI(parName);
+        parName="tracking.t0shift0";if (MyRuntimeParameters::Get().HasParameter(parName)) TrackingParameters.t0shift0 = MyRuntimeParameters::Get().GetParameterI(parName);
+        parName="tracking.t0shift1";if (MyRuntimeParameters::Get().HasParameter(parName)) TrackingParameters.t0shift1 = MyRuntimeParameters::Get().GetParameterI(parName);
+        parName="tracking.tmin";if (MyRuntimeParameters::Get().HasParameter(parName)) TrackingParameters.tmin = MyRuntimeParameters::Get().GetParameterI(parName);
+        parName="tracking.tmax";if (MyRuntimeParameters::Get().HasParameter(parName)) TrackingParameters.tmax = MyRuntimeParameters::Get().GetParameterI(parName);
+        parName="tracking.sumCut";if (MyRuntimeParameters::Get().HasParameter(parName)) TrackingParameters.sumCut = MyRuntimeParameters::Get().GetParameterD(parName);
+        parName="tracking.aaCut";if (MyRuntimeParameters::Get().HasParameter(parName)) TrackingParameters.aaCut = MyRuntimeParameters::Get().GetParameterD(parName);
+        parName="tracking.t0error";if (MyRuntimeParameters::Get().HasParameter(parName)) TrackingParameters.t0error = MyRuntimeParameters::Get().GetParameterD(parName);
+        parName="tracking.lidStart";if (MyRuntimeParameters::Get().HasParameter(parName)) TrackingParameters.lidStart = MyRuntimeParameters::Get().GetParameterI(parName);
+        parName="tracking.lidStop";if (MyRuntimeParameters::Get().HasParameter(parName)) TrackingParameters.lidStop = MyRuntimeParameters::Get().GetParameterI(parName);
     }
     if (theParaBlock==kAll||theParaBlock==kXTAnalyzer){
-        if (MyRuntimeParameters::Get().HasParameter("XTAnalyzer.CandSelBy")) XTAnalyzerParameters.CandSelBy = MyRuntimeParameters::Get().GetParameterS("XTAnalyzer.CandSelBy");
-        if (MyRuntimeParameters::Get().HasParameter("XTAnalyzer.XTType")) XTAnalyzerParameters.XTType = MyRuntimeParameters::Get().GetParameterI("XTAnalyzer.XTType");
-        if (MyRuntimeParameters::Get().HasParameter("XTAnalyzer.AsymXT")) XTAnalyzerParameters.AsymXT = MyRuntimeParameters::Get().GetParameterB("XTAnalyzer.AsymXT");
-        if (MyRuntimeParameters::Get().HasParameter("XTAnalyzer.RequireInTriggerCounter")) XTAnalyzerParameters.RequireInTriggerCounter = MyRuntimeParameters::Get().GetParameterB("XTAnalyzer.RequireInTriggerCounter");
-        if (MyRuntimeParameters::Get().HasParameter("XTAnalyzer.RequireAllGoldenHits")) XTAnalyzerParameters.RequireAllGoldenHits = MyRuntimeParameters::Get().GetParameterB("XTAnalyzer.RequireAllGoldenHits");
-        if (MyRuntimeParameters::Get().HasParameter("XTAnalyzer.FirstGoodPeak")) XTAnalyzerParameters.FirstGoodPeak = MyRuntimeParameters::Get().GetParameterB("XTAnalyzer.FirstGoodPeak");
-        if (MyRuntimeParameters::Get().HasParameter("XTAnalyzer.UseGoodHit")) XTAnalyzerParameters.UseGoodHit = MyRuntimeParameters::Get().GetParameterB("XTAnalyzer.UseGoodHit");
-        if (MyRuntimeParameters::Get().HasParameter("XTAnalyzer.AllGoodHitsUsed")) XTAnalyzerParameters.AllGoodHitsUsed = MyRuntimeParameters::Get().GetParameterB("XTAnalyzer.AllGoodHitsUsed");
-        if (MyRuntimeParameters::Get().HasParameter("XTAnalyzer.nHits_max")) XTAnalyzerParameters.nHits_max = MyRuntimeParameters::Get().GetParameterI("XTAnalyzer.nHits_max");
-        if (MyRuntimeParameters::Get().HasParameter("XTAnalyzer.nHitsS_min")) XTAnalyzerParameters.nHitsS_min = MyRuntimeParameters::Get().GetParameterI("XTAnalyzer.nHitsS_min");
-        if (MyRuntimeParameters::Get().HasParameter("XTAnalyzer.chi2_max")) XTAnalyzerParameters.chi2_max = MyRuntimeParameters::Get().GetParameterD("XTAnalyzer.chi2_max");
-        if (MyRuntimeParameters::Get().HasParameter("XTAnalyzer.pValue_min")) XTAnalyzerParameters.pValue_min = MyRuntimeParameters::Get().GetParameterD("XTAnalyzer.pValue_min");
-        if (MyRuntimeParameters::Get().HasParameter("XTAnalyzer.slz_min")) XTAnalyzerParameters.slz_min = MyRuntimeParameters::Get().GetParameterD("XTAnalyzer.slz_min");
-        if (MyRuntimeParameters::Get().HasParameter("XTAnalyzer.slz_max")) XTAnalyzerParameters.slz_max = MyRuntimeParameters::Get().GetParameterD("XTAnalyzer.slz_max");
-        if (MyRuntimeParameters::Get().HasParameter("XTAnalyzer.gold_t_min")) XTAnalyzerParameters.gold_t_min = MyRuntimeParameters::Get().GetParameterD("XTAnalyzer.gold_t_min");
-        if (MyRuntimeParameters::Get().HasParameter("XTAnalyzer.gold_t_max")) XTAnalyzerParameters.gold_t_max = MyRuntimeParameters::Get().GetParameterD("XTAnalyzer.gold_t_max");
-        if (MyRuntimeParameters::Get().HasParameter("XTAnalyzer.bin_t_min")) XTAnalyzerParameters.bin_t_min = MyRuntimeParameters::Get().GetParameterD("XTAnalyzer.bin_t_min");
-        if (MyRuntimeParameters::Get().HasParameter("XTAnalyzer.bin_t_max")) XTAnalyzerParameters.bin_t_max = MyRuntimeParameters::Get().GetParameterD("XTAnalyzer.bin_t_max");
-        if (MyRuntimeParameters::Get().HasParameter("XTAnalyzer.bin_t_num")) XTAnalyzerParameters.bin_t_num = MyRuntimeParameters::Get().GetParameterI("XTAnalyzer.bin_t_num");
-        if (MyRuntimeParameters::Get().HasParameter("XTAnalyzer.bin_x_min")) XTAnalyzerParameters.bin_x_min = MyRuntimeParameters::Get().GetParameterD("XTAnalyzer.bin_x_min");
-        if (MyRuntimeParameters::Get().HasParameter("XTAnalyzer.bin_x_max")) XTAnalyzerParameters.bin_x_max = MyRuntimeParameters::Get().GetParameterD("XTAnalyzer.bin_x_max");
-        if (MyRuntimeParameters::Get().HasParameter("XTAnalyzer.bin_x_num")) XTAnalyzerParameters.bin_x_num = MyRuntimeParameters::Get().GetParameterI("XTAnalyzer.bin_x_num");
-        if (MyRuntimeParameters::Get().HasParameter("XTAnalyzer.fitX_nRanges")){
-            XTAnalyzerParameters.fitX_nRanges = MyRuntimeParameters::Get().GetParameterI("XTAnalyzer.fitX_nRanges");
+        parName="XTAnalyzer.CandSelBy";if (MyRuntimeParameters::Get().HasParameter(parName)) XTAnalyzerParameters.CandSelBy = MyRuntimeParameters::Get().GetParameterS(parName);
+        parName="XTAnalyzer.XTType";if (MyRuntimeParameters::Get().HasParameter(parName)) XTAnalyzerParameters.XTType = MyRuntimeParameters::Get().GetParameterI(parName);
+        parName="XTAnalyzer.AsymXT";if (MyRuntimeParameters::Get().HasParameter(parName)) XTAnalyzerParameters.AsymXT = MyRuntimeParameters::Get().GetParameterB(parName);
+        parName="XTAnalyzer.RequireInTriggerCounter";if (MyRuntimeParameters::Get().HasParameter(parName)) XTAnalyzerParameters.RequireInTriggerCounter = MyRuntimeParameters::Get().GetParameterB(parName);
+        parName="XTAnalyzer.RequireAllGoldenHits";if (MyRuntimeParameters::Get().HasParameter(parName)) XTAnalyzerParameters.RequireAllGoldenHits = MyRuntimeParameters::Get().GetParameterB(parName);
+        parName="XTAnalyzer.FirstGoodPeak";if (MyRuntimeParameters::Get().HasParameter(parName)) XTAnalyzerParameters.FirstGoodPeak = MyRuntimeParameters::Get().GetParameterB(parName);
+        parName="XTAnalyzer.UseGoodHit";if (MyRuntimeParameters::Get().HasParameter(parName)) XTAnalyzerParameters.UseGoodHit = MyRuntimeParameters::Get().GetParameterB(parName);
+        parName="XTAnalyzer.AllGoodHitsUsed";if (MyRuntimeParameters::Get().HasParameter(parName)) XTAnalyzerParameters.AllGoodHitsUsed = MyRuntimeParameters::Get().GetParameterB(parName);
+        parName="XTAnalyzer.nHits_max";if (MyRuntimeParameters::Get().HasParameter(parName)) XTAnalyzerParameters.nHits_max = MyRuntimeParameters::Get().GetParameterI(parName);
+        parName="XTAnalyzer.nHitsS_min";if (MyRuntimeParameters::Get().HasParameter(parName)) XTAnalyzerParameters.nHitsS_min = MyRuntimeParameters::Get().GetParameterI(parName);
+        parName="XTAnalyzer.chi2_max";if (MyRuntimeParameters::Get().HasParameter(parName)) XTAnalyzerParameters.chi2_max = MyRuntimeParameters::Get().GetParameterD(parName);
+        parName="XTAnalyzer.pValue_min";if (MyRuntimeParameters::Get().HasParameter(parName)) XTAnalyzerParameters.pValue_min = MyRuntimeParameters::Get().GetParameterD(parName);
+        parName="XTAnalyzer.slz_min";if (MyRuntimeParameters::Get().HasParameter(parName)) XTAnalyzerParameters.slz_min = MyRuntimeParameters::Get().GetParameterD(parName);
+        parName="XTAnalyzer.slz_max";if (MyRuntimeParameters::Get().HasParameter(parName)) XTAnalyzerParameters.slz_max = MyRuntimeParameters::Get().GetParameterD(parName);
+        parName="XTAnalyzer.gold_t_min";if (MyRuntimeParameters::Get().HasParameter(parName)) XTAnalyzerParameters.gold_t_min = MyRuntimeParameters::Get().GetParameterD(parName);
+        parName="XTAnalyzer.gold_t_max";if (MyRuntimeParameters::Get().HasParameter(parName)) XTAnalyzerParameters.gold_t_max = MyRuntimeParameters::Get().GetParameterD(parName);
+        parName="XTAnalyzer.bin_t_min";if (MyRuntimeParameters::Get().HasParameter(parName)) XTAnalyzerParameters.bin_t_min = MyRuntimeParameters::Get().GetParameterD(parName);
+        parName="XTAnalyzer.bin_t_max";if (MyRuntimeParameters::Get().HasParameter(parName)) XTAnalyzerParameters.bin_t_max = MyRuntimeParameters::Get().GetParameterD(parName);
+        parName="XTAnalyzer.bin_t_num";if (MyRuntimeParameters::Get().HasParameter(parName)) XTAnalyzerParameters.bin_t_num = MyRuntimeParameters::Get().GetParameterI(parName);
+        parName="XTAnalyzer.bin_x_min";if (MyRuntimeParameters::Get().HasParameter(parName)) XTAnalyzerParameters.bin_x_min = MyRuntimeParameters::Get().GetParameterD(parName);
+        parName="XTAnalyzer.bin_x_max";if (MyRuntimeParameters::Get().HasParameter(parName)) XTAnalyzerParameters.bin_x_max = MyRuntimeParameters::Get().GetParameterD(parName);
+        parName="XTAnalyzer.bin_x_num";if (MyRuntimeParameters::Get().HasParameter(parName)) XTAnalyzerParameters.bin_x_num = MyRuntimeParameters::Get().GetParameterI(parName);
+        parName="XTAnalyzer.fitX_nRanges";
+        if (MyRuntimeParameters::Get().HasParameter(parName)){
+            XTAnalyzerParameters.fitX_nRanges = MyRuntimeParameters::Get().GetParameterI(parName);
             if (XTAnalyzerParameters.fitX_nRanges > NRANGES){
                 MyWarn("XTAnalyzerParameters.fitX_nRanges is set to "<<XTAnalyzerParameters.fitX_nRanges<<" but cannot be larger than "<<NRANGES);
                 XTAnalyzerParameters.fitX_nRanges = NRANGES;
             }
         }
         for (int iRange = 0; iRange<XTAnalyzerParameters.fitX_nRanges; iRange++){
-            if (MyRuntimeParameters::Get().HasParameter(Form("XTAnalyzer.fitX_%d_nBins",iRange))) {XTAnalyzerParameters.fitX_nBins[iRange] = MyRuntimeParameters::Get().GetParameterI(Form("XTAnalyzer.fitX_%d_nBins",iRange)); for (int jRange = iRange+1; jRange<XTAnalyzerParameters.fitX_nRanges; jRange++){XTAnalyzerParameters.fitX_nBins[jRange] = XTAnalyzerParameters.fitX_nBins[iRange];}}
-            if (MyRuntimeParameters::Get().HasParameter(Form("XTAnalyzer.fitX_%d_smooth",iRange))) {XTAnalyzerParameters.fitX_smooth[iRange] = MyRuntimeParameters::Get().GetParameterI(Form("XTAnalyzer.fitX_%d_smooth",iRange)); for (int jRange = iRange+1; jRange<XTAnalyzerParameters.fitX_nRanges; jRange++){XTAnalyzerParameters.fitX_smooth[jRange] = XTAnalyzerParameters.fitX_smooth[iRange];}}
-            if (MyRuntimeParameters::Get().HasParameter(Form("XTAnalyzer.fitX_%d_minEntries",iRange))) {XTAnalyzerParameters.fitX_minEntries[iRange] = MyRuntimeParameters::Get().GetParameterI(Form("XTAnalyzer.fitX_%d_minEntries",iRange)); for (int jRange = iRange+1; jRange<XTAnalyzerParameters.fitX_nRanges; jRange++){XTAnalyzerParameters.fitX_minEntries[jRange] = XTAnalyzerParameters.fitX_minEntries[iRange];}}
+            parName=Form("XTAnalyzer.fitX_%d_nBins",iRange);if (MyRuntimeParameters::Get().HasParameter(parName)) {XTAnalyzerParameters.fitX_nBins[iRange] = MyRuntimeParameters::Get().GetParameterI(parName); for (int jRange = iRange+1; jRange<XTAnalyzerParameters.fitX_nRanges; jRange++){XTAnalyzerParameters.fitX_nBins[jRange] = XTAnalyzerParameters.fitX_nBins[iRange];}}
+            parName=Form("XTAnalyzer.fitX_%d_smooth",iRange);if (MyRuntimeParameters::Get().HasParameter(parName)) {XTAnalyzerParameters.fitX_smooth[iRange] = MyRuntimeParameters::Get().GetParameterI(parName); for (int jRange = iRange+1; jRange<XTAnalyzerParameters.fitX_nRanges; jRange++){XTAnalyzerParameters.fitX_smooth[jRange] = XTAnalyzerParameters.fitX_smooth[iRange];}}
+            parName=Form("XTAnalyzer.fitX_%d_minEntries",iRange);if (MyRuntimeParameters::Get().HasParameter(parName)) {XTAnalyzerParameters.fitX_minEntries[iRange] = MyRuntimeParameters::Get().GetParameterI(parName); for (int jRange = iRange+1; jRange<XTAnalyzerParameters.fitX_nRanges; jRange++){XTAnalyzerParameters.fitX_minEntries[jRange] = XTAnalyzerParameters.fitX_minEntries[iRange];}}
             if (MyRuntimeParameters::Get().HasParameter(Form("XTAnalyzer.fitX_%d_tSep",iRange))) {
                 XTAnalyzerParameters.fitX_tSep[iRange] = MyRuntimeParameters::Get().GetParameterD(Form("XTAnalyzer.fitX_%d_tSep",iRange));
                 if (XTAnalyzerParameters.fitX_tSep[iRange]<XTAnalyzerParameters.bin_t_min){
@@ -116,28 +124,29 @@ void ParameterManager::LoadParameters(ParaBlock theParaBlock){
                 }
                 for (int jRange = iRange+1; jRange<XTAnalyzerParameters.fitX_nRanges; jRange++){XTAnalyzerParameters.fitX_tSep[jRange] = XTAnalyzerParameters.fitX_tSep[iRange];}
             }
-            if (MyRuntimeParameters::Get().HasParameter(Form("XTAnalyzer.fitX_%d_fitBoth",iRange))) {XTAnalyzerParameters.fitX_fitBoth[iRange] = MyRuntimeParameters::Get().GetParameterB(Form("XTAnalyzer.fitX_%d_fitBoth",iRange)); for (int jRange = iRange+1; jRange<XTAnalyzerParameters.fitX_nRanges; jRange++){XTAnalyzerParameters.fitX_fitBoth[jRange] = XTAnalyzerParameters.fitX_fitBoth[iRange];}}
-            if (MyRuntimeParameters::Get().HasParameter(Form("XTAnalyzer.fitX_%d_SetEmptyBins",iRange))) {XTAnalyzerParameters.fitX_SetEmptyBins[iRange] = MyRuntimeParameters::Get().GetParameterB(Form("XTAnalyzer.fitX_%d_SetEmptyBins",iRange)); for (int jRange = iRange+1; jRange<XTAnalyzerParameters.fitX_nRanges; jRange++){XTAnalyzerParameters.fitX_SetEmptyBins[jRange] = XTAnalyzerParameters.fitX_SetEmptyBins[iRange];}}
-            if (MyRuntimeParameters::Get().HasParameter(Form("XTAnalyzer.fitX_%d_functionType",iRange))) {XTAnalyzerParameters.fitX_functionType[iRange] = getFunctionType(MyRuntimeParameters::Get().GetParameterS(Form("XTAnalyzer.fitX_%d_functionType",iRange))); for (int jRange = iRange+1; jRange<XTAnalyzerParameters.fitX_nRanges; jRange++){XTAnalyzerParameters.fitX_functionType[jRange] = XTAnalyzerParameters.fitX_functionType[iRange];}}
-            if (MyRuntimeParameters::Get().HasParameter(Form("XTAnalyzer.fitX_%d_peak_height_middle",iRange))) {XTAnalyzerParameters.fitX_peak_height_middle[iRange] = MyRuntimeParameters::Get().GetParameterD(Form("XTAnalyzer.fitX_%d_peak_height_middle",iRange)); for (int jRange = iRange+1; jRange<XTAnalyzerParameters.fitX_nRanges; jRange++){XTAnalyzerParameters.fitX_peak_height_middle[jRange] = XTAnalyzerParameters.fitX_peak_height_middle[iRange];}}
-            if (MyRuntimeParameters::Get().HasParameter(Form("XTAnalyzer.fitX_%d_peak_height_left",iRange))) {XTAnalyzerParameters.fitX_peak_height_left[iRange] = MyRuntimeParameters::Get().GetParameterD(Form("XTAnalyzer.fitX_%d_peak_height_left",iRange)); for (int jRange = iRange+1; jRange<XTAnalyzerParameters.fitX_nRanges; jRange++){XTAnalyzerParameters.fitX_peak_height_left[jRange] = XTAnalyzerParameters.fitX_peak_height_left[iRange];}}
-            if (MyRuntimeParameters::Get().HasParameter(Form("XTAnalyzer.fitX_%d_peak_height_right",iRange))) {XTAnalyzerParameters.fitX_peak_height_right[iRange] = MyRuntimeParameters::Get().GetParameterD(Form("XTAnalyzer.fitX_%d_peak_height_right",iRange)); for (int jRange = iRange+1; jRange<XTAnalyzerParameters.fitX_nRanges; jRange++){XTAnalyzerParameters.fitX_peak_height_right[jRange] = XTAnalyzerParameters.fitX_peak_height_right[iRange];}}
-            if (MyRuntimeParameters::Get().HasParameter(Form("XTAnalyzer.fitX_%d_peak_sigma_middle",iRange))) {XTAnalyzerParameters.fitX_peak_sigma_middle[iRange] = MyRuntimeParameters::Get().GetParameterD(Form("XTAnalyzer.fitX_%d_peak_sigma_middle",iRange)); for (int jRange = iRange+1; jRange<XTAnalyzerParameters.fitX_nRanges; jRange++){XTAnalyzerParameters.fitX_peak_sigma_middle[jRange] = XTAnalyzerParameters.fitX_peak_sigma_middle[iRange];}}
-            if (MyRuntimeParameters::Get().HasParameter(Form("XTAnalyzer.fitX_%d_peak_sigma_left",iRange))) {XTAnalyzerParameters.fitX_peak_sigma_left[iRange] = MyRuntimeParameters::Get().GetParameterD(Form("XTAnalyzer.fitX_%d_peak_sigma_left",iRange)); for (int jRange = iRange+1; jRange<XTAnalyzerParameters.fitX_nRanges; jRange++){XTAnalyzerParameters.fitX_peak_sigma_left[jRange] = XTAnalyzerParameters.fitX_peak_sigma_left[iRange];}}
-            if (MyRuntimeParameters::Get().HasParameter(Form("XTAnalyzer.fitX_%d_peak_sigma_right",iRange))) {XTAnalyzerParameters.fitX_peak_sigma_right[iRange] = MyRuntimeParameters::Get().GetParameterD(Form("XTAnalyzer.fitX_%d_peak_sigma_right",iRange)); for (int jRange = iRange+1; jRange<XTAnalyzerParameters.fitX_nRanges; jRange++){XTAnalyzerParameters.fitX_peak_sigma_right[jRange] = XTAnalyzerParameters.fitX_peak_sigma_right[iRange];}}
-            if (MyRuntimeParameters::Get().HasParameter(Form("XTAnalyzer.fitX_%d_peak_mean_range",iRange))) {XTAnalyzerParameters.fitX_peak_mean_range[iRange] = MyRuntimeParameters::Get().GetParameterD(Form("XTAnalyzer.fitX_%d_peak_mean_range",iRange)); for (int jRange = iRange+1; jRange<XTAnalyzerParameters.fitX_nRanges; jRange++){XTAnalyzerParameters.fitX_peak_mean_range[jRange] = XTAnalyzerParameters.fitX_peak_mean_range[iRange];}}
-            if (MyRuntimeParameters::Get().HasParameter(Form("XTAnalyzer.fitX_%d_base_height_middle",iRange))) {XTAnalyzerParameters.fitX_base_height_middle[iRange] = MyRuntimeParameters::Get().GetParameterD(Form("XTAnalyzer.fitX_%d_base_height_middle",iRange)); for (int jRange = iRange+1; jRange<XTAnalyzerParameters.fitX_nRanges; jRange++){XTAnalyzerParameters.fitX_base_height_middle[jRange] = XTAnalyzerParameters.fitX_base_height_middle[iRange];}}
-            if (MyRuntimeParameters::Get().HasParameter(Form("XTAnalyzer.fitX_%d_base_height_left",iRange))) {XTAnalyzerParameters.fitX_base_height_left[iRange] = MyRuntimeParameters::Get().GetParameterD(Form("XTAnalyzer.fitX_%d_base_height_left",iRange)); for (int jRange = iRange+1; jRange<XTAnalyzerParameters.fitX_nRanges; jRange++){XTAnalyzerParameters.fitX_base_height_left[jRange] = XTAnalyzerParameters.fitX_base_height_left[iRange];}}
-            if (MyRuntimeParameters::Get().HasParameter(Form("XTAnalyzer.fitX_%d_base_height_right",iRange))) {XTAnalyzerParameters.fitX_base_height_right[iRange] = MyRuntimeParameters::Get().GetParameterD(Form("XTAnalyzer.fitX_%d_base_height_right",iRange)); for (int jRange = iRange+1; jRange<XTAnalyzerParameters.fitX_nRanges; jRange++){XTAnalyzerParameters.fitX_base_height_right[jRange] = XTAnalyzerParameters.fitX_base_height_right[iRange];}}
-            if (MyRuntimeParameters::Get().HasParameter(Form("XTAnalyzer.fitX_%d_base_sigma_middle",iRange))) {XTAnalyzerParameters.fitX_base_sigma_middle[iRange] = MyRuntimeParameters::Get().GetParameterD(Form("XTAnalyzer.fitX_%d_base_sigma_middle",iRange)); for (int jRange = iRange+1; jRange<XTAnalyzerParameters.fitX_nRanges; jRange++){XTAnalyzerParameters.fitX_base_sigma_middle[jRange] = XTAnalyzerParameters.fitX_base_sigma_middle[iRange];}}
-            if (MyRuntimeParameters::Get().HasParameter(Form("XTAnalyzer.fitX_%d_base_sigma_left",iRange))) {XTAnalyzerParameters.fitX_base_sigma_left[iRange] = MyRuntimeParameters::Get().GetParameterD(Form("XTAnalyzer.fitX_%d_base_sigma_left",iRange)); for (int jRange = iRange+1; jRange<XTAnalyzerParameters.fitX_nRanges; jRange++){XTAnalyzerParameters.fitX_base_sigma_left[jRange] = XTAnalyzerParameters.fitX_base_sigma_left[iRange];}}
-            if (MyRuntimeParameters::Get().HasParameter(Form("XTAnalyzer.fitX_%d_base_sigma_right",iRange))) {XTAnalyzerParameters.fitX_base_sigma_right[iRange] = MyRuntimeParameters::Get().GetParameterD(Form("XTAnalyzer.fitX_%d_base_sigma_right",iRange)); for (int jRange = iRange+1; jRange<XTAnalyzerParameters.fitX_nRanges; jRange++){XTAnalyzerParameters.fitX_base_sigma_right[jRange] = XTAnalyzerParameters.fitX_base_sigma_right[iRange];}}
-            if (MyRuntimeParameters::Get().HasParameter(Form("XTAnalyzer.fitX_%d_base_mean_range",iRange))) {XTAnalyzerParameters.fitX_base_mean_range[iRange] = MyRuntimeParameters::Get().GetParameterD(Form("XTAnalyzer.fitX_%d_base_mean_range",iRange)); for (int jRange = iRange+1; jRange<XTAnalyzerParameters.fitX_nRanges; jRange++){XTAnalyzerParameters.fitX_base_mean_range[jRange] = XTAnalyzerParameters.fitX_base_mean_range[iRange];}}
+            parName=Form("XTAnalyzer.fitX_%d_fitBoth",iRange);if (MyRuntimeParameters::Get().HasParameter(parName)) {XTAnalyzerParameters.fitX_fitBoth[iRange] = MyRuntimeParameters::Get().GetParameterB(parName); for (int jRange = iRange+1; jRange<XTAnalyzerParameters.fitX_nRanges; jRange++){XTAnalyzerParameters.fitX_fitBoth[jRange] = XTAnalyzerParameters.fitX_fitBoth[iRange];}}
+            parName=Form("XTAnalyzer.fitX_%d_SetEmptyBins",iRange);if (MyRuntimeParameters::Get().HasParameter(parName)) {XTAnalyzerParameters.fitX_SetEmptyBins[iRange] = MyRuntimeParameters::Get().GetParameterB(parName); for (int jRange = iRange+1; jRange<XTAnalyzerParameters.fitX_nRanges; jRange++){XTAnalyzerParameters.fitX_SetEmptyBins[jRange] = XTAnalyzerParameters.fitX_SetEmptyBins[iRange];}}
+            parName=Form("XTAnalyzer.fitX_%d_functionType",iRange);if (MyRuntimeParameters::Get().HasParameter(parName)) {XTAnalyzerParameters.fitX_functionType[iRange] = getFunctionType(MyRuntimeParameters::Get().GetParameterS(parName)); for (int jRange = iRange+1; jRange<XTAnalyzerParameters.fitX_nRanges; jRange++){XTAnalyzerParameters.fitX_functionType[jRange] = XTAnalyzerParameters.fitX_functionType[iRange];}}
+            parName=Form("XTAnalyzer.fitX_%d_peak_height_middle",iRange);if (MyRuntimeParameters::Get().HasParameter(parName)) {XTAnalyzerParameters.fitX_peak_height_middle[iRange] = MyRuntimeParameters::Get().GetParameterD(parName); for (int jRange = iRange+1; jRange<XTAnalyzerParameters.fitX_nRanges; jRange++){XTAnalyzerParameters.fitX_peak_height_middle[jRange] = XTAnalyzerParameters.fitX_peak_height_middle[iRange];}}
+            parName=Form("XTAnalyzer.fitX_%d_peak_height_left",iRange);if (MyRuntimeParameters::Get().HasParameter(parName)) {XTAnalyzerParameters.fitX_peak_height_left[iRange] = MyRuntimeParameters::Get().GetParameterD(parName); for (int jRange = iRange+1; jRange<XTAnalyzerParameters.fitX_nRanges; jRange++){XTAnalyzerParameters.fitX_peak_height_left[jRange] = XTAnalyzerParameters.fitX_peak_height_left[iRange];}}
+            parName=Form("XTAnalyzer.fitX_%d_peak_height_right",iRange);if (MyRuntimeParameters::Get().HasParameter(parName)) {XTAnalyzerParameters.fitX_peak_height_right[iRange] = MyRuntimeParameters::Get().GetParameterD(parName); for (int jRange = iRange+1; jRange<XTAnalyzerParameters.fitX_nRanges; jRange++){XTAnalyzerParameters.fitX_peak_height_right[jRange] = XTAnalyzerParameters.fitX_peak_height_right[iRange];}}
+            parName=Form("XTAnalyzer.fitX_%d_peak_sigma_middle",iRange);if (MyRuntimeParameters::Get().HasParameter(parName)) {XTAnalyzerParameters.fitX_peak_sigma_middle[iRange] = MyRuntimeParameters::Get().GetParameterD(parName); for (int jRange = iRange+1; jRange<XTAnalyzerParameters.fitX_nRanges; jRange++){XTAnalyzerParameters.fitX_peak_sigma_middle[jRange] = XTAnalyzerParameters.fitX_peak_sigma_middle[iRange];}}
+            parName=Form("XTAnalyzer.fitX_%d_peak_sigma_left",iRange);if (MyRuntimeParameters::Get().HasParameter(parName)) {XTAnalyzerParameters.fitX_peak_sigma_left[iRange] = MyRuntimeParameters::Get().GetParameterD(parName); for (int jRange = iRange+1; jRange<XTAnalyzerParameters.fitX_nRanges; jRange++){XTAnalyzerParameters.fitX_peak_sigma_left[jRange] = XTAnalyzerParameters.fitX_peak_sigma_left[iRange];}}
+            parName=Form("XTAnalyzer.fitX_%d_peak_sigma_right",iRange);if (MyRuntimeParameters::Get().HasParameter(parName)) {XTAnalyzerParameters.fitX_peak_sigma_right[iRange] = MyRuntimeParameters::Get().GetParameterD(parName); for (int jRange = iRange+1; jRange<XTAnalyzerParameters.fitX_nRanges; jRange++){XTAnalyzerParameters.fitX_peak_sigma_right[jRange] = XTAnalyzerParameters.fitX_peak_sigma_right[iRange];}}
+            parName=Form("XTAnalyzer.fitX_%d_peak_mean_range",iRange);if (MyRuntimeParameters::Get().HasParameter(parName)) {XTAnalyzerParameters.fitX_peak_mean_range[iRange] = MyRuntimeParameters::Get().GetParameterD(parName); for (int jRange = iRange+1; jRange<XTAnalyzerParameters.fitX_nRanges; jRange++){XTAnalyzerParameters.fitX_peak_mean_range[jRange] = XTAnalyzerParameters.fitX_peak_mean_range[iRange];}}
+            parName=Form("XTAnalyzer.fitX_%d_base_height_middle",iRange);if (MyRuntimeParameters::Get().HasParameter(parName)) {XTAnalyzerParameters.fitX_base_height_middle[iRange] = MyRuntimeParameters::Get().GetParameterD(parName); for (int jRange = iRange+1; jRange<XTAnalyzerParameters.fitX_nRanges; jRange++){XTAnalyzerParameters.fitX_base_height_middle[jRange] = XTAnalyzerParameters.fitX_base_height_middle[iRange];}}
+            parName=Form("XTAnalyzer.fitX_%d_base_height_left",iRange);if (MyRuntimeParameters::Get().HasParameter(parName)) {XTAnalyzerParameters.fitX_base_height_left[iRange] = MyRuntimeParameters::Get().GetParameterD(parName); for (int jRange = iRange+1; jRange<XTAnalyzerParameters.fitX_nRanges; jRange++){XTAnalyzerParameters.fitX_base_height_left[jRange] = XTAnalyzerParameters.fitX_base_height_left[iRange];}}
+            parName=Form("XTAnalyzer.fitX_%d_base_height_right",iRange);if (MyRuntimeParameters::Get().HasParameter(parName)) {XTAnalyzerParameters.fitX_base_height_right[iRange] = MyRuntimeParameters::Get().GetParameterD(parName); for (int jRange = iRange+1; jRange<XTAnalyzerParameters.fitX_nRanges; jRange++){XTAnalyzerParameters.fitX_base_height_right[jRange] = XTAnalyzerParameters.fitX_base_height_right[iRange];}}
+            parName=Form("XTAnalyzer.fitX_%d_base_sigma_middle",iRange);if (MyRuntimeParameters::Get().HasParameter(parName)) {XTAnalyzerParameters.fitX_base_sigma_middle[iRange] = MyRuntimeParameters::Get().GetParameterD(parName); for (int jRange = iRange+1; jRange<XTAnalyzerParameters.fitX_nRanges; jRange++){XTAnalyzerParameters.fitX_base_sigma_middle[jRange] = XTAnalyzerParameters.fitX_base_sigma_middle[iRange];}}
+            parName=Form("XTAnalyzer.fitX_%d_base_sigma_left",iRange);if (MyRuntimeParameters::Get().HasParameter(parName)) {XTAnalyzerParameters.fitX_base_sigma_left[iRange] = MyRuntimeParameters::Get().GetParameterD(parName); for (int jRange = iRange+1; jRange<XTAnalyzerParameters.fitX_nRanges; jRange++){XTAnalyzerParameters.fitX_base_sigma_left[jRange] = XTAnalyzerParameters.fitX_base_sigma_left[iRange];}}
+            parName=Form("XTAnalyzer.fitX_%d_base_sigma_right",iRange);if (MyRuntimeParameters::Get().HasParameter(parName)) {XTAnalyzerParameters.fitX_base_sigma_right[iRange] = MyRuntimeParameters::Get().GetParameterD(parName); for (int jRange = iRange+1; jRange<XTAnalyzerParameters.fitX_nRanges; jRange++){XTAnalyzerParameters.fitX_base_sigma_right[jRange] = XTAnalyzerParameters.fitX_base_sigma_right[iRange];}}
+            parName=Form("XTAnalyzer.fitX_%d_base_mean_range",iRange);if (MyRuntimeParameters::Get().HasParameter(parName)) {XTAnalyzerParameters.fitX_base_mean_range[iRange] = MyRuntimeParameters::Get().GetParameterD(parName); for (int jRange = iRange+1; jRange<XTAnalyzerParameters.fitX_nRanges; jRange++){XTAnalyzerParameters.fitX_base_mean_range[jRange] = XTAnalyzerParameters.fitX_base_mean_range[iRange];}}
         }
         // get the last tSep
         int iRange = XTAnalyzerParameters.fitX_nRanges;
-        if (MyRuntimeParameters::Get().HasParameter(Form("XTAnalyzer.fitX_%d_tSep",iRange))) {
-            XTAnalyzerParameters.fitX_tSep[iRange] = MyRuntimeParameters::Get().GetParameterD(Form("XTAnalyzer.fitX_%d_tSep",iRange));
+        parName=Form("XTAnalyzer.fitX_%d_tSep",iRange);
+        if (MyRuntimeParameters::Get().HasParameter(parName)) {
+            XTAnalyzerParameters.fitX_tSep[iRange] = MyRuntimeParameters::Get().GetParameterD(parName);
             if (XTAnalyzerParameters.fitX_tSep[iRange]<XTAnalyzerParameters.bin_t_min){
                 MyWarn("XTAnalyzerParameters.fitX_tSep is set to "<<XTAnalyzerParameters.fitX_tSep[iRange]<<" but cannot be smaller than XTAnalyzerParameters.bin_t_min = "<<XTAnalyzerParameters.bin_t_min);
                 XTAnalyzerParameters.fitX_tSep[iRange]=XTAnalyzerParameters.bin_t_min;
@@ -148,29 +157,30 @@ void ParameterManager::LoadParameters(ParaBlock theParaBlock){
             }
             for (int jRange = iRange+1; jRange<XTAnalyzerParameters.fitX_nRanges; jRange++){XTAnalyzerParameters.fitX_tSep[jRange] = XTAnalyzerParameters.fitX_tSep[iRange];}
         }
-        if (MyRuntimeParameters::Get().HasParameter("XTAnalyzer.graph_n_min")) XTAnalyzerParameters.graph_n_min = MyRuntimeParameters::Get().GetParameterI("XTAnalyzer.graph_n_min");
-        if (MyRuntimeParameters::Get().HasParameter("XTAnalyzer.graph_chi2_max")) XTAnalyzerParameters.graph_chi2_max = MyRuntimeParameters::Get().GetParameterD("XTAnalyzer.graph_chi2_max");
-        if (MyRuntimeParameters::Get().HasParameter("XTAnalyzer.graph_prob_min")) XTAnalyzerParameters.graph_prob_min = MyRuntimeParameters::Get().GetParameterD("XTAnalyzer.graph_prob_min");
-        if (MyRuntimeParameters::Get().HasParameter("XTAnalyzer.graph_sepX")) XTAnalyzerParameters.graph_sepX = MyRuntimeParameters::Get().GetParameterD("XTAnalyzer.graph_sepX");
+        parName="XTAnalyzer.graph_n_min";if (MyRuntimeParameters::Get().HasParameter(parName)) XTAnalyzerParameters.graph_n_min = MyRuntimeParameters::Get().GetParameterI(parName);
+        parName="XTAnalyzer.graph_chi2_max";if (MyRuntimeParameters::Get().HasParameter(parName)) XTAnalyzerParameters.graph_chi2_max = MyRuntimeParameters::Get().GetParameterD(parName);
+        parName="XTAnalyzer.graph_prob_min";if (MyRuntimeParameters::Get().HasParameter(parName)) XTAnalyzerParameters.graph_prob_min = MyRuntimeParameters::Get().GetParameterD(parName);
+        parName="XTAnalyzer.graph_sepX";if (MyRuntimeParameters::Get().HasParameter(parName)) XTAnalyzerParameters.graph_sepX = MyRuntimeParameters::Get().GetParameterD(parName);
 
-        if (MyRuntimeParameters::Get().HasParameter("XTAnalyzer.xtfunc_nRanges")){
-            XTAnalyzerParameters.xtfunc_nRanges = MyRuntimeParameters::Get().GetParameterI("XTAnalyzer.xtfunc_nRanges");
+        parName="XTAnalyzer.xtfunc_nRanges";
+        if (MyRuntimeParameters::Get().HasParameter(parName)){
+            XTAnalyzerParameters.xtfunc_nRanges = MyRuntimeParameters::Get().GetParameterI(parName);
             if (XTAnalyzerParameters.xtfunc_nRanges > NRANGES){
                 MyWarn("XTAnalyzerParameters.xtfunc_nRanges is set to "<<XTAnalyzerParameters.xtfunc_nRanges<<" but cannot be larger than "<<NRANGES);
                 XTAnalyzerParameters.xtfunc_nRanges = NRANGES;
             }
         }
-        if (MyRuntimeParameters::Get().HasParameter("XTAnalyzer.xtfunc_tHighEdge")) XTAnalyzerParameters.xtfunc_tHighEdge = MyRuntimeParameters::Get().GetParameterD("XTAnalyzer.xtfunc_tHighEdge");
+        parName="XTAnalyzer.xtfunc_tHighEdge";if (MyRuntimeParameters::Get().HasParameter(parName)) XTAnalyzerParameters.xtfunc_tHighEdge = MyRuntimeParameters::Get().GetParameterD(parName);
         for (int iRange = 0; iRange<XTAnalyzerParameters.xtfunc_nRanges; iRange++){
-            if (MyRuntimeParameters::Get().HasParameter(Form("XTAnalyzer.xtfunc_%d_nPol",iRange))) {XTAnalyzerParameters.xtfunc_nPol[iRange] = MyRuntimeParameters::Get().GetParameterI(Form("XTAnalyzer.xtfunc_%d_nPol",iRange)); for (int jRange = iRange+1; jRange<XTAnalyzerParameters.xtfunc_nRanges; jRange++){XTAnalyzerParameters.xtfunc_nPol[jRange] = XTAnalyzerParameters.xtfunc_nPol[iRange];}}
-            if (MyRuntimeParameters::Get().HasParameter(Form("XTAnalyzer.xtfunc_%d_tLeft",iRange))) {XTAnalyzerParameters.xtfunc_tLeft[iRange] = MyRuntimeParameters::Get().GetParameterD(Form("XTAnalyzer.xtfunc_%d_tLeft",iRange)); for (int jRange = iRange+1; jRange<XTAnalyzerParameters.xtfunc_nRanges; jRange++){XTAnalyzerParameters.xtfunc_tLeft[jRange] = XTAnalyzerParameters.xtfunc_tLeft[iRange];}}
-            if (MyRuntimeParameters::Get().HasParameter(Form("XTAnalyzer.xtfunc_%d_tRight",iRange))) {XTAnalyzerParameters.xtfunc_tRight[iRange] = MyRuntimeParameters::Get().GetParameterD(Form("XTAnalyzer.xtfunc_%d_tRight",iRange)); for (int jRange = iRange+1; jRange<XTAnalyzerParameters.xtfunc_nRanges; jRange++){XTAnalyzerParameters.xtfunc_tRight[jRange] = XTAnalyzerParameters.xtfunc_tRight[iRange];}}
-            if (MyRuntimeParameters::Get().HasParameter(Form("XTAnalyzer.xtfunc_%d_tLowEdge",iRange))) {XTAnalyzerParameters.xtfunc_tLowEdge[iRange] = MyRuntimeParameters::Get().GetParameterD(Form("XTAnalyzer.xtfunc_%d_tLowEdge",iRange)); for (int jRange = iRange+1; jRange<XTAnalyzerParameters.xtfunc_nRanges; jRange++){XTAnalyzerParameters.xtfunc_tLowEdge[jRange] = XTAnalyzerParameters.xtfunc_tLowEdge[iRange];}}
+            parName=Form("XTAnalyzer.xtfunc_%d_nPol",iRange);if (MyRuntimeParameters::Get().HasParameter(parName)) {XTAnalyzerParameters.xtfunc_nPol[iRange] = MyRuntimeParameters::Get().GetParameterI(parName); for (int jRange = iRange+1; jRange<XTAnalyzerParameters.xtfunc_nRanges; jRange++){XTAnalyzerParameters.xtfunc_nPol[jRange] = XTAnalyzerParameters.xtfunc_nPol[iRange];}}
+            parName=Form("XTAnalyzer.xtfunc_%d_tLeft",iRange);if (MyRuntimeParameters::Get().HasParameter(parName)) {XTAnalyzerParameters.xtfunc_tLeft[iRange] = MyRuntimeParameters::Get().GetParameterD(parName); for (int jRange = iRange+1; jRange<XTAnalyzerParameters.xtfunc_nRanges; jRange++){XTAnalyzerParameters.xtfunc_tLeft[jRange] = XTAnalyzerParameters.xtfunc_tLeft[iRange];}}
+            parName=Form("XTAnalyzer.xtfunc_%d_tRight",iRange);if (MyRuntimeParameters::Get().HasParameter(parName)) {XTAnalyzerParameters.xtfunc_tRight[iRange] = MyRuntimeParameters::Get().GetParameterD(parName); for (int jRange = iRange+1; jRange<XTAnalyzerParameters.xtfunc_nRanges; jRange++){XTAnalyzerParameters.xtfunc_tRight[jRange] = XTAnalyzerParameters.xtfunc_tRight[iRange];}}
+            parName=Form("XTAnalyzer.xtfunc_%d_tLowEdge",iRange);if (MyRuntimeParameters::Get().HasParameter(parName)) {XTAnalyzerParameters.xtfunc_tLowEdge[iRange] = MyRuntimeParameters::Get().GetParameterD(parName); for (int jRange = iRange+1; jRange<XTAnalyzerParameters.xtfunc_nRanges; jRange++){XTAnalyzerParameters.xtfunc_tLowEdge[jRange] = XTAnalyzerParameters.xtfunc_tLowEdge[iRange];}}
         }
-        if (MyRuntimeParameters::Get().HasParameter("XTAnalyzer.draw_tmin")) XTAnalyzerParameters.draw_tmin = MyRuntimeParameters::Get().GetParameterD("XTAnalyzer.draw_tmin");
-        if (MyRuntimeParameters::Get().HasParameter("XTAnalyzer.draw_tmax")) XTAnalyzerParameters.draw_tmax = MyRuntimeParameters::Get().GetParameterD("XTAnalyzer.draw_tmax");
-        if (MyRuntimeParameters::Get().HasParameter("XTAnalyzer.draw_xmin")) XTAnalyzerParameters.draw_xmin = MyRuntimeParameters::Get().GetParameterD("XTAnalyzer.draw_xmin");
-        if (MyRuntimeParameters::Get().HasParameter("XTAnalyzer.draw_xmax")) XTAnalyzerParameters.draw_xmax = MyRuntimeParameters::Get().GetParameterD("XTAnalyzer.draw_xmax");
+        parName="XTAnalyzer.draw_tmin";if (MyRuntimeParameters::Get().HasParameter(parName)) XTAnalyzerParameters.draw_tmin = MyRuntimeParameters::Get().GetParameterD(parName);
+        parName="XTAnalyzer.draw_tmax";if (MyRuntimeParameters::Get().HasParameter(parName)) XTAnalyzerParameters.draw_tmax = MyRuntimeParameters::Get().GetParameterD(parName);
+        parName="XTAnalyzer.draw_xmin";if (MyRuntimeParameters::Get().HasParameter(parName)) XTAnalyzerParameters.draw_xmin = MyRuntimeParameters::Get().GetParameterD(parName);
+        parName="XTAnalyzer.draw_xmax";if (MyRuntimeParameters::Get().HasParameter(parName)) XTAnalyzerParameters.draw_xmax = MyRuntimeParameters::Get().GetParameterD(parName);
     }
 }
 
