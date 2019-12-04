@@ -68,7 +68,7 @@ class XTAnalyzer{
         TF1 * fitSliceSingleSide(TH1D * h, double & x,double & xerr,double & sig,double & chi2,double & prob, int & result, int & functionType, int iRange, bool isLeft);
         void getMaximum(TH1D * h, double & position, double & maximum, double left, double right);
         void plusGraph(TGraphErrors * gn, const TGraphErrors * gl, const TGraphErrors * gr, double sl = 1, double sr = 1);
-        double interpolate(const TGraphErrors * graph, double theX);
+        bool interpolate(const TGraphErrors * graph, double theX, double & theY);
         TF1 * myNewTF1(TString name, TString form, double left, double right);
         void drawFitting(TH1D* h,TCanvas * c,TString title, TString filename, int function, double center1, double center2, bool isLeft = false);
         void drawSample2D(bool withFunction = false);

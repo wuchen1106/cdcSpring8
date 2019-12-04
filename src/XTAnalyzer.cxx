@@ -368,6 +368,15 @@ void XTAnalyzer::BinAnalysis(void){
                     mOutTree->Fill();
                 }
             }
+            else{
+                mFunction = kNone;
+                mT = t1; mTerr = terr1; mEntries = n1; mX = 0; mXerr = 0; mSig = 0;
+                mOutTree->Fill();
+                if (fitBoth){
+                    mT = t2; mTerr = terr2; mEntries = n2; mX = 0; mXerr = 0; mSig = 0;
+                    mOutTree->Fill();
+                }
+            }
         }
         h2_xt->GetXaxis()->UnZoom();
         if (divright>=ParameterManager::Get().XTAnalyzerParameters.fitX_tSep[current_iRange+1]){ // switch to the next range
@@ -1077,7 +1086,7 @@ void XTAnalyzer::drawSample2D(bool withFunction){
     if (withFunction){
         double xtrange_tmin = f_right->GetXmin()<f_left->GetXmin()?f_left->GetXmin():f_right->GetXmin();
         double xtrange_tmax = f_right->GetXmax()>f_left->GetXmax()?f_left->GetXmax():f_right->GetXmax();
-        TF1 * f_diff = myNewTF1("f_diff",Form("(f_left%s+f_right%s)",m_suffix.Data(),m_suffix.Data()),xtrange_tmin,xtrange_tmax);
+        TF1 * f_diff = myNewTF1("f_diff",Form("(fl%s+fr%s)",m_suffix.Data(),m_suffix.Data()),xtrange_tmin,xtrange_tmax);
         int nParLeft=f_left->GetNpar();
         for (int iPar = 0; iPar<nParLeft; iPar++){
             f_diff->SetParameter(iPar,f_left->GetParameter(iPar));
@@ -1086,7 +1095,7 @@ void XTAnalyzer::drawSample2D(bool withFunction){
         for (int iPar = 0; iPar<nParRight; iPar++){
             f_diff->SetParameter(iPar+nParLeft,f_right->GetParameter(iPar));
         }
-        h2_bkg_rightMinusLeft->SetTitle(Form("Right + Left: mean %.0f um, max %.0f um",f_diff->Integral(xtrange_tmax,xtrange_tmin)/(xtrange_tmax-xtrange_tmin)*1000,f_diff->GetMaximum(xtrange_tmin,xtrange_tmax)*1000));
+        h2_bkg_rightMinusLeft->SetTitle(Form("Right + Left: mean %.0f um, max %.0f um",f_diff->Integral(xtrange_tmin,xtrange_tmax)/(xtrange_tmax-xtrange_tmin)*1000,f_diff->GetMaximum(xtrange_tmin,xtrange_tmax)*1000));
         f_diff->SetLineColor(kMagenta);
         f_diff->Draw("SAME");
 
@@ -1179,23 +1188,24 @@ void XTAnalyzer::drawSampleAtt(){
     canv->cd(1);gPad->SetGridx(1);gPad->SetGridy(1);
     TH2D * h2_bkg_entriesT = new TH2D("h2_bkg_entriesT","Number of entries in each T slice",512,mDrawTmin,mDrawTmax,1024,0,mEntriesMax*1.1);
     h2_bkg_entriesT->Draw();
-    mOutTree->SetMarkerColor(kRed); mOutTree->Draw("n:t","x>=0&&n>0","PSAME");
-    mOutTree->SetMarkerColor(kBlue); mOutTree->Draw("n:t","x<0&&n>0","PSAME");
+    mOutTree->SetMarkerColor(kRed); mOutTree->Draw("n:t","x>=0&&n>0&&func!=0","PSAME");
+    mOutTree->SetMarkerColor(kBlue); mOutTree->Draw("n:t","x<0&&n>0&&func!=0","PSAME");
+    mOutTree->SetMarkerColor(kGray); mOutTree->Draw("n:t","func==0","PSAME");
     canv->cd(2);gPad->SetGridx(1);gPad->SetGridy(1);
     TH2D * h2_bkg_sigT = new TH2D("h2_bkg_sigT","#sigma of X fitting in each T slice",512,mDrawTmin,mDrawTmax,512,0,0.8);
     h2_bkg_sigT->Draw();
-    mOutTree->SetMarkerColor(kRed); mOutTree->Draw("sig:t","x>=0&&n>0","PSAME");
-    mOutTree->SetMarkerColor(kBlue); mOutTree->Draw("sig:t","x<0&&n>0","PSAME");
+    mOutTree->SetMarkerColor(kRed); mOutTree->Draw("sig:t","x>=0&&n>0&&func!=0","PSAME");
+    mOutTree->SetMarkerColor(kBlue); mOutTree->Draw("sig:t","x<0&&n>0&&func!=0","PSAME");
     canv->cd(3);gPad->SetGridx(1);gPad->SetGridy(1);
     TH2D * h2_bkg_chi2T = new TH2D("h2_bkg_chi2T","#chi^{2} of X fitting in each T slice",512,mDrawTmin,mDrawTmax,512,0,150);
     h2_bkg_chi2T->Draw();
-    mOutTree->SetMarkerColor(kRed); mOutTree->Draw("chi2:t","x>=0&&n>0","PSAME");
-    mOutTree->SetMarkerColor(kBlue); mOutTree->Draw("chi2:t","x<0&&n>0","PSAME");
+    mOutTree->SetMarkerColor(kRed); mOutTree->Draw("chi2:t","x>=0&&n>0&&func!=0","PSAME");
+    mOutTree->SetMarkerColor(kBlue); mOutTree->Draw("chi2:t","x<0&&n>0&&func!=0","PSAME");
     canv->cd(4);gPad->SetGridx(1);gPad->SetGridy(1);
     TH2D * h2_bkg_probT = new TH2D("h2_bkg_probT","p-value of X fitting in each T slice",512,mDrawTmin,mDrawTmax,512,0,1);
     h2_bkg_probT->Draw();
-    mOutTree->SetMarkerColor(kRed); mOutTree->Draw("prob:t","x>=0&&n>0","PSAME");
-    mOutTree->SetMarkerColor(kBlue); mOutTree->Draw("prob:t","x<0&&n>0","PSAME");
+    mOutTree->SetMarkerColor(kRed); mOutTree->Draw("prob:t","x>=0&&n>0&&func!=0","PSAME");
+    mOutTree->SetMarkerColor(kBlue); mOutTree->Draw("prob:t","x<0&&n>0&&func!=0","PSAME");
     canv->SaveAs(Form("result/sampleAtt_%s%s.png",mRunName.Data(),m_suffix.Data()));
 }
 
@@ -1410,20 +1420,27 @@ void XTAnalyzer::formXTGraphs(){
 
 void XTAnalyzer::plusGraph(TGraphErrors * gn, const TGraphErrors * gl, const TGraphErrors * gr, double sl, double sr){
     gn->Set(gl->GetN());
+    int count = 0;
     for (int iPoint = 0; iPoint<gl->GetN(); iPoint++){
         double xl,yl; double xerr,yerr;
         gl->GetPoint(iPoint,xl,yl);
         yl*=sl;
         xerr = gl->GetErrorX(iPoint);
         yerr = gl->GetErrorY(iPoint);
-        double yr = sr*interpolate(gr,xl);
-        gn->SetPoint(iPoint,xl,yl+yr);
-        gn->SetPointError(iPoint,xerr,yerr);
+        double yr = 0;
+        if(!interpolate(gr,xl,yr)){
+            continue;
+        }
+        yr*=sr;
+        gn->SetPoint(count,xl,yl+yr);
+        gn->SetPointError(count,xerr,yerr);
+        count++;
     }
+    gn->Set(count);
 }
 
-double XTAnalyzer::interpolate(const TGraphErrors * graph, double theX){
-    double theY = 0;
+bool XTAnalyzer::interpolate(const TGraphErrors * graph, double theX, double & theY){
+    theY = 0;
     // check the first point
     double x,y;
     graph->GetPoint(0,x,y);
@@ -1442,8 +1459,10 @@ double XTAnalyzer::interpolate(const TGraphErrors * graph, double theX){
         prevY = y;
     }
     if (!found){ // didn't cross the asked position
-        theY = fabs(theX-prevX)>fabs(theX-firstX)?firstY:prevY;
+        // DON'T EXTRAPOLATE
+        // theY = fabs(theX-prevX)>fabs(theX-firstX)?firstY:prevY;
+        return false;
     }
-    return theY;
+    return true;
 }
 
