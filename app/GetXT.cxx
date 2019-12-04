@@ -55,7 +55,6 @@ int main(int argc, char** argv){
     int m_nEntries = 0;
     int m_modulo = 10000;
     bool m_memdebug = false;
-    int m_defaultLayerID = 4;
     bool m_DrawDetails = false;
     int m_StartStage = 1;
     int m_StopStage = 3;
@@ -65,7 +64,7 @@ int main(int argc, char** argv){
     int    opt_result;
     std::string opt_name;
     std::size_t opt_pos;
-    while((opt_result=getopt(argc,argv,"B:C:D:E:HL:MN:P:R:S:V:Wh"))!=-1){
+    while((opt_result=getopt(argc,argv,"B:C:D:E:HMN:P:R:S:V:Wh"))!=-1){
         switch(opt_result){
             /* INPUTS */
             case 'M':
@@ -91,10 +90,6 @@ int main(int argc, char** argv){
             case 'N':
                 m_nEntries = atoi(optarg);
                 printf("Number of entries set to %d\n",m_nEntries);
-                break;
-            case 'L':
-                m_defaultLayerID = atoi(optarg);
-                printf("Test layer set to %d\n",m_defaultLayerID);
                 break;
             case 'C':
                 getRunTimeParameters(optarg);
@@ -161,7 +156,6 @@ int main(int argc, char** argv){
     printf("runNo               = %d\n",m_runNo);
     printf("preRunName          = \"%s\"\n",m_preRunName.Data());
     printf("runName             = \"%s\"\n",m_runName.Data());
-    printf("default test layer  = %d\n",m_defaultLayerID);
     printf("Start Entry         = %d\n",m_iEntryStart);
     printf("Stop Entry          = %d\n",m_iEntryStop);
     ParameterManager::Get().Print();
@@ -174,7 +168,7 @@ int main(int argc, char** argv){
 
     // Prepare managers
     bool success = false;
-    success = RunInfoManager::Get().Initialize(m_runNo,m_preRunName,m_runName,m_defaultLayerID);RunInfoManager::Get().Print(); // note that the default layerID here is not important. We will set test layerID in the loop below
+    success = RunInfoManager::Get().Initialize(m_runNo,m_preRunName,m_runName,4);RunInfoManager::Get().Print(); // the default layerID here is not important so it's arbiturarily chosen as layer 4
     if (!success) {MyNamedError("GetXT","Cannot initialize RunInfoManager"); return 1;}
     success = BeamManager::Get().Initialize(ParameterManager::Get().beamType);BeamManager::Get().Print();
     if (!success) {MyNamedError("GetXT","Cannot initialize BeamManager"); return 1;}
@@ -536,8 +530,6 @@ void print_usage(char * prog_name){
     fprintf(stderr,"\t\t Stopping entry index set to n\n");
     fprintf(stderr,"\t -N <n>\n");
     fprintf(stderr,"\t\t Maximum number of entries set to n\n");
-    fprintf(stderr,"\t -L <l>\n");
-    fprintf(stderr,"\t\t Default test layer set to l\n");
     fprintf(stderr,"\t -W \n");
     fprintf(stderr,"\t\t Seperate wires\n");
     fprintf(stderr,"\t -H \n");
