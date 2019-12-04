@@ -252,8 +252,8 @@ int XTAnalyzer::PrepareXTFunctions(){
     }
     if (f_left) delete f_left;
     if (f_right) delete f_right;
-    f_left = myNewTF1("f_left"+m_suffix,formula,-25,800);
-    f_right = myNewTF1("f_right"+m_suffix,formula,-25,800);
+    f_left = myNewTF1("fl"+m_suffix,formula,-25,800);
+    f_right = myNewTF1("fr"+m_suffix,formula,-25,800);
     return 0;
 }
 
