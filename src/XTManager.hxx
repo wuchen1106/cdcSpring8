@@ -39,7 +39,7 @@ public:
     void Print();
     bool PrintXTfunc(const TF1 * fl, const TF1 * fr);
 
-    XTType xtType;
+    int xtType;
 
 private:
     /// The static pointer to the singleton instance.

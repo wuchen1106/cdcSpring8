@@ -1,4 +1,5 @@
 #include "ParameterManager.hxx"
+#include "XTManager.hxx"
 #include "XTAnalyzer.hxx"
 #include "MyRuntimeParameters.hxx"
 #include "HEPUnits.hxx"
@@ -76,6 +77,12 @@ void ParameterManager::LoadParameters(ParaBlock theParaBlock){
         parName="tracking.t0error";if (MyRuntimeParameters::Get().HasParameter(parName)) TrackingParameters.t0error = MyRuntimeParameters::Get().GetParameterD(parName);
         parName="tracking.lidStart";if (MyRuntimeParameters::Get().HasParameter(parName)) TrackingParameters.lidStart = MyRuntimeParameters::Get().GetParameterI(parName);
         parName="tracking.lidStop";if (MyRuntimeParameters::Get().HasParameter(parName)) TrackingParameters.lidStop = MyRuntimeParameters::Get().GetParameterI(parName);
+    }
+    if (theParaBlock==kAll||theParaBlock==kXTManager){
+        parName="XTManager.xtType";if (MyRuntimeParameters::Get().HasParameter(parName)) XTManagerParameters.xtType = getXTType(MyRuntimeParameters::Get().GetParameterS(parName));
+        parName="XTManager.defaultLayer";if (MyRuntimeParameters::Get().HasParameter(parName)) XTManagerParameters.defaultLayer = MyRuntimeParameters::Get().GetParameterI(parName);
+        parName="XTManager.evenLayer";if (MyRuntimeParameters::Get().HasParameter(parName)) XTManagerParameters.evenLayer = MyRuntimeParameters::Get().GetParameterI(parName);
+        parName="XTManager.oddLayer";if (MyRuntimeParameters::Get().HasParameter(parName)) XTManagerParameters.oddLayer = MyRuntimeParameters::Get().GetParameterI(parName);
     }
     if (theParaBlock==kAll||theParaBlock==kXTAnalyzer){
         parName="XTAnalyzer.CandSelBy";if (MyRuntimeParameters::Get().HasParameter(parName)) XTAnalyzerParameters.CandSelBy = MyRuntimeParameters::Get().GetParameterS(parName);
@@ -198,6 +205,7 @@ void ParameterManager::Print(){
     printf("  peak type:         %d\n",peakType);
     TrackingParameters.Print();
     CalibParameters.Print();
+    XTManagerParameters.Print();
     XTAnalyzerParameters.Print();
     AnaParameters.Print();
 }
@@ -238,6 +246,29 @@ CalibPara::CalibPara(){
 }
 
 void CalibPara::Print(){
+}
+
+XTManagerPara::XTManagerPara(){
+    xtType = XTManager::kSingleFolded;
+    defaultLayer = 4;
+    evenLayer = 4;
+    oddLayer = 5;
+}
+
+void XTManagerPara::Print(){
+    printf("XTManager Parameters:\n");
+    TString xttypename("");
+    if (xtType==XTManager::kSingleFolded) xttypename = "SingleFolded";
+    else if (xtType==XTManager::kSingleLeftRight) xttypename = "SingleLeftRight";
+    else if (xtType==XTManager::kAllFolded) xttypename = "AllFolded";
+    else if (xtType==XTManager::kAllLeftRight) xttypename = "AllLeftRight";
+    else if (xtType==XTManager::kEvenOddFolded) xttypename = "EvenOddFolded";
+    else if (xtType==XTManager::kEvenOddLeftRight) xttypename = "EvenOddLeftRight";
+    else xttypename = "UNRECOGONISED";
+    printf(" xtType = %d (%s)\n",xtType,xttypename.Data());
+    printf(" Default Layer: %d\n",defaultLayer);
+    printf(" Even Layer: %d\n",evenLayer);
+    printf(" Odd Layer: %d\n",oddLayer);
 }
 
 XTAnalyzerPara::XTAnalyzerPara(){
@@ -401,4 +432,33 @@ int ParameterManager::getFunctionType(TString name){
         functionType = XTAnalyzer::kOptimal;
     }
     return functionType;
+}
+
+int ParameterManager::getXTType(TString name){
+    int xtType = 0;
+    if (name.Contains("single",TString::kIgnoreCase)){
+        if (name.Contains("fold",TString::kIgnoreCase)){
+            xtType = XTManager::kSingleFolded;
+        }
+        else{
+            xtType = XTManager::kSingleLeftRight;
+        }
+    }
+    else if (name.Contains("all",TString::kIgnoreCase)){
+        if (name.Contains("fold",TString::kIgnoreCase)){
+            xtType = XTManager::kAllFolded;
+        }
+        else{
+            xtType = XTManager::kAllLeftRight;
+        }
+    }
+    else if (name.Contains("even",TString::kIgnoreCase)&&name.Contains("odd",TString::kIgnoreCase)){
+        if (name.Contains("fold",TString::kIgnoreCase)){
+            xtType = XTManager::kEvenOddFolded;
+        }
+        else{
+            xtType = XTManager::kEvenOddLeftRight;
+        }
+    }
+    return xtType;
 }

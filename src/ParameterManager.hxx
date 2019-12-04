@@ -46,6 +46,18 @@ public:
     void Print();
 };
 
+// parameter block for XTManager
+class XTManagerPara{
+public:
+    XTManagerPara();
+    virtual ~XTManagerPara(){};
+    void Print();
+    int  xtType;
+    int  defaultLayer;
+    int  evenLayer;
+    int  oddLayer;
+};
+
 // parameter block for XTAnalyzer
 class XTAnalyzerPara{
 public:
@@ -134,6 +146,7 @@ public:
     enum ParaBlock{
         kTracking,
         kCalib,
+        kXTManager,
         kXTAnalyzer,
         kAna,
         kAll
@@ -170,11 +183,13 @@ public:
 
     TrackingPara    TrackingParameters;
     CalibPara       CalibParameters;
-    XTAnalyzerPara XTAnalyzerParameters;
+    XTManagerPara   XTManagerParameters;
+    XTAnalyzerPara  XTAnalyzerParameters;
     AnaPara         AnaParameters;
 
 private:
     int getFunctionType(TString name);
+    int getXTType(TString name);
 
     /// The static pointer to the singleton instance.
     static ParameterManager* fParameterManager;
