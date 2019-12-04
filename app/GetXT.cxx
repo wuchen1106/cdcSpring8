@@ -220,7 +220,7 @@ int main(int argc, char** argv){
     //=================================================Loop in layers to get XTs====================================================
     // Loop in layers
     int wireStart = 0; int wireStop = 0;
-    if (m_SeparateWires){wireStop = 10;}
+    if (m_SeparateWires){wireStart = -1; wireStop = 10;}
     for (int testLayer = 0; testLayer<NLAY; testLayer++){
     for (int testWire = wireStart; testWire<=wireStop; testWire++){
         MyNamedLog("GetXT","In Layer "<<testLayer);
@@ -228,7 +228,7 @@ int main(int argc, char** argv){
         //----------------------------------Prepare the 2D histogram--------------------------------------------
         MyNamedLog("GetXT","  Preparing the 2D histogram");
         TString suffix("");
-        if (m_SeparateWires){
+        if (m_SeparateWires&&testWire>=0){
             suffix = Form("_%d_%d",testLayer,testWire);
         }
         else{
@@ -309,7 +309,7 @@ int main(int argc, char** argv){
                     int layerID = InputOutputManager::Get().LayerID->at(iHit);
                     if (layerID!=testLayer) continue;
                     int cellID = InputOutputManager::Get().CellID->at(iHit);
-                    if (m_SeparateWires&&cellID!=testWire) continue;
+                    if (m_SeparateWires&&testWire>=0&&cellID!=testWire) continue;
                     if (UseGoodHit&&!isGoodHit(iHit)) continue; // only use good hit in the test layer if required
                     if (FirstGoodPeak&&CountGoodHitBeforeIt(iHit)) continue; // if there is a good hit before this hit in the same cell, then skip it
                     double tfitD = GeometryManager::Get().GetDOCA(layerID,cellID,slx,inx,slz,inz);
