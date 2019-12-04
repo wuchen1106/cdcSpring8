@@ -64,8 +64,6 @@ public:
     XTAnalyzerPara();
     virtual ~XTAnalyzerPara(){};
     void Print();
-    int XTType;
-    bool AsymXT;
     TString CandSelBy;
     bool RequireInTriggerCounter;
     bool RequireAllGoldenHits;

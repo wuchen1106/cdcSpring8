@@ -86,8 +86,6 @@ void ParameterManager::LoadParameters(ParaBlock theParaBlock){
     }
     if (theParaBlock==kAll||theParaBlock==kXTAnalyzer){
         parName="XTAnalyzer.CandSelBy";if (MyRuntimeParameters::Get().HasParameter(parName)) XTAnalyzerParameters.CandSelBy = MyRuntimeParameters::Get().GetParameterS(parName);
-        parName="XTAnalyzer.XTType";if (MyRuntimeParameters::Get().HasParameter(parName)) XTAnalyzerParameters.XTType = MyRuntimeParameters::Get().GetParameterI(parName);
-        parName="XTAnalyzer.AsymXT";if (MyRuntimeParameters::Get().HasParameter(parName)) XTAnalyzerParameters.AsymXT = MyRuntimeParameters::Get().GetParameterB(parName);
         parName="XTAnalyzer.RequireInTriggerCounter";if (MyRuntimeParameters::Get().HasParameter(parName)) XTAnalyzerParameters.RequireInTriggerCounter = MyRuntimeParameters::Get().GetParameterB(parName);
         parName="XTAnalyzer.RequireAllGoldenHits";if (MyRuntimeParameters::Get().HasParameter(parName)) XTAnalyzerParameters.RequireAllGoldenHits = MyRuntimeParameters::Get().GetParameterB(parName);
         parName="XTAnalyzer.FirstGoodPeak";if (MyRuntimeParameters::Get().HasParameter(parName)) XTAnalyzerParameters.FirstGoodPeak = MyRuntimeParameters::Get().GetParameterB(parName);
@@ -272,8 +270,6 @@ void XTManagerPara::Print(){
 }
 
 XTAnalyzerPara::XTAnalyzerPara(){
-    XTType = 55; // use pol5 and pol5 to describe an XT function
-    AsymXT = false; // don't use asymmetric XT
     CandSelBy = "Original"; // Just use the first candidate
     RequireInTriggerCounter = true;
     RequireAllGoldenHits = false;

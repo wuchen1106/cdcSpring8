@@ -139,7 +139,6 @@ XTAnalyzer parameters
 ana parameters
 *******************************************************************************                                                                   
 
-    < ana.AsymXT = 0 >
     < ana.CandSelBy = Original >
     < ana.ClosestPeak = 0 >
     < ana.nHitsMax = 0 >
