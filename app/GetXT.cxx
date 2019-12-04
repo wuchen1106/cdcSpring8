@@ -395,7 +395,6 @@ int main(int argc, char** argv){
             }
         }
         MyNamedLog("GetXT","Finished");
-        fXTAnalyzer->Write();
     }
     newXTFile->Close();
 

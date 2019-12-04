@@ -61,7 +61,6 @@ class XTAnalyzer{
         void Fill(double t, double x);
         void BinAnalysis(void);
         void FitXT(void);
-        void Write(void);
 
     private:
         TF1 * fitSliceBothSides(TH1D * h, double & x1,double & xerr1,double & sig1,double & x2,double & xerr2,double & sig2,double & chi2,double & prob, int & result, int & functionType, int iRange);
@@ -71,7 +70,8 @@ class XTAnalyzer{
         double interpolate(const TGraphErrors * graph, double theX);
         TF1 * myNewTF1(TString name, TString form, double left, double right);
         void drawFitting(TH1D* h,TCanvas * c,TString title, TString filename, int function, double center1, double center2, bool isLeft = false);
-        void drawSamples(void);
+        void drawSample2D(bool withFunction = false);
+        void drawSampleAtt(void);
         void formXTGraphs(void); //< scan through the tree and select points to form up the graphs.
         void getMeanRMS(TF1 * f, const TH1D * h, double & mean, double & sigma);
 
@@ -131,7 +131,7 @@ class XTAnalyzer{
         TF1 * f_combLandGausBoth;
 
         // functions to fit XT relation
-        TF1 * f_basicXT[NRANGE][NPOL];
+        TF1 * f_basicXT[2][NRANGE][NPOL];
         TF1 * f_left;
         TF1 * f_right;
 };
