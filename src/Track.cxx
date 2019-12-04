@@ -35,7 +35,7 @@ void TrackCandidate::Reset(){
 
 bool TrackCandidate::operator ==(const TrackCandidate & aCand){
     if (hitIndexSelected.size() != aCand.hitIndexSelected.size()) return false;
-    for (size_t i = 0; i<hitIndexSelected.size(); i++){
+    for (std::size_t i = 0; i<hitIndexSelected.size(); i++){
         if (hitIndexSelected[i] != aCand.hitIndexSelected[i]) return false;
         if (hitLeftRightSelected[i] != aCand.hitLeftRightSelected[i]) return false;
     }
@@ -85,7 +85,7 @@ void TrackResult::Reset(){
 
 bool TrackResult::operator ==(const TrackResult & aResult){
     if (hitIndexSelected.size() != aResult.hitIndexSelected.size()) return false;
-    for (size_t i = 0; i<hitIndexSelected.size(); i++){
+    for (std::size_t i = 0; i<hitIndexSelected.size(); i++){
         if (hitIndexSelected[i] != aResult.hitIndexSelected[i]) return false;
         if (hitLeftRightSelected[i] != aResult.hitLeftRightSelected[i]) return false;
     }
