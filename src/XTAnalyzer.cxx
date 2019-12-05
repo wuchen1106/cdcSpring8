@@ -570,10 +570,6 @@ void XTAnalyzer::FitXT(){
 
     drawSample2D(true);
 
-    mOutFile->cd();
-    f_left->Write();
-    f_right->Write();
-
     // move the XT to center: we don't want to leave the wire position offset information in this XT relation
     double xtrange_tmin = f_right->GetXmin()<f_left->GetXmin()?f_left->GetXmin():f_right->GetXmin();
     double xtrange_tmax = f_right->GetXmax()>f_left->GetXmax()?f_left->GetXmax():f_right->GetXmax();
@@ -582,6 +578,10 @@ void XTAnalyzer::FitXT(){
     f_left->SetParameter(nPars-1,-offset);
     nPars = f_right->GetNpar();
     f_right->SetParameter(nPars-1,-offset);
+
+    mOutFile->cd();
+    f_left->Write();
+    f_right->Write();
 }
 
 TF1 * XTAnalyzer::fitSliceSingleSide(TH1D * hist, double & x1,double & xerr1,double & sig1,double & chi2,double & prob,int & result, int & functionType, int iRange, bool isLeft){
