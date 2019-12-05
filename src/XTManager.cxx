@@ -72,6 +72,8 @@ bool XTManager::Initialize(){
     if (lid>=NLAY||lid<0) {MyError("Invalid default layer "<<lid); return false;}
     fXTLeftDefault = fXTLeft[lid];
     fXTRightDefault = fXTRight[lid];
+    if (!fXTLeftDefault) fXTLeftDefault = (TF1*) fInputFileXT->Get("fl_0");
+    if (!fXTRightDefault) fXTRightDefault = (TF1*) fInputFileXT->Get("fl_0");
     lid = ParameterManager::Get().XTManagerParameters.evenLayer;
     if (lid>=NLAY||lid<0) {MyError("Invalid even layer "<<lid); return false;}
     fXTLeftEven = fXTLeft[lid];
