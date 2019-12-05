@@ -1468,6 +1468,7 @@ bool XTAnalyzer::interpolate(const TGraphErrors * graph, double theX, double & t
 
 bool XTAnalyzer::isFittingGood(TF1 * f){
     bool isGood = true;
+    int nPars = f->GetNpar();
     for (int i = 0; i<nPars; i++){
         double parmin,parmax,par;
         f->GetParLimits(i,parmin,parmax);
