@@ -327,6 +327,7 @@ bool Tracker::Fit2D(double safetyFactor, bool fitWithError, double & chi2X, doub
     setPairPositionGraphs(fitWithError);
 
     // prepare to do the 1-D fitting
+    // Do the fitting on Z pairs
     if (gMinuit) delete gMinuit;
     gMinuit = new TMinuit(2);  //initialize TMinuit with a maximum of 2 params
     gMinuit->SetFCN(fcnZ);
@@ -335,21 +336,28 @@ bool Tracker::Fit2D(double safetyFactor, bool fitWithError, double & chi2X, doub
     gMinuit->mnexcm("SET NOW", arglist ,1,ierflg); // no warning 
     arglist[0] = 1;
     gMinuit->mnexcm("SET ERR", arglist ,1,ierflg);
-    // Do the fitting on Z pairs
     double temp; double inz = func_pairYZ->GetParameter(0); double slz = func_pairYZ->GetParameter(1);
-    gMinuit->mnparm(0, "inz", inz, slzStep, slzMin,slzMax,ierflg);
-    gMinuit->mnparm(1, "slz", slz, inzStep, inzMin,inzMax,ierflg);
+    gMinuit->mnparm(0, "inz", inz, inzStep, -10000,10000,ierflg);
+    gMinuit->mnparm(1, "slz", slz, slzStep, slzMin,slzMax,ierflg);
     arglist[0] = 5000.0;
     arglist[1] = 1.0;
     gMinuit->mnexcm("MIGRAD", arglist ,2,ierflg);
     gMinuit->GetParameter(0, inz, temp);
     gMinuit->GetParameter(1, slz, temp);
     func_pairYZ->SetParameter(0,inz); func_pairYZ->SetParameter(1,slz);
+
     // Do the fitting on X pairs
+    if (gMinuit) delete gMinuit;
+    gMinuit = new TMinuit(2);  //initialize TMinuit with a maximum of 2 params
     gMinuit->SetFCN(fcnX);
+    gMinuit->SetPrintLevel(-1); // no print
+    arglist[0] = 0;
+    gMinuit->mnexcm("SET NOW", arglist ,1,ierflg); // no warning 
+    arglist[0] = 1;
+    gMinuit->mnexcm("SET ERR", arglist ,1,ierflg);
     double inx = func_pairYX->GetParameter(0); double slx = func_pairYX->GetParameter(1);
-    gMinuit->mnparm(0, "inx", inx, slxStep, slxMin,slxMax,ierflg);
-    gMinuit->mnparm(1, "slx", slx, inxStep, inxMin,inxMax,ierflg);
+    gMinuit->mnparm(0, "inx", inx, inxStep, -10000,10000,ierflg);
+    gMinuit->mnparm(1, "slx", slx, slxStep, slxMin,slxMax,ierflg);
     arglist[0] = 5000.0;
     arglist[1] = 1.0;
     gMinuit->mnexcm("MIGRAD", arglist ,2,ierflg);
