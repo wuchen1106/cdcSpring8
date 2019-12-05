@@ -250,6 +250,7 @@ int XTAnalyzer::PrepareXTFunctions(){
             counter+=1;
         }
     }
+    formula+=Form("+[%d]",counter); // the last parameter is serving as an offset to cancel wire position offset if needed
     if (f_left) delete f_left;
     if (f_right) delete f_right;
     f_left = myNewTF1("fl"+m_suffix,formula,-25,800);
@@ -546,6 +547,7 @@ void XTAnalyzer::FitXT(){
                 f->SetParameter(counter++,par);
             }
         }
+        f->SetParameter(counter++,0); // the offset is by default 0; will be updated after two functions are formed.
         // decide the range of the function
         double tmin = 1e14; double tmax =-1e14;
         for (size_t iPoint = 0; iPoint<gr->GetN(); iPoint++){
@@ -571,6 +573,15 @@ void XTAnalyzer::FitXT(){
     mOutFile->cd();
     f_left->Write();
     f_right->Write();
+
+    // move the XT to center: we don't want to leave the wire position offset information in this XT relation
+    double xtrange_tmin = f_right->GetXmin()<f_left->GetXmin()?f_left->GetXmin():f_right->GetXmin();
+    double xtrange_tmax = f_right->GetXmax()>f_left->GetXmax()?f_left->GetXmax():f_right->GetXmax();
+    double offset = (f_left->Integral(xtrange_tmin,xtrange_tmax)+f_right->Integral(xtrange_tmin,xtrange_tmax))/(xtrange_tmax-xtrange_tmin);
+    int nPars = f_left->GetNpar();
+    f_left->SetParameter(nPars-1,-offset);
+    nPars = f_right->GetNpar();
+    f_right->SetParameter(nPars-1,-offset);
 }
 
 TF1 * XTAnalyzer::fitSliceSingleSide(TH1D * hist, double & x1,double & xerr1,double & sig1,double & chi2,double & prob,int & result, int & functionType, int iRange, bool isLeft){
