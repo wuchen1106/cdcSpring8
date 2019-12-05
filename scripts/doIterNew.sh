@@ -42,7 +42,7 @@ Report bugs to <wuchen@ihep.ac.cn>.
 EOF
 }
 
-while getopts ':hR:T:N:I:J:LW:S:Pl:w:c:' optname
+while getopts ':hR:T:N:I:J:LW:S:Pl:w:C:' optname
 do
     case "$optname" in
     'h')
@@ -82,7 +82,7 @@ do
     'w')
         wires="$OPTARG";
         ;;
-    'c')
+    'C')
         CONFIGTABLE="$CONFIGTABLE -C $OPTARG";
         ;;
     '?')
