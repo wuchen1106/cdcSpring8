@@ -9,51 +9,14 @@ threadName="job"
 # about this job
 StartName="Garfield"
 layers="4" # layers to be reconstructed and [analyzed (in case of layers is not 0)]
-wires="" # wires to be calibrated (position)
+wires="" # wires to be calibrated (position) FIXME NOT SUPPORTED YET
 isLast=false
 PROGRAMMED=false # by default don't load the programmed iteration setting
 CONFIGTABLEDEFAULT="$CDCS8WORKING_DIR/Para/new.dat"
-CONFIGTABLE_wireposition="$CDCS8WORKING_DIR/Para/wirepos.temp.dat"
 CONFIGTABLE=""
 
-# for tracking
-geoSetup=0 # 0 for general; 1 for finger; 2 for tilted run
-inputType=0 # 1 for MC; 0 for data
-workTypeini=0 # 0, fr/l_0; 1, even/odd; -1, even/odd reversed; others, all layers
-nHitsGMax=15
-sumCut=-10
-aaCut=0
-peakType=0 # 0, only the first peak over threshold; 1, all peaks over threshold; 2, even including shaddowed peaks
-blindLayer=-1 # don't use this layer for tracking (if it's not -1)
-
-t0shift0=0
-t0shift1=0
-tmin=-10
-tmax=800
-
 # for getOffset
-UpdateWireMap=false
-OneWirePerIter=false
-stepSize=0 # maximum step size for each movement in wire position calibration; 0 means no limit
-minslz=0 # min slz cut for mean slz value in each sample of events in wiremap calibration. minslz==maxslz==0 means no cut
-maxslz=0 # min slz cut for mean slz value in each sample of events in wiremap calibration. minslz==maxslz==0 means no cut
-mininx=0 # min inx cut for mean inx value in each sample of events in wiremap calibration. mininx==maxinx==0 means no cut
-maxinx=0 # min inx cut for mean inx value in each sample of events in wiremap calibration. mininx==maxinx==0 means no cut
-calib_maxslz=0.025 # maximum slz for each event considered as offset estimation
-calib_maxFD=7.5 # maximum FD for each event considered as offset estimation; also defining the region for a golden hit
-calib_minFD=0.5 # minimum FD for each event considered as offset estimation; also defining the region for a golden hit
-calib_allgolden=false # requiring all golden hits in getting offset (since the XT might not be good in "bad" regions that are not aligned well)
-maxchi2=2
-scale=0.5 # move scale*offset on wiremap for fitting in the next round
-
-# for ana
-DONTUPDATEXT=false
-DEFAULTLAYER=4 # use this layer to generate fl(r)_0 and so on
-XTTYPE=055
-NHITSMAX=30
-SAVEHISTS=0
-tmaxSet=800
-allgolden=false # resubmitting all golden hits in getting new xt
+UpdateWireMap=false # FIXME NOT SUPPORTED YET
 
 usages() {
 cat << EOF
@@ -67,37 +30,19 @@ Syntax:
     -N [N] the number of threads to ask for
     -I [I] start from iteration I
     -J [J] stop at iteration J
-    -H [h] save histograms at this level ($SAVEHISTS)
     -L     (false) Take the last iteration as the final step and do the default complete checkings
     -W     (false) update the wire position map
-    -U     (false) keep the xt curves unchanged.
-    -O     (false) update one wire position per iteration step (the one with the largest offset)
     -P     (false) use programmed iteration parameters
-    -G     (false) require all golden hits for getting XT 
-    -A     (false) require all golden hits for getting wire offset
+    -C [c] Add configure file as C (default one \"$CONFIGTABLE\" is always loaded first)
     -S [S] set the start name ($StartName)
-    -D [D] set this layer ($DEFAULTLAYER) as the default layer to save in XT file as fr/l_0
     -l [l1 (l2 ...)] Do the training of the given layers ($layers)
     -w [w1 (w2 ...)] Do the calibration of the given wires ($wires) in the ubove given layers ($layers)
-    -c [c] Add configure file as C (default one \"$CONFIGTABLE\" is always loaded first)
-    -g [g] geometry setup ($geoSetup). 0 ordinary scintillator; 1 finger scintillator
-    -t [t] work type ($workTypeini) for tracking. 0, fr/l_0; 1, even/odd; -1, even/odd reversed; others, all layers
-    -a [a] aa cut ($aaCut)
-    -b [b] Blind this layer from tracking ($blindLayer)
-    -s [s] sum cut ($sumCut)
-    -p [p] set peak type ($peakType) for tracking. 0, only the first peak over threshold; 1, all peaks over threshold; 2, even including shaddowed peaks
-    -x [XYZ] xt type. XYZ ($XTTYPE) means polX for center, polY for middle and polZ for tail. If X is 0 then let middle function fit the center region.
-    -n [n] maximum number ($NHITSMAX) of hits to be used in ana
-    -m [m] maximum number ($nHitsGMax) of good hits to be used in tracking
-    -u [u] maximum drift time ($tmax) to be considered in tracking
-    -d [d] minimum drift time ($tmin) to be considered in tracking
-    -o [o] maximum drift time ($tmaxSet) to be considered in getting xt
 
 Report bugs to <wuchen@ihep.ac.cn>.
 EOF
 }
 
-while getopts ':hR:T:N:I:J:LH:W:US:D:PAGl:w:c:g:t:a:b:s:p:x:n:m:u:d:o:' optname
+while getopts ':hR:T:N:I:J:LW:S:Pl:w:c:' optname
 do
     case "$optname" in
     'h')
@@ -122,33 +67,14 @@ do
     'L')
         isLast=true;
         ;;
-    'H')
-        SAVEHISTS="$OPTARG";
-        ;;
     'W')
         UpdateWireMap=true;
-        ;;
-    'U')
-        DONTUPDATEXT=true;
         ;;
     'S')
         StartName="$OPTARG";
         ;;
-    'D')
-        DEFAULTLAYER="$OPTARG";
-        layers=$DEFAULTLAYER;
-        ;;
-    'O')
-        OneWirePerIter=true;
-        ;;
     'P')
         PROGRAMMED=true;
-        ;;
-    'A')
-        calib_allgolden=true;
-        ;;
-    'G')
-        allgolden=true;
         ;;
     'l')
         layers="$OPTARG";
@@ -158,45 +84,6 @@ do
         ;;
     'c')
         CONFIGTABLE="$CONFIGTABLE -C $OPTARG";
-        ;;
-    'g')
-        geoSetup="$OPTARG";
-        ;;
-    't')
-        workTypeini="$OPTARG";
-        ;;
-    'i')
-        inputType="$OPTARG";
-        ;;
-    'a')
-        aaCut="$OPTARG"
-        ;;
-    'b')
-        blindLayer="$OPTARG"
-        ;;
-    's')
-        sumCut="$OPTARG"
-        ;;
-    'p')
-        peakType="$OPTARG"
-        ;;
-    'x')
-        XTTYPE="$OPTARG"
-        ;;
-    'n')
-        NHITSMAX="$OPTARG"
-        ;;
-    'm')
-        nHitsGMax="$OPTARG"
-        ;;
-    'u')
-        tmax="$OPTARG"
-        ;;
-    'd')
-        tmin="$OPTARG"
-        ;;
-    'o')
-        tmaxSet="$OPTARG"
         ;;
     '?')
         echo "Unknown option $OPTARG"
@@ -238,41 +125,8 @@ echo "StartName is $StartName, runName = $runName, layers for tracking \"$layers
 echo "Use programmed parameter setting for iteration? $PROGRAMMED"
 echo "Is this the last iteration? $isLast"
 echo "Configure file for general: $CONFIGTABLE"
-echo "Tracking Parameters are:"
-echo "        geoSetup = $geoSetup;  0 for general; 1 for finger"
-echo "        inputType = $inputType;  1 for MC; 0 for data"
-echo "        workTypeini = $workTypeini;  0, fr/l_0; 1, even/odd; -1, even/odd reversed; others, all layers"
-echo "        nHitsGMax = $nHitsGMax; "
-echo "        t0shift0 = $t0shift0; "
-echo "        t0shift1 = $t0shift1; "
-echo "        tmin = $tmin; "
-echo "        tmax = $tmax; "
-echo "        sumCut = $sumCut; "
-echo "        aaCut = $aaCut; "
-echo "        Blind layer: $blindLayer; "
-echo "        peakType = $peakType;  0, only the first peak over threshold; 1, all peaks over threshold; 2, even including shaddowed peaks"
 echo "getOffset Parameters are:"
-echo "        OneWirePerIter = $OneWirePerIter;"
 echo "        UpdateWireMap = $UpdateWireMap;"
-echo "        stepSize = $stepSize;  maximum step size for each movement in wire position calibration; 0 means no limit"
-echo "        scale = $scale;  move scale*offset on wiremap for fitting in the next round"
-echo "        minslz = $minslz;  min slz cut for mean slz value in each sample of events in wiremap calibration. minslz==maxslz==0 means no cut"
-echo "        maxslz = $maxslz;  min slz cut for mean slz value in each sample of events in wiremap calibration. minslz==maxslz==0 means no cut"
-echo "        mininx = $mininx;  min inx cut for mean inx value in each sample of events in wiremap calibration. mininx==maxinx==0 means no cut"
-echo "        maxinx = $maxinx;  min inx cut for mean inx value in each sample of events in wiremap calibration. mininx==maxinx==0 means no cut"
-echo "        maxchi2 = $maxchi2; "
-echo "        calib_maxslz = $calib_maxslz;   maximum slz for each event considered as offset estimation"
-echo "        calib_maxFD = $calib_maxFD"
-echo "        calib_minFD = $calib_minFD"
-echo "        calib_allgolden = $calib_allgolden"
-echo "ana Parameters are:"
-echo "        DONTUPDATEXT = $DONTUPDATEXT; "
-echo "        DEFAULTLAYER = $DEFAULTLAYER;  use this layer to generate fl(r)_0 and so on"
-echo "        XTTYPE = $XTTYPE;"
-echo "        NHITSMAX = $NHITSMAX; "
-echo "        SAVEHISTS = $SAVEHISTS; "
-echo "        tmaxSet = $tmaxSet; "
-echo "        allgolden = $allgolden"
 
 read -p 'You are going to do the job above, is that right? (Y/n):'
 if [ ! "$REPLY" = 'Y' ] && [ ! "$REPLY" = 'y' ] && [ ! "$REPLY" = '' ]; then
@@ -413,15 +267,13 @@ do
             layers="1 2 3 4 5 6 7 8"
             wires="3 4 5 6"
             UpdateWireMap=true
-            OneWirePerIter=false
         elif [ $iter -gt 5 ]
         then
             layers="1 2 3 4 5 6 7 8"
             wires="3 4 5 6"
             UpdateWireMap=true
-            OneWirePerIter=true
         else
-            layers=$DEFAULTLAYER
+            layers=4
             wires=""
             UpdateWireMap=false
         fi
@@ -433,108 +285,20 @@ do
 #        layers="0"
     fi
 
-#   update the configure file
-    cat << EOF > $CONFIGTABLE_wireposition
-    < ana.scale = $scale >
-    < ana.stepSize = $stepSize >
-    < ana.minDeltaSlz = $minslz >
-    < ana.maxDeltaSlz = $maxslz >
-    < ana.minDeltaInx = $mininx >
-    < ana.maxDeltaInx = $maxinx >
-    < ana.calib_maxslz = $calib_maxslz >
-    < ana.calib_maxFD = $calib_maxFD >
-    < ana.calib_minFD = $calib_minFD >
-    < ana.calib_allGolden = $calib_allgolden >
-EOF
-
 #   tune arguments
     arg_configure=""
     if [ ! -z "$CONFIGTABLE" ]
     then
         arg_configure="$CONFIGTABLE"
     fi
-    arg_wiremap=""
-    if $UpdateWireMap
-    then
-        if $OneWirePerIter
-        then
-            arg_wiremap="-W -O -C $CONFIGTABLE_wireposition"
-        else
-            arg_wiremap="-W -C $CONFIGTABLE_wireposition"
-        fi
-    else
-        arg_wiremap="-C $CONFIGTABLE_wireposition"
-    fi
-    arg_xtfile=""
-    if $DONTUPDATEXT
-    then
-        if [ -z "$lastxtfile" ]
-        then
-            lastxtfile=xt.${runNo}.${prerunname}.root
-        fi
-        arg_xtfile="-X $lastxtfile"
-    else
-        lastxtfile=xt.${runNo}.${currunname}.root
-    fi
-    arg_draw=""
-    if [ $iter -eq $IterEnd ] && $isLast
-    then
-        arg_draw="-Z"
-    fi
-    arg_blindLayer=""
-    if [ ! $blindLayer -eq -1 ]
-    then
-        arg_blindLayer="-b $blindLayer"
-    fi
-    arg_xtopt=""
-    if $allgolden
-    then
-        arg_xtopt="-G"
-    fi
 
     echo "#Iteration $iter started"
     echo "  layers = \"$layers\""
     echo "  wires = \"$wires\""
-    echo "Tracking Parameters are:"
-    echo "  geoSetup = $geoSetup"
-    echo "  inputType = $inputType"
-    echo "  workTypeini = $workTypeini"
-    echo "  nHitsGMax = $nHitsGMax"
-    echo "  t0shift0 = $t0shift0"
-    echo "  t0shift1 = $t0shift1"
-    echo "  tmin = $tmin"
-    echo "  tmax = $tmax"
-    echo "  sumCut = $sumCut"
-    echo "  aaCut = $aaCut"
-    echo "  Blind layer: $blindLayer"
-    echo "  peakType = $peakType"
     echo "getOffset Parameters:"
-    echo "  OneWirePerIter = $OneWirePerIter"
     echo "  UpdateWireMap = $UpdateWireMap"
-    echo "  scale = $scale"
-    echo "  stepSize = $stepSize"
-    echo "  minslz = $minslz"
-    echo "  maxslz = $maxslz"
-    echo "  mininx = $mininx"
-    echo "  maxinx = $maxinx"
-    echo "  maxchi2 = $maxchi2"
-    echo "  calib_maxslz = $calib_maxslz"
-    echo "  calib_maxFD = $calib_maxFD"
-    echo "  calib_minFD = $calib_minFD"
-    echo "  calib_allgolden = $calib_allgolden"
-    echo "ana Parameters:"
-    echo "  DONTUPDATEXT = $DONTUPDATEXT"
-    echo "  DEFAULTLAYER = $DEFAULTLAYER"
-    echo "  XTTYPE = $XTTYPE"
-    echo "  NHITSMAX = $NHITSMAX"
-    echo "  SAVEHISTS = $SAVEHISTS"
-    echo "  tmaxSet = $tmaxSet"
-    echo "  allgolden = $allgolden"
     echo "arguments:"
     echo "  arg_configure = $arg_configure"
-    echo "  arg_xtfile = $arg_xtfile"
-    echo "  arg_wiremap = $arg_wiremap"
-    echo "  arg_blindLayer = $arg_blindLayer"
 
     threadLists=`updateThreadLists`
     if [ ! $? -eq 0 ]
@@ -761,6 +525,5 @@ EOF
         cd ../..
     fi
 
-#    ana -C $CONFIGTABLEDEFAULT $arg_configure -R $runNo -x $XTTYPE -g $geoSetup -H $SAVEHISTS -i $inputType -c $maxchi2 -L $DEFAULTLAYER -n $NHITSMAX -o $tmaxSet $arg_wiremap $arg_xtfile $arg_draw $arg_xtopt -V Ana=info $prerunname $currunname $wires
-    echo "ana -C $CONFIGTABLEDEFAULT $arg_configure -R $runNo -x $XTTYPE -g $geoSetup -H $SAVEHISTS -i $inputType -c $maxchi2 -L $DEFAULTLAYER -n $NHITSMAX -o $tmaxSet $arg_wiremap $arg_xtfile $arg_draw $arg_xtopt -V Ana=info $prerunname $currunname $wires"
+    GetXT -C $CONFIGTABLEDEFAULT $arg_configure -R $runNo $prerunname $currunname
 done
