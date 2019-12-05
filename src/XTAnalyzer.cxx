@@ -675,7 +675,7 @@ TF1 * XTAnalyzer::fitSliceSingleSide(TH1D * hist, double & x1,double & xerr1,dou
     }
     prob = 0;
     for (int iTry = 0; iTry<10; iTry++){
-        if (prob>1e-20) break;
+        if (iTry&&isFittingGood(f)) break;
         MyNamedVerbose("XTAnalyzer","Before fitting. Set parameters:");
         for (int i = 0; i<nPars; i++){
             double parmin,parmax;
@@ -721,7 +721,7 @@ TF1 * XTAnalyzer::fitSliceSingleSide(TH1D * hist, double & x1,double & xerr1,dou
         double probTemp = 0;
         double chi2Temp = 0;
         for (int iTry = 0; iTry<10; iTry++){
-            if (probTemp>1e-20) break;
+            if (iTry&&isFittingGood(f)) break;
             MyNamedVerbose("XTAnalyzer","Before fitting. Set parameters:");
             for (int i = 0; i<nPars; i++){
                 double parmin,parmax;
@@ -906,7 +906,7 @@ TF1 * XTAnalyzer::fitSliceBothSides(TH1D * hist, double & x1,double & xerr1,doub
     }
     prob = 0;
     for (int iTry = 0; iTry<10; iTry++){
-        if (prob>1e-20) break;
+        if (iTry&&isFittingGood(f)) break;
         MyNamedVerbose("XTAnalyzer","Before fitting. Set parameters:");
         for (int i = 0; i<nPars; i++){
             double parmin,parmax;
@@ -954,7 +954,7 @@ TF1 * XTAnalyzer::fitSliceBothSides(TH1D * hist, double & x1,double & xerr1,doub
         double probTemp = 0;
         double chi2Temp = 0;
         for (int iTry = 0; iTry<10; iTry++){
-            if (probTemp>1e-20) break;
+            if (iTry&&isFittingGood(f)) break;
             MyNamedVerbose("XTAnalyzer","Before fitting. Set parameters:");
             for (int i = 0; i<nPars; i++){
                 double parmin,parmax;
@@ -1466,3 +1466,15 @@ bool XTAnalyzer::interpolate(const TGraphErrors * graph, double theX, double & t
     return true;
 }
 
+bool XTAnalyzer::isFittingGood(TF1 * f){
+    bool isGood = true;
+    for (int i = 0; i<nPars; i++){
+        double parmin,parmax,par;
+        f->GetParLimits(i,parmin,parmax);
+        par = f->GetParameter(i);
+        if (fabs(par-parmin)<(parmax-parmin)*1e-7||fabs(par-parmax)<(parmax-parmin)*1e-7){
+            isGood = false;
+        }
+    }
+    return isGood;
+}

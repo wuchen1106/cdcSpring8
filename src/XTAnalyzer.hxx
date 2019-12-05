@@ -75,6 +75,7 @@ class XTAnalyzer{
         void drawSampleAtt(void);
         void formXTGraphs(void); //< scan through the tree and select points to form up the graphs.
         void getMeanRMS(TF1 * f, const TH1D * h, double & mean, double & sigma);
+        bool isFittingGood(TF1 * f);
 
     private:
         // options
