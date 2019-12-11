@@ -14,6 +14,7 @@ isLast=false
 PROGRAMMED=false # by default don't load the programmed iteration setting
 CONFIGTABLEDEFAULT="$CDCS8WORKING_DIR/Para/new.dat"
 CONFIGTABLE=""
+SEPARATECELLS=false
 
 # for getOffset
 UpdateWireMap=false # FIXME NOT SUPPORTED YET
@@ -282,6 +283,7 @@ do
     if [ $iter -eq $IterEnd ] && $isLast
     then
         layers="1 2 3 4 5 6 7 8"
+        SEPARATECELLS=true
 #        layers="0"
     fi
 
@@ -290,6 +292,11 @@ do
     if [ ! -z "$CONFIGTABLE" ]
     then
         arg_configure="$CONFIGTABLE"
+    fi
+    arg_cell=""
+    if $SEPARATECELLS
+    then
+        arg_cell="-W"
     fi
 
     echo "#Iteration $iter started"
@@ -525,5 +532,5 @@ do
         cd ../..
     fi
 
-    GetXT -C $CONFIGTABLEDEFAULT $arg_configure -R $runNo $prerunname $currunname
+    GetXT -C $CONFIGTABLEDEFAULT $arg_configure $arg_cell -R $runNo $prerunname $currunname
 done
