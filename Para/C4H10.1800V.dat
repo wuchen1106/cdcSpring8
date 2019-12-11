@@ -2,7 +2,7 @@
 XTAnalyzer parameters
 *******************************************************************************                                                                   
   hit selection
-    < XTAnalyzer.gold_t_min = 20 >
+    < XTAnalyzer.gold_t_min = 10 >
     < XTAnalyzer.gold_t_max = 340 >
  regroup T bins to fit X
     < XTAnalyzer.fitX_nRanges = 3 > should be smaller than 10; ALERT: THIS SHOULD BE PUT ON TOP OF OTHER fitX_* attributes!!!
@@ -25,7 +25,7 @@ XTAnalyzer parameters
     < XTAnalyzer.fitX_0_SetEmptyBins = false > set the empty bins' contents to small numbers to force the fitting fall down at edge
     < XTAnalyzer.fitX_1_SetEmptyBins = false >
     < XTAnalyzer.fitX_2_SetEmptyBins = false >
-    < XTAnalyzer.fitX_0_functionType = "Optimal" > "Gaus" "Land" "DoubleGaus" "DoubleLand" "GausLand" "LandGaus"
+    < XTAnalyzer.fitX_0_functionType = "Optimal" > "Gaus" "Land" "DoubleGaus" "DoubleLand" "GausLand" "LandGaus" "Optimal"
     < XTAnalyzer.fitX_1_functionType = "Optimal" >
     < XTAnalyzer.fitX_2_functionType = "Optimal" >
     < XTAnalyzer.fitX_0_peak_height_middle = 0.9 > relative to hist height

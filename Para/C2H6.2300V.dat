@@ -18,14 +18,14 @@ XTAnalyzer parameters
     < XTAnalyzer.fitX_2_nBins = 6 >
     < XTAnalyzer.fitX_0_smooth = 0 > times to smooth. 0 means no smooth
     < XTAnalyzer.fitX_1_smooth = 0 >
-    < XTAnalyzer.fitX_2_smooth = 0 >
+    < XTAnalyzer.fitX_2_smooth = 1 >
     < XTAnalyzer.fitX_0_fitBoth = true > fit both side together? or fit side by side?
     < XTAnalyzer.fitX_1_fitBoth = false >
     < XTAnalyzer.fitX_2_fitBoth = false >
     < XTAnalyzer.fitX_0_SetEmptyBins = false > set the empty bins' contents to small numbers to force the fitting fall down at edge
     < XTAnalyzer.fitX_1_SetEmptyBins = false >
     < XTAnalyzer.fitX_2_SetEmptyBins = false >
-    < XTAnalyzer.fitX_0_functionType = "Optimal" > "Gaus" "Land" "DoubleGaus" "DoubleLand" "GausLand" "LandGaus"
+    < XTAnalyzer.fitX_0_functionType = "Optimal" > "Gaus" "Land" "DoubleGaus" "DoubleLand" "GausLand" "LandGaus" "Optimal"
     < XTAnalyzer.fitX_1_functionType = "Optimal" >
     < XTAnalyzer.fitX_2_functionType = "Optimal" >
     < XTAnalyzer.fitX_0_peak_height_middle = 0.9 > relative to hist height

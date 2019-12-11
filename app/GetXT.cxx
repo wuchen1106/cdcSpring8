@@ -540,6 +540,7 @@ void getRunTimeParameters(TString configureFile){
     if (configureFile!=""){
         ParameterManager::Get().ReadInputFile(configureFile,"",false,false);
         ParameterManager::Get().LoadParameters(ParameterManager::kTracking);
+        ParameterManager::Get().LoadParameters(ParameterManager::kXTManager);
         ParameterManager::Get().LoadParameters(ParameterManager::kXTAnalyzer);
     }
 }
