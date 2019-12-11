@@ -48,17 +48,22 @@ XTAnalyzer parameters
     < XTAnalyzer.xtfunc_1_nPol = 4 >
     < XTAnalyzer.xtfunc_2_nPol = 2 >
     < XTAnalyzer.xtfunc_0_tLeft = -25 ns >
-    < XTAnalyzer.xtfunc_0_tRight = 340 ns >
+    < XTAnalyzer.xtfunc_0_tRight = 325 ns >
     < XTAnalyzer.xtfunc_0_tLowEdge = -25 ns >
-    < XTAnalyzer.xtfunc_1_tLeft = 330 ns >
-    < XTAnalyzer.xtfunc_1_tRight = 390 ns >
-    < XTAnalyzer.xtfunc_1_tLowEdge = 335 ns >
+    < XTAnalyzer.xtfunc_1_tLeft = 315 ns >
+    < XTAnalyzer.xtfunc_1_tRight = 370 ns >
+    < XTAnalyzer.xtfunc_1_tLowEdge = 320 ns >
     < XTAnalyzer.xtfunc_2_tLeft = 360 ns >
     < XTAnalyzer.xtfunc_2_tRight = 800 ns >
-    < XTAnalyzer.xtfunc_2_tLowEdge = 375 ns >
+    < XTAnalyzer.xtfunc_2_tLowEdge = 365 ns >
     < XTAnalyzer.xtfunc_tHighEdge = 800 ns >
  Drwaing samples
     < XTAnalyzer.draw_tmin = -10 ns >
     < XTAnalyzer.draw_tmax = 800 ns >
     < XTAnalyzer.draw_xmin = -10 mm >
     < XTAnalyzer.draw_xmax = 10 mm >
+ Select bins to form graphs
+    < XTAnalyzer.graph_n_min = 50 >
+    < XTAnalyzer.graph_chi2_max = 0 > 0 means no cut
+    < XTAnalyzer.graph_prob_min = 0.1 >
+    < XTAnalyzer.graph_sepX = 1 mm >
