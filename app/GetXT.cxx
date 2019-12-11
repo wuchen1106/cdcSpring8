@@ -177,6 +177,7 @@ int main(int argc, char** argv){
     success = GeometryManager::Get().AdjustWirePosition(Form("%s/info/offset.%d.%s.root",HOME.Data(),m_runNo,m_preRunName.Data()));
     if (!success) MyNamedWarn("GetXT","Cannot load offset file for wire adjustment. Will ignore this step.");
     success = XTManager::Get().Initialize();
+    XTManager::Get().Print();
     if (!success) {MyNamedError("GetXT","Cannot initialize XTManager"); return 1;}
     if (m_StartStage<=1){
         InputOutputManager::Get().readHitFile = true;

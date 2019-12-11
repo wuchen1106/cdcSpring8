@@ -73,7 +73,7 @@ bool XTManager::Initialize(){
     fXTLeftDefault = fXTLeft[lid];
     fXTRightDefault = fXTRight[lid];
     if (!fXTLeftDefault) fXTLeftDefault = (TF1*) fInputFileXT->Get("fl_0");
-    if (!fXTRightDefault) fXTRightDefault = (TF1*) fInputFileXT->Get("fl_0");
+    if (!fXTRightDefault) fXTRightDefault = (TF1*) fInputFileXT->Get("fr_0");
     lid = ParameterManager::Get().XTManagerParameters.evenLayer;
     if (lid>=NLAY||lid<0) {MyError("Invalid even layer "<<lid); return false;}
     fXTLeftEven = fXTLeft[lid];
@@ -206,7 +206,7 @@ void XTManager::Print(){
 }
 
 bool XTManager::PrintXTfunc(const TF1 * fl, const TF1 * fr){
-    if (fl||fr){
+    if (!fl||!fr){
         MyNamedLog("XTManager","Empty XT function!");
         return false;
     }

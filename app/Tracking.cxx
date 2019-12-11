@@ -139,6 +139,7 @@ int main(int argc, char** argv){
     if (!success) MyWarn("Cannot load offset file for wire adjustment. Will ignore this step.");
     success = XTManager::Get().Initialize();
     if (!success) {MyError("Cannot initialize XTManager"); return 1;}
+    XTManager::Get().Print();
     InputOutputManager::Get().readHitFile = true;
     InputOutputManager::Get().writeTrackFile = true;
     success = InputOutputManager::Get().Initialize();
