@@ -1106,7 +1106,9 @@ void XTAnalyzer::drawSample2D(bool withFunction){
         for (int iPar = 0; iPar<nParRight; iPar++){
             f_diff->SetParameter(iPar+nParLeft,f_right->GetParameter(iPar));
         }
-        h2_bkg_rightMinusLeft->SetTitle(Form("Right + Left: mean %.0f um, max %.0f um",f_diff->Integral(xtrange_tmin,xtrange_tmax)/(xtrange_tmax-xtrange_tmin)*1000,f_diff->GetMaximum(xtrange_tmin,xtrange_tmax)*1000));
+        double maxdiff = f_diff->GetMinimum(xtrange_tmin,xtrange_tmax);
+        if (fabs(maxdiff)<f_diff->GetMaximum(xtrange_tmin,xtrange_tmax)) maxdiff=f_diff->GetMaximum(xtrange_tmin,xtrange_tmax);
+        h2_bkg_rightMinusLeft->SetTitle(Form("Right + Left: mean %.0f um, max %.0f um",f_diff->Integral(xtrange_tmin,xtrange_tmax)/(xtrange_tmax-xtrange_tmin)*1000,maxdiff));
         f_diff->SetLineColor(kMagenta);
         f_diff->Draw("SAME");
 
