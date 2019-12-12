@@ -67,11 +67,13 @@ bool XTManager::Initialize(){
     for (int i = 1; i<NLAY; i++){ // first layer (0) is dummy
         fXTLeft[i] = (TF1*) fInputFileXT->Get(Form("fl_%d",i));
         fXTRight[i] = (TF1*) fInputFileXT->Get(Form("fr_%d",i));
+        if (fXTLeft[i]) fXTLeftDefault = fXTLeft[i];
+        if (fXTRight[i]) fXTRightDefault = fXTRight[i];
     }
     int lid = ParameterManager::Get().XTManagerParameters.defaultLayer;
     if (lid>=NLAY||lid<0) {MyError("Invalid default layer "<<lid); return false;}
-    fXTLeftDefault = fXTLeft[lid];
-    fXTRightDefault = fXTRight[lid];
+    if (fXTLeft[lid]) fXTLeftDefault = fXTLeft[lid];
+    if (fXTRight[lid]) fXTRightDefault = fXTRight[lid];
     if (!fXTLeftDefault) fXTLeftDefault = (TF1*) fInputFileXT->Get("fl_0");
     if (!fXTRightDefault) fXTRightDefault = (TF1*) fInputFileXT->Get("fr_0");
     lid = ParameterManager::Get().XTManagerParameters.evenLayer;
@@ -226,6 +228,6 @@ bool XTManager::PrintXTfunc(const TF1 * fl, const TF1 * fr){
     tminr = fr->GetXmin();
     xmaxr = fr->Eval(tmaxr);
     xminr = fr->Eval(tminr);
-    printf("Left (%.1f ns, %.2f mm)~(%.1f ns, %.2f mm), Right (%.1f ns, %.2f mm)~(%.1f ns, %.2f mm)\n",tmaxl,xmaxl,tminl,xminl,tminr,xminr,tmaxr,xmaxr);
+    printf("Left %s (%.1f ns, %.2f mm)~(%.1f ns, %.2f mm), Right %s (%.1f ns, %.2f mm)~(%.1f ns, %.2f mm)\n",fl->GetName(),tmaxl,xmaxl,tminl,xminl,fr->GetName(),tminr,xminr,tmaxr,xmaxr);
     return true;
 }
