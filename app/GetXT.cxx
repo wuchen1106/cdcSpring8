@@ -59,12 +59,13 @@ int main(int argc, char** argv){
     int m_StartStage = 1;
     int m_StopStage = 3;
     bool m_SeparateWires = false;
+    TString m_wireAdjustmentFile = "";
 
     // Load options
     int    opt_result;
     std::string opt_name;
     std::size_t opt_pos;
-    while((opt_result=getopt(argc,argv,"B:C:D:E:HMN:P:R:S:V:Wh"))!=-1){
+    while((opt_result=getopt(argc,argv,"A:B:C:D:E:HMN:P:R:S:V:Wh"))!=-1){
         switch(opt_result){
             /* INPUTS */
             case 'M':
@@ -122,6 +123,10 @@ int main(int argc, char** argv){
                         m_StopStage,m_StopStage==1?"Fill2D":(m_StopStage==2?"BinByBinAna":"FitXT")
                       );
                 break;
+            case 'A':
+                m_wireAdjustmentFile = optarg;
+                printf("Using wire adjustment file \"%s\"\n",optarg);
+                break;
             case 'D':
                     if (!Log::ConfigureD(optarg)) print_usage(argv[0]);
                     break;
@@ -174,7 +179,8 @@ int main(int argc, char** argv){
     if (!success) {MyNamedError("GetXT","Cannot initialize BeamManager"); return 1;}
     success = GeometryManager::Get().Initialize(ParameterManager::Get().geoSetup,ParameterManager::Get().connectionType,ParameterManager::Get().chamberType); GeometryManager::Get().Print();
     if (!success) {MyNamedError("GetXT","Cannot initialize GeometryManager"); return 1;}
-    success = GeometryManager::Get().AdjustWirePosition(Form("%s/info/offset.%d.%s.root",HOME.Data(),m_runNo,m_preRunName.Data()));
+    if (m_wireAdjustmentFile=="") m_wireAdjustmentFile = Form("%s/info/offset.%d.%s.root",HOME.Data(),m_runNo,m_preRunName.Data());
+    success = GeometryManager::Get().AdjustWirePosition(m_wireAdjustmentFile);
     if (!success) MyNamedWarn("GetXT","Cannot load offset file for wire adjustment. Will ignore this step.");
     success = XTManager::Get().Initialize();
     XTManager::Get().Print();

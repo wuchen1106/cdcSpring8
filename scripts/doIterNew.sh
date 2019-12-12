@@ -17,6 +17,7 @@ CONFIGTABLE=""
 SEPARATECELLS=false
 
 # for getOffset
+WireAdjustmentFile=""
 UpdateWireMap=false # FIXME NOT SUPPORTED YET
 
 usages() {
@@ -43,7 +44,7 @@ Report bugs to <wuchen@ihep.ac.cn>.
 EOF
 }
 
-while getopts ':hR:T:N:I:J:LW:S:Pl:w:C:' optname
+while getopts ':A:C:I:J:LN:PR:S:T:W:hl:w:' optname
 do
     case "$optname" in
     'h')
@@ -70,6 +71,9 @@ do
         ;;
     'W')
         UpdateWireMap=true;
+        ;;
+    'A')
+        WireAdjustmentFile="$OPTARG";
         ;;
     'S')
         StartName="$OPTARG";
@@ -298,14 +302,22 @@ do
     then
         arg_cell="-W"
     fi
+    arg_adjust=""
+    if [ ! -z "$WireAdjustmentFile" ]
+    then
+        arg_adjust="-A $WireAdjustmentFile"
+    fi
 
     echo "#Iteration $iter started"
     echo "  layers = \"$layers\""
     echo "  wires = \"$wires\""
     echo "getOffset Parameters:"
+    echo "  WireAdjustmentFile = $WireAdjustmentFile"
     echo "  UpdateWireMap = $UpdateWireMap"
     echo "arguments:"
     echo "  arg_configure = $arg_configure"
+    echo "  arg_cell = $arg_cell"
+    echo "  arg_adjust = $arg_adjust"
 
     threadLists=`updateThreadLists`
     if [ ! $? -eq 0 ]
@@ -357,7 +369,7 @@ do
             logtemp="$CDCS8WORKING_DIR/root/tracks/t_${runNo}.${temprunname}.layer${testlayer}.log"
             errtemp="$CDCS8WORKING_DIR/root/tracks/t_${runNo}.${temprunname}.layer${testlayer}.err"
             sourcefiles[testlayer]="${sourcefiles[testlayer]} t_${runNo}.${temprunname}.layer${testlayer}.root"
-            tempconfig="Tracking -C $CONFIGTABLEDEFAULT $arg_configure -R $runNo -L $testlayer -B $iEntryStart -E $iEntryStop $prerunname $temprunname > $logtemp 2> $errtemp"
+            tempconfig="Tracking -C $CONFIGTABLEDEFAULT $arg_configure $arg_adjust -R $runNo -L $testlayer -B $iEntryStart -E $iEntryStop $prerunname $temprunname > $logtemp 2> $errtemp"
             echo $tempconfig
 
             rootfile="root/tracks/t_${jobname}.root"
@@ -458,7 +470,7 @@ do
                     iEntryStop=`echo $jobname | sed 's/.*\.\(\w*\)-\(\w*\)\..*/\2/g'`
                     logtemp="$CDCS8WORKING_DIR/root/tracks/t_${runNo}.${temprunname}.layer${testlayer}.log"
                     errtemp="$CDCS8WORKING_DIR/root/tracks/t_${runNo}.${temprunname}.layer${testlayer}.err"
-                    tempconfig="Tracking -C $CONFIGTABLEDEFAULT $arg_configure -R $runNo -L $testlayer -B $iEntryStart -E $iEntryStop $prerunname $temprunname > $logtemp 2> $errtemp"
+                    tempconfig="Tracking -C $CONFIGTABLEDEFAULT $arg_configure $arg_adjust -R $runNo -L $testlayer -B $iEntryStart -E $iEntryStop $prerunname $temprunname > $logtemp 2> $errtemp"
                     echo $tempconfig
 
                     findVacentThread
@@ -532,5 +544,5 @@ do
         cd ../..
     fi
 
-    GetXT -C $CONFIGTABLEDEFAULT $arg_configure $arg_cell -R $runNo $prerunname $currunname
+    GetXT -C $CONFIGTABLEDEFAULT $arg_configure $arg_cell $arg_adjust -R $runNo $prerunname $currunname
 done

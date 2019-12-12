@@ -48,10 +48,11 @@ int main(int argc, char** argv){
     int m_modulo = 100;
     bool m_memdebug = false;
     int m_testLayer = 4;
+    TString m_wireAdjustmentFile = "";
 
     // Load options
     int    opt_result;
-    while((opt_result=getopt(argc,argv,"B:C:D:E:L:MN:P:R:V:h"))!=-1){
+    while((opt_result=getopt(argc,argv,"A:B:C:D:E:L:MN:P:R:V:h"))!=-1){
         switch(opt_result){
             case 'M':
                 m_memdebug = true;
@@ -85,6 +86,10 @@ int main(int argc, char** argv){
             case 'C':
                 getRunTimeParameters(optarg);
                 printf("Using configure file \"%s\"\n",optarg);
+                break;
+            case 'A':
+                m_wireAdjustmentFile = optarg;
+                printf("Using wire adjustment file \"%s\"\n",optarg);
                 break;
             case 'D':
                 if (!Log::ConfigureD(optarg)) print_usage(argv[0]);
@@ -135,7 +140,8 @@ int main(int argc, char** argv){
     if (!success) {MyError("Cannot initialize BeamManager"); return 1;}
     success = GeometryManager::Get().Initialize(ParameterManager::Get().geoSetup,ParameterManager::Get().connectionType,ParameterManager::Get().chamberType); GeometryManager::Get().Print();
     if (!success) {MyError("Cannot initialize GeometryManager"); return 1;}
-    success = GeometryManager::Get().AdjustWirePosition(Form("%s/info/offset.%d.%s.root",HOME.Data(),m_runNo,m_preRunName.Data()));
+    if (m_wireAdjustmentFile=="") m_wireAdjustmentFile = Form("%s/info/offset.%d.%s.root",HOME.Data(),m_runNo,m_preRunName.Data());
+    success = GeometryManager::Get().AdjustWirePosition(m_wireAdjustmentFile);
     if (!success) MyWarn("Cannot load offset file for wire adjustment. Will ignore this step.");
     success = XTManager::Get().Initialize();
     if (!success) {MyError("Cannot initialize XTManager"); return 1;}
@@ -292,4 +298,6 @@ void print_usage(char* prog_name)
     fprintf(stderr,"\t\t Maximum number of entries set to n\n");
     fprintf(stderr,"\t -L <l>\n");
     fprintf(stderr,"\t\t Test layer set to l\n");
+    fprintf(stderr,"\t -A <file>\n");
+    fprintf(stderr,"\t\t Wire adjustment file set to file\n");
 }
