@@ -1097,7 +1097,7 @@ void XTAnalyzer::drawSample2D(bool withFunction){
     if (withFunction){
         double xtrange_tmin = f_right->GetXmin()<f_left->GetXmin()?f_left->GetXmin():f_right->GetXmin();
         double xtrange_tmax = f_right->GetXmax()>f_left->GetXmax()?f_left->GetXmax():f_right->GetXmax();
-        TF1 * f_diff = myNewTF1("f_diff",Form("(fl%s+fr%s)",m_suffix.Data(),m_suffix.Data()),xtrange_tmin,xtrange_tmax);
+        TF1 * f_diff = myNewTF1("f_diff",Form("(fl%s+fr%s)/2",m_suffix.Data(),m_suffix.Data()),xtrange_tmin,xtrange_tmax);
         int nParLeft=f_left->GetNpar();
         for (int iPar = 0; iPar<nParLeft; iPar++){
             f_diff->SetParameter(iPar,f_left->GetParameter(iPar));
@@ -1424,7 +1424,7 @@ void XTAnalyzer::formXTGraphs(){
             }
         }
     }
-    plusGraph(gr_rightMinusLeft,gr_right,gr_left);
+    plusGraph(gr_rightMinusLeft,gr_right,gr_left,0.5,0.5); // mean of left and right
     mOutFile->cd();
     gr_left->Write();
     gr_right->Write();
