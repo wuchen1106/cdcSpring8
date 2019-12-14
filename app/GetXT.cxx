@@ -366,9 +366,10 @@ int main(int argc, char** argv){
             lowBin = 1;highBin = h_nHitsAG->GetYaxis()->FindBin(nHitsGMax); integral = h_nHitsAG->Integral(1,100,lowBin,highBin);
             TLatex * text_nHitsG = new TLatex(40,nHitsGMax,Form("%d (%.1f %%)",(int)integral,integral/h_nHitsAG->Integral()*100)); text_nHitsG->SetTextColor(kRed); text_nHitsG->Draw();
             //    line on X axis: cut on all hits
-            TLine * line_nHitsA = new TLine(nHits_max,0,nHits_max,h_nHitsAG->GetYaxis()->GetXmax()); line_nHitsA->SetLineColor(kBlue); line_nHitsA->Draw();
-            lowBinX = 1; highBinX = h_nHitsAG->GetXaxis()->FindBin(nHits_max); integral = h_nHitsAG->Integral(lowBinX,highBinX,lowBin,highBin);
-            TLatex * text_nHitsA = new TLatex(nHits_max,20,Form("%d (%.1f %%)",(int)integral,integral/h_nHitsAG->Integral(1,100,lowBin,highBin)*100)); text_nHitsA->SetTextColor(kBlue); text_nHitsA->Draw();
+            int nHits_maxActual = nHits_max?nHits_max:100;
+            TLine * line_nHitsA = new TLine(nHits_maxActual,0,nHits_maxActual,h_nHitsAG->GetYaxis()->GetXmax()); line_nHitsA->SetLineColor(kBlue); line_nHitsA->Draw();
+            lowBinX = 1; highBinX = h_nHitsAG->GetXaxis()->FindBin(nHits_maxActual); integral = h_nHitsAG->Integral(lowBinX,highBinX,lowBin,highBin);
+            TLatex * text_nHitsA = new TLatex(nHits_maxActual,20,Form("%d (%.1f %%)",(int)integral,integral/h_nHitsAG->Integral(1,100,lowBin,highBin)*100)); text_nHitsA->SetTextColor(kBlue); text_nHitsA->Draw();
             // 1) selected hits VS left good hits
             canv->cd(2);gPad->SetGridx(1);gPad->SetGridy(1); gPad->SetLogz(1);
             h_nHitsLS->Draw("COLZ");
