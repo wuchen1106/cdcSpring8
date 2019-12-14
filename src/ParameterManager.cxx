@@ -65,7 +65,7 @@ void ParameterManager::LoadParameters(ParaBlock theParaBlock){
         else if (name == "allpeaks") peakType = TrackingPara::kAllPeaks;
     }
     if (theParaBlock==kAll||theParaBlock==kTracking){
-        parName="tracking.nHitsMax";if (MyRuntimeParameters::Get().HasParameter(parName)) TrackingParameters.nHitsMax = MyRuntimeParameters::Get().GetParameterI(parName);
+        parName="tracking.nHitsGMax";if (MyRuntimeParameters::Get().HasParameter(parName)) TrackingParameters.nHitsGMax = MyRuntimeParameters::Get().GetParameterI(parName);
         parName="tracking.nHitsSMin";if (MyRuntimeParameters::Get().HasParameter(parName)) TrackingParameters.nHitsSMin = MyRuntimeParameters::Get().GetParameterI(parName);
         parName="tracking.nPairsMin";if (MyRuntimeParameters::Get().HasParameter(parName)) TrackingParameters.nPairsMin = MyRuntimeParameters::Get().GetParameterI(parName);
         parName="tracking.t0shift0";if (MyRuntimeParameters::Get().HasParameter(parName)) TrackingParameters.t0shift0 = MyRuntimeParameters::Get().GetParameterI(parName);
@@ -209,7 +209,7 @@ void ParameterManager::Print(){
 }
 
 TrackingPara::TrackingPara(){
-    nHitsMax = 30;
+    nHitsGMax = 30;
     nHitsSMin = 5;
     nPairsMin = 3;
     t0shift0 = 0;
@@ -228,7 +228,7 @@ TrackingPara::TrackingPara(){
 
 void TrackingPara::Print(){
     printf("Tracking Parameters:\n");
-    printf("  nHitsMax    = %d\n",nHitsMax);
+    printf("  nHitsGMax   = %d\n",nHitsGMax);
     printf("  nHitsSMin   = %d\n",nHitsSMin);
     printf("  nPairsMin   = %d\n",nPairsMin);
     printf("  t0shift b0  = %d\n",t0shift0);

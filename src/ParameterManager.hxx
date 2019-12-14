@@ -20,7 +20,7 @@ public:
     TrackingPara();
     virtual ~TrackingPara(){};
     void Print();
-    int    nHitsMax;
+    int    nHitsGMax;
     int    nHitsSMin;
     int    nPairsMin;
     int    t0shift0;

@@ -203,6 +203,7 @@ int main(int argc, char** argv){
     bool FirstGoodPeak = ParameterManager::Get().XTAnalyzerParameters.FirstGoodPeak;
     bool UseGoodHit = ParameterManager::Get().XTAnalyzerParameters.UseGoodHit;
     bool AllGoodHitsUsed = ParameterManager::Get().XTAnalyzerParameters.AllGoodHitsUsed;
+    int nHitsGMax = ParameterManager::Get().TrackingParameters.nHitsGMax;
     int nHits_max = ParameterManager::Get().XTAnalyzerParameters.nHits_max;
     int nHitsS_min = ParameterManager::Get().XTAnalyzerParameters.nHitsS_min;
     double chi2_max = ParameterManager::Get().XTAnalyzerParameters.chi2_max;
@@ -258,8 +259,8 @@ int main(int argc, char** argv){
                 continue;
             }
             // Prepare histograms for efficiency
-            TH1I * h_nHits = new TH1I(Form("h_track%s_nHits",suffix.Data()),"Number of hits",100,0,100); h_nHits->GetXaxis()->SetTitle("Number of hits"); h_nHits->GetYaxis()->SetTitle("Counts");
-            TH2I * h_nHitsGS = new TH2I(Form("h_track%s_nHitsGS",suffix.Data()),"Number of selected hits VS number of left good hits",25,0,25,10,0,10); h_nHitsGS->GetXaxis()->SetTitle("Number of left good hits"); h_nHitsGS->GetYaxis()->SetTitle("Number of selected hits"); h_nHitsGS->SetContour(100);
+            TH2I * h_nHitsAG = new TH2I(Form("h_track%s_nHits",suffix.Data()),"Number of good hits VS number of all hits",100,0,100,50,0,50); h_nHitsAG->GetXaxis()->SetTitle("Number of hits"); h_nHitsAG->GetYaxis()->SetTitle("Number of good hits"); h_nHitsAG->SetContour(100);
+            TH2I * h_nHitsLS = new TH2I(Form("h_track%s_nHitsLS",suffix.Data()),"Number of selected hits VS number of left good hits",25,0,25,10,0,10); h_nHitsLS->GetXaxis()->SetTitle("Number of left good hits"); h_nHitsLS->GetYaxis()->SetTitle("Number of selected hits"); h_nHitsLS->SetContour(100);
             TH1D * h_chi2 = new TH1D(Form("h_track%s_chi2",suffix.Data()),"#chi^{2} of fitting",256,0,10); h_chi2->GetXaxis()->SetTitle("#chi^{2}"); h_chi2->GetYaxis()->SetTitle("Counts");
             TH1D * h_pValue = new TH1D(Form("h_track%s_pValue",suffix.Data()),"P Value of fitting",256,0,1); h_pValue->GetXaxis()->SetTitle("P Value"); h_pValue->GetYaxis()->SetTitle("Counts");
             TH1D * h_slopeZ = new TH1D(Form("h_track%s_slopeZ",suffix.Data()),"Slope on Z direction",256,-0.3,0.3); h_slopeZ->GetXaxis()->SetTitle("slope_{Z}"); h_slopeZ->GetYaxis()->SetTitle("Counts");
@@ -279,6 +280,11 @@ int main(int argc, char** argv){
                 InputOutputManager::Get().Reset();
                 InputOutputManager::Get().GetEntry(iEntry);
 
+                //  Total number of hits
+                h_nHitsAG->Fill(InputOutputManager::Get().nHits,InputOutputManager::Get().nHitsG);
+                if (!nHitsGMax&&InputOutputManager::Get().nCandidatesFound) continue;
+                if (nHits_max&&InputOutputManager::Get().nHits>nHits_max) continue;
+
                 // decide which candidate to use
                 int theCand = GetCandidate(CandSelBy);
                 double slx = InputOutputManager::Get().slopeX[theCand];
@@ -287,11 +293,8 @@ int main(int argc, char** argv){
                 double inz = InputOutputManager::Get().interceptZ[theCand];
 
                 // ignore events with bad fitting
-                //  Total number of hits
-                h_nHits->Fill(InputOutputManager::Get().nHits);
-                if (nHits_max&&InputOutputManager::Get().nHits>nHits_max) continue;
                 //  Good hits and selected hits
-                h_nHitsGS->Fill(InputOutputManager::Get().nHitsG-InputOutputManager::Get().nHitsS[theCand],InputOutputManager::Get().nHitsS[theCand]);
+                h_nHitsLS->Fill(InputOutputManager::Get().nHitsG-InputOutputManager::Get().nHitsS[theCand],InputOutputManager::Get().nHitsS[theCand]);
                 if (AllGoodHitsUsed&&InputOutputManager::Get().nHitsG>InputOutputManager::Get().nHitsS[theCand]) continue;
                 if (InputOutputManager::Get().nHitsS[theCand]<nHitsS_min) continue;
                 //  Fitting quality?
@@ -343,8 +346,8 @@ int main(int argc, char** argv){
             }
             fXTAnalyzer->Write();
             // save the objects
-            h_nHits->Write();
-            h_nHitsGS->Write();
+            h_nHitsAG->Write();
+            h_nHitsLS->Write();
             h_chi2->Write();
             h_pValue->Write();
             h_slopeZ->Write();
@@ -352,23 +355,32 @@ int main(int argc, char** argv){
             h_slopeZHasHit->Write();
 
             // Draw the plots
-            int lowBin, highBin; double integral; double hist_height = 0;
+            int lowBin, highBin; int lowBinX, highBinX; double integral; double hist_height = 0;
             TCanvas * canv = new TCanvas(Form("canv%s",suffix.Data()),"",1024,800);
             canv->Divide(2,2);
+            // 1) good hits VS all hits
             canv->cd(1);gPad->SetGridx(1);gPad->SetGridy(1);
-            h_nHits->Draw(); hist_height = h_nHits->GetMaximum();
-            TLine * line_nHits = new TLine(nHits_max,0,nHits_max,hist_height); line_nHits->SetLineColor(kRed); line_nHits->Draw();
-            lowBin = h_nHits->FindBin(nHits_max);highBin = h_nHits->GetNbinsX(); integral = h_nHits->Integral(lowBin,highBin);
-            TLatex * text_nHits = new TLatex(nHits_max,hist_height*0.8,Form("%d (%.1f %%)",(int)integral,integral/h_nHits->Integral()*100)); text_nHits->SetTextColor(kRed); text_nHits->Draw();
+            h_nHitsAG->Draw("COLZ");
+            //    line on Y axis: cut on good hits
+            TLine * line_nHitsG = new TLine(0,nHitsGMax,h_nHitsAG->GetXaxis()->GetXmax(),nHitsGMax); line_nHitsG->SetLineColor(kRed); line_nHitsG->Draw();
+            lowBin = 1;highBin = h_nHitsAG->GetYaxis()->FindBin(nHitsGMax); integral = h_nHitsAG->Integral(1,100,lowBin,highBin);
+            TLatex * text_nHitsG = new TLatex(40,nHitsGMax,Form("%d (%.1f %%)",(int)integral,integral/h_nHitsAG->Integral()*100)); text_nHitsG->SetTextColor(kRed); text_nHitsG->Draw();
+            //    line on X axis: cut on all hits
+            TLine * line_nHitsA = new TLine(nHits_max,0,nHits_max,h_nHitsAG->GetYaxis()->GetXmax()); line_nHitsA->SetLineColor(kBlue); line_nHitsA->Draw();
+            lowBinX = 1; highBinX = h_nHitsAG->GetXaxis()->FindBin(nHits_max); integral = h_nHitsAG->Integral(lowBinX,highBinX,lowBin,highBin);
+            TLatex * text_nHitsA = new TLatex(nHits_max,20,Form("%d (%.1f %%)",(int)integral,integral/h_nHitsAG->Integral(1,100,lowBin,highBin)*100)); text_nHitsA->SetTextColor(kBlue); text_nHitsA->Draw();
+            // 1) selected hits VS left good hits
             canv->cd(2);gPad->SetGridx(1);gPad->SetGridy(1); gPad->SetLogz(1);
-            h_nHitsGS->Draw("COLZ");
-            TLine * line_nHitsS = new TLine(0,nHitsS_min,h_nHitsGS->GetXaxis()->GetXmax(),nHitsS_min); line_nHitsS->SetLineColor(kRed); line_nHitsS->Draw();
-            lowBin = h_nHitsGS->GetYaxis()->FindBin(nHitsS_min);highBin = h_nHitsGS->GetYaxis()->GetNbins(); integral = h_nHitsGS->Integral(1,25,lowBin,highBin);
-            TLatex * text_nHitsS = new TLatex(10,nHitsS_min,Form("%d (%.1f %%)",(int)integral,integral/h_nHitsGS->Integral()*100)); text_nHitsS->SetTextColor(kRed); text_nHitsS->Draw();
+            h_nHitsLS->Draw("COLZ");
+            //    line on Y axis: cut on selected hits
+            TLine * line_nHitsS = new TLine(0,nHitsS_min,h_nHitsLS->GetXaxis()->GetXmax(),nHitsS_min); line_nHitsS->SetLineColor(kRed); line_nHitsS->Draw();
+            lowBin = h_nHitsLS->GetYaxis()->FindBin(nHitsS_min);highBin = h_nHitsLS->GetYaxis()->GetNbins(); integral = h_nHitsLS->Integral(1,25,lowBin,highBin);
+            TLatex * text_nHitsS = new TLatex(10,nHitsS_min,Form("%d (%.1f %%)",(int)integral,integral/h_nHitsLS->Integral()*100)); text_nHitsS->SetTextColor(kRed); text_nHitsS->Draw();
+            //    line on X axis: cut on left good hits (if needed)
             if (AllGoodHitsUsed){
-                TLine * line_nHitsG = new TLine(1,0,1,h_nHitsGS->GetYaxis()->GetXmax()); line_nHitsG->SetLineColor(kBlue); line_nHitsG->Draw();
-                int lowBinX = 1; int highBinX = h_nHitsGS->GetXaxis()->FindBin(0.); integral = h_nHitsGS->Integral(lowBinX,highBinX,lowBin,highBin);
-                TLatex * text_nHitsG = new TLatex(1,nHitsS_min+1,Form("%d (%.1f %%)",(int)integral,integral/h_nHitsGS->Integral(1,10,lowBin,highBin)*100)); text_nHitsG->SetTextColor(kBlue); text_nHitsG->Draw();
+                TLine * line_nHitsG = new TLine(1,0,1,h_nHitsLS->GetYaxis()->GetXmax()); line_nHitsG->SetLineColor(kBlue); line_nHitsG->Draw();
+                lowBinX = 1; highBinX = h_nHitsLS->GetXaxis()->FindBin(0.); integral = h_nHitsLS->Integral(lowBinX,highBinX,lowBin,highBin);
+                TLatex * text_nHitsG = new TLatex(1,nHitsS_min+1,Form("%d (%.1f %%)",(int)integral,integral/h_nHitsLS->Integral(1,25,lowBin,highBin)*100)); text_nHitsG->SetTextColor(kBlue); text_nHitsG->Draw();
             }
             canv->cd(3);gPad->SetGridx(1);gPad->SetGridy(1);
             if (chi2_max) {

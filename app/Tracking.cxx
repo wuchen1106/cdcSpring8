@@ -157,7 +157,7 @@ int main(int argc, char** argv){
     int lidStart = ParameterManager::Get().TrackingParameters.lidStart;
     int lidStop = ParameterManager::Get().TrackingParameters.lidStop;
     int nPairsMin = ParameterManager::Get().TrackingParameters.nPairsMin;
-    int nHitsMax = ParameterManager::Get().TrackingParameters.nHitsMax;
+    int nHitsGMax = ParameterManager::Get().TrackingParameters.nHitsGMax;
     int nHitsSMin = ParameterManager::Get().TrackingParameters.nHitsSMin;
     double sumCut = ParameterManager::Get().TrackingParameters.sumCut;
     double aaCut = ParameterManager::Get().TrackingParameters.aaCut;
@@ -238,7 +238,7 @@ int main(int argc, char** argv){
         MyNamedInfo("Tracking",Form("  => %d pairs from %d good hits in %d pairable layers with %d combinations X 2^%d L/R choices",nPairs,nHitsG,nPairableLayers,nCombinations,nHitsG));
 
         /// 3. Apply tracking after cuts
-        if (nHitsG<=nHitsMax&&nPairs>=nPairsMin){
+        if (nHitsG<=nHitsGMax&&nPairs>=nPairsMin){
             N_found++; // found a track
             tracker->DoTracking();
 
