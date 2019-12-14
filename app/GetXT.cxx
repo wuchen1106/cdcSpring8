@@ -259,7 +259,7 @@ int main(int argc, char** argv){
                 continue;
             }
             // Prepare histograms for efficiency
-            TH2I * h_nHitsAG = new TH2I(Form("h_track%s_nHits",suffix.Data()),"Number of good hits VS number of all hits",100,0,100,50,0,50); h_nHitsAG->GetXaxis()->SetTitle("Number of hits"); h_nHitsAG->GetYaxis()->SetTitle("Number of good hits"); h_nHitsAG->SetContour(100);
+            TH2I * h_nHitsAG = new TH2I(Form("h_track%s_nHitsAG",suffix.Data()),"Number of good hits VS number of all hits",100,0,100,50,0,50); h_nHitsAG->GetXaxis()->SetTitle("Number of hits"); h_nHitsAG->GetYaxis()->SetTitle("Number of good hits"); h_nHitsAG->SetContour(100);
             TH2I * h_nHitsLS = new TH2I(Form("h_track%s_nHitsLS",suffix.Data()),"Number of selected hits VS number of left good hits",25,0,25,10,0,10); h_nHitsLS->GetXaxis()->SetTitle("Number of left good hits"); h_nHitsLS->GetYaxis()->SetTitle("Number of selected hits"); h_nHitsLS->SetContour(100);
             TH1D * h_chi2 = new TH1D(Form("h_track%s_chi2",suffix.Data()),"#chi^{2} of fitting",256,0,10); h_chi2->GetXaxis()->SetTitle("#chi^{2}"); h_chi2->GetYaxis()->SetTitle("Counts");
             TH1D * h_pValue = new TH1D(Form("h_track%s_pValue",suffix.Data()),"P Value of fitting",256,0,1); h_pValue->GetXaxis()->SetTitle("P Value"); h_pValue->GetYaxis()->SetTitle("Counts");
@@ -377,7 +377,7 @@ int main(int argc, char** argv){
             //    line on Y axis: cut on selected hits
             TLine * line_nHitsS = new TLine(0,nHitsS_min,h_nHitsLS->GetXaxis()->GetXmax(),nHitsS_min); line_nHitsS->SetLineColor(kRed); line_nHitsS->Draw();
             lowBin = h_nHitsLS->GetYaxis()->FindBin(nHitsS_min);highBin = h_nHitsLS->GetYaxis()->GetNbins(); integral = h_nHitsLS->Integral(0,26,lowBin,highBin);
-            TLatex * text_nHitsS = new TLatex(10,nHitsS_min,Form("%d (%.1f %%)",(int)integral,integral/h_nHitsLS->GetEntries()*101)); text_nHitsS->SetTextColor(kRed); text_nHitsS->Draw();
+            TLatex * text_nHitsS = new TLatex(10,nHitsS_min,Form("%d (%.1f %%)",(int)integral,integral/h_nHitsLS->GetEntries()*100)); text_nHitsS->SetTextColor(kRed); text_nHitsS->Draw();
             //    line on X axis: cut on left good hits (if needed)
             if (AllGoodHitsUsed){
                 TLine * line_nHitsG = new TLine(1,0,1,h_nHitsLS->GetYaxis()->GetXmax()); line_nHitsG->SetLineColor(kBlue); line_nHitsG->Draw();
