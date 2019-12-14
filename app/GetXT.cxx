@@ -340,8 +340,8 @@ int main(int argc, char** argv){
                 // tell analyzer a new data point
                 fXTAnalyzer->Fill(driftT,fitD);
             }
-            if (h_slopeZHasHit->Integral()<1000){
-                MyNamedLog("GetXT",Form("Too few entries %d. Will skip \"%s\"",(int)(h_slopeZHasHit->Integral()),suffix.Data()));
+            if (h_slopeZHasHit->GetEntries()<1000){
+                MyNamedLog("GetXT",Form("Too few entries %d. Will skip \"%s\"",(int)(h_slopeZHasHit->GetEntries()),suffix.Data()));
                 continue;
             }
             fXTAnalyzer->Write();
@@ -364,7 +364,7 @@ int main(int argc, char** argv){
             //    line on Y axis: cut on good hits
             TLine * line_nHitsG = new TLine(0,nHitsGMax,h_nHitsAG->GetXaxis()->GetXmax(),nHitsGMax); line_nHitsG->SetLineColor(kRed); line_nHitsG->Draw();
             lowBin = 0;highBin = h_nHitsAG->GetYaxis()->FindBin(nHitsGMax); integral = h_nHitsAG->Integral(0,101,lowBin,highBin);
-            TLatex * text_nHitsG = new TLatex(40,nHitsGMax,Form("%d (%.1f %%)",(int)integral,integral/h_nHitsAG->Integral()*100)); text_nHitsG->SetTextColor(kRed); text_nHitsG->Draw();
+            TLatex * text_nHitsG = new TLatex(40,nHitsGMax,Form("%d (%.1f %%)",(int)integral,integral/h_nHitsAG->GetEntries()*100)); text_nHitsG->SetTextColor(kRed); text_nHitsG->Draw();
             //    line on X axis: cut on all hits
             if (nHits_max){
                 TLine * line_nHitsA = new TLine(nHits_max,0,nHits_max,h_nHitsAG->GetYaxis()->GetXmax()); line_nHitsA->SetLineColor(kBlue); line_nHitsA->Draw();
@@ -377,7 +377,7 @@ int main(int argc, char** argv){
             //    line on Y axis: cut on selected hits
             TLine * line_nHitsS = new TLine(0,nHitsS_min,h_nHitsLS->GetXaxis()->GetXmax(),nHitsS_min); line_nHitsS->SetLineColor(kRed); line_nHitsS->Draw();
             lowBin = h_nHitsLS->GetYaxis()->FindBin(nHitsS_min);highBin = h_nHitsLS->GetYaxis()->GetNbins(); integral = h_nHitsLS->Integral(0,26,lowBin,highBin);
-            TLatex * text_nHitsS = new TLatex(10,nHitsS_min,Form("%d (%.1f %%)",(int)integral,integral/h_nHitsLS->Integral()*101)); text_nHitsS->SetTextColor(kRed); text_nHitsS->Draw();
+            TLatex * text_nHitsS = new TLatex(10,nHitsS_min,Form("%d (%.1f %%)",(int)integral,integral/h_nHitsLS->GetEntries()*101)); text_nHitsS->SetTextColor(kRed); text_nHitsS->Draw();
             //    line on X axis: cut on left good hits (if needed)
             if (AllGoodHitsUsed){
                 TLine * line_nHitsG = new TLine(1,0,1,h_nHitsLS->GetYaxis()->GetXmax()); line_nHitsG->SetLineColor(kBlue); line_nHitsG->Draw();
@@ -389,29 +389,29 @@ int main(int argc, char** argv){
                 h_chi2->Draw(); hist_height = h_chi2->GetMaximum();
                 TLine * line_chi2 = new TLine(chi2_max,0,chi2_max,hist_height); line_chi2->SetLineColor(kRed); line_chi2->Draw();
                 lowBin = h_chi2->FindBin(chi2_max);highBin = h_chi2->GetNbinsX(); integral = h_chi2->Integral(lowBin,highBin);
-                TLatex * text_chi2 = new TLatex(chi2_max,hist_height*0.8,Form("%d (%.1f %%)",(int)integral,integral/h_chi2->Integral()*100)); text_chi2->SetTextColor(kRed); text_chi2->Draw();
+                TLatex * text_chi2 = new TLatex(chi2_max,hist_height*0.8,Form("%d (%.1f %%)",(int)integral,integral/h_chi2->GetEntries()*100)); text_chi2->SetTextColor(kRed); text_chi2->Draw();
             }
             else {
                 h_pValue->Draw(); hist_height = h_pValue->GetMaximum();
                 TLine * line_pValue = new TLine(pValue_min,0,pValue_min,hist_height); line_pValue->SetLineColor(kRed); line_pValue->Draw();
                 lowBin = h_pValue->FindBin(pValue_min);highBin = h_pValue->GetNbinsX(); integral = h_pValue->Integral(lowBin,highBin);
-                TLatex * text_pValue = new TLatex(pValue_min,hist_height*0.8,Form("%d (%.1f %%)",(int)integral,integral/h_pValue->Integral()*100)); text_pValue->SetTextColor(kRed); text_pValue->Draw();
+                TLatex * text_pValue = new TLatex(pValue_min,hist_height*0.8,Form("%d (%.1f %%)",(int)integral,integral/h_pValue->GetEntries()*100)); text_pValue->SetTextColor(kRed); text_pValue->Draw();
             }
             canv->cd(4);gPad->SetGridx(1);gPad->SetGridy(1);
             h_slopeZ->Draw(); hist_height = h_slopeZ->GetMaximum();
             TLine * line_slopeZmin = new TLine(slz_min,0,slz_min,hist_height); line_slopeZmin->SetLineColor(kRed); line_slopeZmin->Draw();
             TLine * line_slopeZmax = new TLine(slz_max,0,slz_max,hist_height); line_slopeZmax->SetLineColor(kRed); line_slopeZmax->Draw();
             lowBin = h_slopeZ->FindBin(slz_min);highBin = h_slopeZ->FindBin(slz_max); integral = h_slopeZ->Integral(lowBin,highBin);
-            TLatex * text_slz = new TLatex(slz_max,hist_height*0.8,Form("%d (%.1f %%)",(int)integral,integral/h_slopeZ->Integral()*100)); text_slz->SetTextColor(kRed); text_slz->Draw();
+            TLatex * text_slz = new TLatex(slz_max,hist_height*0.8,Form("%d (%.1f %%)",(int)integral,integral/h_slopeZ->GetEntries()*100)); text_slz->SetTextColor(kRed); text_slz->Draw();
             if (RequireInTriggerCounter||RequireAllGoldenHits){
                 text_slz->SetTextColor(kBlue);
                 h_slopeZAfterCuts->Draw("SAME");
                 lowBin = h_slopeZAfterCuts->FindBin(slz_min);highBin = h_slopeZAfterCuts->FindBin(slz_max); integral = h_slopeZAfterCuts->Integral(lowBin,highBin);
-                TLatex * text_slzAfterCuts = new TLatex(slz_max,hist_height*0.5,Form("%d (%.1f %%)",(int)integral,integral/h_slopeZAfterCuts->Integral()*100)); text_slzAfterCuts->SetTextColor(kRed); text_slzAfterCuts->Draw();
+                TLatex * text_slzAfterCuts = new TLatex(slz_max,hist_height*0.5,Form("%d (%.1f %%)",(int)integral,integral/h_slopeZAfterCuts->GetEntries()*100)); text_slzAfterCuts->SetTextColor(kRed); text_slzAfterCuts->Draw();
             }
             h_slopeZHasHit->Draw("SAME");
-            integral = h_slopeZHasHit->Integral();
-            TLatex * text_slzHasHit = new TLatex(slz_max,hist_height*0.3,Form("%d (%.1f %%)",(int)integral,integral/h_slopeZ->Integral()*100)); text_slzHasHit->SetTextColor(kMagenta); text_slzHasHit->Draw();
+            integral = h_slopeZHasHit->GetEntries();
+            TLatex * text_slzHasHit = new TLatex(slz_max,hist_height*0.3,Form("%d (%.1f %%)",(int)integral,integral/h_slopeZ->GetEntries()*100)); text_slzHasHit->SetTextColor(kMagenta); text_slzHasHit->Draw();
             canv->SaveAs(Form("%s/result/track_%d.%s%s.png",HOME.Data(),m_runNo,m_runName.Data(),suffix.Data()));
         }
         if (m_StopStage>1) {
