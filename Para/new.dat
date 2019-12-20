@@ -24,7 +24,7 @@ tracking parameters
     < tracking.aaCut = 25 >
     < tracking.workType = 0 > 0, fr/l_0; 1, even/odd; -1, even/odd reversed; others, all layers
     < tracking.t0error = 0 >
-    < tracking.lidStart = 0 > the first layer ID to take into account. FIXME: this is only used to decide the range to pick up hit pairs for track finding, and lid==0 is always taken off (guard layer)
+    < tracking.lidStart = 1 > the first layer ID to take into account. FIXME: this is only used to decide the range to pick up hit pairs for track finding, and lid==0 is always taken off (guard layer)
     < tracking.lidStop = 8 > the last layer ID to take into account
 
 *******************************************************************************                                                                   

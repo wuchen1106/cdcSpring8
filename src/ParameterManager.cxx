@@ -77,6 +77,7 @@ void ParameterManager::LoadParameters(ParaBlock theParaBlock){
         parName="tracking.t0error";if (MyRuntimeParameters::Get().HasParameter(parName)) TrackingParameters.t0error = MyRuntimeParameters::Get().GetParameterD(parName);
         parName="tracking.lidStart";if (MyRuntimeParameters::Get().HasParameter(parName)) TrackingParameters.lidStart = MyRuntimeParameters::Get().GetParameterI(parName);
         parName="tracking.lidStop";if (MyRuntimeParameters::Get().HasParameter(parName)) TrackingParameters.lidStop = MyRuntimeParameters::Get().GetParameterI(parName);
+        parName="tracking.BlindLayer";if (MyRuntimeParameters::Get().HasParameter(parName)) TrackingParameters.BlindLayer = MyRuntimeParameters::Get().GetParameterI(parName);
     }
     if (theParaBlock==kAll||theParaBlock==kXTManager){
         parName="XTManager.xtType";if (MyRuntimeParameters::Get().HasParameter(parName)) XTManagerParameters.xtType = getXTType(MyRuntimeParameters::Get().GetParameterS(parName));
@@ -218,12 +219,12 @@ TrackingPara::TrackingPara(){
     tmax = 800;
     sumCut = -10;
     aaCut = 0;
-    BlindLayer = 0; // Don't use this layer for tracking
     t0error = 0; // if t0 error is 0, then don't set it as a free parameter in fitting
     inislx = 0; // initial guess for slope x;
     iniinz = 100;
     lidStart = 1;
     lidStop = NLAY-1;
+    BlindLayer = 0; // Don't use this layer for tracking
 }
 
 void TrackingPara::Print(){
@@ -237,6 +238,8 @@ void TrackingPara::Print(){
     printf("  tmax        = %d\n",tmax);
     printf("  sumCut      = %f\n",sumCut);
     printf("  aaCut       = %f\n",aaCut);
+    printf("  lidStart    = %d\n",lidStart);
+    printf("  lidStop     = %d\n",lidStop);
     printf("  BlindLayer  = %d\n",BlindLayer);
 }
 

@@ -156,6 +156,7 @@ int main(int argc, char** argv){
     double sciYdown = GeometryManager::Get().GetScintillator()->Ydown;
     int lidStart = ParameterManager::Get().TrackingParameters.lidStart;
     int lidStop = ParameterManager::Get().TrackingParameters.lidStop;
+    int blindLayer = ParameterManager::Get().TrackingParameters.BlindLayer;
     int nPairsMin = ParameterManager::Get().TrackingParameters.nPairsMin;
     int nHitsGMax = ParameterManager::Get().TrackingParameters.nHitsGMax;
     int nHitsSMin = ParameterManager::Get().TrackingParameters.nHitsSMin;
@@ -198,7 +199,8 @@ int main(int argc, char** argv){
             int iPeak = InputOutputManager::Get().iPeakInChannel->at(iHit);
             if (iPeak == 0) iPeakOverCut = 0;
             int lid = InputOutputManager::Get().LayerID->at(iHit);
-            if (lid==0) continue; // assuming the first layer is dummy layer. FIXME: should add flag for other connections
+            if (lid<lidStart||lid>lidStop) continue; // skip the layers outside of the tracking range
+            if (lid==blindLayer) continue; // skip the blinded layer
             if (peakType!= TrackingPara::kAllPeaks&&iPeakOverCut!=0) continue; // TODO: not considering about the highest peak option yet
             if (lid==m_testLayer){
                 tracker->hitIndexInTestLayer->push_back(iHit);

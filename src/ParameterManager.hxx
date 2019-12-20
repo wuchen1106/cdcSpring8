@@ -30,12 +30,12 @@ public:
     double sumCut;
     double aaCut;
     PeakType peakType;
-    int    BlindLayer;
     double t0error;
     double inislx;
     double iniinz;
     int    lidStart;
     int    lidStop;
+    int    BlindLayer;
 };
 
 // parameter block for calibration
