@@ -176,22 +176,32 @@ else
 fi
 
 updateThreadLists(){
-    ls Conf/${threadName}_*.log > $threadlistfile
-    cat $threadlistfile
+    ls Conf/${threadName}_*.log
 }
 
 isReady(){ # make sure this thread is not processing any job (the conf is emtpy)!
     name="$1\.log"
+    conf="$CDCS8WORKING_DIR/Conf/${1}.conf"
     if echo $threadLists | grep -q "$name"
     then
-        return 0
+        if [ ! -e $conf ]
+        then
+            return 1
+        fi
+        configure=`cat $conf`
+        if [ -z "$configure" ] # thread with no configure, probably not processing any job
+        then
+            return 0
+        else
+            return 1
+        fi
     else
         return 1
     fi
 }
 
 findVacentThread(){
-    for (( i=0; i<3600; i++ )) #3600*10 sec = 10 hours running
+    for (( i=0; i<3600; i++ )) #3600*10 sec = 5 hours running
     do
         if [ -e kill.$runNo.$runName ]
         then
@@ -207,44 +217,32 @@ findVacentThread(){
             fi
             thethread=${threadName}_${ithread}
             conf="$CDCS8WORKING_DIR/Conf/${thethread}.conf"
-            log="$CDCS8WORKING_DIR/Conf/${thethread}.log"
-            if [ ! -e $conf ]
+            isReady $thethread
+            if [ $? -eq 0 ]
             then
-                continue
-            fi
-            configure=`cat $conf`
-            if [ -z "$configure" ] # thread with no configure, probably not processing any job
-            then
-                isReady $thethread
-                if [ $? -eq 0 ]
-                then
-                    theConf=$conf
-                    prev_ithread=$ithread
-                    prev_occupied=true
-                    return 0 # ready to process
-                else # waiting in line
-                    continue
-                fi
-            else # dealing with other jobs
+                theConf=$conf
+                prev_ithread=$ithread
+                prev_occupied=true
+                return 0 # ready to process
+            else # waiting in line
                 continue
             fi
         done
         prev_ithread=$thread_iStart
         prev_occupied=false
-        sleep 2
+        sleep 5
         threadLists=`updateThreadLists`
         if [ ! $? -eq 0 ]
         then
             return 2 # cannot get hep_q
         fi
     done
-    return 1 # cannot find any vacent slots in 10 hours
+    return 1 # cannot find any vacent slots in 5 hours
 }
 
 prev_ithread=$thread_iStart
 prev_occupied=false
 threadLists=""
-threadlistfile=threadlist.$runName.$runNo
 lastxtfile=""
 declare -a sourcefiles
 for (( iter=IterStart; iter<=IterEnd; iter++ ))
@@ -329,20 +327,10 @@ do
     for (( ithread=thread_iStart; ithread<=thread_iStop; ithread++ ))
     do
         thethread=${threadName}_${ithread}
-        conf="$CDCS8WORKING_DIR/Conf/${thethread}.conf"
-        log="$CDCS8WORKING_DIR/Conf/${thethread}.log"
-        if [ ! -e $conf ]
+        isReady $thethread
+        if [ $? -eq 0 ]
         then
-            continue
-        fi
-        configure=`cat $conf`
-        if [ -z "$configure" ] # thread with no configure, probably not processing any job
-        then
-            isReady $thethread
-            if [ $? -eq 0 ]
-            then
-                ((nThreads++))
-            fi
+            ((nThreads++))
         fi
     done
     nEvents=`GetEntries $CDCS8WORKING_DIR/root/hits/h_$runNo.root`
@@ -408,7 +396,7 @@ do
             findVacentThread
             if [ $? -eq 1 ]
             then
-                echo "    ERROR: cannot find a vacent thread in 10 hours!"
+                echo "    ERROR: cannot find a vacent thread in 5 hours!"
                 exit 1
             elif [ $? -eq 2 ]
             then
@@ -422,14 +410,14 @@ do
     echo "Starting iteration $iter, $Njobs jobs to be finished!"
 
     allfinished=false
-    for (( i=0; i<3600; i++ )) #3600*10 sec = 10 hours running
+    for (( i=0; i<3600; i++ )) #3600*10 sec = 5 hours running
     do
         if [ -e kill.$runNo.$runName ]
         then
             echo "Killed by user!"
             exit 0
         fi
-        sleep 10
+        sleep 5
         echo -n "$i "
         finished=true
         thefile=""
@@ -476,7 +464,7 @@ do
                     findVacentThread
                     if [ $? -eq 1 ]
                     then
-                        echo "    ERROR: cannot find a vacent thread in 10 hours!"
+                        echo "    ERROR: cannot find a vacent thread in 5 hours!"
                         exit 1
                     elif [ $? -eq 2 ]
                     then
@@ -512,7 +500,7 @@ do
     done
     if [ ! $allfinished ]
     then
-        echo "ERROR! iteration $iter still not finished after 10 hours!"
+        echo "ERROR! iteration $iter still not finished after 5 hours!"
         exit 1
     fi
 
