@@ -18,6 +18,7 @@
 #include <math.h>
 
 #include "ParameterManager.hxx"
+#include "GeometryManager.hxx"
 #include "XTManager.hxx"
 #include "Log.hxx"
 
@@ -571,9 +572,9 @@ void XTAnalyzer::FitXT(){
     drawSample2D(true);
 
     // move the XT to center: we don't want to leave the wire position offset information in this XT relation
-    double xtrange_tmin = f_right->GetXmin()<f_left->GetXmin()?f_left->GetXmin():f_right->GetXmin();
-    double xtrange_tmax = f_right->GetXmax()>f_left->GetXmax()?f_left->GetXmax():f_right->GetXmax();
-    double offset = (f_left->Integral(xtrange_tmin,xtrange_tmax)+f_right->Integral(xtrange_tmin,xtrange_tmax))/2./(xtrange_tmax-xtrange_tmin);
+    double tmin = ParameterManager::Get().XTAnalyzerParameters.gold_t_min;
+    double tmax = ParameterManager::Get().XTAnalyzerParameters.gold_t_max;
+    double offset = (f_left->Integral(tmin,tmax)+f_right->Integral(tmin,tmax))/2./(tmax-tmin);
     int nPars = f_left->GetNpar();
     f_left->SetParameter(nPars-1,-offset);
     nPars = f_right->GetNpar();
