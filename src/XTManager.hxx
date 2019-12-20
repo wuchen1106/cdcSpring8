@@ -34,7 +34,7 @@ public:
     }
 
     bool Initialize();
-    double t2x(double time, int lid, int wid, int lr, int & status);
+    double t2x(double time, int lid, int wid, double lr, int & status);
     double GetError(double dd);
     void Print();
     bool PrintXTfunc(const TF1 * fl, const TF1 * fr);

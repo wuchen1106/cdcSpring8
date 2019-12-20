@@ -325,7 +325,7 @@ int main(int argc, char** argv){
                     double tfitD = GeometryManager::Get().GetDOCA(layerID,cellID,slx,inx,slz,inz);
                     double tdriftT = InputOutputManager::Get().DriftT->at(iHit)-InputOutputManager::Get().t0Offset[theCand]; // consider the t0 offset suggested by this candidate
                     int status;
-                    double tdriftD = XTManager::Get().t2x(tdriftT,layerID,cellID,tfitD>0?1:-1,status);
+                    double tdriftD = XTManager::Get().t2x(tdriftT,layerID,cellID,tfitD,status);
                     if (fabs(tfitD-tdriftD)<fabs(residual_min)){ // Get the one with smallest residual
                         residual_min = tfitD-tdriftD;
                         fitD = tfitD;

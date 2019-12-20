@@ -104,7 +104,7 @@ bool XTManager::Initialize(){
     return true;
 }
 
-double XTManager::t2x(double time, int lid, int wid, int lr, int & status){ // 1: right; 2: right end; -1: left; -2: left end; 0 out of range
+double XTManager::t2x(double time, int lid, int wid, double lr, int & status){ // 1: right; 2: right end; -1: left; -2: left end; 0 out of range
     TF1* f=0;
     // FIXME: consider to use left/right case and folded case
     if (xtType == kSingleFolded){
