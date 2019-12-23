@@ -29,7 +29,7 @@ SHLS = $(LIBDIR)/libTarget.so
 OBJS = $(addprefix $(LIBDIR)/, $(notdir $(SRCS:$(SUFFIX)=.o)))
 
 .PHONY: all
-all: $(TGTS) $(SHLS)
+all: $(SHLS) $(TGTS)
 
 .PHONY: test
 test: $(TSTS)
