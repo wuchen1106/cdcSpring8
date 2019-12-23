@@ -118,7 +118,7 @@ HistogramAnalyzer parameters
     < HistogramAnalyzer.0_peak_sigma_middle = 0 > 0 means to use sigma_hist as initial value
     < HistogramAnalyzer.0_peak_sigma_left = 0.1 >
     < HistogramAnalyzer.0_peak_sigma_right = 1.5 >
-    < HistogramAnalyzer.0_peak_mean_range = 0.5 > Fit range within x_hist_peak - range and x_hist_peak + range
+    < HistogramAnalyzer.0_peak_mean_range = 3 > Fit range within x_hist_peak*RMS - range and x_hist_peak + range*RMS
     < HistogramAnalyzer.0_base_height_middle = 0.1 > relative to peak part height
     < HistogramAnalyzer.0_base_height_left = 0 >
     < HistogramAnalyzer.0_base_height_right = 1 >
