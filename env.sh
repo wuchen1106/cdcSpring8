@@ -30,5 +30,5 @@ done
 # Export enviromental variables
 ###############################################################
 export CDCS8WORKING_DIR=$PWD
-export PATH="$PWD/BinaryFiles/bin:$PWD/scripts:$PATH"
+export PATH="$PWD/BinaryFiles/bin:$PWD/BinaryFiles/test:$PWD/scripts:$PATH"
 export LD_LIBRARY_PATH="$PWD/BinaryFiles/lib:$LD_LIBRARY_PATH"
