@@ -56,7 +56,7 @@ XTAnalyzer parameters
     < XTAnalyzer.gold_t_max = 340 >
   binning of the 2D histograms
     < XTAnalyzer.bin_t_min = -23.4375 ns >
-    < XTAnalyzer.bin_t_max = 801.5626 ns > Make sure that every TDC falls in the center of one bin
+    < XTAnalyzer.bin_t_max = 801.5625 ns > Make sure that every TDC falls in the center of one bin
     < XTAnalyzer.bin_t_num = 792 >
     < XTAnalyzer.bin_x_min = -0.01 mm >
     < XTAnalyzer.bin_x_max = 10.01 mm >
