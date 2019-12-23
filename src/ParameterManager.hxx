@@ -93,21 +93,6 @@ public:
     int    fitX_smooth[NRANGES];
     bool   fitX_fitBoth[NRANGES];
     bool   fitX_SetEmptyBins[NRANGES];
-    int    fitX_functionType[NRANGES];
-    double fitX_peak_height_middle[NRANGES];
-    double fitX_peak_height_left[NRANGES];
-    double fitX_peak_height_right[NRANGES];
-    double fitX_peak_sigma_middle[NRANGES];
-    double fitX_peak_sigma_left[NRANGES];
-    double fitX_peak_sigma_right[NRANGES];
-    double fitX_peak_mean_range[NRANGES];
-    double fitX_base_height_middle[NRANGES];
-    double fitX_base_height_left[NRANGES];
-    double fitX_base_height_right[NRANGES];
-    double fitX_base_sigma_middle[NRANGES];
-    double fitX_base_sigma_left[NRANGES];
-    double fitX_base_sigma_right[NRANGES];
-    double fitX_base_mean_range[NRANGES];
     // about forming graphs
     int    graph_n_min;
     double graph_chi2_max;
@@ -127,6 +112,30 @@ public:
     double draw_xmax;
 };
 
+// parameter block for HistogramAnalyzer
+class HistogramAnalyzerPara{
+public:
+    HistogramAnalyzerPara();
+    virtual ~HistogramAnalyzerPara(){};
+    void Print();
+    // regroup T bins to fit X
+    int    functionType[NRANGES];
+    double peak_height_middle[NRANGES];
+    double peak_height_left[NRANGES];
+    double peak_height_right[NRANGES];
+    double peak_sigma_middle[NRANGES];
+    double peak_sigma_left[NRANGES];
+    double peak_sigma_right[NRANGES];
+    double peak_mean_range[NRANGES];
+    double base_height_middle[NRANGES];
+    double base_height_left[NRANGES];
+    double base_height_right[NRANGES];
+    double base_sigma_middle[NRANGES];
+    double base_sigma_left[NRANGES];
+    double base_sigma_right[NRANGES];
+    double base_mean_range[NRANGES];
+};
+
 // parameter block for Ana
 class AnaPara{
 public:
@@ -138,7 +147,7 @@ public:
 
 /// This is a class to load and manage parameters for tracking purpose
 /// There are several blocks for detailed purposes:
-///      Tracking, Calib, XTAnalyzer, Ana
+///      Tracking, Calib, XTManager, XTAnalyzer, HistogramAnalyzer, Ana
 class ParameterManager {
 public:
     enum ParaBlock{
@@ -146,6 +155,7 @@ public:
         kCalib,
         kXTManager,
         kXTAnalyzer,
+        kHistogramAnalyzer,
         kAna,
         kAll
     };
@@ -183,6 +193,7 @@ public:
     CalibPara       CalibParameters;
     XTManagerPara   XTManagerParameters;
     XTAnalyzerPara  XTAnalyzerParameters;
+    HistogramAnalyzerPara HistogramAnalyzerParameters;
     AnaPara         AnaParameters;
 
 private:

@@ -255,23 +255,23 @@ void XTAnalyzer::BinAnalysis(void){
                     HistogramAnalyzer::Get().FitSliceBothSides(hist,x1,xerr1,sig1,x2,xerr2,sig2,mChi2,mProb,result,mFunction,current_iRange);
                     if (mDrawDetails){
                         hist->GetXaxis()->SetRangeUser((x1>0?0:x1)-0.6,(x2<0?0:x2)+0.6);
-                        TString x1string = x1<-1?Form("%.2f mm",x1):Form("%.0f um",x1*1000);
-                        TString x2string = x2>1?Form("%.2f mm",x2):Form("%.0f um",x2*1000);
-                        HistogramAnalyzer::Get().DrawFitting(hist,canv
-                                ,Form("t = %.1f (%.1f~%.1f) ns, x_{1}=%s (%.0f um), #sigma_{1}=%.0f um, x_{2}=%s (%.0f um), #sigma_{2}=%.0f um, #chi^{2}=%.0f, prob=%.2f, stat %d",divmiddle,divleft,divright,x1string.Data(),xerr1*1000,sig1*1000,x2string.Data(),xerr2*1000,sig2*1000,mChi2,mProb,result)
-                                ,Form("%s.%s%s.png",hist->GetName(),mRunName.Data(),m_suffix.Data())
-                                ,mFunction,x1,x2);
+                        TString x1string = x1<-1?Form("%.2f mm",x1):Form("%.0f #mum",x1*1000);
+                        TString x2string = x2>1?Form("%.2f mm",x2):Form("%.0f #mum",x2*1000);
+                        hist->SetTitle(Form("t = %.1f (%.1f~%.1f) ns, x_{1}=%s (%.0f #mum), #sigma_{1}=%.0f #mum, x_{2}=%s (%.0f #mum), #sigma_{2}=%.0f #mum, #chi^{2}=%.0f, prob=%.2f, stat %d",divmiddle,divleft,divright,x1string.Data(),xerr1*1000,sig1*1000,x2string.Data(),xerr2*1000,sig2*1000,mChi2,mProb,result));
+                        canv->cd();
+                        HistogramAnalyzer::Get().DrawFitting(hist,mFunction,x1,x2);
+                        canv->SaveAs(Form("%s.%s%s.png",hist->GetName(),mRunName.Data(),m_suffix.Data()));
                     }
                 }
                 else{
                     HistogramAnalyzer::Get().FitSliceSingleSide(hist,x1,xerr1,sig1,mChi2,mProb,result,mFunction,current_iRange,iLR==0);
                     if (mDrawDetails){
                         hist->GetXaxis()->SetRangeUser(x1-0.6,x1+0.6);
-                        TString xstring = x1<-1?Form("%.2f mm",x1):Form("%.0f um",x1*1000);
-                        HistogramAnalyzer::Get().DrawFitting(hist,canv
-                                ,Form("t = %.1f (%.1f~%.1f) ns, x=%s (%.0f um), #sigma=%.0f um, #chi^{2}=%.0f, prob=%.2f, stat %d",t1,divleft,divright,xstring.Data(),xerr1*1000,sig1*1000,mChi2,mProb,result)
-                                ,Form("%s.%s%s.png",hist->GetName(),mRunName.Data(),m_suffix.Data())
-                                ,mFunction,x1,0,iLR==0);
+                        TString xstring = x1<-1?Form("%.2f mm",x1):Form("%.0f #mum",x1*1000);
+                        hist->SetTitle(Form("t = %.1f (%.1f~%.1f) ns, x=%s (%.0f #mum), #sigma=%.0f #mum, #chi^{2}=%.0f, prob=%.2f, stat %d",t1,divleft,divright,xstring.Data(),xerr1*1000,sig1*1000,mChi2,mProb,result));
+                        canv->cd();
+                        HistogramAnalyzer::Get().DrawFitting(hist,mFunction,x1,0,iLR==0);
+                        canv->SaveAs(Form("%s.%s%s.png",hist->GetName(),mRunName.Data(),m_suffix.Data()));
                     }
                 }
                 // update the canvas range for drawing samples
@@ -428,13 +428,13 @@ void XTAnalyzer::FitXT(){
                 }
                 // draw the fitting result with basic functions
                 pads[iRange]->cd(iPol);gPad->SetGridx(1);gPad->SetGridy(1);
-                TH2D * hbkg = new TH2D(Form("hbkg_xtbasic%s.%s_%d_%d",m_suffix.Data(),iLR==0?"L":"R",iRange,iPol),Form("Pol%d, #Delta_{X} RMS %.0f (%.0f) um",iPol,gr_diff->GetRMS(2)/scale*1000,deltaXMax*1000),1024,minT-5,maxT+5,512,minX-0.25,maxX+0.25);
+                TH2D * hbkg = new TH2D(Form("hbkg_xtbasic%s.%s_%d_%d",m_suffix.Data(),iLR==0?"L":"R",iRange,iPol),Form("Pol%d, #Delta_{X} RMS %.0f (%.0f) #mum",iPol,gr_diff->GetRMS(2)/scale*1000,deltaXMax*1000),1024,minT-5,maxT+5,512,minX-0.25,maxX+0.25);
                 hbkg->GetXaxis()->SetTitle("T [ns]");
                 hbkg->GetYaxis()->SetTitle("X [mm]");
                 hbkg->GetYaxis()->SetTitleOffset(1.1);
                 hbkg->Draw();
                 TGaxis * axis = new TGaxis(maxT+5,minX-0.25,maxT+5,maxX+0.25,-delaXRange/2*1000,delaXRange/2*1000,510,"+L");
-                axis->SetTitle("#Delta_{X} um");
+                axis->SetTitle("#Delta_{X} #mum");
                 axis->SetTitleOffset(1.1);
                 axis->Draw();
                 axis->SetTitleFont(42); axis->SetLabelFont(42);
@@ -500,41 +500,35 @@ void XTAnalyzer::FitXT(){
 void XTAnalyzer::drawSample2D(bool withFunction){
     // draw the unfolded histogram first
     TCanvas * canv = new TCanvas("cgraph","cgraph",1024,1024);
-    TPad * padUp = NULL;
-    TPad * padDown = NULL;
-    TPad * padRight[2] = {NULL,NULL};
-    int nRanges = ParameterManager::Get().XTAnalyzerParameters.xtfunc_nRanges;
-    if (withFunction){
-        padUp = new TPad("padUp","",0,0.5,0.6,1);padUp->Draw();
-        padDown = new TPad("padDown","",0,0,0.6,0.5);padDown->Draw();
-        padRight[0] = new TPad("padRight0","",0.6,0,0.8,1);padRight[0]->Draw();
-        padRight[1] = new TPad("padRight1","",0.8,0,1,1);padRight[1]->Draw();
-        padRight[0]->Divide(1,nRanges-1);
-        padRight[1]->Divide(1,nRanges-1);
-        padDown->Divide(1,2);
-    }
-    else{
-        padUp = new TPad("padUp","",0,0.5,0.6,1);padUp->Draw();
-        padDown = new TPad("padDown","",0,0,0.6,0.5);padDown->Draw();
-    }
-    padUp->cd();gPad->SetGridx(1);gPad->SetGridy(1);
+    canv->Divide(2,2);
+
+    canv->cd(1);gPad->SetGridx(1);gPad->SetGridy(1);
     h2_xt->GetXaxis()->SetRangeUser(mDrawTmin,mDrawTmax);
     h2_xt->GetYaxis()->SetRangeUser(mDrawXmin,mDrawXmax);
     h2_xt->Draw("COLZ");
+    gr_left->SetMarkerSize(0.2);
+    gr_right->SetMarkerSize(0.2);
     gr_left->Draw("PLSAME");
     gr_right->Draw("PLSAME");
-    if (withFunction){
-        padDown->cd(2);
-    }
-    else{
-        padDown->cd();
-    }
-    gPad->SetGridx(1);gPad->SetGridy(1);
+
+    canv->cd(2);gPad->SetGridx(1);gPad->SetGridy(1);
+    TH2D * h2_bkg_sigT = new TH2D("h2_bkg_sigT2","#sigma of X fitting in each T slice",512,mDrawTmin,mDrawTmax,512,0,500);
+    h2_bkg_sigT->GetXaxis()->SetTitle("Drift Time [ns]");
+    h2_bkg_sigT->GetYaxis()->SetTitle("#sigma [#mum]");
+    h2_bkg_sigT->Draw();
+    mOutTree->SetMarkerColor(kRed); mOutTree->Draw("sig*1000:t","x>=0&&n>0&&func!=0","PSAME");
+    mOutTree->SetMarkerColor(kBlue); mOutTree->Draw("sig*1000:t","x<0&&n>0&&func!=0","PSAME");
+
+    canv->cd(4);gPad->SetGridx(1);gPad->SetGridy(1);
     TH2D * h2_bkg_rightMinusLeft = new TH2D("h2_bkg_rightMinusLeft","Mean of the two side of XT relation",512,mDrawTmin,mDrawTmax,1024,-1,1);
     h2_bkg_rightMinusLeft->Draw();
     gr_rightMinusLeft->Draw("PLSAME");
 
     if (withFunction){
+        TCanvas * canv2 = new TCanvas("cgraph2","cgraph",1024,1024);
+        int nRanges = ParameterManager::Get().XTAnalyzerParameters.xtfunc_nRanges;
+        canv2->Divide(2,nRanges-1);
+
         double xtrange_tmin = f_right->GetXmin()<f_left->GetXmin()?f_left->GetXmin():f_right->GetXmin();
         double xtrange_tmax = f_right->GetXmax()>f_left->GetXmax()?f_left->GetXmax():f_right->GetXmax();
         TF1 * f_diff = CommonTools::TF1New("f_diff",Form("(fl%s+fr%s)/2",m_suffix.Data(),m_suffix.Data()),xtrange_tmin,xtrange_tmax);
@@ -548,14 +542,15 @@ void XTAnalyzer::drawSample2D(bool withFunction){
         }
         double maxdiff = f_diff->GetMinimum(xtrange_tmin,xtrange_tmax);
         if (fabs(maxdiff)<f_diff->GetMaximum(xtrange_tmin,xtrange_tmax)) maxdiff=f_diff->GetMaximum(xtrange_tmin,xtrange_tmax);
-        h2_bkg_rightMinusLeft->SetTitle(Form("Right + Left: mean %.0f um, max %.0f um",f_diff->Integral(xtrange_tmin,xtrange_tmax)/(xtrange_tmax-xtrange_tmin)*1000,maxdiff));
+        h2_bkg_rightMinusLeft->SetTitle(Form("Right + Left: mean %.0f #mum, max %.0f #mum",f_diff->Integral(xtrange_tmin,xtrange_tmax)/(xtrange_tmax-xtrange_tmin)*1000,maxdiff*1000));
         f_diff->SetLineColor(kMagenta);
+        canv->cd(4);
         f_diff->Draw("SAME");
 
-        padDown->cd(1);gPad->SetGridx(1);gPad->SetGridy(1);
-        TH2D * hbkg = new TH2D(Form("hbkg_diff%s",m_suffix.Data()),"#Delta_{X}: Function - Sample",1024,mDrawTmin,mDrawTmax,512,-200,200);
+        canv->cd(3);gPad->SetGridx(1);gPad->SetGridy(1);
+        TH2D * hbkg = new TH2D(Form("hbkg_diff%s",m_suffix.Data()),"#Delta_{X}: Function - Sample",1024,mDrawTmin,mDrawTmax,512,-500,500);
         hbkg->GetXaxis()->SetTitle("T [ns]");
-        hbkg->GetYaxis()->SetTitle("#Delta_{X} [um]");
+        hbkg->GetYaxis()->SetTitle("#Delta_{X} [#mum]");
         hbkg->Draw();
         TLegend *legend_diff = new TLegend(0.6,0.7,0.9,0.9);
         legend_diff->Draw("SAME");
@@ -571,10 +566,10 @@ void XTAnalyzer::drawSample2D(bool withFunction){
             }
             for (int iRange = 0; iRange<nRanges; iRange++){
                 int nPol = ParameterManager::Get().XTAnalyzerParameters.xtfunc_nPol[iRange];
-                padUp->cd();
+                canv->cd(1);
                 f_basicXT[iLR][iRange][nPol]->Draw("SAME");
                 if (iRange>0){
-                    padRight[iLR]->cd(iRange);gPad->SetGridx(1);gPad->SetGridy(1);
+                    canv2->cd(iLR*(nRanges-1)+iRange);gPad->SetGridx(1);gPad->SetGridy(1);
                     double tmin = ParameterManager::Get().XTAnalyzerParameters.xtfunc_tLowEdge[iRange]-20;
                     double tmax = tmin+40;
                     double xmin,xmax;
@@ -586,7 +581,7 @@ void XTAnalyzer::drawSample2D(bool withFunction){
                         xmin = f->Eval(tmin)-0.5;
                         xmax = f->Eval(tmax)+0.5;
                     }
-                    TH2D * hbkg = new TH2D(Form("hbkg_conjonction%s.%s.%d",m_suffix.Data(),iLR==0?"L":"R",iRange),Form("Range %d to Range %d",iRange-1,iRange),512,tmin,tmax,512,xmin,xmax);
+                    TH2D * hbkg = new TH2D(Form("hbkg_conjonction%s.%s.%d",m_suffix.Data(),iLR==0?"L":"R",iRange),Form("%s: Range %d to Range %d",iLR==0?"Left":"Right",iRange-1,iRange),512,tmin,tmax,512,xmin,xmax);
                     hbkg->GetXaxis()->SetTitle("T [ns]");
                     hbkg->GetYaxis()->SetTitle("X [mm]");
                     hbkg->Draw();
@@ -597,8 +592,7 @@ void XTAnalyzer::drawSample2D(bool withFunction){
                     f->Draw("SAME");
                 }
             }
-            padUp->cd();
-            gr->SetMarkerSize(0.2);
+            canv->cd(1);
             f->Draw("SAME");
 
             // now make a new graph with error to record the difference between the fitted function and the original graph points.
@@ -617,10 +611,11 @@ void XTAnalyzer::drawSample2D(bool withFunction){
                 gr_diff->SetPoint(iPoint,t,deltaX*1000);
                 gr_diff->SetPointError(iPoint,terr,xerr*1000);
             }
-            padDown->cd(1);
+            canv->cd(3);
             gr_diff->Draw("PLSAME");
-            legend_diff->AddEntry(gr_diff,Form("%s: RMS %.0f, Max %.0f um",iLR==0?"Left":"Right",gr_diff->GetRMS(2),deltaXMax*1000),"PL");
+            legend_diff->AddEntry(gr_diff,Form("%s: RMS %.0f, Max %.0f #mum",iLR==0?"Left":"Right",gr_diff->GetRMS(2),deltaXMax*1000),"PL");
         }
+        canv2->SaveAs(Form("result/sampleConj_%s%s.png",mRunName.Data(),m_suffix.Data()));
     }
     canv->SaveAs(Form("result/sample2D_%s%s.png",mRunName.Data(),m_suffix.Data()));
     canv->SaveAs(Form("result/sample2D_%s%s.pdf",mRunName.Data(),m_suffix.Data()));

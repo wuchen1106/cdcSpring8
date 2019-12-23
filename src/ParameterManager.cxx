@@ -133,21 +133,6 @@ void ParameterManager::LoadParameters(ParaBlock theParaBlock){
             }
             parName=Form("XTAnalyzer.fitX_%d_fitBoth",iRange);if (MyRuntimeParameters::Get().HasParameter(parName)) {XTAnalyzerParameters.fitX_fitBoth[iRange] = MyRuntimeParameters::Get().GetParameterB(parName); for (int jRange = iRange+1; jRange<XTAnalyzerParameters.fitX_nRanges; jRange++){XTAnalyzerParameters.fitX_fitBoth[jRange] = XTAnalyzerParameters.fitX_fitBoth[iRange];}}
             parName=Form("XTAnalyzer.fitX_%d_SetEmptyBins",iRange);if (MyRuntimeParameters::Get().HasParameter(parName)) {XTAnalyzerParameters.fitX_SetEmptyBins[iRange] = MyRuntimeParameters::Get().GetParameterB(parName); for (int jRange = iRange+1; jRange<XTAnalyzerParameters.fitX_nRanges; jRange++){XTAnalyzerParameters.fitX_SetEmptyBins[jRange] = XTAnalyzerParameters.fitX_SetEmptyBins[iRange];}}
-            parName=Form("XTAnalyzer.fitX_%d_functionType",iRange);if (MyRuntimeParameters::Get().HasParameter(parName)) {XTAnalyzerParameters.fitX_functionType[iRange] = getFunctionType(MyRuntimeParameters::Get().GetParameterS(parName)); for (int jRange = iRange+1; jRange<XTAnalyzerParameters.fitX_nRanges; jRange++){XTAnalyzerParameters.fitX_functionType[jRange] = XTAnalyzerParameters.fitX_functionType[iRange];}}
-            parName=Form("XTAnalyzer.fitX_%d_peak_height_middle",iRange);if (MyRuntimeParameters::Get().HasParameter(parName)) {XTAnalyzerParameters.fitX_peak_height_middle[iRange] = MyRuntimeParameters::Get().GetParameterD(parName); for (int jRange = iRange+1; jRange<XTAnalyzerParameters.fitX_nRanges; jRange++){XTAnalyzerParameters.fitX_peak_height_middle[jRange] = XTAnalyzerParameters.fitX_peak_height_middle[iRange];}}
-            parName=Form("XTAnalyzer.fitX_%d_peak_height_left",iRange);if (MyRuntimeParameters::Get().HasParameter(parName)) {XTAnalyzerParameters.fitX_peak_height_left[iRange] = MyRuntimeParameters::Get().GetParameterD(parName); for (int jRange = iRange+1; jRange<XTAnalyzerParameters.fitX_nRanges; jRange++){XTAnalyzerParameters.fitX_peak_height_left[jRange] = XTAnalyzerParameters.fitX_peak_height_left[iRange];}}
-            parName=Form("XTAnalyzer.fitX_%d_peak_height_right",iRange);if (MyRuntimeParameters::Get().HasParameter(parName)) {XTAnalyzerParameters.fitX_peak_height_right[iRange] = MyRuntimeParameters::Get().GetParameterD(parName); for (int jRange = iRange+1; jRange<XTAnalyzerParameters.fitX_nRanges; jRange++){XTAnalyzerParameters.fitX_peak_height_right[jRange] = XTAnalyzerParameters.fitX_peak_height_right[iRange];}}
-            parName=Form("XTAnalyzer.fitX_%d_peak_sigma_middle",iRange);if (MyRuntimeParameters::Get().HasParameter(parName)) {XTAnalyzerParameters.fitX_peak_sigma_middle[iRange] = MyRuntimeParameters::Get().GetParameterD(parName); for (int jRange = iRange+1; jRange<XTAnalyzerParameters.fitX_nRanges; jRange++){XTAnalyzerParameters.fitX_peak_sigma_middle[jRange] = XTAnalyzerParameters.fitX_peak_sigma_middle[iRange];}}
-            parName=Form("XTAnalyzer.fitX_%d_peak_sigma_left",iRange);if (MyRuntimeParameters::Get().HasParameter(parName)) {XTAnalyzerParameters.fitX_peak_sigma_left[iRange] = MyRuntimeParameters::Get().GetParameterD(parName); for (int jRange = iRange+1; jRange<XTAnalyzerParameters.fitX_nRanges; jRange++){XTAnalyzerParameters.fitX_peak_sigma_left[jRange] = XTAnalyzerParameters.fitX_peak_sigma_left[iRange];}}
-            parName=Form("XTAnalyzer.fitX_%d_peak_sigma_right",iRange);if (MyRuntimeParameters::Get().HasParameter(parName)) {XTAnalyzerParameters.fitX_peak_sigma_right[iRange] = MyRuntimeParameters::Get().GetParameterD(parName); for (int jRange = iRange+1; jRange<XTAnalyzerParameters.fitX_nRanges; jRange++){XTAnalyzerParameters.fitX_peak_sigma_right[jRange] = XTAnalyzerParameters.fitX_peak_sigma_right[iRange];}}
-            parName=Form("XTAnalyzer.fitX_%d_peak_mean_range",iRange);if (MyRuntimeParameters::Get().HasParameter(parName)) {XTAnalyzerParameters.fitX_peak_mean_range[iRange] = MyRuntimeParameters::Get().GetParameterD(parName); for (int jRange = iRange+1; jRange<XTAnalyzerParameters.fitX_nRanges; jRange++){XTAnalyzerParameters.fitX_peak_mean_range[jRange] = XTAnalyzerParameters.fitX_peak_mean_range[iRange];}}
-            parName=Form("XTAnalyzer.fitX_%d_base_height_middle",iRange);if (MyRuntimeParameters::Get().HasParameter(parName)) {XTAnalyzerParameters.fitX_base_height_middle[iRange] = MyRuntimeParameters::Get().GetParameterD(parName); for (int jRange = iRange+1; jRange<XTAnalyzerParameters.fitX_nRanges; jRange++){XTAnalyzerParameters.fitX_base_height_middle[jRange] = XTAnalyzerParameters.fitX_base_height_middle[iRange];}}
-            parName=Form("XTAnalyzer.fitX_%d_base_height_left",iRange);if (MyRuntimeParameters::Get().HasParameter(parName)) {XTAnalyzerParameters.fitX_base_height_left[iRange] = MyRuntimeParameters::Get().GetParameterD(parName); for (int jRange = iRange+1; jRange<XTAnalyzerParameters.fitX_nRanges; jRange++){XTAnalyzerParameters.fitX_base_height_left[jRange] = XTAnalyzerParameters.fitX_base_height_left[iRange];}}
-            parName=Form("XTAnalyzer.fitX_%d_base_height_right",iRange);if (MyRuntimeParameters::Get().HasParameter(parName)) {XTAnalyzerParameters.fitX_base_height_right[iRange] = MyRuntimeParameters::Get().GetParameterD(parName); for (int jRange = iRange+1; jRange<XTAnalyzerParameters.fitX_nRanges; jRange++){XTAnalyzerParameters.fitX_base_height_right[jRange] = XTAnalyzerParameters.fitX_base_height_right[iRange];}}
-            parName=Form("XTAnalyzer.fitX_%d_base_sigma_middle",iRange);if (MyRuntimeParameters::Get().HasParameter(parName)) {XTAnalyzerParameters.fitX_base_sigma_middle[iRange] = MyRuntimeParameters::Get().GetParameterD(parName); for (int jRange = iRange+1; jRange<XTAnalyzerParameters.fitX_nRanges; jRange++){XTAnalyzerParameters.fitX_base_sigma_middle[jRange] = XTAnalyzerParameters.fitX_base_sigma_middle[iRange];}}
-            parName=Form("XTAnalyzer.fitX_%d_base_sigma_left",iRange);if (MyRuntimeParameters::Get().HasParameter(parName)) {XTAnalyzerParameters.fitX_base_sigma_left[iRange] = MyRuntimeParameters::Get().GetParameterD(parName); for (int jRange = iRange+1; jRange<XTAnalyzerParameters.fitX_nRanges; jRange++){XTAnalyzerParameters.fitX_base_sigma_left[jRange] = XTAnalyzerParameters.fitX_base_sigma_left[iRange];}}
-            parName=Form("XTAnalyzer.fitX_%d_base_sigma_right",iRange);if (MyRuntimeParameters::Get().HasParameter(parName)) {XTAnalyzerParameters.fitX_base_sigma_right[iRange] = MyRuntimeParameters::Get().GetParameterD(parName); for (int jRange = iRange+1; jRange<XTAnalyzerParameters.fitX_nRanges; jRange++){XTAnalyzerParameters.fitX_base_sigma_right[jRange] = XTAnalyzerParameters.fitX_base_sigma_right[iRange];}}
-            parName=Form("XTAnalyzer.fitX_%d_base_mean_range",iRange);if (MyRuntimeParameters::Get().HasParameter(parName)) {XTAnalyzerParameters.fitX_base_mean_range[iRange] = MyRuntimeParameters::Get().GetParameterD(parName); for (int jRange = iRange+1; jRange<XTAnalyzerParameters.fitX_nRanges; jRange++){XTAnalyzerParameters.fitX_base_mean_range[jRange] = XTAnalyzerParameters.fitX_base_mean_range[iRange];}}
         }
         // get the last tSep
         int iRange = XTAnalyzerParameters.fitX_nRanges;
@@ -188,6 +173,25 @@ void ParameterManager::LoadParameters(ParaBlock theParaBlock){
         parName="XTAnalyzer.draw_tmax";if (MyRuntimeParameters::Get().HasParameter(parName)) XTAnalyzerParameters.draw_tmax = MyRuntimeParameters::Get().GetParameterD(parName);
         parName="XTAnalyzer.draw_xmin";if (MyRuntimeParameters::Get().HasParameter(parName)) XTAnalyzerParameters.draw_xmin = MyRuntimeParameters::Get().GetParameterD(parName);
         parName="XTAnalyzer.draw_xmax";if (MyRuntimeParameters::Get().HasParameter(parName)) XTAnalyzerParameters.draw_xmax = MyRuntimeParameters::Get().GetParameterD(parName);
+    }
+    if (theParaBlock==kAll||theParaBlock==kXTAnalyzer||theParaBlock==kAna||theParaBlock==kHistogramAnalyzer){
+        for (int iRange = 0; iRange<NRANGES; iRange++){
+            parName=Form("HistogramAnalyzer.%d_functionType",iRange);if (MyRuntimeParameters::Get().HasParameter(parName)) {HistogramAnalyzerParameters.functionType[iRange] = getFunctionType(MyRuntimeParameters::Get().GetParameterS(parName)); for (int jRange = iRange+1; jRange<NRANGES; jRange++){HistogramAnalyzerParameters.functionType[jRange] = HistogramAnalyzerParameters.functionType[iRange];}}
+            parName=Form("HistogramAnalyzer.%d_peak_height_middle",iRange);if (MyRuntimeParameters::Get().HasParameter(parName)) {HistogramAnalyzerParameters.peak_height_middle[iRange] = MyRuntimeParameters::Get().GetParameterD(parName); for (int jRange = iRange+1; jRange<NRANGES; jRange++){HistogramAnalyzerParameters.peak_height_middle[jRange] = HistogramAnalyzerParameters.peak_height_middle[iRange];}}
+            parName=Form("HistogramAnalyzer.%d_peak_height_left",iRange);if (MyRuntimeParameters::Get().HasParameter(parName)) {HistogramAnalyzerParameters.peak_height_left[iRange] = MyRuntimeParameters::Get().GetParameterD(parName); for (int jRange = iRange+1; jRange<NRANGES; jRange++){HistogramAnalyzerParameters.peak_height_left[jRange] = HistogramAnalyzerParameters.peak_height_left[iRange];}}
+            parName=Form("HistogramAnalyzer.%d_peak_height_right",iRange);if (MyRuntimeParameters::Get().HasParameter(parName)) {HistogramAnalyzerParameters.peak_height_right[iRange] = MyRuntimeParameters::Get().GetParameterD(parName); for (int jRange = iRange+1; jRange<NRANGES; jRange++){HistogramAnalyzerParameters.peak_height_right[jRange] = HistogramAnalyzerParameters.peak_height_right[iRange];}}
+            parName=Form("HistogramAnalyzer.%d_peak_sigma_middle",iRange);if (MyRuntimeParameters::Get().HasParameter(parName)) {HistogramAnalyzerParameters.peak_sigma_middle[iRange] = MyRuntimeParameters::Get().GetParameterD(parName); for (int jRange = iRange+1; jRange<NRANGES; jRange++){HistogramAnalyzerParameters.peak_sigma_middle[jRange] = HistogramAnalyzerParameters.peak_sigma_middle[iRange];}}
+            parName=Form("HistogramAnalyzer.%d_peak_sigma_left",iRange);if (MyRuntimeParameters::Get().HasParameter(parName)) {HistogramAnalyzerParameters.peak_sigma_left[iRange] = MyRuntimeParameters::Get().GetParameterD(parName); for (int jRange = iRange+1; jRange<NRANGES; jRange++){HistogramAnalyzerParameters.peak_sigma_left[jRange] = HistogramAnalyzerParameters.peak_sigma_left[iRange];}}
+            parName=Form("HistogramAnalyzer.%d_peak_sigma_right",iRange);if (MyRuntimeParameters::Get().HasParameter(parName)) {HistogramAnalyzerParameters.peak_sigma_right[iRange] = MyRuntimeParameters::Get().GetParameterD(parName); for (int jRange = iRange+1; jRange<NRANGES; jRange++){HistogramAnalyzerParameters.peak_sigma_right[jRange] = HistogramAnalyzerParameters.peak_sigma_right[iRange];}}
+            parName=Form("HistogramAnalyzer.%d_peak_mean_range",iRange);if (MyRuntimeParameters::Get().HasParameter(parName)) {HistogramAnalyzerParameters.peak_mean_range[iRange] = MyRuntimeParameters::Get().GetParameterD(parName); for (int jRange = iRange+1; jRange<NRANGES; jRange++){HistogramAnalyzerParameters.peak_mean_range[jRange] = HistogramAnalyzerParameters.peak_mean_range[iRange];}}
+            parName=Form("HistogramAnalyzer.%d_base_height_middle",iRange);if (MyRuntimeParameters::Get().HasParameter(parName)) {HistogramAnalyzerParameters.base_height_middle[iRange] = MyRuntimeParameters::Get().GetParameterD(parName); for (int jRange = iRange+1; jRange<NRANGES; jRange++){HistogramAnalyzerParameters.base_height_middle[jRange] = HistogramAnalyzerParameters.base_height_middle[iRange];}}
+            parName=Form("HistogramAnalyzer.%d_base_height_left",iRange);if (MyRuntimeParameters::Get().HasParameter(parName)) {HistogramAnalyzerParameters.base_height_left[iRange] = MyRuntimeParameters::Get().GetParameterD(parName); for (int jRange = iRange+1; jRange<NRANGES; jRange++){HistogramAnalyzerParameters.base_height_left[jRange] = HistogramAnalyzerParameters.base_height_left[iRange];}}
+            parName=Form("HistogramAnalyzer.%d_base_height_right",iRange);if (MyRuntimeParameters::Get().HasParameter(parName)) {HistogramAnalyzerParameters.base_height_right[iRange] = MyRuntimeParameters::Get().GetParameterD(parName); for (int jRange = iRange+1; jRange<NRANGES; jRange++){HistogramAnalyzerParameters.base_height_right[jRange] = HistogramAnalyzerParameters.base_height_right[iRange];}}
+            parName=Form("HistogramAnalyzer.%d_base_sigma_middle",iRange);if (MyRuntimeParameters::Get().HasParameter(parName)) {HistogramAnalyzerParameters.base_sigma_middle[iRange] = MyRuntimeParameters::Get().GetParameterD(parName); for (int jRange = iRange+1; jRange<NRANGES; jRange++){HistogramAnalyzerParameters.base_sigma_middle[jRange] = HistogramAnalyzerParameters.base_sigma_middle[iRange];}}
+            parName=Form("HistogramAnalyzer.%d_base_sigma_left",iRange);if (MyRuntimeParameters::Get().HasParameter(parName)) {HistogramAnalyzerParameters.base_sigma_left[iRange] = MyRuntimeParameters::Get().GetParameterD(parName); for (int jRange = iRange+1; jRange<NRANGES; jRange++){HistogramAnalyzerParameters.base_sigma_left[jRange] = HistogramAnalyzerParameters.base_sigma_left[iRange];}}
+            parName=Form("HistogramAnalyzer.%d_base_sigma_right",iRange);if (MyRuntimeParameters::Get().HasParameter(parName)) {HistogramAnalyzerParameters.base_sigma_right[iRange] = MyRuntimeParameters::Get().GetParameterD(parName); for (int jRange = iRange+1; jRange<NRANGES; jRange++){HistogramAnalyzerParameters.base_sigma_right[jRange] = HistogramAnalyzerParameters.base_sigma_right[iRange];}}
+            parName=Form("HistogramAnalyzer.%d_base_mean_range",iRange);if (MyRuntimeParameters::Get().HasParameter(parName)) {HistogramAnalyzerParameters.base_mean_range[iRange] = MyRuntimeParameters::Get().GetParameterD(parName); for (int jRange = iRange+1; jRange<NRANGES; jRange++){HistogramAnalyzerParameters.base_mean_range[jRange] = HistogramAnalyzerParameters.base_mean_range[iRange];}}
+        }
     }
 }
 
@@ -303,21 +307,6 @@ XTAnalyzerPara::XTAnalyzerPara(){
         fitX_tSep[iRange] = 0;
         fitX_fitBoth[iRange] = false;
         fitX_SetEmptyBins[iRange] = false;
-        fitX_functionType[iRange] = HistogramAnalyzer::kGaussian;
-        fitX_peak_height_middle[iRange] = 0.9;
-        fitX_peak_height_left[iRange] = 0;
-        fitX_peak_height_right[iRange] = 2;
-        fitX_peak_sigma_middle[iRange] = 0;
-        fitX_peak_sigma_left[iRange] = 0;
-        fitX_peak_sigma_right[iRange] = 2;
-        fitX_peak_mean_range[iRange] = 1;
-        fitX_base_height_middle[iRange] = 0.1;
-        fitX_base_height_left[iRange] = 0;
-        fitX_base_height_right[iRange] = 1;
-        fitX_base_sigma_middle[iRange] = 0;
-        fitX_base_sigma_left[iRange] = 0.5;
-        fitX_base_sigma_right[iRange] = 5;
-        fitX_base_mean_range[iRange] = 3;
     }
 
     graph_n_min = 50;
@@ -367,20 +356,8 @@ void XTAnalyzerPara::Print(){
     printf("  T axis: maximum = %f\n",bin_t_max);
     printf(" About X fitting on T bins :\n");
     printf("  Number of ranges %d\n",fitX_nRanges);
-    std::string functionName("");
     for (int iRange = 0; iRange<fitX_nRanges; iRange++){
-        if (fitX_functionType[iRange]==HistogramAnalyzer::kGaussian) functionName = "Gaussian";
-        else if (fitX_functionType[iRange]==HistogramAnalyzer::kLandau) functionName = "Landau";
-        else if (fitX_functionType[iRange]==HistogramAnalyzer::kDoubleGaussian) functionName = "Gaussian+Gaussian";
-        else if (fitX_functionType[iRange]==HistogramAnalyzer::kDoubleLandau) functionName = "Landau+Landau";
-        else if (fitX_functionType[iRange]==HistogramAnalyzer::kGaussianPlusLandau) functionName = "Gaussian+Landau";
-        else if (fitX_functionType[iRange]==HistogramAnalyzer::kLandauPlusGaussian) functionName = "Landau+Gaussian";
-        else if (fitX_functionType[iRange]==HistogramAnalyzer::kOptimal) functionName = "Optimal: Gaussian+Landau or Landau+Gaussian";
-        printf("    %d: %.1f ~ %.1f ns, minEntries = %d, nBins = %d, smooth %d, fit both sides together? %s, set empty bins? %s, fit function %s\n",iRange,iRange==0?bin_t_min:fitX_tSep[iRange-1],fitX_tSep[iRange],fitX_minEntries[iRange],fitX_nBins[iRange],fitX_smooth[iRange],fitX_fitBoth[iRange]?"yes":"no",fitX_SetEmptyBins[iRange]?"yes":"no",functionName.c_str());
-        printf("        peak part: height (rel to hist) %.2f ~ %.2f ~ %.2f, sigma (mm) %.2f ~ %.2f ~ %.2f, x offset (to hist) range (mm) %.2f\n",fitX_peak_height_left[iRange],fitX_peak_height_middle[iRange],fitX_peak_height_right[iRange],fitX_peak_sigma_left[iRange],fitX_peak_sigma_middle[iRange],fitX_peak_sigma_right[iRange],fitX_peak_mean_range[iRange]);
-        if (fitX_functionType[iRange]!=HistogramAnalyzer::kGaussian&&fitX_functionType[iRange]!=HistogramAnalyzer::kLandau){
-            printf("        base part: height (rel to peak) %.2f ~ %.2f ~ %.2f, rel-sigma (peak sigma) %.2f ~ %.2f ~ %.2f, x offset (to peak) rel-range (peak sigma) %.2f\n",fitX_base_height_left[iRange],fitX_base_height_middle[iRange],fitX_base_height_right[iRange],fitX_base_sigma_left[iRange],fitX_base_sigma_middle[iRange],fitX_base_sigma_right[iRange],fitX_base_mean_range[iRange]);
-        }
+        printf("    %d: %.1f ~ %.1f ns, minEntries = %d, nBins = %d, smooth %d, fit both sides together? %s, set empty bins? %s\n",iRange,iRange==0?bin_t_min:fitX_tSep[iRange-1],fitX_tSep[iRange],fitX_minEntries[iRange],fitX_nBins[iRange],fitX_smooth[iRange],fitX_fitBoth[iRange]?"yes":"no",fitX_SetEmptyBins[iRange]?"yes":"no");
     }
     printf(" About XT graphs:\n");
     printf("  Minimum number of entries of the sample point to be included in graph: %d\n",graph_n_min);
@@ -393,6 +370,48 @@ void XTAnalyzerPara::Print(){
         printf("    %d: %.1f ~ %.1f ns, nPol = %d, connect to previous at %.1f ns\n",iRange,xtfunc_tLeft[iRange],xtfunc_tRight[iRange],xtfunc_nPol[iRange],xtfunc_tLowEdge[iRange]);
     }
     printf(" About drawing samples and fitting results: t %.1f ~ %.1f ns, x %.1f ~ %.1f mm\n",draw_tmin/unit::ns,draw_tmax/unit::ns,draw_xmin/unit::mm,draw_xmax/unit::mm);
+}
+
+HistogramAnalyzerPara::HistogramAnalyzerPara(){
+    for (int iRange = 0; iRange<NRANGES; iRange++){
+        functionType[iRange] = HistogramAnalyzer::kOptimal;
+        // peak part
+        peak_height_middle[iRange] = 0.9; // height ratio, initial value
+        peak_height_left[iRange] = 0.3;   // at least 30% is peak
+        peak_height_right[iRange] = 1.5;  // at most 50% above the histogram
+        peak_sigma_middle[iRange] = 0;    // relative sigma (to histogram's RMS), initial value; 0 means use histogram's RMS instead
+        peak_sigma_left[iRange] = 0.1;    // at least 1% of histogram's RMS
+        peak_sigma_right[iRange] = 1.5;
+        peak_mean_range[iRange] = 3;      // position range: 3 times of RMS
+        // base part
+        base_height_middle[iRange] = 0.1; // height ratio, initial value
+        base_height_left[iRange] = 0;     // can be down to 0
+        base_height_right[iRange] = 1;    // no greater than the peak's height
+        base_sigma_middle[iRange] = 1;    // relative sigma (to peak's sigma), initial value;
+        base_sigma_left[iRange] = 0.5;    // shouldn't be less than half of peak's sigma
+        base_sigma_right[iRange] = 10;    // at most 10 times as great as peak's sigma
+        base_mean_range[iRange] = 1;      // position range: within 1 sigma of the peak
+    }
+}
+
+void HistogramAnalyzerPara::Print(){
+    printf("HistogramAnalyzer Parameters:\n");
+    printf("  Number of ranges %d\n",NRANGES);
+    std::string functionName("");
+    for (int iRange = 0; iRange<NRANGES; iRange++){
+        if (functionType[iRange]==HistogramAnalyzer::kGaussian) functionName = "Gaussian";
+        else if (functionType[iRange]==HistogramAnalyzer::kLandau) functionName = "Landau";
+        else if (functionType[iRange]==HistogramAnalyzer::kDoubleGaussian) functionName = "Gaussian+Gaussian";
+        else if (functionType[iRange]==HistogramAnalyzer::kDoubleLandau) functionName = "Landau+Landau";
+        else if (functionType[iRange]==HistogramAnalyzer::kGaussianPlusLandau) functionName = "Gaussian+Landau";
+        else if (functionType[iRange]==HistogramAnalyzer::kLandauPlusGaussian) functionName = "Landau+Gaussian";
+        else if (functionType[iRange]==HistogramAnalyzer::kOptimal) functionName = "Optimal: Gaussian+Landau or Landau+Gaussian";
+        printf("    %d: fit function %s\n",iRange,functionName.c_str());
+        printf("        peak part: height (rel to hist) %.2f ~ %.2f ~ %.2f, rel-sigma (hist RMS) %.2f ~ %.2f ~ %.2f, x offset (to hist) range (mm) %.2f\n",peak_height_left[iRange],peak_height_middle[iRange],peak_height_right[iRange],peak_sigma_left[iRange],peak_sigma_middle[iRange],peak_sigma_right[iRange],peak_mean_range[iRange]);
+        if (functionType[iRange]!=HistogramAnalyzer::kGaussian&&functionType[iRange]!=HistogramAnalyzer::kLandau){
+            printf("        base part: height (rel to peak) %.2f ~ %.2f ~ %.2f, rel-sigma (peak sigma) %.2f ~ %.2f ~ %.2f, x offset (to peak) rel-range (peak sigma) %.2f\n",base_height_left[iRange],base_height_middle[iRange],base_height_right[iRange],base_sigma_left[iRange],base_sigma_middle[iRange],base_sigma_right[iRange],base_mean_range[iRange]);
+        }
+    }
 }
 
 AnaPara::AnaPara(){

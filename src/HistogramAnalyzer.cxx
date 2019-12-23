@@ -116,23 +116,27 @@ TF1 * HistogramAnalyzer::FitSliceSingleSide(TH1D * hist, double & x1,double & xe
     double h1 = 0;
     CommonTools::TH1GetMaximum(hist,x1,h1,-11,11);
     sig1 = hist->GetRMS(); xerr1 = sig1;
+    if (iRange<0||iRange>NRANGES){
+        MyError("iRange "<<iRange<<" should be within 0~"<<NRANGES);
+        iRange = 0;
+    }
     // prepare the function
     TF1 * f = NULL; TF1 * fp = NULL; TF1 * fb = NULL;
-    double p_h_m = ParameterManager::Get().XTAnalyzerParameters.fitX_peak_height_middle[iRange];
-    double p_h_l = ParameterManager::Get().XTAnalyzerParameters.fitX_peak_height_left[iRange];
-    double p_h_r = ParameterManager::Get().XTAnalyzerParameters.fitX_peak_height_right[iRange];
-    double p_s_m = ParameterManager::Get().XTAnalyzerParameters.fitX_peak_sigma_middle[iRange];
-    double p_s_l = ParameterManager::Get().XTAnalyzerParameters.fitX_peak_sigma_left[iRange];
-    double p_s_r = ParameterManager::Get().XTAnalyzerParameters.fitX_peak_sigma_right[iRange];
-    double p_x_d = ParameterManager::Get().XTAnalyzerParameters.fitX_peak_mean_range[iRange];
-    double b_h_m = ParameterManager::Get().XTAnalyzerParameters.fitX_base_height_middle[iRange];
-    double b_h_l = ParameterManager::Get().XTAnalyzerParameters.fitX_base_height_left[iRange];
-    double b_h_r = ParameterManager::Get().XTAnalyzerParameters.fitX_base_height_right[iRange];
-    double b_s_m = ParameterManager::Get().XTAnalyzerParameters.fitX_base_sigma_middle[iRange];
-    double b_s_l = ParameterManager::Get().XTAnalyzerParameters.fitX_base_sigma_left[iRange];
-    double b_s_r = ParameterManager::Get().XTAnalyzerParameters.fitX_base_sigma_right[iRange];
-    double b_x_d = ParameterManager::Get().XTAnalyzerParameters.fitX_base_mean_range[iRange];
-    functionType = ParameterManager::Get().XTAnalyzerParameters.fitX_functionType[iRange];
+    double p_h_m = ParameterManager::Get().HistogramAnalyzerParameters.peak_height_middle[iRange];
+    double p_h_l = ParameterManager::Get().HistogramAnalyzerParameters.peak_height_left[iRange];
+    double p_h_r = ParameterManager::Get().HistogramAnalyzerParameters.peak_height_right[iRange];
+    double p_s_m = ParameterManager::Get().HistogramAnalyzerParameters.peak_sigma_middle[iRange];
+    double p_s_l = ParameterManager::Get().HistogramAnalyzerParameters.peak_sigma_left[iRange];
+    double p_s_r = ParameterManager::Get().HistogramAnalyzerParameters.peak_sigma_right[iRange];
+    double p_x_d = ParameterManager::Get().HistogramAnalyzerParameters.peak_mean_range[iRange];
+    double b_h_m = ParameterManager::Get().HistogramAnalyzerParameters.base_height_middle[iRange];
+    double b_h_l = ParameterManager::Get().HistogramAnalyzerParameters.base_height_left[iRange];
+    double b_h_r = ParameterManager::Get().HistogramAnalyzerParameters.base_height_right[iRange];
+    double b_s_m = ParameterManager::Get().HistogramAnalyzerParameters.base_sigma_middle[iRange];
+    double b_s_l = ParameterManager::Get().HistogramAnalyzerParameters.base_sigma_left[iRange];
+    double b_s_r = ParameterManager::Get().HistogramAnalyzerParameters.base_sigma_right[iRange];
+    double b_x_d = ParameterManager::Get().HistogramAnalyzerParameters.base_mean_range[iRange];
+    functionType = ParameterManager::Get().HistogramAnalyzerParameters.functionType[iRange];
     int nPars = 0;
     if (functionType==HistogramAnalyzer::kGaussian||functionType==HistogramAnalyzer::kLandau){ // single function
         if (functionType==HistogramAnalyzer::kGaussian){ // fit with gaussian
@@ -141,11 +145,12 @@ TF1 * HistogramAnalyzer::FitSliceSingleSide(TH1D * hist, double & x1,double & xe
         else if (functionType==HistogramAnalyzer::kLandau){ // fit with landau
             if (isLeft) {f = f_landL;} else {f = f_landR;}
         }
+        f->SetRange(hist->GetXaxis()->GetXmin(),hist->GetXaxis()->GetXmax());
         f->SetParameters(h1*p_h_m,x1,p_s_m?p_s_m:sig1);
         // peak on the left
         f->SetParLimits(0,h1*p_h_l,h1*p_h_r);
-        f->SetParLimits(1,x1-p_x_d,x1+p_x_d);
-        f->SetParLimits(2,p_s_l,p_s_r);
+        f->SetParLimits(1,x1-p_x_d*sig1,x1+p_x_d*sig1);
+        f->SetParLimits(2,p_s_l*sig1,p_s_r*sig1);
         nPars = 3;
     }
     else{ // composite function
@@ -198,12 +203,15 @@ TF1 * HistogramAnalyzer::FitSliceSingleSide(TH1D * hist, double & x1,double & xe
                 fb = f_land2R;
             }
         }
+        f->SetRange(hist->GetXaxis()->GetXmin(),hist->GetXaxis()->GetXmax());
+        fp->SetRange(hist->GetXaxis()->GetXmin(),hist->GetXaxis()->GetXmax());
+        fb->SetRange(hist->GetXaxis()->GetXmin(),hist->GetXaxis()->GetXmax());
         f->SetParameters(h1*p_h_m,x1,p_s_m?p_s_m:sig1, // peak on the left
-                         b_h_m,0.,b_s_m?b_s_m:0.1); // base part (relative to peak)
+                         b_h_m,0.,b_s_m?b_s_m:1); // base part (relative to peak)
         // peak part
         f->SetParLimits(0,h1*p_h_l,h1*p_h_r);
-        f->SetParLimits(1,x1-p_x_d,x1+p_x_d);
-        f->SetParLimits(2,p_s_l,p_s_r);
+        f->SetParLimits(1,x1-p_x_d*sig1,x1+p_x_d*sig1);
+        f->SetParLimits(2,p_s_l*sig1,p_s_r*sig1);
         // base part (relative to peak)
         f->SetParLimits(3,b_h_l,b_h_r);
         f->SetParLimits(4,-b_x_d,b_x_d);
@@ -244,12 +252,15 @@ TF1 * HistogramAnalyzer::FitSliceSingleSide(TH1D * hist, double & x1,double & xe
             fp = f_landR;
             fb = f_gaus2R;
         }
+        f->SetRange(hist->GetXaxis()->GetXmin(),hist->GetXaxis()->GetXmax());
+        fp->SetRange(hist->GetXaxis()->GetXmin(),hist->GetXaxis()->GetXmax());
+        fb->SetRange(hist->GetXaxis()->GetXmin(),hist->GetXaxis()->GetXmax());
         f->SetParameters(h1*p_h_m,x1,p_s_m?p_s_m:sig1, // peak on the left
-                         b_h_m,0.,b_s_m?b_s_m:0.1); // base part (relative to peak)
+                         b_h_m,0.,b_s_m?b_s_m:1); // base part (relative to peak)
         // peak part
         f->SetParLimits(0,h1*p_h_l,h1*p_h_r);
-        f->SetParLimits(1,x1-p_x_d,x1+p_x_d);
-        f->SetParLimits(2,p_s_l,p_s_r);
+        f->SetParLimits(1,x1-p_x_d*sig1,x1+p_x_d*sig1);
+        f->SetParLimits(2,p_s_l*sig1,p_s_r*sig1);
         // base part (relative to peak)
         f->SetParLimits(3,b_h_l,b_h_r);
         f->SetParLimits(4,-b_x_d,b_x_d);
@@ -343,21 +354,21 @@ TF1 * HistogramAnalyzer::FitSliceBothSides(TH1D * hist, double & x1,double & xer
     hist->GetXaxis()->UnZoom();
     // prepare the function
     TF1 * f = NULL; TF1 * fpl = NULL; TF1 * fpr = NULL; TF1 * fbl = NULL; TF1 * fbr = NULL; TF1 * fl = NULL; TF1 * fr = NULL;
-    double p_h_m = ParameterManager::Get().XTAnalyzerParameters.fitX_peak_height_middle[iRange];
-    double p_h_l = ParameterManager::Get().XTAnalyzerParameters.fitX_peak_height_left[iRange];
-    double p_h_r = ParameterManager::Get().XTAnalyzerParameters.fitX_peak_height_right[iRange];
-    double p_s_m = ParameterManager::Get().XTAnalyzerParameters.fitX_peak_sigma_middle[iRange];
-    double p_s_l = ParameterManager::Get().XTAnalyzerParameters.fitX_peak_sigma_left[iRange];
-    double p_s_r = ParameterManager::Get().XTAnalyzerParameters.fitX_peak_sigma_right[iRange];
-    double p_x_d = ParameterManager::Get().XTAnalyzerParameters.fitX_peak_mean_range[iRange];
-    double b_h_m = ParameterManager::Get().XTAnalyzerParameters.fitX_base_height_middle[iRange];
-    double b_h_l = ParameterManager::Get().XTAnalyzerParameters.fitX_base_height_left[iRange];
-    double b_h_r = ParameterManager::Get().XTAnalyzerParameters.fitX_base_height_right[iRange];
-    double b_s_m = ParameterManager::Get().XTAnalyzerParameters.fitX_base_sigma_middle[iRange];
-    double b_s_l = ParameterManager::Get().XTAnalyzerParameters.fitX_base_sigma_left[iRange];
-    double b_s_r = ParameterManager::Get().XTAnalyzerParameters.fitX_base_sigma_right[iRange];
-    double b_x_d = ParameterManager::Get().XTAnalyzerParameters.fitX_base_mean_range[iRange];
-    int fitFunctionType = ParameterManager::Get().XTAnalyzerParameters.fitX_functionType[iRange];
+    double p_h_m = ParameterManager::Get().HistogramAnalyzerParameters.peak_height_middle[iRange];
+    double p_h_l = ParameterManager::Get().HistogramAnalyzerParameters.peak_height_left[iRange];
+    double p_h_r = ParameterManager::Get().HistogramAnalyzerParameters.peak_height_right[iRange];
+    double p_s_m = ParameterManager::Get().HistogramAnalyzerParameters.peak_sigma_middle[iRange];
+    double p_s_l = ParameterManager::Get().HistogramAnalyzerParameters.peak_sigma_left[iRange];
+    double p_s_r = ParameterManager::Get().HistogramAnalyzerParameters.peak_sigma_right[iRange];
+    double p_x_d = ParameterManager::Get().HistogramAnalyzerParameters.peak_mean_range[iRange];
+    double b_h_m = ParameterManager::Get().HistogramAnalyzerParameters.base_height_middle[iRange];
+    double b_h_l = ParameterManager::Get().HistogramAnalyzerParameters.base_height_left[iRange];
+    double b_h_r = ParameterManager::Get().HistogramAnalyzerParameters.base_height_right[iRange];
+    double b_s_m = ParameterManager::Get().HistogramAnalyzerParameters.base_sigma_middle[iRange];
+    double b_s_l = ParameterManager::Get().HistogramAnalyzerParameters.base_sigma_left[iRange];
+    double b_s_r = ParameterManager::Get().HistogramAnalyzerParameters.base_sigma_right[iRange];
+    double b_x_d = ParameterManager::Get().HistogramAnalyzerParameters.base_mean_range[iRange];
+    int fitFunctionType = ParameterManager::Get().HistogramAnalyzerParameters.functionType[iRange];
     int nPars = 0;
     if (fitFunctionType==HistogramAnalyzer::kGaussian||fitFunctionType==HistogramAnalyzer::kLandau){ // single function
         if (fitFunctionType==HistogramAnalyzer::kGaussian){ // fit with gaussian
@@ -372,12 +383,15 @@ TF1 * HistogramAnalyzer::FitSliceBothSides(TH1D * hist, double & x1,double & xer
             fl = f_landL;
             fr = f_landR;
         }
+        f->SetRange(hist->GetXaxis()->GetXmin(),hist->GetXaxis()->GetXmax());
+        fl->SetRange(hist->GetXaxis()->GetXmin(),hist->GetXaxis()->GetXmax());
+        fr->SetRange(hist->GetXaxis()->GetXmin(),hist->GetXaxis()->GetXmax());
         f->SetParameters(h1*p_h_m,x1,p_s_m?p_s_m:sig1, // peak on the left
                          h2*p_h_m,x2); // peak on the right
         // peak on the left
         f->SetParLimits(0,h1*p_h_l,h1*p_h_r);
-        f->SetParLimits(1,x1-p_x_d,x1+p_x_d);
-        f->SetParLimits(2,p_s_l,p_s_r);
+        f->SetParLimits(1,x1-p_x_d*sig1,x1+p_x_d*sig1);
+        f->SetParLimits(2,p_s_l*sig1,p_s_r*sig1);
         // peak on the right
         f->SetParLimits(3,h2*p_h_l,h2*p_h_r);
         f->SetParLimits(4,x2-p_x_d,x2+p_x_d);
@@ -425,20 +439,27 @@ TF1 * HistogramAnalyzer::FitSliceBothSides(TH1D * hist, double & x1,double & xer
             fl = f_combDoubleLandL;
             fr = f_combDoubleLandR;
         }
+        f->SetRange(hist->GetXaxis()->GetXmin(),hist->GetXaxis()->GetXmax());
+        fl->SetRange(hist->GetXaxis()->GetXmin(),hist->GetXaxis()->GetXmax());
+        fr->SetRange(hist->GetXaxis()->GetXmin(),hist->GetXaxis()->GetXmax());
+        fpl->SetRange(hist->GetXaxis()->GetXmin(),hist->GetXaxis()->GetXmax());
+        fpr->SetRange(hist->GetXaxis()->GetXmin(),hist->GetXaxis()->GetXmax());
+        fbl->SetRange(hist->GetXaxis()->GetXmin(),hist->GetXaxis()->GetXmax());
+        fbr->SetRange(hist->GetXaxis()->GetXmin(),hist->GetXaxis()->GetXmax());
         f->SetParameters(h1*p_h_m,x1,p_s_m?p_s_m:sig1, // peak on the left
-                         b_h_m,0.,b_s_m?b_s_m:0.1, // base part (relative to peak)
+                         b_h_m,0.,b_s_m?b_s_m:1, // base part (relative to peak)
                          h2*p_h_m,x2); // peak on the right
         // peak on the left
         f->SetParLimits(0,h1*p_h_l,h1*p_h_r);
-        f->SetParLimits(1,x1-p_x_d,x1+p_x_d);
-        f->SetParLimits(2,p_s_l,p_s_r);
+        f->SetParLimits(1,x1-p_x_d*sig1,x1+p_x_d*sig1);
+        f->SetParLimits(2,p_s_l*sig1,p_s_r*sig1);
         // base part (relative to peak)
         f->SetParLimits(3,b_h_l,b_h_r);
         f->SetParLimits(4,-b_x_d,b_x_d);
         f->SetParLimits(5,b_s_l,b_s_r);
         // peak on the right
         f->SetParLimits(6,h2*p_h_l,h2*p_h_r);
-        f->SetParLimits(7,x2-p_x_d,x2+p_x_d);
+        f->SetParLimits(7,x2-p_x_d*sig1,x2+p_x_d*sig1);
         nPars = 8;
     }
     prob = 0;
@@ -473,20 +494,27 @@ TF1 * HistogramAnalyzer::FitSliceBothSides(TH1D * hist, double & x1,double & xer
         fbr = f_gaus2R;
         fl = f_combLandGausL;
         fr = f_combLandGausR;
+        f->SetRange(hist->GetXaxis()->GetXmin(),hist->GetXaxis()->GetXmax());
+        fl->SetRange(hist->GetXaxis()->GetXmin(),hist->GetXaxis()->GetXmax());
+        fr->SetRange(hist->GetXaxis()->GetXmin(),hist->GetXaxis()->GetXmax());
+        fpl->SetRange(hist->GetXaxis()->GetXmin(),hist->GetXaxis()->GetXmax());
+        fpr->SetRange(hist->GetXaxis()->GetXmin(),hist->GetXaxis()->GetXmax());
+        fbl->SetRange(hist->GetXaxis()->GetXmin(),hist->GetXaxis()->GetXmax());
+        fbr->SetRange(hist->GetXaxis()->GetXmin(),hist->GetXaxis()->GetXmax());
         f->SetParameters(h1*p_h_m,x1,p_s_m?p_s_m:sig1, // peak on the left
-                b_h_m,0.,b_s_m?b_s_m:0.1, // base part (relative to peak)
+                b_h_m,0.,b_s_m?b_s_m:1, // base part (relative to peak)
                 h2*p_h_m,x2); // peak on the right
         // peak on the left
         f->SetParLimits(0,h1*p_h_l,h1*p_h_r);
-        f->SetParLimits(1,x1-p_x_d,x1+p_x_d);
-        f->SetParLimits(2,p_s_l,p_s_r);
+        f->SetParLimits(1,x1-p_x_d*sig1,x1+p_x_d*sig1);
+        f->SetParLimits(2,p_s_l*sig1,p_s_r*sig1);
         // base part (relative to peak)
         f->SetParLimits(3,b_h_l,b_h_r);
         f->SetParLimits(4,-b_x_d,b_x_d);
         f->SetParLimits(5,b_s_l,b_s_r);
         // peak on the right
         f->SetParLimits(6,h2*p_h_l,h2*p_h_r);
-        f->SetParLimits(7,x2-p_x_d,x2+p_x_d);
+        f->SetParLimits(7,x2-p_x_d*sig1,x2+p_x_d*sig1);
         int resultTemp = 0;
         double probTemp = 0;
         double chi2Temp = 0;
@@ -583,14 +611,13 @@ TF1 * HistogramAnalyzer::FitSliceBothSides(TH1D * hist, double & x1,double & xer
     return f;
 }
 
-void HistogramAnalyzer::DrawFitting(TH1D* hist, TCanvas * c,TString title, TString filename, int function, double center1, double center2, bool isLeft){
-    if (!hist) fprintf(stderr,"ERROR: in drawFitting, input histogram does not exist!\n");
-    if (!c) fprintf(stderr,"ERROR: in drawFitting, input canvas does not exist!\n");
-    if (!hist||!c) return;
-    c->cd();
+void HistogramAnalyzer::DrawFitting(TH1D* hist, int function, double center1, double center2, bool isLeft){
+    if (!hist){
+        fprintf(stderr,"ERROR: in drawFitting, input histogram does not exist!\n");
+        return;
+    }
     int oldStyle = gStyle->GetOptStat();
     gStyle->SetOptStat(1);
-    hist->SetTitle(title);
     hist->Draw();
     double max = hist->GetMaximum();
     TLine * l_center1= new TLine(center1,0,center1,max);
@@ -711,10 +738,7 @@ void HistogramAnalyzer::DrawFitting(TH1D* hist, TCanvas * c,TString title, TStri
             f_landR->Draw("SAME");
         }
     }
-    if ( filename != "" ) c->SaveAs(filename);
     gStyle->SetOptStat(oldStyle);
-    delete l_center1;
-    delete l_center2;
 }
 
 bool HistogramAnalyzer::isFittingGood(TF1 * f){
@@ -732,16 +756,16 @@ bool HistogramAnalyzer::isFittingGood(TF1 * f){
 }
 
 void HistogramAnalyzer::getMeanRMS(TF1 * f, const TH1D * hist, double & mean, double & sigma){
-    mean = f->GetMaximumX(-10,10);
+    mean = f->GetMaximumX();
     TH1D * histNew = new TH1D(*hist);
     histNew->Reset();
-    for (int i = 0; i<1e4; i++){
+    for (int i = 0; i<1e6; i++){
         double x = f->GetRandom();
         double content = hist->GetBinContent(histNew->FindBin(x));
         if (content) histNew->Fill(x);
     }
     sigma = histNew->GetRMS();
-    histNew->GetXaxis()->SetRangeUser(mean-sigma*3,mean+sigma*3);
+    histNew->GetXaxis()->SetRangeUser(mean-sigma*5,mean+sigma*5);
     sigma = histNew->GetRMS();
     delete histNew;
 }

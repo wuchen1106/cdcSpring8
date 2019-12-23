@@ -41,7 +41,7 @@ public:
 
     TF1 * FitSliceBothSides(TH1D * h, double & x1,double & xerr1,double & sig1,double & x2,double & xerr2,double & sig2,double & chi2,double & prob, int & result, int & functionType, int iRange);
     TF1 * FitSliceSingleSide(TH1D * h, double & x,double & xerr,double & sig,double & chi2,double & prob, int & result, int & functionType, int iRange, bool isLeft);
-    void DrawFitting(TH1D* h,TCanvas * c,TString title, TString filename, int function, double center1, double center2, bool isLeft = false);
+    void DrawFitting(TH1D* h, int function, double center1, double center2, bool isLeft = false);
 
 private:
     bool isFittingGood(TF1 * f);

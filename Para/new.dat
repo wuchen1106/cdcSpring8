@@ -82,23 +82,6 @@ XTAnalyzer parameters
     < XTAnalyzer.fitX_0_SetEmptyBins = false > set the empty bins' contents to small numbers to force the fitting fall down at edge
     < XTAnalyzer.fitX_1_SetEmptyBins = false >
     < XTAnalyzer.fitX_2_SetEmptyBins = false >
-    < XTAnalyzer.fitX_0_functionType = "Optimal" > "Gaus" "Land" "DoubleGaus" "DoubleLand" "GausLand" "LandGaus" "Optimal"
-    < XTAnalyzer.fitX_1_functionType = "Optimal" >
-    < XTAnalyzer.fitX_2_functionType = "Optimal" >
-    < XTAnalyzer.fitX_0_peak_height_middle = 0.9 > relative to hist height
-    < XTAnalyzer.fitX_0_peak_height_left = 0.3 >
-    < XTAnalyzer.fitX_0_peak_height_right = 1.5 >
-    < XTAnalyzer.fitX_0_peak_sigma_middle = 0 > mm; 0 means to use sigma_hist as initial value
-    < XTAnalyzer.fitX_0_peak_sigma_left = 0.01 >
-    < XTAnalyzer.fitX_0_peak_sigma_right = 1 >
-    < XTAnalyzer.fitX_0_peak_mean_range = 0.5 > mm; Fit range within x_hist_peak - range and x_hist_peak + range
-    < XTAnalyzer.fitX_0_base_height_middle = 0.1 > relative to peak part height
-    < XTAnalyzer.fitX_0_base_height_left = 0 >
-    < XTAnalyzer.fitX_0_base_height_right = 1 >
-    < XTAnalyzer.fitX_0_base_sigma_middle = 1 > real base sigma = peak_sigma*base_sigma
-    < XTAnalyzer.fitX_0_base_sigma_left = 0.5 >
-    < XTAnalyzer.fitX_0_base_sigma_right = 10 >
-    < XTAnalyzer.fitX_0_base_mean_range = 1 > real base mean = peak_mean+base_mean*peak_sigma
  Select bins to form graphs
     < XTAnalyzer.graph_n_min = 50 >
     < XTAnalyzer.graph_chi2_max = 0 > 0 means no cut
@@ -120,7 +103,26 @@ XTAnalyzer parameters
     < XTAnalyzer.xtfunc_2_tLowEdge = 240 ns >
     < XTAnalyzer.xtfunc_tHighEdge = 800 ns >
  Drwaing samples
-    < XTAnalyzer.draw_tmin = -10 ns >
-    < XTAnalyzer.draw_tmax = 500 ns >
+    < XTAnalyzer.draw_tmin = -23.437500 ns >
+    < XTAnalyzer.draw_tmax = 501.5625 ns >
     < XTAnalyzer.draw_xmin = -10 mm >
     < XTAnalyzer.draw_xmax = 10 mm >
+
+*******************************************************************************                                                                   
+HistogramAnalyzer parameters
+*******************************************************************************                                                                   
+    < HistogramAnalyzer.0_functionType = "Optimal" > "Gaus" "Land" "DoubleGaus" "DoubleLand" "GausLand" "LandGaus" "Optimal"
+    < HistogramAnalyzer.0_peak_height_middle = 0.9 > relative to hist height
+    < HistogramAnalyzer.0_peak_height_left = 0.3 >
+    < HistogramAnalyzer.0_peak_height_right = 1.5 >
+    < HistogramAnalyzer.0_peak_sigma_middle = 0 > 0 means to use sigma_hist as initial value
+    < HistogramAnalyzer.0_peak_sigma_left = 0.1 >
+    < HistogramAnalyzer.0_peak_sigma_right = 1.5 >
+    < HistogramAnalyzer.0_peak_mean_range = 0.5 > Fit range within x_hist_peak - range and x_hist_peak + range
+    < HistogramAnalyzer.0_base_height_middle = 0.1 > relative to peak part height
+    < HistogramAnalyzer.0_base_height_left = 0 >
+    < HistogramAnalyzer.0_base_height_right = 1 >
+    < HistogramAnalyzer.0_base_sigma_middle = 1 > real base sigma = peak_sigma*base_sigma
+    < HistogramAnalyzer.0_base_sigma_left = 0.5 >
+    < HistogramAnalyzer.0_base_sigma_right = 10 >
+    < HistogramAnalyzer.0_base_mean_range = 1 > real base mean = peak_mean+base_mean*peak_sigma
