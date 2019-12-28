@@ -212,6 +212,7 @@ void ParameterManager::Print(){
     XTManagerParameters.Print();
     XTAnalyzerParameters.Print();
     AnaParameters.Print();
+    HistogramAnalyzerParameters.Print();
 }
 
 TrackingPara::TrackingPara(){
@@ -357,7 +358,7 @@ void XTAnalyzerPara::Print(){
     printf(" About X fitting on T bins :\n");
     printf("  Number of ranges %d\n",fitX_nRanges);
     for (int iRange = 0; iRange<fitX_nRanges; iRange++){
-        printf("    %d: %.1f ~ %.1f ns, minEntries = %d, nBins = %d, smooth %d, fit both sides together? %s, set empty bins? %s\n",iRange,iRange==0?bin_t_min:fitX_tSep[iRange-1],fitX_tSep[iRange],fitX_minEntries[iRange],fitX_nBins[iRange],fitX_smooth[iRange],fitX_fitBoth[iRange]?"yes":"no",fitX_SetEmptyBins[iRange]?"yes":"no");
+        printf("    %d: %.1f ~ %.1f ns, minEntries = %d, nBins = %d, smooth %d, fit both sides together? %s, set empty bins? %s\n",iRange,iRange==0?bin_t_min:fitX_tSep[iRange],fitX_tSep[iRange+1],fitX_minEntries[iRange],fitX_nBins[iRange],fitX_smooth[iRange],fitX_fitBoth[iRange]?"yes":"no",fitX_SetEmptyBins[iRange]?"yes":"no");
     }
     printf(" About XT graphs:\n");
     printf("  Minimum number of entries of the sample point to be included in graph: %d\n",graph_n_min);
@@ -405,7 +406,7 @@ void HistogramAnalyzerPara::Print(){
         else if (functionType[iRange]==HistogramAnalyzer::kDoubleLandau) functionName = "Landau+Landau";
         else if (functionType[iRange]==HistogramAnalyzer::kGaussianPlusLandau) functionName = "Gaussian+Landau";
         else if (functionType[iRange]==HistogramAnalyzer::kLandauPlusGaussian) functionName = "Landau+Gaussian";
-        else if (functionType[iRange]==HistogramAnalyzer::kOptimal) functionName = "Optimal: Gaussian+Landau or Landau+Gaussian";
+        else if (functionType[iRange]==HistogramAnalyzer::kOptimal) functionName = "Optimal";
         printf("    %d: fit function %s\n",iRange,functionName.c_str());
         printf("        peak part: height (rel to hist) %.2f ~ %.2f ~ %.2f, rel-sigma (hist RMS) %.2f ~ %.2f ~ %.2f, x offset (to hist) range (mm) %.2f\n",peak_height_left[iRange],peak_height_middle[iRange],peak_height_right[iRange],peak_sigma_left[iRange],peak_sigma_middle[iRange],peak_sigma_right[iRange],peak_mean_range[iRange]);
         if (functionType[iRange]!=HistogramAnalyzer::kGaussian&&functionType[iRange]!=HistogramAnalyzer::kLandau){

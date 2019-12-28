@@ -250,29 +250,38 @@ void XTAnalyzer::BinAnalysis(void){
             // at last , fit this histogram if needed
             int minEntries = ParameterManager::Get().XTAnalyzerParameters.fitX_minEntries[current_iRange]; // minimum number of entries in one slice to apply fitting function; Otherwise use mean value & RMS instead.
             if (!minEntries||nmin>minEntries){
+                HistogramAnalyzer::Get().SetFittingParameters(current_iRange);
                 double x1,xerr1,sig1,x2,xerr2,sig2; int result;
+                result = HistogramAnalyzer::Get().FitSlice(hist,mChi2,mProb,fitBoth,iLR==0);
+                mFunction = HistogramAnalyzer::Get().get_functionType();
                 if (fitBoth){
-                    HistogramAnalyzer::Get().FitSliceBothSides(hist,x1,xerr1,sig1,x2,xerr2,sig2,mChi2,mProb,result,mFunction,current_iRange);
-                    if (mDrawDetails){
+                    x1 = HistogramAnalyzer::Get().get_xL();
+                    xerr1 = HistogramAnalyzer::Get().get_xerrL();
+                    sig1 = HistogramAnalyzer::Get().get_sigL();
+                    x2 = HistogramAnalyzer::Get().get_xR();
+                    xerr2 = HistogramAnalyzer::Get().get_xerrR();
+                    sig2 = HistogramAnalyzer::Get().get_sigR();
+                }
+                else{
+                    x1 = HistogramAnalyzer::Get().get_x();
+                    xerr1 = HistogramAnalyzer::Get().get_xerr();
+                    sig1 = HistogramAnalyzer::Get().get_sig();
+                }
+                if (mDrawDetails){
+                    if (fitBoth){
                         hist->GetXaxis()->SetRangeUser((x1>0?0:x1)-0.6,(x2<0?0:x2)+0.6);
                         TString x1string = x1<-1?Form("%.2f mm",x1):Form("%.0f #mum",x1*1000);
                         TString x2string = x2>1?Form("%.2f mm",x2):Form("%.0f #mum",x2*1000);
                         hist->SetTitle(Form("t = %.1f (%.1f~%.1f) ns, x_{1}=%s (%.0f #mum), #sigma_{1}=%.0f #mum, x_{2}=%s (%.0f #mum), #sigma_{2}=%.0f #mum, #chi^{2}=%.0f, prob=%.2f, stat %d",divmiddle,divleft,divright,x1string.Data(),xerr1*1000,sig1*1000,x2string.Data(),xerr2*1000,sig2*1000,mChi2,mProb,result));
-                        canv->cd();
-                        HistogramAnalyzer::Get().DrawFitting(hist,mFunction,x1,x2);
-                        canv->SaveAs(Form("%s.%s%s.png",hist->GetName(),mRunName.Data(),m_suffix.Data()));
                     }
-                }
-                else{
-                    HistogramAnalyzer::Get().FitSliceSingleSide(hist,x1,xerr1,sig1,mChi2,mProb,result,mFunction,current_iRange,iLR==0);
-                    if (mDrawDetails){
+                    else{
                         hist->GetXaxis()->SetRangeUser(x1-0.6,x1+0.6);
                         TString xstring = x1<-1?Form("%.2f mm",x1):Form("%.0f #mum",x1*1000);
                         hist->SetTitle(Form("t = %.1f (%.1f~%.1f) ns, x=%s (%.0f #mum), #sigma=%.0f #mum, #chi^{2}=%.0f, prob=%.2f, stat %d",t1,divleft,divright,xstring.Data(),xerr1*1000,sig1*1000,mChi2,mProb,result));
-                        canv->cd();
-                        HistogramAnalyzer::Get().DrawFitting(hist,mFunction,x1,0,iLR==0);
-                        canv->SaveAs(Form("%s.%s%s.png",hist->GetName(),mRunName.Data(),m_suffix.Data()));
                     }
+                    canv->cd();
+                    HistogramAnalyzer::Get().DrawFitting(hist);
+                    canv->SaveAs(Form("%s.%s%s.png",hist->GetName(),mRunName.Data(),m_suffix.Data()));
                 }
                 // update the canvas range for drawing samples
                 mT = t1; mTerr = terr1; mEntries = n1; mX = x1; mXerr = xerr1; mSig = sig1;
