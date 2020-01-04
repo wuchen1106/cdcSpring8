@@ -235,9 +235,14 @@ int main(int argc, char** argv){
             int lid = tracker->pairableLayers->at(ipick);
             int nhits = tracker->hitLayerIndexMap->at(lid)->size();
             MyNamedInfo("Tracking",Form("  pairable layer %d: %d good hits",lid,nhits));
+            for (int i = 0; i<nhits; i++){
+                int iHit = tracker->hitLayerIndexMap->at(lid)->at(i);
+                int wid = InputOutputManager::Get().CellID->at(iHit);
+                MyNamedInfo("Tracking","    "<<iHit<<" ["<<lid<<","<<wid<<"]");
+            }
             nCombinations*=nhits;
         }
-        MyNamedInfo("Tracking",Form("  => %d pairs from %d good hits in %d pairable layers with %d combinations X 2^%d L/R choices",nPairs,nHitsG,nPairableLayers,nCombinations,nHitsG));
+        MyNamedInfo("Tracking",Form("  => %d pairs from %d good hits in %d pairable layers with %d combinations X 2^%d L/R choices",nPairs,nHitsG,nPairableLayers,nCombinations,nPairableLayers));
 
         /// 3. Apply tracking after cuts
         if (nHitsG<=nHitsGMax&&nPairs>=nPairsMin){
