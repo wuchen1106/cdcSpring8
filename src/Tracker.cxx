@@ -103,18 +103,24 @@ void Tracker::Reset(){
     func_pairYX->SetParameter(1,0);
     func_pairYZ->SetParameter(0,0);
     func_pairYZ->SetParameter(1,0);
-    slxStep = BeamManager::Get().beamSlxRange/1e4; // FIXME: should leave the step as an option
     slxMin = BeamManager::Get().beamSlx-BeamManager::Get().beamSlxRange;
     slxMax = BeamManager::Get().beamSlx+BeamManager::Get().beamSlxRange;
-    slzStep = BeamManager::Get().beamSlzRange/1e4;
     slzMin = BeamManager::Get().beamSlz-BeamManager::Get().beamSlzRange;
     slzMax = BeamManager::Get().beamSlz+BeamManager::Get().beamSlzRange;
-    inxStep = BeamManager::Get().beamInxRange/1e4;
     inxMin = BeamManager::Get().beamInx-BeamManager::Get().beamInxRange;
     inxMax = BeamManager::Get().beamInx+BeamManager::Get().beamInxRange;
-    inzStep = BeamManager::Get().beamInzRange/1e4;
     inzMin = BeamManager::Get().beamInz-BeamManager::Get().beamInzRange;
     inzMax = BeamManager::Get().beamInz+BeamManager::Get().beamInzRange;
+    double stereoAngle = fabs(GeometryManager::Get().fChamber->wire_theta[4][4]); // TODO: this is just a random cell to get a stereo angle
+    inxStep = 0.01; // 10 um as the torlerance
+    inzStep = inxStep/tan(stereoAngle);
+    slxStep = inxStep/GeometryManager::Get().fChamber->chamberHeight;
+    slzStep = inzStep/GeometryManager::Get().fChamber->chamberHeight;
+    MyNamedVerbose("Tracking","Reset fitting parameters (stereo angle is taken from cell [4,4] as "<<stereoAngle<<" rad");
+    MyNamedVerbose("Tracking","  slopeX:     "<<slxStep<<", "<<slxMin<<" ~ "<<slxMax);
+    MyNamedVerbose("Tracking","  slopeZ:     "<<slzStep<<", "<<slzMin<<" ~ "<<slzMax);
+    MyNamedVerbose("Tracking","  interceptX: "<<inxStep*1000<<" um, "<<inxMin<<" ~ "<<inxMax<<" mm");
+    MyNamedVerbose("Tracking","  interceptZ: "<<inzStep*1000<<" um, "<<inzMin<<" ~ "<<inzMax<<" mm");
 }
 
 void Tracker::DoTracking(){
@@ -422,8 +428,8 @@ int Tracker::updatePairPositions(){
         double dd2 = pickLR[ipick+1]>=0?hitIndexDriftDRightMap[jhit]:hitIndexDriftDLeftMap[jhit];
         int wid = InputOutputManager::Get().CellID->at(ihit);
         int wjd = InputOutputManager::Get().CellID->at(jhit);
-        double theta1 = GeometryManager::Get().fChamber->wire_theta[lid][wid];
-        double theta2 = GeometryManager::Get().fChamber->wire_theta[ljd][wjd];
+        double theta1 = GeometryManager::Get().fChamber->wire_thetaX[lid][wid];
+        double theta2 = GeometryManager::Get().fChamber->wire_thetaX[ljd][wjd];
         double sintheta12 = sin(theta1-theta2);
         double zc_fix_slx = deltaY*func_pairYX->GetParameter(1)/(tan(theta2)-tan(theta1));
         double xc = GeometryManager::Get().fChamber->wirecross_x[lid][wid][wjd]+dd1*sin(theta2)/(-sintheta12)+dd2*sin(theta1)/sintheta12;

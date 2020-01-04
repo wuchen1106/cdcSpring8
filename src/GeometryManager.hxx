@@ -151,6 +151,7 @@ public:
     int     wire_ch[NLAY][NCEL];
     int     wire_bid[NLAY][NCEL];
     double  wire_theta[NLAY][NCEL];
+    double  wire_thetaX[NLAY][NCEL];
     int     wire_lid[NBRD][NCHS];
     int     wire_wid[NBRD][NCHS];
     // map for wire position adjustment

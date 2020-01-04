@@ -1,6 +1,7 @@
 #include <TChain.h>
 #include <TString.h>
 
+#include "HEPConstants.hxx"
 #include "GeometryManager.hxx"
 #include "Log.hxx"
 
@@ -128,8 +129,18 @@ bool Chamber::LoadWireMap(TString file){
             wire_z[lid][wid][1] = chamberLength/2+wire_adjustZ[lid][wid];
             wire_ch[lid][wid] = ch;
             wire_bid[lid][wid] = bid;
-            wire_theta[lid][wid] = atan(-(xhv-xro)/chamberLength); // rotation angle w.r.t the dart plane: read out  plane; positive rotation angle point to -x direction
-            MyNamedInfo("WireMap",Form("wire_theta[%d][%d] = atan(-(%.3e-%.3e)/%.3e) = %.3e",lid,wid,xhv,xro,chamberLength,wire_theta[lid][wid]));
+            wire_theta[lid][wid] = atan(sqrt(pow(xhv-xro,2)+pow(yhv-yro,2))/chamberLength); // stereo angle w.r.t the dart plane: the read out end; positive stereo angle point to phi+ direction
+            wire_thetaX[lid][wid] = atan(fabs(xhv-xro)/chamberLength); // projected (to X-Z plane) stereo angle
+            double phihv = atan2(yhv,xhv);
+            double phiro = atan2(yro,xro);
+            double deltaphi = phihv-phiro;
+            if (deltaphi>unit::pi) deltaphi-=2*unit::pi; // 2nd quadrant - 3rd quadrant
+            if (deltaphi<-unit::pi) deltaphi+=2*unit::pi; // 3rd quadrant - 2nd quadrant
+            if (deltaphi<0){
+                wire_theta[lid][wid]*=-1;
+                wire_thetaX[lid][wid]*=-1;
+            }
+            MyNamedInfo("WireMap",Form("wire_thetaX[%d][%d] = atan(-(%.3e-%.3e)/%.3e) = %.3e",lid,wid,xhv,xro,chamberLength,wire_thetaX[lid][wid]));
         }
         if (bid>=0&&bid<NBRD&&ch>=0&&ch<NCHS){
             wire_lid[bid][ch] = lid;
