@@ -1,7 +1,7 @@
 #ifndef InputOutputManager_hxx_seen
 #define InputOutputManager_hxx_seen
 
-#define NCAND 10
+#define NCAND 10000
 
 #include <TString.h>
 

@@ -97,9 +97,6 @@ void Tracker::Reset(){
     currentTrackResult.Reset();
     nPairs = 0;
     nGoodPairs = 0;
-    for (int iCand = 0; iCand<NCAND; iCand++){
-        trackResults[iCand].Reset();
-    }
     func_pairYX->SetParameter(0,0);
     func_pairYX->SetParameter(1,0);
     func_pairYZ->SetParameter(0,0);
@@ -698,7 +695,7 @@ bool Tracker::checkAndFitIn(){
     MyNamedVerbose("Tracking"," checking new result with "<<currentTrackResult.hitIndexSelected.size()<<" hits and chi2a = "<<currentTrackResult.chi2WithTestLayer);
     int insertAt = -1;
     int takeOut = -1;
-    for (int i = 0; i<fMaxResults; i++){
+    for (int i = 0; i<nGoodTracks; i++){
         if (currentTrackResult.NDF<trackResults[i].NDF) continue;
         if (currentTrackResult == trackResults[i]){ // they have used the same hits (with same left/right)
             MyNamedVerbose("Tracking"," same with Cand#"<<i);
@@ -717,11 +714,15 @@ bool Tracker::checkAndFitIn(){
                 insertAt = i;
             }
         }
-        takeOut = i; // by default if no candidate with same selection was found, the last one will be considered to be moved out (in case insertAt is valid)
-        if (trackResults[i].pValue==0){ // FIXME: not a very reliable check here. Currently pValue = 0 means this result is empty
-            if (insertAt>=0) nGoodTracks++; // decide to move out an empty slot for the new result, hence number of good tracks accumulates by one
-            break; // stop searching after an empty result is reached
-        }
+    }
+    if (insertAt>=0&&takeOut==-1){ // we decide to insert this track result but no one to take out from current list
+        takeOut = nGoodTracks; // consider the first one after the queue (empty) is to be taken out
+        nGoodTracks++; // now we have a new track result
+    }
+    if (!nGoodTracks){ // first time in this event
+        insertAt = 0; // put the current result at the top
+        takeOut = -1; // no need to take out any
+        nGoodTracks++; // now we have a new track result
     }
     if (insertAt<0) return false;
     for (int i = takeOut; i>insertAt; i--){ // move the candidates back by 1 and kick out the one to be replaced
