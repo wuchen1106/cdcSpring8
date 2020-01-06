@@ -46,7 +46,7 @@ private:
     int fitting(int iselection); /// Fit the track with given selection of hits
     void setLeftRight(int icombi); /// get left/right from the given combination index
     void Reset2DFunctions(double MoveRatioX = 0, double MoveRatioZ = 0); /// get the 2-D fitting functions reset to default values. If arguements are given, then set with them as offsets
-    bool Fit2D(double safetyFactor, bool fitWithError, double & chi2X, double & chi2Z, bool & inScint, bool & fromSource); /// do the 2-D fitting. Firstly the pair positions will be recalculated according to the track parameters stored in the 2-D functions. Then the 2-D functions will be updated with new fitting.
+    bool Fit2D(double safetyFactor, bool fitWithError, double & chi2X, double & chi2Z); /// do the 2-D fitting. Firstly the pair positions will be recalculated according to the track parameters stored in the 2-D functions. Then the 2-D functions will be updated with new fitting.
     int getChi2XZ(double & chi2x, double & chi2z); /// get chi2 for 2-D fittings on Y-X and Y-Z planes
     int updateWirePositionOnHit(); /// update wire positions upon picked hits
     int updatePairPositions(); /// update pair positions

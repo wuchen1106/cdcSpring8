@@ -199,8 +199,6 @@ int Tracker::fitting(int iselection){
         MyNamedVerbose("Tracking",Form("     combi %d",icombi));
         nPairs = 0;
         nGoodPairs = 0;
-        bool inScint = false;
-        bool fromSource = false;
         bool fittingSucceeded = false;
         double chi2X = 0;
         double chi2Z = 0;
@@ -210,16 +208,16 @@ int Tracker::fitting(int iselection){
 
         /// 2. Get pair positions according to the initial track parameter. Fit pairs on Y-X and Y-Z plains
         Reset2DFunctions();
-        fittingSucceeded = Fit2D(2.5,false,chi2X,chi2Z,inScint,fromSource); // fit without error
+        fittingSucceeded = Fit2D(2.5,false,chi2X,chi2Z); // fit without error
         if (!fittingSucceeded) continue;
         ///    If fitting result is not good, reset the initial values of these 2-D functions
         ///    Do the 2-D fitting again based on the previous fitting resutl with error set
-        if (!fromSource||!inScint) Reset2DFunctions();
-        fittingSucceeded = Fit2D(2.5,true,chi2X,chi2Z,inScint,fromSource); // fit with error
-        if (!fittingSucceeded) continue;
-        if (!fromSource||!inScint) Reset2DFunctions();
-        fittingSucceeded = Fit2D(2.5,true,chi2X,chi2Z,inScint,fromSource); // fit with error
-        if (!fittingSucceeded) continue;
+        //if (!fromSource||!inScint) Reset2DFunctions();
+        //fittingSucceeded = Fit2D(2.5,true,chi2X,chi2Z,inScint,fromSource); // fit with error
+        //if (!fittingSucceeded) continue;
+        //if (!fromSource||!inScint) Reset2DFunctions();
+        //fittingSucceeded = Fit2D(2.5,true,chi2X,chi2Z,inScint,fromSource); // fit with error
+        //if (!fittingSucceeded) continue;
         /////    If fitting result is not good, reset the initial values of these 2-D functions with 1/2 offset (on Z direction)
         /////    Do the 2-D fitting again based on the previous fitting resutl with error set
         //if (!fromSource||!inScint) Reset2DFunctions(0,0.5);
@@ -232,7 +230,7 @@ int Tracker::fitting(int iselection){
         //if (!fittingSucceeded) continue;
         
         /// 3. If the 2-D fitting is successfull, proceed to 3-D fitting
-        if (inScint&&fromSource&&nGoodPairs>=3){ // good candidate
+        if (nGoodPairs>=3){ // good candidate
             double iinx = func_pairYX->Eval(GeometryManager::Get().ReferenceY);
             double iinz = func_pairYZ->Eval(GeometryManager::Get().ReferenceY);
             double islx = func_pairYX->GetParameter(1);
@@ -288,33 +286,29 @@ int Tracker::fitting(int iselection){
                     gMinuit->GetParameter(2, slz, temp);
                     gMinuit->GetParameter(3, inz, temp);
                     ///    At last, if the newly fitted track meets our requirments, store the fitting result.
-                    inScint = GeometryManager::Get().IsInScinti(1.5,inx,slx,inz,slz); // FIXME: error limit should be tuned
-                    fromSource = BeamManager::Get().IsInBeam(slx,slz);
-                    if (inScint&&fromSource){
-                        // update chi2
-                        if (inputHitType == InputOutputManager::kMCDriftD || inputHitType == InputOutputManager::kMCDriftT){
-                            // FIXME: get mc input
-                            //getchi2(chi2mc,chi2pmc,chi2amc,i_slxmc,i_inxmc,i_slzmc,i_inzmc,0,true);
-                        }
-                        getchi2(chi2,chi2p,chi2a,slx,inx,slz,inz,0,true);
-                        // check chi2 and see where the result fits
-                        MyNamedVerbose("Tracking",Form("       2nd fitting RESULT: nHitsSel = %d, x=%.3e*(y-%.3e)+%.3e, z=%.3e*(y-%.3e)+%.3e, chi2i = %.3e chi2 = %.3e",nHitsSel,slx,GeometryManager::Get().ReferenceY,inx,slz,GeometryManager::Get().ReferenceY,inz,chi2i,chi2));
-                        currentTrackResult.slopeX = slx;
-                        currentTrackResult.slopeZ = slz;
-                        currentTrackResult.interceptX = inx;
-                        currentTrackResult.interceptZ = inz;
-                        currentTrackResult.chi2 = chi2;
-                        currentTrackResult.pValue = chi2p;
-                        currentTrackResult.chi2WithTestLayer = chi2a;
-                        currentTrackResult.NDF = currentTrackResult.hitIndexSelected.size();
-                        if (fMaxResults){ // there is a limit on number of fitting results to save. Sort by chi2 and NDF.
-                            checkAndFitIn();
-                        }
-                        else{ // there is no limit (except for its capacity NCAND) we don't have to sort.
-                            if (nGoodTracks<NCAND){
-                                trackResults[nGoodTracks] = currentTrackResult;
-                                nGoodTracks++;
-                            }
+                    // update chi2
+                    if (inputHitType == InputOutputManager::kMCDriftD || inputHitType == InputOutputManager::kMCDriftT){
+                        // FIXME: get mc input
+                        //getchi2(chi2mc,chi2pmc,chi2amc,i_slxmc,i_inxmc,i_slzmc,i_inzmc,0,true);
+                    }
+                    getchi2(chi2,chi2p,chi2a,slx,inx,slz,inz,0,true);
+                    // check chi2 and see where the result fits
+                    MyNamedVerbose("Tracking",Form("       2nd fitting RESULT: nHitsSel = %d, x=%.3e*(y-%.3e)+%.3e, z=%.3e*(y-%.3e)+%.3e, chi2i = %.3e chi2 = %.3e",nHitsSel,slx,GeometryManager::Get().ReferenceY,inx,slz,GeometryManager::Get().ReferenceY,inz,chi2i,chi2));
+                    currentTrackResult.slopeX = slx;
+                    currentTrackResult.slopeZ = slz;
+                    currentTrackResult.interceptX = inx;
+                    currentTrackResult.interceptZ = inz;
+                    currentTrackResult.chi2 = chi2;
+                    currentTrackResult.pValue = chi2p;
+                    currentTrackResult.chi2WithTestLayer = chi2a;
+                    currentTrackResult.NDF = currentTrackResult.hitIndexSelected.size();
+                    if (fMaxResults){ // there is a limit on number of fitting results to save. Sort by chi2 and NDF.
+                        checkAndFitIn();
+                    }
+                    else{ // there is no limit (except for its capacity NCAND) we don't have to sort.
+                        if (nGoodTracks<NCAND){
+                            trackResults[nGoodTracks] = currentTrackResult;
+                            nGoodTracks++;
                         }
                     }
                 }
@@ -341,7 +335,7 @@ void Tracker::Reset2DFunctions(double MoveRatioX, double MoveRatioZ){
                                BeamManager::Get().beamSlz);
 }
 
-bool Tracker::Fit2D(double safetyFactor, bool fitWithError, double & chi2X, double & chi2Z, bool & inScint, bool & fromSource){
+bool Tracker::Fit2D(double safetyFactor, bool fitWithError, double & chi2X, double & chi2Z ){
     size_t nPicks = pairableLayers->size();
     updateWirePositionOnHit(); // fix wy positions
     if (updatePairPositions()) return false; // cannot make pairs
@@ -390,10 +384,8 @@ bool Tracker::Fit2D(double safetyFactor, bool fitWithError, double & chi2X, doub
     double iinz = func_pairYZ->Eval(GeometryManager::Get().ReferenceY);
     double islx = func_pairYX->GetParameter(1);
     double islz = func_pairYZ->GetParameter(1);
-    inScint = GeometryManager::Get().IsInScinti(safetyFactor,iinx,islx,iinz,islz); // FIXME: need to tune
-    fromSource = BeamManager::Get().IsInBeam(islx,islz);
     nGoodPairs = getChi2XZ(chi2X,chi2Z);
-    MyNamedVerbose("Tracking",Form("       2D FITTING RESULT: nGoodPairs = %d, inScint? %s, fromSource? %s; x=%.3e*(y-%.3e)+%.3e, chi2 = %.3e, z=%.3e*(y-%.3e)+%.3e, chi2 = %.3e",nGoodPairs,inScint?"yes":"no",fromSource?"yes":"no",islx,GeometryManager::Get().ReferenceY,iinx,chi2X,islz,GeometryManager::Get().ReferenceY,iinz,chi2Z));
+    MyNamedVerbose("Tracking",Form("       2D FITTING RESULT: nGoodPairs = %d; x=%.3e*(y-%.3e)+%.3e, chi2 = %.3e, z=%.3e*(y-%.3e)+%.3e, chi2 = %.3e",nGoodPairs,islx,GeometryManager::Get().ReferenceY,iinx,chi2X,islz,GeometryManager::Get().ReferenceY,iinz,chi2Z));
     TString debugContent = Form("%.3e %.3e %.3e %.3e",islx,iinx,islz,iinz);
     for (int ipair = 0; ipair<nPairs; ipair++){
         debugContent += Form(" %.3e %.3e %.3e %.3e",pairX[ipair],func_pairYX->Eval(pairY[ipair]),pairZ[ipair],func_pairYZ->Eval(pairY[ipair]));
