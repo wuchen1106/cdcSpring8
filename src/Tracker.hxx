@@ -18,7 +18,7 @@ public:
 
     void Reset(); /// prepare for tracking. To be called every time given a new event
     void DoTracking(); /// the main function to get tracks from the current event with given hit list
-    bool SetMaxResults(int n); /// set the maximum number of fitting results to keep while fitting one event
+    bool SetMaxResults(int n); /// set the maximum number of fitting results to keep while fitting one event; 0 means to save all without sorting.
 
     static TrackResult currentTrackResult;
     static TrackResult trackResults[NCAND];
@@ -58,7 +58,7 @@ private:
     static void fcnX(int &npar, double *gin, double &f, double *par, int iflag);
     static void getchi2(double &f, double & cp, double & ca, double slx, double inx, double slz, double inz, double t0offset,bool all); /// get the chi2 with 3-D track
     static double getchi2Graph(TGraphErrors* graph, double v0, double sl);
-    bool checkResults(int nHitsSel, int icombi, int iselection); /// Compare the new tracking result (written in currentTrackResult) with previously stored candidates (stored in trackResults) and put it in correct place if needed.
+    bool checkAndFitIn(); /// Compare the new tracking result (written in currentTrackResult) with previously stored candidates (stored in trackResults) and put it in correct place if needed.
 
     TF1 * func_pairYX; /// 2-D fitting function on Y-X plane
     TF1 * func_pairYZ; /// 2-D fitting function on Y-Z plane
@@ -67,7 +67,7 @@ private:
 
     InputOutputManager::InputHitType inputHitType;
 
-    /// maximum number of fitting results to keep
+    /// maximum number of fitting results to keep; 0 means to save all without sorting.
     int   fMaxResults;
 
     /// a list of parameters used for track fitting with TMinuit

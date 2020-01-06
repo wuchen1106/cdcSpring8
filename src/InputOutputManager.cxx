@@ -116,15 +116,6 @@ bool InputOutputManager::Initialize(bool withTrivialBranches){
             fInputTrackChain->SetBranchAddress(Form("hitIndexSelectedInLayer%d",iLayer),hitIndexSelected[iLayer]); // number of hits selected from finding and fed to fitting
         }
         fInputTrackChain->SetBranchAddress("t0Offset",t0Offset);
-        fInputTrackChain->SetBranchAddress("interceptXInput",interceptXInput);
-        fInputTrackChain->SetBranchAddress("interceptZInput",interceptZInput);
-        fInputTrackChain->SetBranchAddress("slopeXInput",slopeXInput);
-        fInputTrackChain->SetBranchAddress("slopeZInput",slopeZInput);
-        fInputTrackChain->SetBranchAddress("chi2XInput",chi2XInput);
-        fInputTrackChain->SetBranchAddress("chi2ZInput",chi2ZInput);
-        fInputTrackChain->SetBranchAddress("chi2Input",chi2Input);
-        fInputTrackChain->SetBranchAddress("chi2WithTestLayerInput",chi2WithTestLayerInput);
-        fInputTrackChain->SetBranchAddress("pValueInput",pValueInput);
         fInputTrackChain->SetBranchAddress("interceptX",interceptX);
         fInputTrackChain->SetBranchAddress("interceptZ",interceptZ);
         fInputTrackChain->SetBranchAddress("slopeX",slopeX);
@@ -140,6 +131,17 @@ bool InputOutputManager::Initialize(bool withTrivialBranches){
             fInputTrackChain->SetBranchAddress("inzmc",&interceptZmc);
             fInputTrackChain->SetBranchAddress("slxmc",&slopeXmc);
             fInputTrackChain->SetBranchAddress("slzmc",&slopeZmc);
+        }
+        if (withTrivialBranches){
+            fInputTrackChain->SetBranchAddress("interceptXInput",interceptXInput);
+            fInputTrackChain->SetBranchAddress("interceptZInput",interceptZInput);
+            fInputTrackChain->SetBranchAddress("slopeXInput",slopeXInput);
+            fInputTrackChain->SetBranchAddress("slopeZInput",slopeZInput);
+            fInputTrackChain->SetBranchAddress("chi2XInput",chi2XInput);
+            fInputTrackChain->SetBranchAddress("chi2ZInput",chi2ZInput);
+            fInputTrackChain->SetBranchAddress("chi2Input",chi2Input);
+            fInputTrackChain->SetBranchAddress("chi2WithTestLayerInput",chi2WithTestLayerInput);
+            fInputTrackChain->SetBranchAddress("pValueInput",pValueInput);
         }
     }
 
@@ -163,15 +165,6 @@ bool InputOutputManager::Initialize(bool withTrivialBranches){
             fOutputTrackTree->Branch(Form("hitIndexSelectedInLayer%d",iLayer),hitIndexSelected[iLayer],Form("hitIndexSelectedInLayer%d[nFind]/I",iLayer)); // number of hits selected from finding and fed to fitting
         }
         fOutputTrackTree->Branch("t0Offset",t0Offset,"t0Offset[nFind]/D");
-        fOutputTrackTree->Branch("interceptXInput",interceptXInput,"interceptXInput[nFind]/D");
-        fOutputTrackTree->Branch("interceptZInput",interceptZInput,"interceptZInput[nFind]/D");
-        fOutputTrackTree->Branch("slopeXInput",slopeXInput,"slopeXInput[nFind]/D");
-        fOutputTrackTree->Branch("slopeZInput",slopeZInput,"slopeZInput[nFind]/D");
-        fOutputTrackTree->Branch("chi2XInput",chi2XInput,"chi2XInput[nFind]/D");
-        fOutputTrackTree->Branch("chi2ZInput",chi2ZInput,"chi2ZInput[nFind]/D");
-        fOutputTrackTree->Branch("chi2Input",chi2Input,"chi2Input[nFind]/D");
-        fOutputTrackTree->Branch("chi2WithTestLayerInput",chi2WithTestLayerInput,"chi2WithTestLayerInput[nFind]/D");
-        fOutputTrackTree->Branch("pValueInput",pValueInput,"pValueInput[nFind]/D");
         fOutputTrackTree->Branch("interceptX",interceptX,"interceptX[nFind]/D");
         fOutputTrackTree->Branch("interceptZ",interceptZ,"interceptZ[nFind]/D");
         fOutputTrackTree->Branch("slopeX",slopeX,"slopeX[nFind]/D");
@@ -187,6 +180,17 @@ bool InputOutputManager::Initialize(bool withTrivialBranches){
             fOutputTrackTree->Branch("inzmc",&interceptZmc);
             fOutputTrackTree->Branch("slxmc",&slopeXmc);
             fOutputTrackTree->Branch("slzmc",&slopeZmc);
+        }
+        if (withTrivialBranches){
+            fOutputTrackTree->Branch("interceptXInput",interceptXInput,"interceptXInput[nFind]/D");
+            fOutputTrackTree->Branch("interceptZInput",interceptZInput,"interceptZInput[nFind]/D");
+            fOutputTrackTree->Branch("slopeXInput",slopeXInput,"slopeXInput[nFind]/D");
+            fOutputTrackTree->Branch("slopeZInput",slopeZInput,"slopeZInput[nFind]/D");
+            fOutputTrackTree->Branch("chi2XInput",chi2XInput,"chi2XInput[nFind]/D");
+            fOutputTrackTree->Branch("chi2ZInput",chi2ZInput,"chi2ZInput[nFind]/D");
+            fOutputTrackTree->Branch("chi2Input",chi2Input,"chi2Input[nFind]/D");
+            fOutputTrackTree->Branch("chi2WithTestLayerInput",chi2WithTestLayerInput,"chi2WithTestLayerInput[nFind]/D");
+            fOutputTrackTree->Branch("pValueInput",pValueInput,"pValueInput[nFind]/D");
         }
     }
 

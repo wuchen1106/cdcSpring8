@@ -55,7 +55,7 @@ public:
         kMCDriftD
     };
 
-    bool Initialize(bool createTrivialBranches = false); ///< Should be called at the beginning of the run
+    bool Initialize(bool withTrivialBranches = false); ///< Should be called at the beginning of the run
     void Reset(); ///< Should be called at the beginning of every event
     void Fill(); ///< Fill the branches in the output file
     void Write(); ///< Write the tree to the output file
@@ -105,22 +105,11 @@ public:
     int                   nHitsG;
     int                   nCandidatesFound;
     // fitting results
-    int                   nPairs[NCAND];
-    int                   nGoodPairs[NCAND];
     int                   iSelection[NCAND];
     int                   iCombination[NCAND];
     int                   nHitsS[NCAND];
     int                   hitIndexSelected[NLAY][NCAND];
     double                t0Offset[NCAND]; // in case t0 is set free to adjustment
-    double                interceptXInput[NCAND];
-    double                interceptZInput[NCAND];
-    double                slopeXInput[NCAND];
-    double                slopeZInput[NCAND];
-    double                chi2XInput[NCAND];
-    double                chi2ZInput[NCAND];
-    double                chi2Input[NCAND];
-    double                chi2WithTestLayerInput[NCAND];
-    double                pValueInput[NCAND];
     double                interceptX[NCAND];
     double                interceptZ[NCAND];
     double                slopeX[NCAND];
@@ -131,6 +120,18 @@ public:
     double                chi2mc[NCAND];
     double                chi2WithTestLayermc[NCAND];
     double                pValuemc[NCAND];
+    // trivial fitting informaiton
+    int                   nPairs[NCAND];
+    int                   nGoodPairs[NCAND];
+    double                interceptXInput[NCAND];
+    double                interceptZInput[NCAND];
+    double                slopeXInput[NCAND];
+    double                slopeZInput[NCAND];
+    double                chi2XInput[NCAND];
+    double                chi2ZInput[NCAND];
+    double                chi2Input[NCAND];
+    double                pValueInput[NCAND];
+    double                chi2WithTestLayerInput[NCAND];
 
 private:
     /// The static pointer to the singleton instance.

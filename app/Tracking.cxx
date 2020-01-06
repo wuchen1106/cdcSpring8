@@ -49,7 +49,7 @@ int main(int argc, char** argv){
     bool m_memdebug = false;
     int m_testLayer = 4;
     int m_resultsToSave = 4;
-    bool m_createTrivalBranches = false;
+    bool m_createTrivialBranches = false;
     TString m_wireAdjustmentFile = "";
 
     // Load options
@@ -91,10 +91,10 @@ int main(int argc, char** argv){
                 break;
             case 'S':
                 m_resultsToSave = atoi(optarg);
-                printf("Save up to %d fitting results\n",m_resultsToSave);
+                printf("Save up to %d fitting results; 0 means to save all without sorting.\n",m_resultsToSave);
                 break;
             case 'T':
-                m_createTrivalBranches = true;
+                m_createTrivialBranches = true;
                 printf("Create trivial branches\n");
                 break;
             case 'A':
@@ -158,7 +158,7 @@ int main(int argc, char** argv){
     XTManager::Get().Print();
     InputOutputManager::Get().readHitFile = true;
     InputOutputManager::Get().writeTrackFile = true;
-    success = InputOutputManager::Get().Initialize(m_createTrivalBranches);
+    success = InputOutputManager::Get().Initialize(m_createTrivialBranches);
     if (!success) {MyError("Cannot initialize InputOutputManager"); return 1;}
 
     // for track finding
@@ -323,7 +323,7 @@ void print_usage(char* prog_name)
     fprintf(stderr,"\t -A <file>\n");
     fprintf(stderr,"\t\t Wire adjustment file set to file\n");
     fprintf(stderr,"\t -S <nResults>\n");
-    fprintf(stderr,"\t\t Save up to <nResults> fitting results\n");
+    fprintf(stderr,"\t\t Save up to <nResults> fitting results; 0 means to save all without sorting.\n");
     fprintf(stderr,"\t -T\n");
     fprintf(stderr,"\t\t Create trivial branches in the output file\n");
 }

@@ -310,7 +310,15 @@ int Tracker::fitting(int iselection){
                         currentTrackResult.pValue = chi2p;
                         currentTrackResult.chi2WithTestLayer = chi2a;
                         currentTrackResult.NDF = currentTrackResult.hitIndexSelected.size();
-                        checkResults(nHitsSel,icombi,iselection);
+                        if (fMaxResults){ // there is a limit on number of fitting results to save. Sort by chi2 and NDF.
+                            checkAndFitIn();
+                        }
+                        else{ // there is no limit (except for its capacity NCAND) we don't have to sort.
+                            if (nGoodTracks<NCAND){
+                                trackResults[nGoodTracks] = currentTrackResult;
+                                nGoodTracks++;
+                            }
+                        }
                     }
                 }
             }
@@ -686,11 +694,10 @@ double Tracker::getchi2Graph(TGraphErrors* graph, double v0, double sl){
     return chi2;
 }
 
-bool Tracker::checkResults(int nHitsSel, int icombi, int iselection){
-    bool covered = false;
+bool Tracker::checkAndFitIn(){
+    MyNamedVerbose("Tracking"," checking new result with "<<currentTrackResult.hitIndexSelected.size()<<" hits and chi2a = "<<currentTrackResult.chi2WithTestLayer);
     int insertAt = -1;
     int takeOut = -1;
-    MyNamedVerbose("Tracking"," checking new result with "<<currentTrackResult.hitIndexSelected.size()<<" hits and chi2a = "<<currentTrackResult.chi2WithTestLayer);
     for (int i = 0; i<fMaxResults; i++){
         if (currentTrackResult.NDF<trackResults[i].NDF) continue;
         if (currentTrackResult == trackResults[i]){ // they have used the same hits (with same left/right)
