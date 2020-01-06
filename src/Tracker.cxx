@@ -194,7 +194,7 @@ int Tracker::fitting(int iselection){
     /// calculate number of left/right combinations and start a loop in them and tracking them individually
     size_t nPicks = pairableLayers->size();
     int ncombi = pow(2,nPicks);
-    MyNamedVerbose("Tracking",Form("  %d picked layers -> %d combinations",(int)nPicks,ncombi));
+    MyNamedVerbose("Tracking",Form("  %d picked layers -> %d L/R combinations",(int)nPicks,ncombi));
     for (int icombi = 0; icombi<ncombi; icombi++){ // each combination corresponds to a unique left/right selection set
         MyNamedVerbose("Tracking",Form("     combi %d",icombi));
         nPairs = 0;

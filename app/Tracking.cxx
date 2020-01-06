@@ -240,7 +240,7 @@ int main(int argc, char** argv){
             }
         }
         if (Log::GetLogLevel("Tracking")>=Log::VerboseLevel) InputOutputManager::Get().Print("h"); // print hit level information
-        int nCombinations = 1;
+        int nSelections = 1;
         int nPairableLayers = tracker->pairableLayers->size();
         for (int ipick = 0; ipick<nPairableLayers; ipick++){
             int lid = tracker->pairableLayers->at(ipick);
@@ -251,9 +251,9 @@ int main(int argc, char** argv){
                 int wid = InputOutputManager::Get().CellID->at(iHit);
                 MyNamedInfo("Tracking","    "<<iHit<<" ["<<lid<<","<<wid<<"]");
             }
-            nCombinations*=nhits;
+            nSelections*=nhits;
         }
-        MyNamedInfo("Tracking",Form("  => %d pairs from %d good hits in %d pairable layers with %d combinations X 2^%d L/R choices",nPairs,nHitsG,nPairableLayers,nCombinations,nPairableLayers));
+        MyNamedInfo("Tracking",Form("  => %d pairs from %d good hits in %d pairable layers with %d possible selections * 2^%d L/R combinations",nPairs,nHitsG,nPairableLayers,nSelections,nPairableLayers));
 
         /// 3. Apply tracking after cuts
         if (nHitsG<=nHitsGMax&&nPairs>=nPairsMin){
