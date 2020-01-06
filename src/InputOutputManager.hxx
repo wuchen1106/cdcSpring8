@@ -10,6 +10,7 @@
 class TFile;
 class TTree;
 class TChain;
+class TrackResult;
 
 /// This class is to manage input and output files
 ///
@@ -54,7 +55,7 @@ public:
         kMCDriftD
     };
 
-    bool Initialize(); ///< Should be called at the beginning of the run
+    bool Initialize(bool createTrivialBranches = false); ///< Should be called at the beginning of the run
     void Reset(); ///< Should be called at the beginning of every event
     void Fill(); ///< Fill the branches in the output file
     void Write(); ///< Write the tree to the output file
@@ -62,6 +63,7 @@ public:
     void GetEntry(Long64_t iEntry); ///< Should be called at the beginning of every event AFTER Reset()
     Long64_t GetEntries();
     void Print(TString opt = "");
+    bool SetTrack(int iFound, const TrackResult * trackResult);
 
     /// flags about which to read and which to write
     bool                  readRawFile;
@@ -74,7 +76,7 @@ public:
     /// the current entry; increment once GetEntry(iEntry) is called
     int                   fCurrentEntry;
 
-    /// raw hits from input
+    /// raw hits
     int                   triggerNumber;
     int                   nHits;
     std::vector<int> *    LayerID;
@@ -99,9 +101,10 @@ public:
     double                slopeXmc; // For MC input
     double                slopeZmc; // For MC input
 
-    // recon hits/tracks for output
+    /// pre-fitting information
     int                   nHitsG;
     int                   nCandidatesFound;
+    // fitting results
     int                   nPairs[NCAND];
     int                   nGoodPairs[NCAND];
     int                   iSelection[NCAND];

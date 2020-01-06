@@ -7,6 +7,7 @@
 #include "InputOutputManager.hxx"
 #include "ParameterManager.hxx"
 #include "RunInfoManager.hxx"
+#include "Track.hxx"
 
 InputOutputManager* InputOutputManager::fInputOutputManager = NULL;
 
@@ -54,7 +55,7 @@ InputOutputManager::~InputOutputManager(){
 }
 
 /// This is to set branches for input and output files
-bool InputOutputManager::Initialize(){
+bool InputOutputManager::Initialize(bool withTrivialBranches){
     fCurrentEntry = 0;
     TString HOME=getenv("CDCS8WORKING_DIR");;
     int runNo = RunInfoManager::Get().runNo;
@@ -289,4 +290,42 @@ void InputOutputManager::Print(TString opt){
             }
         }
     }
+}
+
+bool InputOutputManager::SetTrack(int iFound, const TrackResult * trackResult){
+    if (iFound>=NCAND){
+        MyError("The fitting result index "<<iFound<<" exceeded the maximum capacity "<<NCAND);
+        return false;
+    }
+    nHitsS[iFound] = trackResult->NDF;
+    t0Offset[iFound] = trackResult->t0Offset;
+    iSelection[iFound] = trackResult->initialTrackCandidate.iSelection;
+    iCombination[iFound] = trackResult->initialTrackCandidate.iCombination;
+    nPairs[iFound] = trackResult->initialTrackCandidate.nPairs;
+    nGoodPairs[iFound] = trackResult->initialTrackCandidate.nGoodPairs;
+    interceptXInput[iFound] = trackResult->initialTrackCandidate.interceptX;
+    interceptZInput[iFound] = trackResult->initialTrackCandidate.interceptZ;
+    slopeXInput[iFound] = trackResult->initialTrackCandidate.slopeX;
+    slopeZInput[iFound] = trackResult->initialTrackCandidate.slopeZ;
+    chi2XInput[iFound] = trackResult->initialTrackCandidate.chi2X;
+    chi2ZInput[iFound] = trackResult->initialTrackCandidate.chi2Z;
+    chi2Input[iFound] = trackResult->initialTrackCandidate.chi2;
+    pValueInput[iFound] = trackResult->initialTrackCandidate.pValue;
+    interceptX[iFound] = trackResult->interceptX;
+    interceptZ[iFound] = trackResult->interceptZ;
+    slopeX[iFound] = trackResult->slopeX;
+    slopeZ[iFound] = trackResult->slopeZ;
+    chi2[iFound] = trackResult->chi2;
+    pValue[iFound] = trackResult->pValue;
+    chi2WithTestLayer[iFound] = trackResult->chi2WithTestLayer;
+    for (int lid = 0; lid<NLAY; lid++){
+        hitIndexSelected[lid][iFound] = -1;
+    }
+    for (size_t iHit = 0; iHit<trackResult->hitIndexSelected.size(); iHit++){
+        int lid = LayerID->at(trackResult->hitIndexSelected[iHit]);
+        if (lid>=0&&lid<NLAY){
+            hitIndexSelected[lid][iFound] = trackResult->hitIndexSelected[iHit];
+        }
+    }
+    return true;
 }

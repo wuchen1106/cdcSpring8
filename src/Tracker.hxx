@@ -18,7 +18,7 @@ public:
 
     void Reset(); /// prepare for tracking. To be called every time given a new event
     void DoTracking(); /// the main function to get tracks from the current event with given hit list
-    void SetOutput(); /// set the fitted results to InputOutputManager
+    bool SetMaxResults(int n); /// set the maximum number of fitting results to keep while fitting one event
 
     static TrackResult currentTrackResult;
     static TrackResult trackResults[NCAND];
@@ -66,6 +66,9 @@ private:
     static TGraphErrors * graph_pairZ; /// a graph to store pair positions with error on Y-X plane
 
     InputOutputManager::InputHitType inputHitType;
+
+    /// maximum number of fitting results to keep
+    int   fMaxResults;
 
     /// a list of parameters used for track fitting with TMinuit
     double arglist[10];

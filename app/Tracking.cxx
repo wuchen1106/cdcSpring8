@@ -48,11 +48,13 @@ int main(int argc, char** argv){
     int m_modulo = 100;
     bool m_memdebug = false;
     int m_testLayer = 4;
+    int m_resultsToSave = 4;
+    bool m_createTrivalBranches = false;
     TString m_wireAdjustmentFile = "";
 
     // Load options
     int    opt_result;
-    while((opt_result=getopt(argc,argv,"A:B:C:D:E:L:MN:P:R:V:h"))!=-1){
+    while((opt_result=getopt(argc,argv,"A:B:C:D:E:L:MN:P:R:S:TV:h"))!=-1){
         switch(opt_result){
             case 'M':
                 m_memdebug = true;
@@ -86,6 +88,14 @@ int main(int argc, char** argv){
             case 'C':
                 getRunTimeParameters(optarg);
                 printf("Using configure file \"%s\"\n",optarg);
+                break;
+            case 'S':
+                m_resultsToSave = atoi(optarg);
+                printf("Save up to %d fitting results\n",m_resultsToSave);
+                break;
+            case 'T':
+                m_createTrivalBranches = true;
+                printf("Create trivial branches\n");
                 break;
             case 'A':
                 m_wireAdjustmentFile = optarg;
@@ -148,7 +158,7 @@ int main(int argc, char** argv){
     XTManager::Get().Print();
     InputOutputManager::Get().readHitFile = true;
     InputOutputManager::Get().writeTrackFile = true;
-    success = InputOutputManager::Get().Initialize();
+    success = InputOutputManager::Get().Initialize(m_createTrivalBranches);
     if (!success) {MyError("Cannot initialize InputOutputManager"); return 1;}
 
     // for track finding
@@ -169,6 +179,7 @@ int main(int argc, char** argv){
 
     // Prepare Tracker
     Tracker * tracker = new Tracker(inputHitType);
+    tracker->SetMaxResults(m_resultsToSave);
 
     //===================Tracking====================================
     // Efficiency Counters
@@ -257,7 +268,11 @@ int main(int argc, char** argv){
             }
         }
 
-        tracker->SetOutput();
+        InputOutputManager::Get().nCandidatesFound = tracker->nGoodTracks;
+        for (int iFound = 0; iFound<tracker->nGoodTracks&&iFound<NCAND; iFound++){
+            InputOutputManager::Get().SetTrack(iFound,&(tracker->trackResults[iFound]));
+        }
+
         InputOutputManager::Get().Fill();
         MyNamedDebug("Memory","Memory size: @"<<__LINE__<<": "<<pMyProcessManager->GetMemorySize());
     }// end of event loop
@@ -307,4 +322,8 @@ void print_usage(char* prog_name)
     fprintf(stderr,"\t\t Test layer set to l\n");
     fprintf(stderr,"\t -A <file>\n");
     fprintf(stderr,"\t\t Wire adjustment file set to file\n");
+    fprintf(stderr,"\t -S <nResults>\n");
+    fprintf(stderr,"\t\t Save up to <nResults> fitting results\n");
+    fprintf(stderr,"\t -T\n");
+    fprintf(stderr,"\t\t Create trivial branches in the output file\n");
 }

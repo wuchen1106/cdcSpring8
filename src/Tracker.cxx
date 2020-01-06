@@ -32,6 +32,7 @@ Tracker::Tracker(InputOutputManager::InputHitType theInputHitType):
     func_pairYX(0),
     func_pairYZ(0),
     inputHitType(theInputHitType),
+    fMaxResults(NCAND),
     ierflg(0),
     amin(0),
     edm(0),
@@ -121,6 +122,15 @@ void Tracker::Reset(){
     MyNamedVerbose("Tracking","  slopeZ:     "<<slzStep<<", "<<slzMin<<" ~ "<<slzMax);
     MyNamedVerbose("Tracking","  interceptX: "<<inxStep*1000<<" um, "<<inxMin<<" ~ "<<inxMax<<" mm");
     MyNamedVerbose("Tracking","  interceptZ: "<<inzStep*1000<<" um, "<<inzMin<<" ~ "<<inzMax<<" mm");
+}
+
+bool Tracker::SetMaxResults(int n){
+    if (n>NCAND){
+        MyError("Maximum number of results required "<<n<<" is greater than its capacity "<<NCAND<<". Will ignore this setting and keep using "<<fMaxResults);
+        return false;
+    }
+    fMaxResults = n;
+    return true;
 }
 
 void Tracker::DoTracking(){
@@ -343,7 +353,7 @@ bool Tracker::Fit2D(double safetyFactor, bool fitWithError, double & chi2X, doub
     arglist[0] = 1;
     gMinuit->mnexcm("SET ERR", arglist ,1,ierflg);
     double temp; double inz = func_pairYZ->GetParameter(0); double slz = func_pairYZ->GetParameter(1);
-    gMinuit->mnparm(0, "inz", inz, inzStep, -10000,10000,ierflg);
+    gMinuit->mnparm(0, "inz", inz, inzStep, inzMin,inzMax,ierflg);
     gMinuit->mnparm(1, "slz", slz, slzStep, slzMin,slzMax,ierflg);
     arglist[0] = 5000.0;
     arglist[1] = 1.0;
@@ -362,7 +372,7 @@ bool Tracker::Fit2D(double safetyFactor, bool fitWithError, double & chi2X, doub
     arglist[0] = 1;
     gMinuit->mnexcm("SET ERR", arglist ,1,ierflg);
     double inx = func_pairYX->GetParameter(0); double slx = func_pairYX->GetParameter(1);
-    gMinuit->mnparm(0, "inx", inx, inxStep, -10000,10000,ierflg);
+    gMinuit->mnparm(0, "inx", inx, inxStep, inxMin,inxMax,ierflg);
     gMinuit->mnparm(1, "slx", slx, slxStep, slxMin,slxMax,ierflg);
     arglist[0] = 5000.0;
     arglist[1] = 1.0;
@@ -681,7 +691,7 @@ bool Tracker::checkResults(int nHitsSel, int icombi, int iselection){
     int insertAt = -1;
     int takeOut = -1;
     MyNamedVerbose("Tracking"," checking new result with "<<currentTrackResult.hitIndexSelected.size()<<" hits and chi2a = "<<currentTrackResult.chi2WithTestLayer);
-    for (int i = 0; i<NCAND; i++){
+    for (int i = 0; i<fMaxResults; i++){
         if (currentTrackResult.NDF<trackResults[i].NDF) continue;
         if (currentTrackResult == trackResults[i]){ // they have used the same hits (with same left/right)
             MyNamedVerbose("Tracking"," same with Cand#"<<i);
@@ -712,40 +722,4 @@ bool Tracker::checkResults(int nHitsSel, int icombi, int iselection){
     }
     trackResults[insertAt] = currentTrackResult; // put the new result in position
     return true;
-}
-
-void Tracker::SetOutput(){
-    InputOutputManager::Get().nCandidatesFound = nGoodTracks;
-    for (int iFound = 0; iFound<nGoodTracks&&iFound<NCAND; iFound++){
-        InputOutputManager::Get().nHitsS[iFound] = trackResults[iFound].NDF;
-        InputOutputManager::Get().t0Offset[iFound] = trackResults[iFound].t0Offset;
-        InputOutputManager::Get().iSelection[iFound] = trackResults[iFound].initialTrackCandidate.iSelection;
-        InputOutputManager::Get().iCombination[iFound] = trackResults[iFound].initialTrackCandidate.iCombination;
-        InputOutputManager::Get().nPairs[iFound] = trackResults[iFound].initialTrackCandidate.nPairs;
-        InputOutputManager::Get().nGoodPairs[iFound] = trackResults[iFound].initialTrackCandidate.nGoodPairs;
-        InputOutputManager::Get().interceptXInput[iFound] = trackResults[iFound].initialTrackCandidate.interceptX;
-        InputOutputManager::Get().interceptZInput[iFound] = trackResults[iFound].initialTrackCandidate.interceptZ;
-        InputOutputManager::Get().slopeXInput[iFound] = trackResults[iFound].initialTrackCandidate.slopeX;
-        InputOutputManager::Get().slopeZInput[iFound] = trackResults[iFound].initialTrackCandidate.slopeZ;
-        InputOutputManager::Get().chi2XInput[iFound] = trackResults[iFound].initialTrackCandidate.chi2X;
-        InputOutputManager::Get().chi2ZInput[iFound] = trackResults[iFound].initialTrackCandidate.chi2Z;
-        InputOutputManager::Get().chi2Input[iFound] = trackResults[iFound].initialTrackCandidate.chi2;
-        InputOutputManager::Get().pValueInput[iFound] = trackResults[iFound].initialTrackCandidate.pValue;
-        InputOutputManager::Get().interceptX[iFound] = trackResults[iFound].interceptX;
-        InputOutputManager::Get().interceptZ[iFound] = trackResults[iFound].interceptZ;
-        InputOutputManager::Get().slopeX[iFound] = trackResults[iFound].slopeX;
-        InputOutputManager::Get().slopeZ[iFound] = trackResults[iFound].slopeZ;
-        InputOutputManager::Get().chi2[iFound] = trackResults[iFound].chi2;
-        InputOutputManager::Get().pValue[iFound] = trackResults[iFound].pValue;
-        InputOutputManager::Get().chi2WithTestLayer[iFound] = trackResults[iFound].chi2WithTestLayer;
-        for (int lid = 0; lid<NLAY; lid++){
-            InputOutputManager::Get().hitIndexSelected[lid][iFound] = -1;
-        }
-        for (size_t iHit = 0; iHit<trackResults[iFound].hitIndexSelected.size(); iHit++){
-            int lid = InputOutputManager::Get().LayerID->at(trackResults[iFound].hitIndexSelected[iHit]);
-            if (lid>=0&&lid<NLAY){
-                InputOutputManager::Get().hitIndexSelected[lid][iFound] = trackResults[iFound].hitIndexSelected[iHit];
-            }
-        }
-    }
 }
