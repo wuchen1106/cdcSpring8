@@ -210,6 +210,8 @@ int Tracker::fitting(int iselection){
         Reset2DFunctions();
         fittingSucceeded = Fit2D(2.5,false,chi2X,chi2Z); // fit without error
         if (!fittingSucceeded) continue;
+        fittingSucceeded = Fit2D(2.5,true,chi2X,chi2Z); // fit with error
+        if (!fittingSucceeded) continue;
         ///    If fitting result is not good, reset the initial values of these 2-D functions
         ///    Do the 2-D fitting again based on the previous fitting resutl with error set
         //if (!fromSource||!inScint) Reset2DFunctions();
