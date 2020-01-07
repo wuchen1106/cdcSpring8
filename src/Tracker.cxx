@@ -541,6 +541,24 @@ void Tracker::pickUpHitsForFitting(double slx, double inx, double slz, double in
         int    theLR = 0;
         double thefitD = 0;
         double theDD = 0;
+        bool   foundPickedHit = false;
+        for (size_t iPick = 0; iPick<pairableLayers->size(); iPick++){ // do we have a picked hit in this layer? if yes just pick it (or not if it's too bad) and move on
+            int iHit = pickIndex[iPick];
+            int pickLid = InputOutputManager::Get().LayerID->at(iHit);
+            if (pickLid!=lid) continue;
+            foundPickedHit = true;
+            int wid = InputOutputManager::Get().CellID->at(iHit);
+            double doca = GeometryManager::Get().GetDOCA(lid,wid,slx,inx,slz,inz);
+            int lr = pickLR[iPick];
+            double driftD = lr>=0?hitIndexDriftDRightMap[iHit]:hitIndexDriftDLeftMap[iHit];
+            double residual = doca-driftD;
+            if (fabs(residual)<residualCut){
+                currentTrackResult.hitIndexSelected.push_back(iHit);
+                currentTrackResult.hitLeftRightSelected.push_back(lr);
+            }
+        }
+        if (foundPickedHit) continue;
+        // in case we didn't select any hit in this layer, we can check all other available hits and see if we can pick a close one
         for (size_t i = 0; i<hitLayerIndexMap->at(lid)->size(); i++){
             int iHit = hitLayerIndexMap->at(lid)->at(i);
             int wid = InputOutputManager::Get().CellID->at(iHit);
