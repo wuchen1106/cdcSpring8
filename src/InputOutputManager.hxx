@@ -122,7 +122,6 @@ public:
     double                pValuemc[NCAND];
     // trivial fitting informaiton
     int                   nPairs[NCAND];
-    int                   nGoodPairs[NCAND];
     double                interceptXInput[NCAND];
     double                interceptZInput[NCAND];
     double                slopeXInput[NCAND];

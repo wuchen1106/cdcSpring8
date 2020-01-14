@@ -108,7 +108,6 @@ bool InputOutputManager::Initialize(bool withTrivialBranches){
         fInputTrackChain->SetBranchAddress("nHitsG",&nHitsG); // number of good hits in layers other than the test one: in t region and with good peak quality
         fInputTrackChain->SetBranchAddress("nFind",&nCandidatesFound);
         fInputTrackChain->SetBranchAddress("nPairs",nPairs);
-        fInputTrackChain->SetBranchAddress("nPairsG",nGoodPairs);
         fInputTrackChain->SetBranchAddress("iSelection",iSelection);
         fInputTrackChain->SetBranchAddress("iCombination",iCombination);
         fInputTrackChain->SetBranchAddress("nHitsS",nHitsS); // number of hits selected from finding and fed to fitting
@@ -157,7 +156,6 @@ bool InputOutputManager::Initialize(bool withTrivialBranches){
         fOutputTrackTree->Branch("nHitsG",&nHitsG); // number of good hits in layers other than the test one: in t region and with good peak quality
         fOutputTrackTree->Branch("nFind",&nCandidatesFound);
         fOutputTrackTree->Branch("nPairs",nPairs,"nPairs[nFind]/I");
-        fOutputTrackTree->Branch("nPairsG",nGoodPairs,"nPairsG[nFind]/I");
         fOutputTrackTree->Branch("iSelection",iSelection,"iSelection[nFind]/I");
         fOutputTrackTree->Branch("iCombination",iCombination,"iCombination[nFind]/I");
         fOutputTrackTree->Branch("nHitsS",nHitsS,"nHitsS[nFind]/I"); // number of hits selected from finding and fed to fitting
@@ -204,7 +202,6 @@ void InputOutputManager::Reset(){ // called at the beginning of every event
     nCandidatesFound = 0;
     for (int iCand = 0; iCand<NCAND; iCand++){
         nPairs[iCand] = 0;
-        nGoodPairs[iCand] = 0;
         iSelection[iCand] = -1;
         iCombination[iCand] = -1;
         nHitsS[iCand] = 0;
@@ -306,7 +303,6 @@ bool InputOutputManager::SetTrack(int iFound, const TrackResult * trackResult){
     iSelection[iFound] = trackResult->initialTrackCandidate.iSelection;
     iCombination[iFound] = trackResult->initialTrackCandidate.iCombination;
     nPairs[iFound] = trackResult->initialTrackCandidate.nPairs;
-    nGoodPairs[iFound] = trackResult->initialTrackCandidate.nGoodPairs;
     interceptXInput[iFound] = trackResult->initialTrackCandidate.interceptX;
     interceptZInput[iFound] = trackResult->initialTrackCandidate.interceptZ;
     slopeXInput[iFound] = trackResult->initialTrackCandidate.slopeX;
