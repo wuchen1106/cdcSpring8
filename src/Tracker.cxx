@@ -214,7 +214,7 @@ int Tracker::tracking(int iLayer,size_t & iselection){
         }
     }
     else{
-        for (size_t i = -1; i<hitLayerIndexMap->at(iLayer)->size(); i++){ // -1 means don't pick up any hit in this layer 
+        for (int i = -1; i<hitLayerIndexMap->at(iLayer)->size(); i++){ // -1 means don't pick up any hit in this layer 
             if (i==-1){
                 MyNamedVerbose("Tracking",Form(" => skip layer %d",iLayer));
                 tracking(iLayer+1,iselection);
