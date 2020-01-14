@@ -19,7 +19,6 @@ std::vector<int>               * Tracker::hitIndexInTestLayer = NULL;
 std::vector<std::vector<int>*> * Tracker::hitLayerIndexMap = NULL;
 TrackResult Tracker::currentTrackResult;
 TrackResult Tracker::trackResults[NCAND];
-std::map <int, int>    Tracker::hitIndexLeftRight;
 std::map <int, double> Tracker::hitIndexDriftDLeftMap;
 std::map <int, double> Tracker::hitIndexDriftDRightMap;
 TGraphErrors * Tracker::graph_pairX = NULL;
@@ -76,13 +75,9 @@ Tracker::~Tracker(){
 void Tracker::Reset(){
     for (int iLayer = 0; iLayer<NLAY; iLayer++){
         hitLayerIndexMap->at(iLayer)->clear();
-        pickIndex[iLayer] = -1;
-        pickLR[iLayer] = 0;
     }
     pairs.clear();
-    nPicks = 0;
     hitIndexInTestLayer->clear();
-    hitIndexLeftRight.clear();
     hitIndexDriftDLeftMap.clear();
     hitIndexDriftDRightMap.clear();
 
@@ -144,7 +139,7 @@ bool Tracker::GoodForTracking(){
 }
 
 void Tracker::Print(TString opt){
-    if (opt.Contains("h")){
+    if (opt.Contains("h")){ // hits
         for (int lid = 0; lid<NLAY; lid++){
             printf(" => Layer %d: %d good hits\n",lid,(int)hitLayerIndexMap->at(lid)->size());
             for (size_t iter = 0; iter<hitLayerIndexMap->at(lid)->size(); iter++){
@@ -154,7 +149,15 @@ void Tracker::Print(TString opt){
             }
         }
     }
-    if (opt.Contains("t")){
+    if (opt.Contains("p")){ // picked hits
+        for (size_t iter = 0; iter<currentTrackResult.hitIndexSelected.size(); iter++){
+            int iHit = currentTrackResult.hitIndexSelected[iter];
+            int lid = InputOutputManager::Get().LayerID->at(iHit);
+            int wid = InputOutputManager::Get().CellID->at(iHit);
+            printf(" => Pick %d: %d [%d,%d]\n",iHit,lid,wid);
+        }
+    }
+    if (opt.Contains("t")){ // tracking results
         printf("There is %d tracks reconstructed!\n",nGoodTracks);
         for (int i = 0; i<nGoodTracks; i++){
             printf(" => %d: [%d,%d] NDF %d chi2 %.1e chi2-wt %.1e slx %.2e slz %.2e inx %.2e inz %.2e\n",
@@ -181,7 +184,6 @@ void Tracker::updateDriftD(){
             double driftT = InputOutputManager::Get().DriftT->at(hitIndex); // TODO LATER: should add t0 offset consideration here
             int wid = InputOutputManager::Get().CellID->at(hitIndex);
             int status;
-            hitIndexLeftRight[hitIndex] = 0;
             hitIndexDriftDLeftMap[hitIndex] = XTManager::Get().t2x(driftT,lid,wid,-1,status);
             hitIndexDriftDRightMap[hitIndex] = XTManager::Get().t2x(driftT,lid,wid,1,status);
             MyNamedVerbose("Tracking","   ["<<lid<<","<<wid<<"] "<<driftT<<" ns, L "<<hitIndexDriftDLeftMap[hitIndex]<<" mm, R "<<hitIndexDriftDRightMap[hitIndex]<<" mm");
@@ -195,7 +197,6 @@ void Tracker::updateDriftD(){
         int lid = InputOutputManager::Get().LayerID->at(hitIndex);
         int wid = InputOutputManager::Get().CellID->at(hitIndex);
         int status;
-        hitIndexLeftRight[hitIndex] = 0;
         hitIndexDriftDLeftMap[hitIndex] = XTManager::Get().t2x(driftT,lid,wid,-1,status);
         hitIndexDriftDRightMap[hitIndex] = XTManager::Get().t2x(driftT,lid,wid,1,status);
         MyNamedVerbose("Tracking","   ["<<lid<<","<<wid<<"] "<<driftT<<" ns, L "<<hitIndexDriftDLeftMap[hitIndex]<<" mm, R "<<hitIndexDriftDRightMap[hitIndex]<<" mm");
@@ -204,9 +205,8 @@ void Tracker::updateDriftD(){
 
 int Tracker::tracking(int iLayer,size_t & iselection){
     if (iLayer == NLAY-1){ // finished picking hits
-        MyNamedVerbose("Tracking",Form(" Finished picking selection %d:",(int)iselection));
         int nHitsSel = currentTrackResult.hitIndexSelected.size();
-        MyNamedVerbose("Tracking",Form("       Selection finished: nHitsSel = %d",nHitsSel));
+        MyNamedVerbose("Tracking",Form(" Finished picking selection %d: nHitsSel = %d",(int)iselection,nHitsSel));
         int NDF = nHitsSel-currentTrackResult.nPars();
         if (NDF>=1){
             fitting(iselection);
@@ -214,7 +214,7 @@ int Tracker::tracking(int iLayer,size_t & iselection){
         }
     }
     else{
-        for (int i = -1; i<hitLayerIndexMap->at(iLayer)->size(); i++){ // -1 means don't pick up any hit in this layer 
+        for (int i = -1; i<(int)hitLayerIndexMap->at(iLayer)->size(); i++){ // -1 means don't pick up any hit in this layer 
             if (i==-1){
                 MyNamedVerbose("Tracking",Form(" => skip layer %d",iLayer));
                 tracking(iLayer+1,iselection);
@@ -222,12 +222,12 @@ int Tracker::tracking(int iLayer,size_t & iselection){
             else{
                 int ihit = hitLayerIndexMap->at(iLayer)->at(i);
                 int wid = InputOutputManager::Get().CellID->at(ihit);
-                MyNamedVerbose("Tracking",Form(" => pick # %d, layer %d, wire %d, hit[%d], ihit = %d",nPicks,iLayer,wid,(int)i,ihit));
-                pickIndex[nPicks] = hitLayerIndexMap->at(iLayer)->at(i);
-                pickLR[nPicks] = 0;
-                nPicks++;
+                MyNamedVerbose("Tracking",Form(" => pick %d: %d [%d,%d]",(int)(currentTrackResult.hitIndexSelected.size()),ihit,iLayer,wid));
+                currentTrackResult.hitIndexSelected.push_back(ihit);
+                currentTrackResult.hitLeftRightSelected.push_back(0);
                 tracking(iLayer+1,iselection);
-                nPicks--;
+                currentTrackResult.hitIndexSelected.pop_back();
+                currentTrackResult.hitLeftRightSelected.pop_back();
             }
         }
     }
@@ -237,8 +237,9 @@ int Tracker::tracking(int iLayer,size_t & iselection){
 int Tracker::fitting(int iselection){
     int nPairsMin = ParameterManager::Get().TrackingParameters.nPairsMin;
     /// calculate number of left/right combinations and start a loop in them and tracking them individually
-    int ncombi = pow(2,nPicks);
-    MyNamedVerbose("Tracking",Form("  %d picked layers -> %d L/R combinations",(int)nPicks,ncombi));
+    int ncombi = pow(2,currentTrackResult.hitIndexSelected.size());
+    if (Log::GetLogLevel("Tracking")>=Log::VerboseLevel) Print("p");
+    MyNamedVerbose("Tracking",Form("  %d picked hits -> %d L/R combinations",(int)(currentTrackResult.hitIndexSelected.size()),ncombi));
     for (int icombi = 0; icombi<ncombi; icombi++){ // each combination corresponds to a unique left/right selection set
         MyNamedVerbose("Tracking",Form("     combi %d",icombi));
         bool fittingSucceeded = false;
@@ -348,11 +349,10 @@ int Tracker::fitting(int iselection){
 }
 
 void Tracker::setLeftRight(int icombi){
-    for (size_t iPick = 0; iPick<nPicks; iPick++){
-        int ilr = (icombi&(1<<iPick))>>iPick;
+    for (size_t iter = 0; iter<currentTrackResult.hitIndexSelected.size(); iter++){
+        int ilr = (icombi&(1<<iter))>>iter;
         if (ilr==0) ilr = -1; // 1 for right, -1 for left
-        pickLR[iPick] = ilr;
-        hitIndexLeftRight[pickIndex[iPick]] = ilr;
+        currentTrackResult.hitLeftRightSelected[iter] = ilr;
     }
 }
 
@@ -422,12 +422,12 @@ bool Tracker::fit2D(double safetyFactor, bool fitWithError, double & chi2X, doub
 ///////////////////////////////////////////////////////////////////////////////////////
 void Tracker::formPairs(){
     pairs.clear();
-    // NOTE: this is assuming pickIndex is sorted in order of layer ID
-    for (int ipick = 0; ipick<nPicks-1; ipick++){
-        int ihit = pickIndex[ipick];
-        int jhit = pickIndex[ipick+1];
-        int iLR = pickLR[ipick];
-        int jLR = pickLR[ipick+1];
+    // NOTE: this is assuming hitIndexSelected is sorted in order of layer ID
+    for (int iter = 0; iter<(int)currentTrackResult.hitIndexSelected.size()-1; iter++){
+        int ihit = currentTrackResult.hitIndexSelected[iter];
+        int jhit = currentTrackResult.hitIndexSelected[iter+1];
+        int iLR = currentTrackResult.hitLeftRightSelected[iter];
+        int jLR = currentTrackResult.hitLeftRightSelected[iter+1];
         Pair aPair(ihit,jhit,iLR,jLR);
         if(updatePairPosition(aPair)){
             pairs.push_back(aPair);

@@ -43,17 +43,12 @@ public:
 
     static std::vector<int> * hitIndexInTestLayer; /// store a list of hit indice in the test layer
     static std::vector<std::vector<int>*> * hitLayerIndexMap; /// store a list of hit indice for each layer (except for the test layer)
-    static std::map <int, int>    hitIndexLeftRight; /// store a map from hit index to left right. Set upon l/r combination selection
     static std::map <int, double> hitIndexDriftDLeftMap; /// store a map from hit index to driftD calculated by XT left side (negative value)
     static std::map <int, double> hitIndexDriftDRightMap; /// store a map from hit index to driftD calculated by XT right side (positive value)
 
     int nGoodTracks; /// number of good tracks found in one event
 
-    // By defining the array like this we are admitting that we only pick maximumly 1 hit in one layer
-    int nPicks; /// number of picked hits
-    int pickIndex[NLAY]; /// the current picked hit index
-    int pickLR[NLAY]; /// left right of the picked hits
-    std::vector<Pair> pairs; /// a list of layers that may form a pair, i.e. having a non-empty neighbour layer (excluding test layer)
+    std::vector<Pair> pairs; /// a list of pairs for current fitting
 
 private:
     void updateDriftD(); /// calculate drift distance for every hit in the given maps with both left and right assumptions. Will be stored in hitIndexDriftDLeftMap and hitIndexDriftDRightMap
