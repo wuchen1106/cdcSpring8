@@ -209,7 +209,6 @@ int main(int argc, char** argv){
         tracker->Reset();
         N_trigger++; // triggered event
 
-        if (Log::GetLogLevel("Tracking")>=Log::VerboseLevel) InputOutputManager::Get().Print("h"); // print hit level information
         /// 1. Scan raw hits, select a list of them according to predefined cuts
         InputOutputManager::Get().nHitsG = 0; // number of good hits in this event
         int iPeakOverCut = 0;
@@ -234,6 +233,7 @@ int main(int argc, char** argv){
             tracker->hitLayerIndexMap->at(lid)->push_back(iHit);
             InputOutputManager::Get().nHitsG++;
         }
+        if (Log::GetLogLevel("Tracking")>=Log::VerboseLevel) InputOutputManager::Get().Print("h"); // print hit level information
 
         /// 2. Do tracking if it's good
         if (tracker->GoodForTracking()){
