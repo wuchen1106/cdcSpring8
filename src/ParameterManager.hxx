@@ -21,7 +21,6 @@ public:
     virtual ~TrackingPara(){};
     void Print();
     int    nHitsGMax;
-    int    nHitsSMin;
     int    nPairsMin;
     int    t0shift0;
     int    t0shift1;

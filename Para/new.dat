@@ -14,7 +14,6 @@ tracking parameters
 *******************************************************************************                                                                   
 
     < tracking.nHitsGMax = 25 > If this value is too large, track finding will take a long time.
-    < tracking.nHitsSMin = 5 >
     < tracking.nPairsMin = 3 >
     < tracking.t0shift0 = 0  >
     < tracking.t0shift1 = 0 >
