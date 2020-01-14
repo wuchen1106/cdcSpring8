@@ -26,6 +26,20 @@
 #include "Track.hxx"
 #include "Hit.hxx"
 
+/// This application takes charge of:
+/// 1. Load user instruction from option and relative parameters from ParameterManager and
+///    * only hit selection related ones and
+///    * input output related parameters and 
+///    * geometry
+/// 2. Prepare geometry, and apply alignment if needed
+/// 2. Loop in events - hits, select good hits for each layer and set to the tracker
+/// 3. Ask the tracker to do the tracking given the selected good hits
+///    * tracker doesn't write to InputOutputManager but tracker can read hit information from InputOutputManager
+///    * all tracking-related parameters are loaded here through ParameterManager
+/// 4. Set the track results to InputOutputManager and fill into the output file
+///    * number of candidates is adjustable: 0 means to save all and without sorting. others mean to save up to that number with sorting
+///    * sorting method is also adjustable TODO: implement it
+
 //============================================================
 // Global controlers
 MyProcessManager * pMyProcessManager;
@@ -162,14 +176,9 @@ int main(int argc, char** argv){
     if (!success) {MyError("Cannot initialize InputOutputManager"); return 1;}
 
     // for track finding
-    double sciYup = GeometryManager::Get().GetScintillator()->Yup;
-    double sciYdown = GeometryManager::Get().GetScintillator()->Ydown;
     int lidStart = ParameterManager::Get().TrackingParameters.lidStart;
     int lidStop = ParameterManager::Get().TrackingParameters.lidStop;
     int blindLayer = ParameterManager::Get().TrackingParameters.BlindLayer;
-    int nPairsMin = ParameterManager::Get().TrackingParameters.nPairsMin;
-    int nHitsGMax = ParameterManager::Get().TrackingParameters.nHitsGMax;
-    int nHitsSMin = ParameterManager::Get().TrackingParameters.nHitsSMin;
     double sumCut = ParameterManager::Get().TrackingParameters.sumCut;
     double aaCut = ParameterManager::Get().TrackingParameters.aaCut;
     double tmin = ParameterManager::Get().TrackingParameters.tmin;
@@ -200,8 +209,9 @@ int main(int argc, char** argv){
         tracker->Reset();
         N_trigger++; // triggered event
 
+        if (Log::GetLogLevel("Tracking")>=Log::VerboseLevel) InputOutputManager::Get().Print("h"); // print hit level information
         /// 1. Scan raw hits, select a list of them according to predefined cuts
-        int nHitsG = 0; // number of good hits in this event
+        InputOutputManager::Get().nHitsG = 0; // number of good hits in this event
         int iPeakOverCut = 0;
         for (int iHit = 0; iHit<InputOutputManager::Get().nHits; iHit++){
             double aa = InputOutputManager::Get().ADCsumAll->at(iHit);
@@ -222,54 +232,29 @@ int main(int argc, char** argv){
             iPeakOverCut++; // only count peaks over size cut
             if (driftT<tmin||driftT>tmax) continue;
             tracker->hitLayerIndexMap->at(lid)->push_back(iHit);
-            nHitsG++;
+            InputOutputManager::Get().nHitsG++;
         }
-        InputOutputManager::Get().nHitsG = nHitsG;
-        /// 2. Loop in layers, see how many pairs we can get and create a list of layers to form pairs
-        ///    In this way we are picking one hit per layer to form pairs and get initial track parameters.
-        ///    This tracking scheme doesn't support the tracking of multiple co-existing tracks.
-        int nPairs = 0;
-        for (int lid = lidStart; lid <= lidStop; lid++){
-            if (tracker->hitLayerIndexMap->at(lid)->size()==0) continue;
-            if(lid+1<=lidStop && tracker->hitLayerIndexMap->at(lid+1)->size()>0){
-                tracker->pairableLayers->push_back(lid);
-                nPairs++;
-            }
-            else if (lid-1>=lidStart && tracker->hitLayerIndexMap->at(lid-1)->size()>0){
-                tracker->pairableLayers->push_back(lid);
-            }
-        }
-        if (Log::GetLogLevel("Tracking")>=Log::VerboseLevel) InputOutputManager::Get().Print("h"); // print hit level information
-        int nSelections = 1;
-        int nPairableLayers = tracker->pairableLayers->size();
-        for (int ipick = 0; ipick<nPairableLayers; ipick++){
-            int lid = tracker->pairableLayers->at(ipick);
-            int nhits = tracker->hitLayerIndexMap->at(lid)->size();
-            MyNamedInfo("Tracking",Form("  pairable layer %d: %d good hits",lid,nhits));
-            for (int i = 0; i<nhits; i++){
-                int iHit = tracker->hitLayerIndexMap->at(lid)->at(i);
-                int wid = InputOutputManager::Get().CellID->at(iHit);
-                MyNamedInfo("Tracking","    "<<iHit<<" ["<<lid<<","<<wid<<"]");
-            }
-            nSelections*=nhits;
-        }
-        MyNamedInfo("Tracking",Form("  => %d pairs from %d good hits in %d pairable layers with %d possible selections * 2^%d L/R combinations",nPairs,nHitsG,nPairableLayers,nSelections,nPairableLayers));
 
-        /// 3. Apply tracking after cuts
-        if (nHitsG<=nHitsGMax&&nPairs>=nPairsMin){
-            N_found++; // found a track
+        /// 2. Do tracking if it's good
+        if (tracker->GoodForTracking()){
+            if (Log::GetLogLevel("Tracking")>=Log::VerboseLevel) tracker->Print("h"); // print hit level information
+            N_found++; // found a candidate event
+            MyNamedVerbose("Tracking","Applicable event, start tracking");
             tracker->DoTracking();
-
-            /// 4. Check and save tracking results.
-            int nHitsS = tracker->trackResults[0].hitIndexSelected.size();
-            MyNamedVerbose("Tracking","Good event, after tracking, "<<nHitsS<<" hits selected in the first candidate");
-            if (nHitsS>=nHitsSMin){
+            /// 3. Check and save tracking results.
+            if (tracker->nGoodTracks>0){
+                int nHitsS = tracker->trackResults[0].hitIndexSelected.size();
+                MyNamedVerbose("Tracking","Good event, after tracking, "<<nHitsS<<" hits selected in the first candidate");
+                if (Log::GetLogLevel("Tracking")>=Log::VerboseLevel) tracker->Print("t"); // print track level information
                 N_good++; // successfully reconstructed a track
             }
         }
+        else{
+            MyNamedVerbose("Tracking","Not applicable for tracking");
+        }
 
         InputOutputManager::Get().nCandidatesFound = tracker->nGoodTracks;
-        for (int iFound = 0; iFound<tracker->nGoodTracks&&iFound<NCAND; iFound++){
+        for (int iFound = 0; iFound<tracker->nGoodTracks&&iFound<NCAND; iFound++){ // NCAND is defined in InputOutputManager as the maximum capacity
             InputOutputManager::Get().SetTrack(iFound,&(tracker->trackResults[iFound]));
         }
 

@@ -8,6 +8,7 @@
 #include <TBackCompFitter.h>
 
 #include "GeometryManager.hxx"
+#include "ParameterManager.hxx"
 #include "Tracker.hxx"
 #include "InputOutputManager.hxx"
 #include "BeamManager.hxx"
@@ -26,9 +27,6 @@ TGraphErrors * Tracker::graph_pairZ = NULL;
 
 Tracker::Tracker(InputOutputManager::InputHitType theInputHitType):
     nGoodTracks(0),
-    pairableLayers(0),
-    nPairs(0),
-    nGoodPairs(0),
     func_pairYX(0),
     func_pairYZ(0),
     inputHitType(theInputHitType),
@@ -58,7 +56,6 @@ Tracker::Tracker(InputOutputManager::InputHitType theInputHitType):
     for (int iLayer = 0; iLayer<NLAY; iLayer++){
         hitLayerIndexMap->push_back(new std::vector<int>);
     }
-    pairableLayers = new std::vector<int>;
     func_pairYX = new TF1("func_pairYX","pol1",GeometryManager::Get().fScintillator->Ydown,GeometryManager::Get().fScintillator->Yup); // x VS y
     func_pairYZ = new TF1("func_pairYZ","pol1",GeometryManager::Get().fScintillator->Ydown,GeometryManager::Get().fScintillator->Yup); // x VS y
     graph_pairZ = new TGraphErrors(NLAY);
@@ -70,7 +67,6 @@ Tracker::Tracker(InputOutputManager::InputHitType theInputHitType):
 Tracker::~Tracker(){
     delete hitIndexInTestLayer;
     delete hitLayerIndexMap;
-    delete pairableLayers;
     delete func_pairYX;
     delete func_pairYZ;
     delete graph_pairX;
@@ -82,21 +78,16 @@ void Tracker::Reset(){
         hitLayerIndexMap->at(iLayer)->clear();
         pickIndex[iLayer] = -1;
         pickLR[iLayer] = 0;
-        pickWireY[iLayer] = 0;
-        pairX[iLayer] = 0;
-        pairY[iLayer] = 0;
-        pairZ[iLayer] = 0;
     }
+    pairs.clear();
+    nPicks = 0;
     hitIndexInTestLayer->clear();
-    pairableLayers->clear();
     hitIndexLeftRight.clear();
     hitIndexDriftDLeftMap.clear();
     hitIndexDriftDRightMap.clear();
 
     nGoodTracks = 0;
     currentTrackResult.Reset();
-    nPairs = 0;
-    nGoodPairs = 0;
     func_pairYX->SetParameter(0,0);
     func_pairYX->SetParameter(1,0);
     func_pairYZ->SetParameter(0,0);
@@ -109,7 +100,7 @@ void Tracker::Reset(){
     inxMax = BeamManager::Get().beamInx+BeamManager::Get().beamInxRange;
     inzMin = BeamManager::Get().beamInz-BeamManager::Get().beamInzRange;
     inzMax = BeamManager::Get().beamInz+BeamManager::Get().beamInzRange;
-    double stereoAngle = fabs(GeometryManager::Get().fChamber->wire_theta[4][4]); // TODO: this is just a random cell to get a stereo angle
+    double stereoAngle = fabs(GeometryManager::Get().fChamber->wire_theta[4][4]); // TODO Later: this is just a random cell to get a stereo angle
     inxStep = 0.01; // 10 um as the torlerance
     inzStep = inxStep/tan(stereoAngle);
     slxStep = inxStep/GeometryManager::Get().fChamber->chamberHeight;
@@ -130,10 +121,55 @@ bool Tracker::SetMaxResults(int n){
     return true;
 }
 
+bool Tracker::GoodForTracking(){
+    int nPairsMin = ParameterManager::Get().TrackingParameters.nPairsMin;
+    int nHitsGMax = ParameterManager::Get().TrackingParameters.nHitsGMax;
+    /// Loop in layers, see how many pairs we can get at most
+    /// TODO Later: In this way we are picking one hit per layer to form pairs. Support to multiple tracks/turns/in-out-segments to be implemented.
+    int nPairs = 0;
+    int nHitsG = 0;
+    int prev_lid = -1;
+    for (int lid = 0; lid < NLAY; lid++){
+        if (hitLayerIndexMap->at(lid)->size()==0) continue;
+        nHitsG += hitLayerIndexMap->at(lid)->size();
+        if (prev_lid>=0&&(lid+prev_lid)%2==1){ // a cross between even and odd layer
+            nPairs++;
+        }
+        prev_lid = lid;
+    }
+    if (nPairs<nPairsMin||nHitsG>nHitsGMax){
+        return false;
+    }
+    return true;
+}
+
+void Tracker::Print(TString opt){
+    if (opt.Contains("h")){
+        for (int lid = 0; lid<NLAY; lid++){
+            printf(" => Layer %d: %d good hits\n",lid,(int)hitLayerIndexMap->at(lid)->size());
+            for (size_t iter = 0; iter<hitLayerIndexMap->at(lid)->size(); iter++){
+                int iHit = hitLayerIndexMap->at(lid)->at(iter);
+                int wid = InputOutputManager::Get().CellID->at(iHit);
+                printf("    %d [%d,%d]\n",iHit,lid,wid);
+            }
+        }
+    }
+    if (opt.Contains("t")){
+        printf("There is %d tracks reconstructed!\n",nGoodTracks);
+        for (int i = 0; i<nGoodTracks; i++){
+            printf(" => %d: [%d,%d] NDF %d chi2 %.1e chi2-wt %.1e slx %.2e slz %.2e inx %.2e inz %.2e\n",
+                    i,trackResults[i].iSelection,trackResults[i].iCombination,
+                    (int)trackResults[i].NDF,trackResults[i].chi2,trackResults[i].chi2WithTestLayer,
+                    trackResults[i].slopeX,trackResults[i].slopeZ,trackResults[i].interceptX,trackResults[i].interceptZ);
+        }
+    }
+}
+
 void Tracker::DoTracking(){
     size_t nSelections = 0;
+    // TODO: add another loop on t0 if needed
     updateDriftD();
-    tracking(0,nSelections); // 0 means starting from the 1st pick; nSelections is the number of possible choices by selecting one hit per layer;
+    tracking(0,nSelections); // 0 means starting from layer 0; nSelections is the number of possible choices by selecting one hit per layer (will increment in the recursive function)
 }
 
 void Tracker::updateDriftD(){
@@ -142,7 +178,7 @@ void Tracker::updateDriftD(){
         size_t nHits = hitLayerIndexMap->at(lid)->size();
         for (size_t i = 0; i<nHits; i++){
             int hitIndex = hitLayerIndexMap->at(lid)->at(i);
-            double driftT = InputOutputManager::Get().DriftT->at(hitIndex); // FIXME: should add t0 offset consideration here
+            double driftT = InputOutputManager::Get().DriftT->at(hitIndex); // TODO LATER: should add t0 offset consideration here
             int wid = InputOutputManager::Get().CellID->at(hitIndex);
             int status;
             hitIndexLeftRight[hitIndex] = 0;
@@ -155,7 +191,7 @@ void Tracker::updateDriftD(){
     MyNamedVerbose("Tracking","  Assigning driftD to "<<hitIndexInTestLayer->size()<<" hits in test layer");
     for (size_t i = 0; i<nHits; i++){
         int hitIndex = hitIndexInTestLayer->at(i);
-        double driftT = InputOutputManager::Get().DriftT->at(hitIndex); // FIXME: should add t0 offset consideration here
+        double driftT = InputOutputManager::Get().DriftT->at(hitIndex); // TODO LATER: should add t0 offset consideration here
         int lid = InputOutputManager::Get().LayerID->at(hitIndex);
         int wid = InputOutputManager::Get().CellID->at(hitIndex);
         int status;
@@ -166,154 +202,145 @@ void Tracker::updateDriftD(){
     }
 }
 
-int Tracker::tracking(size_t ipick,size_t & iselection){
-    if (ipick == pairableLayers->size()){ // finished picking hits
+int Tracker::tracking(int iLayer,size_t & iselection){
+    if (iLayer == NLAY-1){ // finished picking hits
         MyNamedVerbose("Tracking",Form(" Finished picking selection %d:",(int)iselection));
-        fitting(iselection);
-        iselection++;
+        int nHitsSel = currentTrackResult.hitIndexSelected.size();
+        MyNamedVerbose("Tracking",Form("       Selection finished: nHitsSel = %d",nHitsSel));
+        int NDF = nHitsSel-currentTrackResult.nPars();
+        if (NDF>=1){
+            fitting(iselection);
+            iselection++;
+        }
     }
     else{
-        int lid = pairableLayers->at(ipick);
-        for (size_t i = 0; i<hitLayerIndexMap->at(lid)->size(); i++){
-            int ihit = hitLayerIndexMap->at(lid)->at(i);
-            int wid = InputOutputManager::Get().CellID->at(ihit);
-            MyNamedVerbose("Tracking",Form(" => pick # %d, layer %d, wire %d, hit[%d], ihit = %d",(int)ipick,lid,wid,(int)i,ihit));
-            pickIndex[ipick] = hitLayerIndexMap->at(lid)->at(i);
-            pickLR[ipick] = 0;
-            pickWireY[ipick] = 0;
-            pairX[ipick] = 0;
-            pairY[ipick] = 0;
-            pairZ[ipick] = 0;
-            tracking(ipick+1,iselection);
+        for (size_t i = -1; i<hitLayerIndexMap->at(iLayer)->size(); i++){ // -1 means don't pick up any hit in this layer 
+            if (i==-1){
+                MyNamedVerbose("Tracking",Form(" => skip layer %d",iLayer));
+                tracking(iLayer+1,iselection);
+            }
+            else{
+                int ihit = hitLayerIndexMap->at(iLayer)->at(i);
+                int wid = InputOutputManager::Get().CellID->at(ihit);
+                MyNamedVerbose("Tracking",Form(" => pick # %d, layer %d, wire %d, hit[%d], ihit = %d",nPicks,iLayer,wid,(int)i,ihit));
+                pickIndex[nPicks] = hitLayerIndexMap->at(iLayer)->at(i);
+                pickLR[nPicks] = 0;
+                nPicks++;
+                tracking(iLayer+1,iselection);
+                nPicks--;
+            }
         }
     }
     return 0;
 }
 
 int Tracker::fitting(int iselection){
+    int nPairsMin = ParameterManager::Get().TrackingParameters.nPairsMin;
     /// calculate number of left/right combinations and start a loop in them and tracking them individually
-    size_t nPicks = pairableLayers->size();
     int ncombi = pow(2,nPicks);
     MyNamedVerbose("Tracking",Form("  %d picked layers -> %d L/R combinations",(int)nPicks,ncombi));
     for (int icombi = 0; icombi<ncombi; icombi++){ // each combination corresponds to a unique left/right selection set
         MyNamedVerbose("Tracking",Form("     combi %d",icombi));
-        nPairs = 0;
-        nGoodPairs = 0;
         bool fittingSucceeded = false;
         double chi2X = 0;
         double chi2Z = 0;
 
-        /// 1. Prepare drift distance according to left/right choices
-        setLeftRight(icombi); // set left right for picked hits
+        /// 1. set left right for picked hits and reset 2D functions
+        setLeftRight(icombi);
+        reset2DFunctions();
 
-        /// 2. Get pair positions according to the initial track parameter. Fit pairs on Y-X and Y-Z plains
-        Reset2DFunctions();
-        fittingSucceeded = Fit2D(2.5,false,chi2X,chi2Z); // fit without error
+        /// 2.A Fit pairs on Y-X and Y-Z plains without error
+        formPairs(); // using the default 2D functions
+        if (pairs.size()<nPairsMin){
+            continue;
+        }
+        fittingSucceeded = fit2D(2.5,false,chi2X,chi2Z); // fit without error
         if (!fittingSucceeded) continue;
-        fittingSucceeded = Fit2D(2.5,true,chi2X,chi2Z); // fit with error
+
+        /// 3.A Fit pairs on Y-X and Y-Z plains with
+        formPairs(); // using the newly acquired 2D functions
+        if (pairs.size()<nPairsMin){
+            continue;
+        }
+        fittingSucceeded = fit2D(2.5,true,chi2X,chi2Z); // fit with error using the initial values
         if (!fittingSucceeded) continue;
         ///    If fitting result is not good, reset the initial values of these 2-D functions
         ///    Do the 2-D fitting again based on the previous fitting resutl with error set
-        //if (!fromSource||!inScint) Reset2DFunctions();
-        //fittingSucceeded = Fit2D(2.5,true,chi2X,chi2Z,inScint,fromSource); // fit with error
+        //if (!fromSource||!inScint) reset2DFunctions();
+        //fittingSucceeded = fit2D(2.5,true,chi2X,chi2Z,inScint,fromSource); // fit with error
         //if (!fittingSucceeded) continue;
-        //if (!fromSource||!inScint) Reset2DFunctions();
-        //fittingSucceeded = Fit2D(2.5,true,chi2X,chi2Z,inScint,fromSource); // fit with error
+        //if (!fromSource||!inScint) reset2DFunctions();
+        //fittingSucceeded = fit2D(2.5,true,chi2X,chi2Z,inScint,fromSource); // fit with error
         //if (!fittingSucceeded) continue;
         /////    If fitting result is not good, reset the initial values of these 2-D functions with 1/2 offset (on Z direction)
         /////    Do the 2-D fitting again based on the previous fitting resutl with error set
-        //if (!fromSource||!inScint) Reset2DFunctions(0,0.5);
-        //fittingSucceeded = Fit2D(2.5,true,chi2X,chi2Z,inScint,fromSource); // fit with error
+        //if (!fromSource||!inScint) reset2DFunctions(0,0.5);
+        //fittingSucceeded = fit2D(2.5,true,chi2X,chi2Z,inScint,fromSource); // fit with error
         //if (!fittingSucceeded) continue;
         /////    If fitting result is not good, reset the initial values of these 2-D functions with -1/2 offset (on Z direction)
         /////    Do the 2-D fitting again based on the previous fitting resutl with error set
-        //if (!fromSource||!inScint) Reset2DFunctions(0,-0.5);
-        //fittingSucceeded = Fit2D(2.5,true,chi2X,chi2Z,inScint,fromSource); // fit with error
+        //if (!fromSource||!inScint) reset2DFunctions(0,-0.5);
+        //fittingSucceeded = fit2D(2.5,true,chi2X,chi2Z,inScint,fromSource); // fit with error
         //if (!fittingSucceeded) continue;
         
-        /// 3. If the 2-D fitting is successfull, proceed to 3-D fitting
-        if (nGoodPairs>=3){ // good candidate
-            double iinx = func_pairYX->Eval(GeometryManager::Get().ReferenceY);
-            double iinz = func_pairYZ->Eval(GeometryManager::Get().ReferenceY);
-            double islx = func_pairYX->GetParameter(1);
-            double islz = func_pairYZ->GetParameter(1);
-            ///    First, pick up closest hits (with 2 mm cut) based on the given track parameters from 2-D fitting
-            pickUpHitsForFitting(islx,iinx,islz,iinz,2); // FIXME: should tune the error limit
-            int nHitsSel = currentTrackResult.hitIndexSelected.size();
-            MyNamedVerbose("Tracking",Form("       Selection finished: nHitsSel = %d",nHitsSel));
-            ///    If the number of hits picked is greater than 5, then go to doFitting with current track parameters as initial fitting values
-            if (nHitsSel>=5){ // FIXME: should consider change the cut
-                // set the initial track candidate from 2-D fitting
-                currentTrackResult.initialTrackCandidate.nPairs = nPairs;
-                currentTrackResult.initialTrackCandidate.nGoodPairs = nGoodPairs;
-                currentTrackResult.initialTrackCandidate.iSelection = iselection;
-                currentTrackResult.initialTrackCandidate.iCombination = icombi;
-                currentTrackResult.initialTrackCandidate.interceptX = iinx;
-                currentTrackResult.initialTrackCandidate.interceptZ = iinz;
-                currentTrackResult.initialTrackCandidate.slopeX = islx;
-                currentTrackResult.initialTrackCandidate.slopeZ = islz;
-                currentTrackResult.initialTrackCandidate.chi2X = chi2X;
-                currentTrackResult.initialTrackCandidate.chi2Z = chi2Z;
-                currentTrackResult.initialTrackCandidate.hitIndexSelected = currentTrackResult.hitIndexSelected;
-                currentTrackResult.initialTrackCandidate.hitLeftRightSelected = currentTrackResult.hitLeftRightSelected;
-                currentTrackResult.initialTrackCandidate.NDF = currentTrackResult.hitIndexSelected.size()-4; // TODO: current we have 4 free track parameters, but we may change.
-                double chi2i, chi2pi, chi2ai;
-                getchi2(chi2i,chi2pi,chi2ai,islx,iinx,islz,iinz,0,true);
-                currentTrackResult.initialTrackCandidate.chi2 = chi2i;
-                currentTrackResult.initialTrackCandidate.chi2WithTestLayer = chi2ai;
-                currentTrackResult.initialTrackCandidate.pValue = chi2pi;
-                // fitting with TMinuit
-                doFitting(islx,iinx,islz,iinz);
-                double temp;
-                double slx,inx,slz,inz;
-                gMinuit->GetParameter(0, slx, temp);
-                gMinuit->GetParameter(1, inx, temp);
-                gMinuit->GetParameter(2, slz, temp);
-                gMinuit->GetParameter(3, inz, temp);
-                // update fitD
-                // reselect
-                double chi2, chi2p, chi2a;
-                getchi2(chi2,chi2p,chi2a,slx,inx,slz,inz,0,true);
-                MyNamedVerbose("Tracking",Form("       1st fitting RESULT: nHitsSel = %d, x=%.3e*(y-%.3e)+%.3e, z=%.3e*(y-%.3e)+%.3e, chi2i = %.3e chi2 = %.3e",nHitsSel,slx,GeometryManager::Get().ReferenceY,inx,slz,GeometryManager::Get().ReferenceY,inz,chi2i,chi2));
-                ///    Second, pick up hits again (with 1 mm cut) based on the updated track parameters
-                pickUpHitsForFitting(slx,inx,slz,inz,1); // FIXME: should tune the error limit
-                nHitsSel = currentTrackResult.hitIndexSelected.size();
-                ///    If the number of hits picked is greater than 5, then go to doFitting with new track parameters
-                if (nHitsSel>=5){ // FIXME: should consider change the cut
-                    // fitting with TMinuit
-                    doFitting(islx,iinx,islz,iinz);
-                    double temp;
-                    gMinuit->GetParameter(0, slx, temp);
-                    gMinuit->GetParameter(1, inx, temp);
-                    gMinuit->GetParameter(2, slz, temp);
-                    gMinuit->GetParameter(3, inz, temp);
-                    ///    At last, if the newly fitted track meets our requirments, store the fitting result.
-                    // update chi2
-                    if (inputHitType == InputOutputManager::kMCDriftD || inputHitType == InputOutputManager::kMCDriftT){
-                        // FIXME: get mc input
-                        //getchi2(chi2mc,chi2pmc,chi2amc,i_slxmc,i_inxmc,i_slzmc,i_inzmc,0,true);
-                    }
-                    getchi2(chi2,chi2p,chi2a,slx,inx,slz,inz,0,true);
-                    // check chi2 and see where the result fits
-                    MyNamedVerbose("Tracking",Form("       2nd fitting RESULT: nHitsSel = %d, x=%.3e*(y-%.3e)+%.3e, z=%.3e*(y-%.3e)+%.3e, chi2i = %.3e chi2 = %.3e",nHitsSel,slx,GeometryManager::Get().ReferenceY,inx,slz,GeometryManager::Get().ReferenceY,inz,chi2i,chi2));
-                    currentTrackResult.slopeX = slx;
-                    currentTrackResult.slopeZ = slz;
-                    currentTrackResult.interceptX = inx;
-                    currentTrackResult.interceptZ = inz;
-                    currentTrackResult.chi2 = chi2;
-                    currentTrackResult.pValue = chi2p;
-                    currentTrackResult.chi2WithTestLayer = chi2a;
-                    currentTrackResult.NDF = currentTrackResult.hitIndexSelected.size();
-                    if (fMaxResults){ // there is a limit on number of fitting results to save. Sort by chi2 and NDF.
-                        checkAndFitIn();
-                    }
-                    else{ // there is no limit (except for its capacity NCAND) we don't have to sort.
-                        if (nGoodTracks<NCAND){
-                            trackResults[nGoodTracks] = currentTrackResult;
-                            nGoodTracks++;
-                        }
-                    }
-                }
+        /// 4. If the 2-D fitting is successfull, proceed to 3-D fitting
+        double iinx = func_pairYX->Eval(GeometryManager::Get().ReferenceY);
+        double iinz = func_pairYZ->Eval(GeometryManager::Get().ReferenceY);
+        double islx = func_pairYX->GetParameter(1);
+        double islz = func_pairYZ->GetParameter(1);
+        // set the initial track candidate from 2-D fitting
+        currentTrackResult.initialTrackCandidate.nPairs = pairs.size();
+        currentTrackResult.initialTrackCandidate.iSelection = iselection;
+        currentTrackResult.initialTrackCandidate.iCombination = icombi;
+        currentTrackResult.initialTrackCandidate.interceptX = iinx;
+        currentTrackResult.initialTrackCandidate.interceptZ = iinz;
+        currentTrackResult.initialTrackCandidate.slopeX = islx;
+        currentTrackResult.initialTrackCandidate.slopeZ = islz;
+        currentTrackResult.initialTrackCandidate.chi2X = chi2X;
+        currentTrackResult.initialTrackCandidate.chi2Z = chi2Z;
+        currentTrackResult.initialTrackCandidate.hitIndexSelected = currentTrackResult.hitIndexSelected;
+        currentTrackResult.initialTrackCandidate.hitLeftRightSelected = currentTrackResult.hitLeftRightSelected;
+        currentTrackResult.initialTrackCandidate.NDF = currentTrackResult.hitIndexSelected.size()-currentTrackResult.nPars();
+        double chi2i, chi2pi, chi2ai;
+        getchi2(chi2i,chi2pi,chi2ai,islx,iinx,islz,iinz,0,true);
+        currentTrackResult.initialTrackCandidate.chi2 = chi2i;
+        currentTrackResult.initialTrackCandidate.chi2WithTestLayer = chi2ai;
+        currentTrackResult.initialTrackCandidate.pValue = chi2pi;
+        // fitting with TMinuit
+        doFitting(islx,iinx,islz,iinz);
+        double temp;
+        double slx,inx,slz,inz;
+        gMinuit->GetParameter(0, slx, temp);
+        gMinuit->GetParameter(1, inx, temp);
+        gMinuit->GetParameter(2, slz, temp);
+        gMinuit->GetParameter(3, inz, temp);
+        // update fitD
+        // reselect
+        double chi2, chi2p, chi2a;
+        getchi2(chi2,chi2p,chi2a,slx,inx,slz,inz,0,true);
+        int nHitsSel = currentTrackResult.hitIndexSelected.size();
+        MyNamedVerbose("Tracking",Form("       TMinuit fitting RESULT: nHitsSel = %d, x=%.3e*(y-%.3e)+%.3e, z=%.3e*(y-%.3e)+%.3e, chi2i = %.3e chi2 = %.3e",nHitsSel,slx,GeometryManager::Get().ReferenceY,inx,slz,GeometryManager::Get().ReferenceY,inz,chi2i,chi2));
+        ///    At last, if the newly fitted track meets our requirments, store the fitting result.
+        // update chi2
+        if (inputHitType == InputOutputManager::kMCDriftD || inputHitType == InputOutputManager::kMCDriftT){
+            // TODO LATER: get mc input
+            //getchi2(chi2mc,chi2pmc,chi2amc,i_slxmc,i_inxmc,i_slzmc,i_inzmc,0,true);
+        }
+        currentTrackResult.slopeX = slx;
+        currentTrackResult.slopeZ = slz;
+        currentTrackResult.interceptX = inx;
+        currentTrackResult.interceptZ = inz;
+        currentTrackResult.chi2 = chi2;
+        currentTrackResult.pValue = chi2p;
+        currentTrackResult.chi2WithTestLayer = chi2a;
+        currentTrackResult.NDF = currentTrackResult.hitIndexSelected.size()-currentTrackResult.nPars();
+        if (fMaxResults){ // there is a limit on number of fitting results to save. Sort by chi2 and NDF.
+            checkAndFitIn();
+        }
+        else{ // there is no limit (except for its capacity NCAND) we don't have to sort.
+            if (nGoodTracks<NCAND){
+                trackResults[nGoodTracks] = currentTrackResult;
+                nGoodTracks++;
             }
         }
     }
@@ -321,7 +348,6 @@ int Tracker::fitting(int iselection){
 }
 
 void Tracker::setLeftRight(int icombi){
-    size_t nPicks = pairableLayers->size();
     for (size_t iPick = 0; iPick<nPicks; iPick++){
         int ilr = (icombi&(1<<iPick))>>iPick;
         if (ilr==0) ilr = -1; // 1 for right, -1 for left
@@ -330,17 +356,14 @@ void Tracker::setLeftRight(int icombi){
     }
 }
 
-void Tracker::Reset2DFunctions(double MoveRatioX, double MoveRatioZ){
+void Tracker::reset2DFunctions(double MoveRatioX, double MoveRatioZ){
     func_pairYX->SetParameters(BeamManager::Get().beamInx-BeamManager::Get().beamSlx*GeometryManager::Get().ReferenceY+BeamManager::Get().beamInxRange*MoveRatioX,
                                BeamManager::Get().beamSlx);
     func_pairYZ->SetParameters(BeamManager::Get().beamInz-BeamManager::Get().beamSlz*GeometryManager::Get().ReferenceY+BeamManager::Get().beamInzRange*MoveRatioZ,
                                BeamManager::Get().beamSlz);
 }
 
-bool Tracker::Fit2D(double safetyFactor, bool fitWithError, double & chi2X, double & chi2Z ){
-    size_t nPicks = pairableLayers->size();
-    updateWirePositionOnHit(); // fix wy positions
-    if (updatePairPositions()) return false; // cannot make pairs
+bool Tracker::fit2D(double safetyFactor, bool fitWithError, double & chi2X, double & chi2Z ){
     setPairPositionGraphs(fitWithError);
 
     // prepare to do the 1-D fitting
@@ -386,91 +409,93 @@ bool Tracker::Fit2D(double safetyFactor, bool fitWithError, double & chi2X, doub
     double iinz = func_pairYZ->Eval(GeometryManager::Get().ReferenceY);
     double islx = func_pairYX->GetParameter(1);
     double islz = func_pairYZ->GetParameter(1);
-    nGoodPairs = getChi2XZ(chi2X,chi2Z);
+    int nGoodPairs = getChi2XZ(chi2X,chi2Z);
     MyNamedVerbose("Tracking",Form("       2D FITTING RESULT: nGoodPairs = %d; x=%.3e*(y-%.3e)+%.3e, chi2 = %.3e, z=%.3e*(y-%.3e)+%.3e, chi2 = %.3e",nGoodPairs,islx,GeometryManager::Get().ReferenceY,iinx,chi2X,islz,GeometryManager::Get().ReferenceY,iinz,chi2Z));
     TString debugContent = Form("%.3e %.3e %.3e %.3e",islx,iinx,islz,iinz);
-    for (int ipair = 0; ipair<nPairs; ipair++){
-        debugContent += Form(" %.3e %.3e %.3e %.3e",pairX[ipair],func_pairYX->Eval(pairY[ipair]),pairZ[ipair],func_pairYZ->Eval(pairY[ipair]));
+    for (int ipair = 0; ipair<pairs.size(); ipair++){
+        debugContent += Form(" %.3e %.3e %.3e %.3e",pairs[ipair].pairX,func_pairYX->Eval(pairs[ipair].pairY),pairs[ipair].pairZ,func_pairYZ->Eval(pairs[ipair].pairY));
     }
     MyNamedDebug("check",debugContent);
     return true;
 }
 
-int Tracker::updateWirePositionOnHit(){
-    size_t nPicks = pairableLayers->size();
-    // calculate pickWireY
-    for (size_t ipick = 0; ipick<nPicks; ipick++){
-        // Get hit information
-        int ihit = pickIndex[ipick];
-        int lid = InputOutputManager::Get().LayerID->at(ihit);
-        int wid = InputOutputManager::Get().CellID->at(ihit);
-        double wyro = GeometryManager::Get().fChamber->wire_y[lid][wid][1];
-        double wzro = GeometryManager::Get().fChamber->wire_z[lid][wid][1];
-        double wyhv = GeometryManager::Get().fChamber->wire_y[lid][wid][0];
-        double wzhv = GeometryManager::Get().fChamber->wire_z[lid][wid][0];
-        double wy = (wyro+wyhv)/2.;// assume wy
-        double wz = func_pairYZ->Eval(wy);// get wz by extrapolating the track to wy
-        // correct wy according to wz
-        wy = ((wzro-wz)*wyhv+(wz-wzhv)*wyro)/(wzro-wzhv);
-        wz = func_pairYZ->Eval(wy);
-        wy = ((wzro-wz)*wyhv+(wz-wzhv)*wyro)/(wzro-wzhv);
-        MyNamedVerbose("updateWirePositionOnHit","    pickWireY["<<ipick<<"]: "<<pickWireY[ipick]<<" -> "<<wy);
-        pickWireY[ipick] = wy;
-    }
-    return 0;
-}
-
-int Tracker::updatePairPositions(){
-    double chamberHL = GeometryManager::Get().fChamber->chamberLength/2;
-    size_t nPicks = pairableLayers->size();
-    // calculate pairXyz
-    nPairs = 0;
-    size_t ipick = 0;
-    for (; ipick<nPicks-1; ipick++){
+///////////////////////////////////////////////////////////////////////////////////////
+void Tracker::formPairs(){
+    pairs.clear();
+    // NOTE: this is assuming pickIndex is sorted in order of layer ID
+    for (int ipick = 0; ipick<nPicks-1; ipick++){
         int ihit = pickIndex[ipick];
         int jhit = pickIndex[ipick+1];
-        int lid = InputOutputManager::Get().LayerID->at(ihit);
-        int ljd = InputOutputManager::Get().LayerID->at(jhit);
-        if (lid+1!=ljd) continue; // not adjacent
-        double deltaY = pickWireY[ipick+1]-pickWireY[ipick];
-        double dd1 = pickLR[ipick]>=0?hitIndexDriftDRightMap[ihit]:hitIndexDriftDLeftMap[ihit];
-        double dd2 = pickLR[ipick+1]>=0?hitIndexDriftDRightMap[jhit]:hitIndexDriftDLeftMap[jhit];
-        int wid = InputOutputManager::Get().CellID->at(ihit);
-        int wjd = InputOutputManager::Get().CellID->at(jhit);
-        double theta1 = GeometryManager::Get().fChamber->wire_thetaX[lid][wid];
-        double theta2 = GeometryManager::Get().fChamber->wire_thetaX[ljd][wjd];
-        double sintheta12 = sin(theta1-theta2);
-        double zc_fix_slx = deltaY*func_pairYX->GetParameter(1)/(tan(theta2)-tan(theta1));
-        double xc = GeometryManager::Get().fChamber->wirecross_x[lid][wid][wjd]+dd1*sin(theta2)/(-sintheta12)+dd2*sin(theta1)/sintheta12;
-        double zc = GeometryManager::Get().fChamber->wirecross_z[lid][wid][wjd]+dd1*cos(theta2)/(-sintheta12)+dd2*cos(theta1)/sintheta12+zc_fix_slx;
-        pairX[nPairs] = xc;
-        pairY[nPairs] = (pickWireY[ipick+1]+pickWireY[ipick])/2.;
-        pairZ[nPairs] = zc;
-        MyNamedVerbose("updatePairPositions",Form("        xc = %.3e+%.3e*sin(%.3e)/(-sin(%.3e-%.3e))+%.3e*sin(%.3e)/sin(%.3e-%.3e)",GeometryManager::Get().fChamber->wirecross_x[lid][wid][wjd],dd1,theta2,theta1,theta2,dd2,theta1,theta1,theta2));
-        MyNamedVerbose("updatePairPositions",Form("        zc = %.3e+%.3e*cos(%.3e)/(-sin(%.3e-%.3e))+%.3e*cos(%.3e)/sin(%.3e-%.3e)+%.3e",GeometryManager::Get().fChamber->wirecross_z[lid][wid][wjd],dd1,theta2,theta1,theta2,dd2,theta1,theta1,theta2,zc_fix_slx));
-        MyNamedVerbose("updatePairPositions",Form("       cp[%d,%d]: w(%d,%d) i(%d,%d) dd(%f,%f) xyz(%f,%f,%f)",lid,ljd,wid,wjd,ihit,jhit,dd1,dd2,xc,(pickWireY[ipick+1]+pickWireY[ipick])/2.,zc));
-        if (zc<-chamberHL||zc>chamberHL){
-            MyNamedVerbose("updatePairPositions",Form("       BAD combination!"));
-            break;
+        int iLR = pickLR[ipick];
+        int jLR = pickLR[ipick+1];
+        Pair aPair(ihit,jhit,iLR,jLR);
+        if(updatePairPosition(aPair)){
+            pairs.push_back(aPair);
         }
-        nPairs++;
-    }
-    if (ipick==nPicks-1){
-        MyNamedVerbose("updatePairPositions",Form("       GOOD combination!"));
-        return 0;
-    }
-    else{
-        MyNamedVerbose("updatePairPositions",Form("       BAD @ %d!",(int)ipick));
-        return 1;
     }
 }
 
+///////////////////////////////////////////////////////////////////////////////////////
+bool Tracker::updatePairPosition(Pair & aPair){
+    int ihit = aPair.hitIndexL;
+    int jhit = aPair.hitIndexH;
+    int lid = InputOutputManager::Get().LayerID->at(ihit);
+    int ljd = InputOutputManager::Get().LayerID->at(jhit);
+    int wid = InputOutputManager::Get().CellID->at(ihit);
+    int wjd = InputOutputManager::Get().CellID->at(jhit);
+    double theta1 = GeometryManager::Get().fChamber->wire_thetaX[lid][wid];
+    double theta2 = GeometryManager::Get().fChamber->wire_thetaX[ljd][wjd];
+    if (theta1==theta2){
+        return false; // cannot make a cross;
+    }
+    double y1 = getWireY(lid,wid);
+    double y2 = getWireY(ljd,wjd);
+    double deltaY = y2-y1;
+    double dd1 = aPair.LRL>=0?hitIndexDriftDRightMap[ihit]:hitIndexDriftDLeftMap[ihit];
+    double dd2 = aPair.LRH>=0?hitIndexDriftDRightMap[jhit]:hitIndexDriftDLeftMap[jhit];
+    double sintheta12 = sin(theta1-theta2);
+    double zc_fix_slx = deltaY*func_pairYX->GetParameter(1)/(tan(theta2)-tan(theta1));
+    double xc = GeometryManager::Get().fChamber->wirecross_x[lid][wid][wjd]+dd1*sin(theta2)/(-sintheta12)+dd2*sin(theta1)/sintheta12;
+    double yc = (y1+y2)/2;
+    double zc = GeometryManager::Get().fChamber->wirecross_z[lid][wid][wjd]+dd1*cos(theta2)/(-sintheta12)+dd2*cos(theta1)/sintheta12+zc_fix_slx;
+    MyNamedVerbose("makePair",Form("        xc = %.3e+%.3e*sin(%.3e)/(-sin(%.3e-%.3e))+%.3e*sin(%.3e)/sin(%.3e-%.3e)",GeometryManager::Get().fChamber->wirecross_x[lid][wid][wjd],dd1,theta2,theta1,theta2,dd2,theta1,theta1,theta2));
+    MyNamedVerbose("makePair",Form("        zc = %.3e+%.3e*cos(%.3e)/(-sin(%.3e-%.3e))+%.3e*cos(%.3e)/sin(%.3e-%.3e)+%.3e",GeometryManager::Get().fChamber->wirecross_z[lid][wid][wjd],dd1,theta2,theta1,theta2,dd2,theta1,theta1,theta2,zc_fix_slx));
+    MyNamedVerbose("makePair",Form("       cp[%d,%d]: w(%d,%d) i(%d,%d) dd(%f,%f) xyz(%f,%f,%f)",lid,ljd,wid,wjd,ihit,jhit,dd1,dd2,xc,yc,zc));
+    double chamberHL = GeometryManager::Get().fChamber->chamberLength/2;
+    if (zc<-chamberHL||zc>chamberHL){
+        MyNamedVerbose("makePair",Form("       BAD @ layer %d & layer %d!",lid,ljd));
+        return false;
+    }
+    aPair.pairX = xc;
+    aPair.pairY = yc;
+    aPair.pairZ = zc;
+    return true;
+}
+
+///////////////////////////////////////////////////////////////////////////////////////
+double Tracker::getWireY(int lid, int wid){
+    double wyro = GeometryManager::Get().fChamber->wire_y[lid][wid][1];
+    double wzro = GeometryManager::Get().fChamber->wire_z[lid][wid][1];
+    double wyhv = GeometryManager::Get().fChamber->wire_y[lid][wid][0];
+    double wzhv = GeometryManager::Get().fChamber->wire_z[lid][wid][0];
+    double wy0 = (wyro+wyhv)/2.;// assume wy
+    double wz = func_pairYZ->Eval(wy0);// get wz by extrapolating the track to wy
+    // correct wy according to wz
+    double wy = ((wzro-wz)*wyhv+(wz-wzhv)*wyro)/(wzro-wzhv);
+    wz = func_pairYZ->Eval(wy);
+    wy = ((wzro-wz)*wyhv+(wz-wzhv)*wyro)/(wzro-wzhv);
+    MyNamedVerbose("getWireY","    wire["<<lid<<"]["<<wid<<"]: "<<wy0<<" -> "<<wy);
+    return wy;
+}
+
+///////////////////////////////////////////////////////////////////////////////////////
 int Tracker::setPairPositionGraphs(bool withError){
+    size_t nPairs = pairs.size();
     graph_pairX->Set(nPairs);
     graph_pairZ->Set(nPairs);
     for (int i = 0; i<nPairs; i++){
-        graph_pairX->SetPoint(i,pairY[i],pairX[i]);
-        graph_pairZ->SetPoint(i,pairY[i],pairZ[i]);
+        graph_pairX->SetPoint(i,pairs[i].pairY,pairs[i].pairX);
+        graph_pairZ->SetPoint(i,pairs[i].pairY,pairs[i].pairZ);
     }
     double errorzMax0 = 0;
     double errorzMax1 = 0;
@@ -480,8 +505,8 @@ int Tracker::setPairPositionGraphs(bool withError){
         double errorz = 0;
         double errorx = 0;
         if (withError){
-            errorz = fabs(func_pairYZ->Eval(pairY[ipair])-pairZ[ipair]);
-            errorx = fabs(func_pairYX->Eval(pairY[ipair])-pairX[ipair]);
+            errorz = fabs(func_pairYZ->Eval(pairs[ipair].pairY)-pairs[ipair].pairZ);
+            errorx = fabs(func_pairYX->Eval(pairs[ipair].pairY)-pairs[ipair].pairX);
         }
         if (errorzMax0<errorz){
             errorzMax0 = errorz;
@@ -512,11 +537,11 @@ int Tracker::getChi2XZ(double & chi2X, double & chi2Z){
     chi2X = 0;
     chi2Z = 0;
     int nCount = 0;
-    for (int ipair = 0; ipair<nPairs; ipair++){
-        double tchi2Z = pairZ[ipair]-func_pairYZ->Eval(pairY[ipair]);
-        double tchi2X = pairX[ipair]-func_pairYX->Eval(pairY[ipair]);
+    for (int ipair = 0; ipair<pairs.size(); ipair++){
+        double tchi2Z = pairs[ipair].pairZ-func_pairYZ->Eval(pairs[ipair].pairY);
+        double tchi2X = pairs[ipair].pairX-func_pairYX->Eval(pairs[ipair].pairY);
         MyNamedVerbose("Tracking",Form("           getChi2XZ pair[%d]: error x = %.3e, error z = %.3e",ipair,tchi2X,tchi2Z));
-        if (fabs(tchi2Z)<4&&fabs(tchi2X)<1){ // FIXME: error limit should be tuned
+        if (fabs(tchi2Z)<4&&fabs(tchi2X)<1){ // TODO LATER: error limit should be tuned
             chi2Z += pow(tchi2Z,2);
             chi2X += pow(tchi2X,2);
             nCount++;
@@ -529,67 +554,9 @@ int Tracker::getChi2XZ(double & chi2X, double & chi2Z){
     return nCount;
 }
 
-void Tracker::pickUpHitsForFitting(double slx, double inx, double slz, double inz, double residualCut){
-    // get track parameters from the fitted 2-D functions
-    currentTrackResult.hitIndexSelected.clear();
-    currentTrackResult.hitLeftRightSelected.clear();
-    MyNamedVerbose("Tracking","Picking up hits according to track "<<inx<<", "<<inz<<", "<<slx<<", "<<slz);
-    // loop in all hits and pick up hits close to the track
-    for (size_t lid = 0; lid<hitLayerIndexMap->size(); lid++){ // note that the hits here are already selected in main function, and hits from the test layer are not included in this map
-        double resMin = 1e9;
-        int    theHitIndex = -1;
-        int    theLR = 0;
-        double thefitD = 0;
-        double theDD = 0;
-        bool   foundPickedHit = false;
-        for (size_t iPick = 0; iPick<pairableLayers->size(); iPick++){ // do we have a picked hit in this layer? if yes just pick it (or not if it's too bad) and move on
-            int iHit = pickIndex[iPick];
-            int pickLid = InputOutputManager::Get().LayerID->at(iHit);
-            if (pickLid!=lid) continue;
-            foundPickedHit = true;
-            int wid = InputOutputManager::Get().CellID->at(iHit);
-            double doca = GeometryManager::Get().GetDOCA(lid,wid,slx,inx,slz,inz);
-            int lr = pickLR[iPick];
-            double driftD = lr>=0?hitIndexDriftDRightMap[iHit]:hitIndexDriftDLeftMap[iHit];
-            double residual = doca-driftD;
-            if (fabs(residual)<residualCut){
-                currentTrackResult.hitIndexSelected.push_back(iHit);
-                currentTrackResult.hitLeftRightSelected.push_back(lr);
-            }
-        }
-        if (foundPickedHit) continue;
-        // in case we didn't select any hit in this layer, we can check all other available hits and see if we can pick a close one
-        for (size_t i = 0; i<hitLayerIndexMap->at(lid)->size(); i++){
-            int iHit = hitLayerIndexMap->at(lid)->at(i);
-            int wid = InputOutputManager::Get().CellID->at(iHit);
-            double doca = GeometryManager::Get().GetDOCA(lid,wid,slx,inx,slz,inz);
-            int lr = 0;
-            if (hitIndexLeftRight[iHit])
-                lr = hitIndexLeftRight[iHit];
-            else
-                lr = doca>=0?1:-1;
-            double driftD = lr>=0?hitIndexDriftDRightMap[iHit]:hitIndexDriftDLeftMap[iHit];
-            double residual = doca-driftD;
-            if (fabs(residual)<fabs(resMin)){
-                resMin = residual;
-                theHitIndex = iHit;
-                theLR = lr;
-                thefitD = doca;
-                theDD = driftD;
-            }
-        }
-        if (fabs(resMin)<residualCut){
-            currentTrackResult.hitIndexSelected.push_back(theHitIndex);
-            currentTrackResult.hitLeftRightSelected.push_back(theLR);
-            int lid = InputOutputManager::Get().LayerID->at(theHitIndex);
-            int wid = InputOutputManager::Get().CellID->at(theHitIndex);
-            MyNamedVerbose("Tracking","  chose hit "<<theHitIndex<<" "<<lid<<" "<<wid<<" "<<thefitD<<" "<<theDD<<" "<<fabs(thefitD-theDD));
-        }
-    }
-}
-
 void Tracker::doFitting(double sliX, double iniX,double sliZ, double iniZ){
     if (gMinuit) delete gMinuit;
+    // TODO LATER: consider about different track representation
     gMinuit = new TMinuit(5);  //initialize TMinuit with a maximum of 5 params
     gMinuit->SetFCN(fcn);
     gMinuit->SetPrintLevel(-1); // no print
@@ -618,6 +585,7 @@ void Tracker::doFitting(double sliX, double iniX,double sliZ, double iniZ){
 
 void Tracker::fcn(int &npar, double *gin, double &f, double *par, int iflag)
 {
+    // TODO LATER: consider about different track representation
     double cp,ca;
     if (npar<4){
         MyError("Not enough par! npar = "<<npar<<", but we need 4");
@@ -634,7 +602,7 @@ void Tracker::getchi2(double &f, double & cp, double & ca, double slx, double in
     double delta;
     double dfit;
 
-    int N = -4;
+    int N = -currentTrackResult.nPars();
     for (size_t i=0;i<currentTrackResult.hitIndexSelected.size(); i++) {
         int iHit = currentTrackResult.hitIndexSelected[i];
         int lr = currentTrackResult.hitLeftRightSelected[i];
@@ -711,8 +679,8 @@ bool Tracker::checkAndFitIn(){
         if (currentTrackResult.NDF<trackResults[i].NDF) continue;
         if (currentTrackResult == trackResults[i]){ // they have used the same hits (with same left/right)
             MyNamedVerbose("Tracking"," same with Cand#"<<i);
-            // FIXME: WARNING, now we rely on total chi2 including test layer hit, a slight bias
-            // TODO: make this an option
+            // WARNING: now we rely on total chi2 including test layer hit, a slight bias
+            // TODO Later: make this an option
             if (currentTrackResult.chi2WithTestLayer<trackResults[i].chi2WithTestLayer){
                 MyNamedVerbose("Tracking","   better than Cand#"<<i<<" with "<<trackResults[i].hitIndexSelected.size()<<" hits and chi2a = "<<trackResults[i].chi2WithTestLayer);
                 takeOut = i;

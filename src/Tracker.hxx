@@ -16,9 +16,27 @@ public:
     Tracker(InputOutputManager::InputHitType theInputHitType);
     virtual ~Tracker();
 
+    struct Pair{
+        Pair(int ihit, int jhit, int iLR, int jLR){
+            hitIndexL = ihit;
+            hitIndexH = jhit;
+            LRL = iLR;
+            LRH = jLR;
+        };
+        int    hitIndexL;
+        int    hitIndexH;
+        int    LRL;
+        int    LRH;
+        double pairX;
+        double pairY;
+        double pairZ;
+    };
+
     void Reset(); /// prepare for tracking. To be called every time given a new event
+    bool GoodForTracking(); /// check if we can perform tracking on this event based on the current hit list we get in hitLayerIndexMap
     void DoTracking(); /// the main function to get tracks from the current event with given hit list
     bool SetMaxResults(int n); /// set the maximum number of fitting results to keep while fitting one event; 0 means to save all without sorting.
+    void Print(TString opt = "");
 
     static TrackResult currentTrackResult;
     static TrackResult trackResults[NCAND];
@@ -30,26 +48,24 @@ public:
     static std::map <int, double> hitIndexDriftDRightMap; /// store a map from hit index to driftD calculated by XT right side (positive value)
 
     int nGoodTracks; /// number of good tracks found in one event
-    std::vector<int> * pairableLayers; /// a list of layers that may form a pair, i.e. having a non-empty neighbour layer (excluding test layer)
-    int nPairs; /// number of pairs found in current pick & l/r combination
-    int nGoodPairs; /// number of good pairs that is roughly on track. Updated after Fit2D is called.
-    int pickIndex[NLAY]; /// the current picked hit index sorted in the sequence of pairable layers
+
+    // By defining the array like this we are admitting that we only pick maximumly 1 hit in one layer
+    int nPicks; /// number of picked hits
+    int pickIndex[NLAY]; /// the current picked hit index
     int pickLR[NLAY]; /// left right of the picked hits
-    double pickWireY[NLAY]; /// wire position upon the picked hits
-    double pairX[NLAY]; /// pair position (formed by one hit from the given layer and another from its upper layer)
-    double pairY[NLAY]; /// pair position (formed by one hit from the given layer and another from its upper layer)
-    double pairZ[NLAY]; /// pair position (formed by one hit from the given layer and another from its upper layer)
+    std::vector<Pair> pairs; /// a list of layers that may form a pair, i.e. having a non-empty neighbour layer (excluding test layer)
 
 private:
     void updateDriftD(); /// calculate drift distance for every hit in the given maps with both left and right assumptions. Will be stored in hitIndexDriftDLeftMap and hitIndexDriftDRightMap
-    int tracking(size_t ipick,size_t & iselection); /// Loop in the given layer hits map (hitLayerIndexMap). Called recursively. In each iterative call, pick up one hit per layer in the pairable layers and perform tracking.
+    int tracking(int iLayer,size_t & iselection); /// Loop in the given layer hits map (hitLayerIndexMap). Called recursively. In each iterative call, pick up one hit per layer in the pairable layers and perform tracking.
     int fitting(int iselection); /// Fit the track with given selection of hits
     void setLeftRight(int icombi); /// get left/right from the given combination index
-    void Reset2DFunctions(double MoveRatioX = 0, double MoveRatioZ = 0); /// get the 2-D fitting functions reset to default values. If arguements are given, then set with them as offsets
-    bool Fit2D(double safetyFactor, bool fitWithError, double & chi2X, double & chi2Z); /// do the 2-D fitting. Firstly the pair positions will be recalculated according to the track parameters stored in the 2-D functions. Then the 2-D functions will be updated with new fitting.
+    void reset2DFunctions(double MoveRatioX = 0, double MoveRatioZ = 0); /// get the 2-D fitting functions reset to default values. If arguements are given, then set with them as offsets
+    bool fit2D(double safetyFactor, bool fitWithError, double & chi2X, double & chi2Z); /// do the 2-D fitting. Firstly the pair positions will be recalculated according to the track parameters stored in the 2-D functions. Then the 2-D functions will be updated with new fitting.
     int getChi2XZ(double & chi2x, double & chi2z); /// get chi2 for 2-D fittings on Y-X and Y-Z planes
-    int updateWirePositionOnHit(); /// update wire positions upon picked hits
-    int updatePairPositions(); /// update pair positions
+    void formPairs(void);
+    bool updatePairPosition(Pair & aPair); /// update pair position
+    double getWireY(int lid, int wid);
     int setPairPositionGraphs(bool noError); /// set graphs containing pair position information; errors are given by calculating the difference between pair position and the current track parameters (stored in the 2-D fitting functions)
     void pickUpHitsForFitting(double slx, double inx, double slz, double inz, double residualCut); /// pick up hits from the given layer hit map. In each layer only choose one hit that is closest to the track. Abandon some layers if the residual of the closest one is still too larger than the residual cut
     void doFitting(double sliX, double iniX,double sliZ, double iniZ); /// The core part of track fitting
