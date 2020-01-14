@@ -15,6 +15,8 @@ public:
         interceptZ = 0;
     };
 
+    int    nPars(void){return 4;};
+
     double slopeX;
     double slopeZ;
     double interceptX;
