@@ -184,7 +184,7 @@ void Tracker::updateDriftD(){
             hitIndexLeftRight[hitIndex] = 0;
             hitIndexDriftDLeftMap[hitIndex] = XTManager::Get().t2x(driftT,lid,wid,-1,status);
             hitIndexDriftDRightMap[hitIndex] = XTManager::Get().t2x(driftT,lid,wid,1,status);
-            MyNamedVerbose("Tracking","   ["<<lid<<","<<wid<<"] "<<driftT<<" ns, R "<<hitIndexDriftDLeftMap[hitIndex]<<" mm, L "<<hitIndexDriftDRightMap[hitIndex]<<" mm");
+            MyNamedVerbose("Tracking","   ["<<lid<<","<<wid<<"] "<<driftT<<" ns, L "<<hitIndexDriftDLeftMap[hitIndex]<<" mm, R "<<hitIndexDriftDRightMap[hitIndex]<<" mm");
         }
     }
     size_t nHits = hitIndexInTestLayer->size();
@@ -198,7 +198,7 @@ void Tracker::updateDriftD(){
         hitIndexLeftRight[hitIndex] = 0;
         hitIndexDriftDLeftMap[hitIndex] = XTManager::Get().t2x(driftT,lid,wid,-1,status);
         hitIndexDriftDRightMap[hitIndex] = XTManager::Get().t2x(driftT,lid,wid,1,status);
-        MyNamedVerbose("Tracking","   ["<<lid<<","<<wid<<"] "<<driftT<<" ns, R "<<hitIndexDriftDLeftMap[hitIndex]<<" mm, L "<<hitIndexDriftDRightMap[hitIndex]<<" mm");
+        MyNamedVerbose("Tracking","   ["<<lid<<","<<wid<<"] "<<driftT<<" ns, L "<<hitIndexDriftDLeftMap[hitIndex]<<" mm, R "<<hitIndexDriftDRightMap[hitIndex]<<" mm");
     }
 }
 
