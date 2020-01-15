@@ -698,17 +698,19 @@ bool Tracker::checkAndFitIn(){
             }
         }
     }
-    if (insertAt<0&&nGoodTracks<fMaxResults){ // not on the list but the list is not full yet
-        MyNamedVerbose("Tracking"," ==> Add to the end, nGoodTracks "<<nGoodTracks<<" -> "<<(nGoodTracks+1));
-        insertAt = nGoodTracks; // put the current result at the bottom
-        takeOut = -1; // kick out nobody
-        nGoodTracks++; // now we have a new track result
+    if (insertAt<0){ // no one on the list is worse than the new result
+        if (nGoodTracks<fMaxResults){ // the list is not full yet
+            MyNamedVerbose("Tracking"," ==> Add to the end, nGoodTracks "<<nGoodTracks<<" -> "<<(nGoodTracks+1));
+            insertAt = nGoodTracks; // put the current result at the bottom
+            takeOut = -1; // kick out nobody
+            nGoodTracks++; // now we have a new track result
+        }
+        else{ // the list is full
+            MyNamedVerbose("Tracking"," ==> Skip");
+            return false;
+        }
     }
-    if (insertAt<0){ // not good enough to be inserted nor added
-        MyNamedVerbose("Tracking"," ==> Skip");
-        return false;
-    }
-    if (takeOut<0){ // no one to be replaced by the new result
+    else if (takeOut<0){ // no one to be replaced by the new result
         if(nGoodTracks==fMaxResults){ // the list is full, then kick out the last one
             takeOut = nGoodTracks-1;
             MyNamedVerbose("Tracking"," ==> Insert at "<<insertAt<<", take out the last one at "<<takeOut);
