@@ -8,14 +8,14 @@ public:
     Track();
     virtual ~Track(){};
 
-    void Reset(){
+    virtual void Reset(){
         slopeX = 0;
         slopeZ = 0;
         interceptX = 0;
         interceptZ = 0;
     };
 
-    int    nPars(void){return 4;};
+    virtual int nPars(void) {return 4;};
 
     double slopeX;
     double slopeZ;
@@ -27,37 +27,45 @@ class TrackCandidate:public Track{
 public:
     TrackCandidate();
     virtual ~TrackCandidate(){};
+    virtual void Reset();
 
-    void Reset();
     bool operator ==(const TrackCandidate &);
-    void operator =(const TrackCandidate &);
 
     std::vector<int> hitIndexSelected;
     std::vector<int> hitLeftRightSelected;
-
-    double t0Offset;
-    int    nPairs;
-    int    nGoodPairs;
     int    iSelection;
     int    iCombination;
-    double chi2X;
-    double chi2Z;
+    double t0Offset;
     double chi2;
     double chi2WithTestLayer;
     double pValue;
     double NDF;
 };
 
-class TrackResult:public TrackCandidate{
+class Track2D:public TrackCandidate{
 public:
-    TrackResult();
-    virtual ~TrackResult(){};
+    Track2D();
+    virtual ~Track2D(){};
+    virtual void Reset();
 
-    void Reset();
-    bool operator ==(const TrackResult &);
-    void operator =(const TrackResult &);
+    Track2D& operator =(const TrackCandidate &);
 
-    TrackCandidate initialTrackCandidate;
+    virtual int nPars(void) {return 2;};
+
+    int    nPairs;
+    double chi2X;
+    double chi2Z;
+};
+
+class Track3D:public TrackCandidate{
+public:
+    Track3D();
+    virtual ~Track3D(){};
+    virtual void Reset();
+
+    Track3D& operator =(const TrackCandidate &);
+
+    virtual int nPars(void) {return 4;};
 };
 
 #endif

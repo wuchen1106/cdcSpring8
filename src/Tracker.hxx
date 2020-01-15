@@ -38,8 +38,10 @@ public:
     bool SetMaxResults(int n); /// set the maximum number of fitting results to keep while fitting one event; 0 means to save all without sorting.
     void Print(TString opt = "");
 
-    static TrackResult currentTrackResult;
-    static TrackResult trackResults[NCAND];
+    static Track2D currentTrack2D;
+    static Track3D currentTrack3D;
+    static Track2D track2Ds[NCAND];
+    static Track3D track3Ds[NCAND];
 
     static std::vector<int> * hitIndexInTestLayer; /// store a list of hit indice in the test layer
     static std::vector<std::vector<int>*> * hitLayerIndexMap; /// store a list of hit indice for each layer (except for the test layer)
@@ -69,7 +71,7 @@ private:
     static void fcnX(int &npar, double *gin, double &f, double *par, int iflag);
     static void getchi2(double &f, double & cp, double & ca, double slx, double inx, double slz, double inz, double t0offset,bool all); /// get the chi2 with 3-D track
     static double getchi2Graph(TGraphErrors* graph, double v0, double sl);
-    bool checkAndFitIn(); /// Compare the new tracking result (written in currentTrackResult) with previously stored candidates (stored in trackResults) and put it in correct place if needed.
+    bool checkAndFitIn(); /// Compare the new tracking result (written in currentTrack3D & currentTrack2D) with previously stored candidates (stored in track3Ds & track2Ds) and put it in correct place if needed.
 
     TF1 * func_pairYX; /// 2-D fitting function on Y-X plane
     TF1 * func_pairYZ; /// 2-D fitting function on Y-Z plane

@@ -243,7 +243,7 @@ int main(int argc, char** argv){
             tracker->DoTracking();
             /// 3. Check and save tracking results.
             if (tracker->nGoodTracks>0){
-                int nHitsS = tracker->trackResults[0].hitIndexSelected.size();
+                int nHitsS = tracker->track3Ds[0].hitIndexSelected.size();
                 MyNamedVerbose("Tracking","Good event, after tracking, "<<nHitsS<<" hits selected in the first candidate");
                 if (Log::GetLogLevel("Tracking")>=Log::VerboseLevel) tracker->Print("t"); // print track level information
                 N_good++; // successfully reconstructed a track
@@ -255,7 +255,7 @@ int main(int argc, char** argv){
 
         InputOutputManager::Get().nCandidatesFound = tracker->nGoodTracks;
         for (int iFound = 0; iFound<tracker->nGoodTracks&&iFound<NCAND; iFound++){ // NCAND is defined in InputOutputManager as the maximum capacity
-            InputOutputManager::Get().SetTrack(iFound,&(tracker->trackResults[iFound]));
+            InputOutputManager::Get().SetTrack(iFound,&(tracker->track3Ds[iFound]),&(tracker->track2Ds[iFound]));
         }
 
         InputOutputManager::Get().Fill();

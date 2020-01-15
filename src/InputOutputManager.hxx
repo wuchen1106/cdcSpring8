@@ -10,7 +10,8 @@
 class TFile;
 class TTree;
 class TChain;
-class TrackResult;
+class Track2D;
+class Track3D;
 
 /// This class is to manage input and output files
 ///
@@ -63,7 +64,7 @@ public:
     void GetEntry(Long64_t iEntry); ///< Should be called at the beginning of every event AFTER Reset()
     Long64_t GetEntries();
     void Print(TString opt = "");
-    bool SetTrack(int iFound, const TrackResult * trackResult);
+    bool SetTrack(int iFound, const Track3D* track3D, const Track2D* track2D = 0);
 
     /// flags about which to read and which to write
     bool                  readRawFile;

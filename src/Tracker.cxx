@@ -17,8 +17,10 @@
 
 std::vector<int>               * Tracker::hitIndexInTestLayer = NULL;
 std::vector<std::vector<int>*> * Tracker::hitLayerIndexMap = NULL;
-TrackResult Tracker::currentTrackResult;
-TrackResult Tracker::trackResults[NCAND];
+Track2D Tracker::currentTrack2D;
+Track3D Tracker::currentTrack3D;
+Track2D Tracker::track2Ds[NCAND];
+Track3D Tracker::track3Ds[NCAND];
 std::map <int, double> Tracker::hitIndexDriftDLeftMap;
 std::map <int, double> Tracker::hitIndexDriftDRightMap;
 TGraphErrors * Tracker::graph_pairX = NULL;
@@ -82,7 +84,8 @@ void Tracker::Reset(){
     hitIndexDriftDRightMap.clear();
 
     nGoodTracks = 0;
-    currentTrackResult.Reset();
+    currentTrack2D.Reset();
+    currentTrack3D.Reset();
     func_pairYX->SetParameter(0,0);
     func_pairYX->SetParameter(1,0);
     func_pairYZ->SetParameter(0,0);
@@ -150,8 +153,8 @@ void Tracker::Print(TString opt){
         }
     }
     if (opt.Contains("p")){ // picked hits
-        for (size_t iter = 0; iter<currentTrackResult.hitIndexSelected.size(); iter++){
-            int iHit = currentTrackResult.hitIndexSelected[iter];
+        for (size_t iter = 0; iter<currentTrack3D.hitIndexSelected.size(); iter++){
+            int iHit = currentTrack3D.hitIndexSelected[iter];
             int lid = InputOutputManager::Get().LayerID->at(iHit);
             int wid = InputOutputManager::Get().CellID->at(iHit);
             printf(" => Pick %d: %d [%d,%d]\n",(int)iter,iHit,lid,wid);
@@ -161,9 +164,9 @@ void Tracker::Print(TString opt){
         printf("There is %d tracks reconstructed!\n",nGoodTracks);
         for (int i = 0; i<nGoodTracks; i++){
             printf(" => %d: [%d,%d] NDF %d chi2 %.1e chi2-wt %.1e slx %.2e slz %.2e inx %.2e inz %.2e\n",
-                    i,trackResults[i].iSelection,trackResults[i].iCombination,
-                    (int)trackResults[i].NDF,trackResults[i].chi2,trackResults[i].chi2WithTestLayer,
-                    trackResults[i].slopeX,trackResults[i].slopeZ,trackResults[i].interceptX,trackResults[i].interceptZ);
+                    i,track2Ds[i].iSelection,track2Ds[i].iCombination,
+                    (int)track3Ds[i].NDF,track3Ds[i].chi2,track3Ds[i].chi2WithTestLayer,
+                    track3Ds[i].slopeX,track3Ds[i].slopeZ,track3Ds[i].interceptX,track3Ds[i].interceptZ);
         }
     }
 }
@@ -205,9 +208,9 @@ void Tracker::updateDriftD(){
 
 int Tracker::tracking(int iLayer,size_t & iselection){
     if (iLayer == NLAY-1){ // finished picking hits
-        int nHitsSel = currentTrackResult.hitIndexSelected.size();
+        int nHitsSel = currentTrack3D.hitIndexSelected.size();
         MyNamedVerbose("Tracking",Form(" Finished picking selection %d: nHitsSel = %d",(int)iselection,nHitsSel));
-        int NDF = nHitsSel-currentTrackResult.nPars();
+        int NDF = nHitsSel-currentTrack3D.nPars();
         if (NDF>=1){
             fitting(iselection);
             iselection++;
@@ -222,12 +225,12 @@ int Tracker::tracking(int iLayer,size_t & iselection){
             else{
                 int ihit = hitLayerIndexMap->at(iLayer)->at(i);
                 int wid = InputOutputManager::Get().CellID->at(ihit);
-                MyNamedVerbose("Tracking",Form(" => pick %d: %d [%d,%d]",(int)(currentTrackResult.hitIndexSelected.size()),ihit,iLayer,wid));
-                currentTrackResult.hitIndexSelected.push_back(ihit);
-                currentTrackResult.hitLeftRightSelected.push_back(0);
+                MyNamedVerbose("Tracking",Form(" => pick %d: %d [%d,%d]",(int)(currentTrack3D.hitIndexSelected.size()),ihit,iLayer,wid));
+                currentTrack3D.hitIndexSelected.push_back(ihit);
+                currentTrack3D.hitLeftRightSelected.push_back(0);
                 tracking(iLayer+1,iselection);
-                currentTrackResult.hitIndexSelected.pop_back();
-                currentTrackResult.hitLeftRightSelected.pop_back();
+                currentTrack3D.hitIndexSelected.pop_back();
+                currentTrack3D.hitLeftRightSelected.pop_back();
             }
         }
     }
@@ -237,10 +240,12 @@ int Tracker::tracking(int iLayer,size_t & iselection){
 int Tracker::fitting(int iselection){
     int nPairsMin = ParameterManager::Get().TrackingParameters.nPairsMin;
     /// calculate number of left/right combinations and start a loop in them and tracking them individually
-    int ncombi = pow(2,currentTrackResult.hitIndexSelected.size());
+    int ncombi = pow(2,currentTrack3D.hitIndexSelected.size());
     if (Log::GetLogLevel("Tracking")>=Log::VerboseLevel) Print("p");
-    MyNamedVerbose("Tracking",Form("  %d picked hits -> %d L/R combinations",(int)(currentTrackResult.hitIndexSelected.size()),ncombi));
+    MyNamedVerbose("Tracking",Form("  %d picked hits -> %d L/R combinations",(int)(currentTrack3D.hitIndexSelected.size()),ncombi));
     for (int icombi = 0; icombi<ncombi; icombi++){ // each combination corresponds to a unique left/right selection set
+        currentTrack3D.iSelection = iselection;
+        currentTrack3D.iCombination = icombi;
         MyNamedVerbose("Tracking",Form("     combi %d",icombi));
         bool fittingSucceeded = false;
         double chi2X = 0;
@@ -258,7 +263,7 @@ int Tracker::fitting(int iselection){
         fittingSucceeded = fit2D(2.5,false,chi2X,chi2Z); // fit without error
         if (!fittingSucceeded) continue;
 
-        /// 3.A Fit pairs on Y-X and Y-Z plains with
+        /// 3.B Fit pairs on Y-X and Y-Z plains with error
         formPairs(); // using the newly acquired 2D functions
         if (pairs.size()<nPairsMin){
             continue;
@@ -290,23 +295,20 @@ int Tracker::fitting(int iselection){
         double islx = func_pairYX->GetParameter(1);
         double islz = func_pairYZ->GetParameter(1);
         // set the initial track candidate from 2-D fitting
-        currentTrackResult.initialTrackCandidate.nPairs = pairs.size();
-        currentTrackResult.initialTrackCandidate.iSelection = iselection;
-        currentTrackResult.initialTrackCandidate.iCombination = icombi;
-        currentTrackResult.initialTrackCandidate.interceptX = iinx;
-        currentTrackResult.initialTrackCandidate.interceptZ = iinz;
-        currentTrackResult.initialTrackCandidate.slopeX = islx;
-        currentTrackResult.initialTrackCandidate.slopeZ = islz;
-        currentTrackResult.initialTrackCandidate.chi2X = chi2X;
-        currentTrackResult.initialTrackCandidate.chi2Z = chi2Z;
-        currentTrackResult.initialTrackCandidate.hitIndexSelected = currentTrackResult.hitIndexSelected;
-        currentTrackResult.initialTrackCandidate.hitLeftRightSelected = currentTrackResult.hitLeftRightSelected;
-        currentTrackResult.initialTrackCandidate.NDF = currentTrackResult.hitIndexSelected.size()-currentTrackResult.nPars();
+        currentTrack2D = (TrackCandidate)currentTrack3D;
+        currentTrack2D.nPairs = pairs.size();
+        currentTrack2D.interceptX = iinx;
+        currentTrack2D.interceptZ = iinz;
+        currentTrack2D.slopeX = islx;
+        currentTrack2D.slopeZ = islz;
+        currentTrack2D.chi2X = chi2X;
+        currentTrack2D.chi2Z = chi2Z;
+        currentTrack2D.NDF = currentTrack2D.nPairs-currentTrack2D.nPars();
         double chi2i, chi2pi, chi2ai;
         getchi2(chi2i,chi2pi,chi2ai,islx,iinx,islz,iinz,0,true);
-        currentTrackResult.initialTrackCandidate.chi2 = chi2i;
-        currentTrackResult.initialTrackCandidate.chi2WithTestLayer = chi2ai;
-        currentTrackResult.initialTrackCandidate.pValue = chi2pi;
+        currentTrack2D.chi2 = chi2i;
+        currentTrack2D.chi2WithTestLayer = chi2ai;
+        currentTrack2D.pValue = chi2pi;
         // fitting with TMinuit
         doFitting(islx,iinx,islz,iinz);
         double temp;
@@ -319,7 +321,7 @@ int Tracker::fitting(int iselection){
         // reselect
         double chi2, chi2p, chi2a;
         getchi2(chi2,chi2p,chi2a,slx,inx,slz,inz,0,true);
-        int nHitsSel = currentTrackResult.hitIndexSelected.size();
+        int nHitsSel = currentTrack3D.hitIndexSelected.size();
         MyNamedVerbose("Tracking",Form("       TMinuit fitting RESULT: nHitsSel = %d, x=%.3e*(y-%.3e)+%.3e, z=%.3e*(y-%.3e)+%.3e, chi2i = %.3e chi2 = %.3e",nHitsSel,slx,GeometryManager::Get().ReferenceY,inx,slz,GeometryManager::Get().ReferenceY,inz,chi2i,chi2));
         ///    At last, if the newly fitted track meets our requirments, store the fitting result.
         // update chi2
@@ -327,20 +329,20 @@ int Tracker::fitting(int iselection){
             // TODO LATER: get mc input
             //getchi2(chi2mc,chi2pmc,chi2amc,i_slxmc,i_inxmc,i_slzmc,i_inzmc,0,true);
         }
-        currentTrackResult.slopeX = slx;
-        currentTrackResult.slopeZ = slz;
-        currentTrackResult.interceptX = inx;
-        currentTrackResult.interceptZ = inz;
-        currentTrackResult.chi2 = chi2;
-        currentTrackResult.pValue = chi2p;
-        currentTrackResult.chi2WithTestLayer = chi2a;
-        currentTrackResult.NDF = currentTrackResult.hitIndexSelected.size()-currentTrackResult.nPars();
+        currentTrack3D.slopeX = slx;
+        currentTrack3D.slopeZ = slz;
+        currentTrack3D.interceptX = inx;
+        currentTrack3D.interceptZ = inz;
+        currentTrack3D.chi2 = chi2;
+        currentTrack3D.pValue = chi2p;
+        currentTrack3D.chi2WithTestLayer = chi2a;
+        currentTrack3D.NDF = currentTrack3D.hitIndexSelected.size()-currentTrack3D.nPars();
         if (fMaxResults){ // there is a limit on number of fitting results to save. Sort by chi2 and NDF.
             checkAndFitIn();
         }
         else{ // there is no limit (except for its capacity NCAND) we don't have to sort.
             if (nGoodTracks<NCAND){
-                trackResults[nGoodTracks] = currentTrackResult;
+                track3Ds[nGoodTracks] = currentTrack3D;
                 nGoodTracks++;
             }
         }
@@ -349,10 +351,10 @@ int Tracker::fitting(int iselection){
 }
 
 void Tracker::setLeftRight(int icombi){
-    for (size_t iter = 0; iter<currentTrackResult.hitIndexSelected.size(); iter++){
+    for (size_t iter = 0; iter<currentTrack3D.hitIndexSelected.size(); iter++){
         int ilr = (icombi&(1<<iter))>>iter;
         if (ilr==0) ilr = -1; // 1 for right, -1 for left
-        currentTrackResult.hitLeftRightSelected[iter] = ilr;
+        currentTrack3D.hitLeftRightSelected[iter] = ilr;
     }
 }
 
@@ -423,11 +425,11 @@ bool Tracker::fit2D(double safetyFactor, bool fitWithError, double & chi2X, doub
 void Tracker::formPairs(){
     pairs.clear();
     // NOTE: this is assuming hitIndexSelected is sorted in order of layer ID
-    for (int iter = 0; iter<(int)currentTrackResult.hitIndexSelected.size()-1; iter++){
-        int ihit = currentTrackResult.hitIndexSelected[iter];
-        int jhit = currentTrackResult.hitIndexSelected[iter+1];
-        int iLR = currentTrackResult.hitLeftRightSelected[iter];
-        int jLR = currentTrackResult.hitLeftRightSelected[iter+1];
+    for (int iter = 0; iter<(int)currentTrack3D.hitIndexSelected.size()-1; iter++){
+        int ihit = currentTrack3D.hitIndexSelected[iter];
+        int jhit = currentTrack3D.hitIndexSelected[iter+1];
+        int iLR = currentTrack3D.hitLeftRightSelected[iter];
+        int jLR = currentTrack3D.hitLeftRightSelected[iter+1];
         Pair aPair(ihit,jhit,iLR,jLR);
         if(updatePairPosition(aPair)){
             pairs.push_back(aPair);
@@ -602,10 +604,10 @@ void Tracker::getchi2(double &f, double & cp, double & ca, double slx, double in
     double delta;
     double dfit;
 
-    int N = -currentTrackResult.nPars();
-    for (size_t i=0;i<currentTrackResult.hitIndexSelected.size(); i++) {
-        int iHit = currentTrackResult.hitIndexSelected[i];
-        int lr = currentTrackResult.hitLeftRightSelected[i];
+    int N = -currentTrack3D.nPars();
+    for (size_t i=0;i<currentTrack3D.hitIndexSelected.size(); i++) {
+        int iHit = currentTrack3D.hitIndexSelected[i];
+        int lr = currentTrack3D.hitLeftRightSelected[i];
         int lid = InputOutputManager::Get().LayerID->at(iHit);
         int wid = InputOutputManager::Get().CellID->at(iHit);
         dfit = GeometryManager::Get().GetDOCA(lid,wid,slx,inx,slz,inz);
@@ -672,25 +674,26 @@ double Tracker::getchi2Graph(TGraphErrors* graph, double v0, double sl){
 }
 
 bool Tracker::checkAndFitIn(){
-    MyNamedVerbose("Tracking"," checking new result with "<<currentTrackResult.hitIndexSelected.size()<<" hits and chi2a = "<<currentTrackResult.chi2WithTestLayer);
+    MyNamedVerbose("Tracking"," checking new result with "<<currentTrack3D.hitIndexSelected.size()<<" hits and chi2a = "<<currentTrack3D.chi2WithTestLayer);
     int insertAt = -1;
     int takeOut = -1;
     // scan through current results rank list
     // mark insertAt as the rank of the new result (keep -1 if not good enough or the list is empty)
     // mark takeOut if the new result if identical to one on the list and the new result is better (keep -1 if not)
+    // TODO: add currentTrack2D??
     for (int i = 0; i<nGoodTracks; i++){
-        if (currentTrackResult.NDF<trackResults[i].NDF) continue;
+        if (currentTrack3D.NDF<track3Ds[i].NDF) continue;
         // WARNING: now we rely on total chi2 including test layer hit, a slight bias
         // TODO Later: make this an option
-        if (currentTrackResult.NDF>trackResults[i].NDF
-                ||currentTrackResult.chi2WithTestLayer<trackResults[i].chi2WithTestLayer){
-            MyNamedVerbose("Tracking"," better than Cand#"<<i<<" with "<<trackResults[i].hitIndexSelected.size()<<" hits and chi2a = "<<trackResults[i].chi2WithTestLayer);
+        if (currentTrack3D.NDF>track3Ds[i].NDF
+                ||currentTrack3D.chi2WithTestLayer<track3Ds[i].chi2WithTestLayer){
+            MyNamedVerbose("Tracking"," better than Cand#"<<i<<" with "<<track3Ds[i].hitIndexSelected.size()<<" hits and chi2a = "<<track3Ds[i].chi2WithTestLayer);
             if (insertAt<0){ // modify the index to be insert at if it's not set yet. Keep on searching in case we may find a bad candidate later with the same hits.
                 insertAt = i;
             }
-            if (currentTrackResult == trackResults[i]){ // they have used the same hits (with same left/right)
+            if (currentTrack3D == track3Ds[i]){ // they have used the same hits (with same left/right)
                 MyNamedVerbose("Tracking"," same with Cand#"<<i);
-                MyNamedVerbose("Tracking","   better than Cand#"<<i<<" with "<<trackResults[i].hitIndexSelected.size()<<" hits and chi2a = "<<trackResults[i].chi2WithTestLayer);
+                MyNamedVerbose("Tracking","   better than Cand#"<<i<<" with "<<track3Ds[i].hitIndexSelected.size()<<" hits and chi2a = "<<track3Ds[i].chi2WithTestLayer);
                 takeOut = i;
                 break; // no need to continue
             }
@@ -705,8 +708,10 @@ bool Tracker::checkAndFitIn(){
         takeOut = nGoodTracks-1;
     }
     for (int i = takeOut; i>insertAt; i--){ // move the candidates back by 1 and kick out the one to be replaced
-        trackResults[i] = trackResults[i-1];
+        track3Ds[i] = track3Ds[i-1];
+        track2Ds[i] = track2Ds[i-1];
     }
-    trackResults[insertAt] = currentTrackResult; // put the new result in position
+    track3Ds[insertAt] = currentTrack3D; // put the new result in position
+    track2Ds[insertAt] = currentTrack2D; // put the new result in position
     return true;
 }

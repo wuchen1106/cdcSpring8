@@ -293,39 +293,42 @@ void InputOutputManager::Print(TString opt){
     }
 }
 
-bool InputOutputManager::SetTrack(int iFound, const TrackResult * trackResult){
+bool InputOutputManager::SetTrack(int iFound, const Track3D * track3D, const Track2D * track2D){
     if (iFound>=NCAND){
         MyError("The fitting result index "<<iFound<<" exceeded the maximum capacity "<<NCAND);
         return false;
     }
-    nHitsS[iFound] = trackResult->NDF;
-    t0Offset[iFound] = trackResult->t0Offset;
-    iSelection[iFound] = trackResult->initialTrackCandidate.iSelection;
-    iCombination[iFound] = trackResult->initialTrackCandidate.iCombination;
-    nPairs[iFound] = trackResult->initialTrackCandidate.nPairs;
-    interceptXInput[iFound] = trackResult->initialTrackCandidate.interceptX;
-    interceptZInput[iFound] = trackResult->initialTrackCandidate.interceptZ;
-    slopeXInput[iFound] = trackResult->initialTrackCandidate.slopeX;
-    slopeZInput[iFound] = trackResult->initialTrackCandidate.slopeZ;
-    chi2XInput[iFound] = trackResult->initialTrackCandidate.chi2X;
-    chi2ZInput[iFound] = trackResult->initialTrackCandidate.chi2Z;
-    chi2Input[iFound] = trackResult->initialTrackCandidate.chi2;
-    pValueInput[iFound] = trackResult->initialTrackCandidate.pValue;
-    interceptX[iFound] = trackResult->interceptX;
-    interceptZ[iFound] = trackResult->interceptZ;
-    slopeX[iFound] = trackResult->slopeX;
-    slopeZ[iFound] = trackResult->slopeZ;
-    chi2[iFound] = trackResult->chi2;
-    pValue[iFound] = trackResult->pValue;
-    chi2WithTestLayer[iFound] = trackResult->chi2WithTestLayer;
+    iSelection[iFound] = track3D->iSelection;
+    iCombination[iFound] = track3D->iCombination;
+    nHitsS[iFound] = track3D->NDF;
+    t0Offset[iFound] = track3D->t0Offset;
+    interceptX[iFound] = track3D->interceptX;
+    interceptZ[iFound] = track3D->interceptZ;
+    slopeX[iFound] = track3D->slopeX;
+    slopeZ[iFound] = track3D->slopeZ;
+    chi2[iFound] = track3D->chi2;
+    pValue[iFound] = track3D->pValue;
+    chi2WithTestLayer[iFound] = track3D->chi2WithTestLayer;
     for (int lid = 0; lid<NLAY; lid++){
         hitIndexSelected[lid][iFound] = -1;
     }
-    for (size_t iHit = 0; iHit<trackResult->hitIndexSelected.size(); iHit++){
-        int lid = LayerID->at(trackResult->hitIndexSelected[iHit]);
+    for (size_t iHit = 0; iHit<track3D->hitIndexSelected.size(); iHit++){
+        int lid = LayerID->at(track3D->hitIndexSelected[iHit]);
         if (lid>=0&&lid<NLAY){
-            hitIndexSelected[lid][iFound] = trackResult->hitIndexSelected[iHit];
+            hitIndexSelected[lid][iFound] = track3D->hitIndexSelected[iHit];
         }
+    }
+    if (track2D){
+        nPairs[iFound] = track2D->nPairs;
+        interceptXInput[iFound] = track2D->interceptX;
+        interceptZInput[iFound] = track2D->interceptZ;
+        slopeXInput[iFound] = track2D->slopeX;
+        slopeZInput[iFound] = track2D->slopeZ;
+        chi2XInput[iFound] = track2D->chi2X;
+        chi2ZInput[iFound] = track2D->chi2Z;
+        chi2Input[iFound] = track2D->chi2;
+        chi2WithTestLayerInput[iFound] = track2D->chi2WithTestLayer;
+        pValueInput[iFound] = track2D->pValue;
     }
     return true;
 }
