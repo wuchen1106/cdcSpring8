@@ -675,36 +675,35 @@ bool Tracker::checkAndFitIn(){
     MyNamedVerbose("Tracking"," checking new result with "<<currentTrackResult.hitIndexSelected.size()<<" hits and chi2a = "<<currentTrackResult.chi2WithTestLayer);
     int insertAt = -1;
     int takeOut = -1;
+    // scan through current results rank list
+    // mark insertAt as the rank of the new result (keep -1 if not good enough or the list is empty)
+    // mark takeOut if the new result if identical to one on the list and the new result is better (keep -1 if not)
     for (int i = 0; i<nGoodTracks; i++){
         if (currentTrackResult.NDF<trackResults[i].NDF) continue;
-        if (currentTrackResult == trackResults[i]){ // they have used the same hits (with same left/right)
-            MyNamedVerbose("Tracking"," same with Cand#"<<i);
-            // WARNING: now we rely on total chi2 including test layer hit, a slight bias
-            // TODO Later: make this an option
-            if (currentTrackResult.chi2WithTestLayer<trackResults[i].chi2WithTestLayer){
-                MyNamedVerbose("Tracking","   better than Cand#"<<i<<" with "<<trackResults[i].hitIndexSelected.size()<<" hits and chi2a = "<<trackResults[i].chi2WithTestLayer);
-                takeOut = i;
-            }
-            break;
-        }
-        if (insertAt<0){ // modify the index to be insert at if it's not set yet. Keep on searching in case we may find a bad candidate later with the same hits.
-            if (currentTrackResult.NDF>trackResults[i].NDF
-                    ||currentTrackResult.chi2WithTestLayer<trackResults[i].chi2WithTestLayer){
-                MyNamedVerbose("Tracking"," better than Cand#"<<i<<" with "<<trackResults[i].hitIndexSelected.size()<<" hits and chi2a = "<<trackResults[i].chi2WithTestLayer);
+        // WARNING: now we rely on total chi2 including test layer hit, a slight bias
+        // TODO Later: make this an option
+        if (currentTrackResult.NDF>trackResults[i].NDF
+                ||currentTrackResult.chi2WithTestLayer<trackResults[i].chi2WithTestLayer){
+            MyNamedVerbose("Tracking"," better than Cand#"<<i<<" with "<<trackResults[i].hitIndexSelected.size()<<" hits and chi2a = "<<trackResults[i].chi2WithTestLayer);
+            if (insertAt<0){ // modify the index to be insert at if it's not set yet. Keep on searching in case we may find a bad candidate later with the same hits.
                 insertAt = i;
             }
+            if (currentTrackResult == trackResults[i]){ // they have used the same hits (with same left/right)
+                MyNamedVerbose("Tracking"," same with Cand#"<<i);
+                MyNamedVerbose("Tracking","   better than Cand#"<<i<<" with "<<trackResults[i].hitIndexSelected.size()<<" hits and chi2a = "<<trackResults[i].chi2WithTestLayer);
+                takeOut = i;
+                break; // no need to continue
+            }
         }
     }
-    if (insertAt>=0&&takeOut==-1){ // we decide to insert this track result but no one to take out from current list
-        takeOut = nGoodTracks; // consider the first one after the queue (empty) is to be taken out
+    if (insertAt<0&&nGoodTracks<fMaxResults){ // not on the list but the list is not full yet
+        insertAt = nGoodTracks; // put the current result at the bottom
         nGoodTracks++; // now we have a new track result
     }
-    if (!nGoodTracks){ // first time in this event
-        insertAt = 0; // put the current result at the top
-        takeOut = -1; // no need to take out any
-        nGoodTracks++; // now we have a new track result
+    if (insertAt<0) return false; // not good enough to be inserted nor added
+    if (takeOut<0&&nGoodTracks==fMaxResults){ // no one to be replaced by the new result and the list is full, then kick out the last one
+        takeOut = nGoodTracks-1;
     }
-    if (insertAt<0) return false;
     for (int i = takeOut; i>insertAt; i--){ // move the candidates back by 1 and kick out the one to be replaced
         trackResults[i] = trackResults[i-1];
     }
