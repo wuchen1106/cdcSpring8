@@ -219,8 +219,10 @@ int Tracker::tracking(int iLayer,size_t & iselection){
     else{
         for (int i = -1; i<(int)hitLayerIndexMap->at(iLayer)->size(); i++){ // -1 means don't pick up any hit in this layer 
             if (i==-1){
-                MyNamedVerbose("Tracking",Form(" => skip layer %d",iLayer));
-                tracking(iLayer+1,iselection);
+                if (NLAY-iLayer-1+currentTrack3D.hitIndexSelected.size()-currentTrack3D.nPars()>=1){
+                    MyNamedVerbose("Tracking",Form(" => skip layer %d",iLayer));
+                    tracking(iLayer+1,iselection);
+                }
             }
             else{
                 int ihit = hitLayerIndexMap->at(iLayer)->at(i);
