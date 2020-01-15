@@ -687,26 +687,30 @@ bool Tracker::checkAndFitIn(){
         // TODO Later: make this an option
         if (currentTrack3D.NDF>track3Ds[i].NDF
                 ||currentTrack3D.chi2WithTestLayer<track3Ds[i].chi2WithTestLayer){
-            MyNamedVerbose("Tracking"," better than Cand#"<<i<<" with "<<track3Ds[i].hitIndexSelected.size()<<" hits and chi2a = "<<track3Ds[i].chi2WithTestLayer);
             if (insertAt<0){ // modify the index to be insert at if it's not set yet. Keep on searching in case we may find a bad candidate later with the same hits.
+                MyNamedVerbose("Tracking"," better than Cand#"<<i<<" with "<<track3Ds[i].hitIndexSelected.size()<<" hits and chi2a = "<<track3Ds[i].chi2WithTestLayer);
                 insertAt = i;
             }
             if (currentTrack3D == track3Ds[i]){ // they have used the same hits (with same left/right)
                 MyNamedVerbose("Tracking"," same with Cand#"<<i);
-                MyNamedVerbose("Tracking","   better than Cand#"<<i<<" with "<<track3Ds[i].hitIndexSelected.size()<<" hits and chi2a = "<<track3Ds[i].chi2WithTestLayer);
                 takeOut = i;
                 break; // no need to continue
             }
         }
     }
     if (insertAt<0&&nGoodTracks<fMaxResults){ // not on the list but the list is not full yet
+        MyNamedVerbose("Tracking"," => Add to the end, nGoodTracks "<<nGoodTracks<<" -> "<<(nGoodTracks+1));
         insertAt = nGoodTracks; // put the current result at the bottom
         nGoodTracks++; // now we have a new track result
     }
-    if (insertAt<0) return false; // not good enough to be inserted nor added
+    if (insertAt<0){
+        MyNamedVerbose("Tracking"," => Skip");
+        return false; // not good enough to be inserted nor added
+    }
     if (takeOut<0&&nGoodTracks==fMaxResults){ // no one to be replaced by the new result and the list is full, then kick out the last one
         takeOut = nGoodTracks-1;
     }
+    MyNamedVerbose("Tracking"," => Insert at "<<insertAt<<", take out "<<takeOut);
     for (int i = takeOut; i>insertAt; i--){ // move the candidates back by 1 and kick out the one to be replaced
         track3Ds[i] = track3Ds[i-1];
         track2Ds[i] = track2Ds[i-1];
