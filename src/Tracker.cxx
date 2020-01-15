@@ -687,7 +687,7 @@ bool Tracker::checkAndFitIn(){
         // WARNING: now we rely on total chi2 including test layer hit, a slight bias
         // TODO Later: make this an option
         if (currentTrack3D.nHitsSel>track3Ds[i].nHitsSel
-                ||currentTrack3D.chi2WithTestLayer<track3Ds[i].chi2WithTestLayer){
+                ||currentTrack3D.pValue>track3Ds[i].pValue){
             if (insertAt<0){ // modify the index to be insert at if it's not set yet. Keep on searching in case we may find a bad candidate later with the same hits.
                 MyNamedVerbose("Tracking"," better than Cand#"<<i<<" with "<<track3Ds[i].hitIndexSelected.size()<<" hits and chi2a = "<<track3Ds[i].chi2WithTestLayer);
                 insertAt = i;
