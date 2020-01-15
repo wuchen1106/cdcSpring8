@@ -154,7 +154,7 @@ void Tracker::Print(TString opt){
             int iHit = currentTrackResult.hitIndexSelected[iter];
             int lid = InputOutputManager::Get().LayerID->at(iHit);
             int wid = InputOutputManager::Get().CellID->at(iHit);
-            printf(" => Pick %d: %d [%d,%d]\n",iHit,lid,wid);
+            printf(" => Pick %d: %d [%d,%d]\n",(int)iter,iHit,lid,wid);
         }
     }
     if (opt.Contains("t")){ // tracking results
