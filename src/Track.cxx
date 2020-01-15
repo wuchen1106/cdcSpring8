@@ -26,7 +26,6 @@ void TrackCandidate::Reset(){
     chi2 = 1e9;
     chi2WithTestLayer = 1e9;
     pValue = 0;
-    NDF = 0;
 }
 
 bool TrackCandidate::operator ==(const TrackCandidate & aCand){

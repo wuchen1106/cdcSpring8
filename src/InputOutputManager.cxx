@@ -300,7 +300,7 @@ bool InputOutputManager::SetTrack(int iFound, const Track3D * track3D, const Tra
     }
     iSelection[iFound] = track3D->iSelection;
     iCombination[iFound] = track3D->iCombination;
-    nHitsS[iFound] = track3D->NDF;
+    nHitsS[iFound] = track3D->nHitsSel;
     t0Offset[iFound] = track3D->t0Offset;
     interceptX[iFound] = track3D->interceptX;
     interceptZ[iFound] = track3D->interceptZ;

@@ -163,9 +163,9 @@ void Tracker::Print(TString opt){
     if (opt.Contains("t")){ // tracking results
         printf("There is %d tracks reconstructed!\n",nGoodTracks);
         for (int i = 0; i<nGoodTracks; i++){
-            printf(" => %d: [%d,%d] NDF %d chi2 %.1e chi2-wt %.1e slx %.2e slz %.2e inx %.2e inz %.2e\n",
+            printf(" => %d: [%d,%d] nHitsS %d chi2 %.1e chi2-wt %.1e slx %.2e slz %.2e inx %.2e inz %.2e\n",
                     i,track2Ds[i].iSelection,track2Ds[i].iCombination,
-                    (int)track3Ds[i].NDF,track3Ds[i].chi2,track3Ds[i].chi2WithTestLayer,
+                    (int)track3Ds[i].nHitsSel,track3Ds[i].chi2,track3Ds[i].chi2WithTestLayer,
                     track3Ds[i].slopeX,track3Ds[i].slopeZ,track3Ds[i].interceptX,track3Ds[i].interceptZ);
         }
     }
@@ -207,7 +207,7 @@ void Tracker::updateDriftD(){
 }
 
 int Tracker::tracking(int iLayer,size_t & iselection){
-    if (iLayer == NLAY-1){ // finished picking hits
+    if (iLayer == NLAY){ // finished picking hits
         int nHitsSel = currentTrack3D.hitIndexSelected.size();
         MyNamedVerbose("Tracking",Form(" Finished picking selection %d: nHitsSel = %d",(int)iselection,nHitsSel));
         int NDF = nHitsSel-currentTrack3D.nPars();
@@ -303,7 +303,6 @@ int Tracker::fitting(int iselection){
         currentTrack2D.slopeZ = islz;
         currentTrack2D.chi2X = chi2X;
         currentTrack2D.chi2Z = chi2Z;
-        currentTrack2D.NDF = currentTrack2D.nPairs-currentTrack2D.nPars();
         double chi2i, chi2pi, chi2ai;
         getchi2(chi2i,chi2pi,chi2ai,islx,iinx,islz,iinz,0,true);
         currentTrack2D.chi2 = chi2i;
@@ -336,7 +335,7 @@ int Tracker::fitting(int iselection){
         currentTrack3D.chi2 = chi2;
         currentTrack3D.pValue = chi2p;
         currentTrack3D.chi2WithTestLayer = chi2a;
-        currentTrack3D.NDF = currentTrack3D.hitIndexSelected.size()-currentTrack3D.nPars();
+        currentTrack3D.nHitsSel = currentTrack3D.hitIndexSelected.size();
         if (fMaxResults){ // there is a limit on number of fitting results to save. Sort by chi2 and NDF.
             checkAndFitIn();
         }
@@ -682,10 +681,10 @@ bool Tracker::checkAndFitIn(){
     // mark takeOut if the new result if identical to one on the list and the new result is better (keep -1 if not)
     // TODO: add currentTrack2D??
     for (int i = 0; i<nGoodTracks; i++){
-        if (currentTrack3D.NDF<track3Ds[i].NDF) continue;
+        if (currentTrack3D.nHitsSel<track3Ds[i].nHitsSel) continue;
         // WARNING: now we rely on total chi2 including test layer hit, a slight bias
         // TODO Later: make this an option
-        if (currentTrack3D.NDF>track3Ds[i].NDF
+        if (currentTrack3D.nHitsSel>track3Ds[i].nHitsSel
                 ||currentTrack3D.chi2WithTestLayer<track3Ds[i].chi2WithTestLayer){
             if (insertAt<0){ // modify the index to be insert at if it's not set yet. Keep on searching in case we may find a bad candidate later with the same hits.
                 MyNamedVerbose("Tracking"," better than Cand#"<<i<<" with "<<track3Ds[i].hitIndexSelected.size()<<" hits and chi2a = "<<track3Ds[i].chi2WithTestLayer);

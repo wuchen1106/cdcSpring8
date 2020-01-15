@@ -64,6 +64,7 @@ public:
     virtual void Reset();
 
     Track3D& operator =(const TrackCandidate &);
+    int nHitsSel;
 
     virtual int nPars(void) {return 4;};
 };
