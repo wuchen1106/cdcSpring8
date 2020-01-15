@@ -699,18 +699,29 @@ bool Tracker::checkAndFitIn(){
         }
     }
     if (insertAt<0&&nGoodTracks<fMaxResults){ // not on the list but the list is not full yet
-        MyNamedVerbose("Tracking"," => Add to the end, nGoodTracks "<<nGoodTracks<<" -> "<<(nGoodTracks+1));
+        MyNamedVerbose("Tracking"," ==> Add to the end, nGoodTracks "<<nGoodTracks<<" -> "<<(nGoodTracks+1));
         insertAt = nGoodTracks; // put the current result at the bottom
+        takeOut = -1; // kick out nobody
         nGoodTracks++; // now we have a new track result
     }
-    if (insertAt<0){
-        MyNamedVerbose("Tracking"," => Skip");
-        return false; // not good enough to be inserted nor added
+    if (insertAt<0){ // not good enough to be inserted nor added
+        MyNamedVerbose("Tracking"," ==> Skip");
+        return false;
     }
-    if (takeOut<0&&nGoodTracks==fMaxResults){ // no one to be replaced by the new result and the list is full, then kick out the last one
-        takeOut = nGoodTracks-1;
+    if (takeOut<0){ // no one to be replaced by the new result
+        if(nGoodTracks==fMaxResults){ // the list is full, then kick out the last one
+            takeOut = nGoodTracks-1;
+            MyNamedVerbose("Tracking"," ==> Insert at "<<insertAt<<", take out the last one at "<<takeOut);
+        }
+        else{ // the list is not full yet, make a room for it
+            takeOut = nGoodTracks;
+            MyNamedVerbose("Tracking"," ==> Insert at "<<insertAt<<", nGoodTracks "<<nGoodTracks<<" -> "<<(nGoodTracks+1));
+            nGoodTracks++;
+        }
     }
-    MyNamedVerbose("Tracking"," => Insert at "<<insertAt<<", take out "<<takeOut);
+    else{
+        MyNamedVerbose("Tracking"," ==> Insert at "<<insertAt<<", take out "<<takeOut);
+    }
     for (int i = takeOut; i>insertAt; i--){ // move the candidates back by 1 and kick out the one to be replaced
         track3Ds[i] = track3Ds[i-1];
         track2Ds[i] = track2Ds[i-1];
