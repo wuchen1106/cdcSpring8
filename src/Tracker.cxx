@@ -270,7 +270,7 @@ int Tracker::fitting(int iselection){
         if (pairs.size()<nPairsMin){
             continue;
         }
-        fittingSucceeded = fit2D(false,chi2X,chi2Z); // fit without error
+        fittingSucceeded = fit2D(chi2X,chi2Z); // fit without error
         if (!fittingSucceeded) continue;
         double iinx = func_pairYX->Eval(GeometryManager::Get().ReferenceY);
         double iinz = func_pairYZ->Eval(GeometryManager::Get().ReferenceY);
@@ -278,17 +278,7 @@ int Tracker::fitting(int iselection){
         double islz = func_pairYZ->GetParameter(1);
         double chi2i, chi2pi, chi2ai;
         getchi2(chi2i,chi2pi,chi2ai,islx,iinx,islz,iinz,true);
-        MyNamedVerbose("Tracking",Form("       2D FITTING w/o error RESULT: x=%.3e*(y-%.3e)+%.3e, chi2 = %.3e, z=%.3e*(y-%.3e)+%.3e, chi2 = %.3e; chi2 %.3e chi2a %.3e",islx,GeometryManager::Get().ReferenceY,iinx,chi2X,islz,GeometryManager::Get().ReferenceY,iinz,chi2Z,chi2i,chi2ai));
-
-        /// 3.B Fit pairs on Y-X and Y-Z plains with error
-        formPairs(); // using the newly acquired 2-D functions
-        MyNamedVerbose("Tracking","             nPairs (after fitting) = "<<pairs.size());
-        if (pairs.size()<nPairsMin){
-            continue;
-        }
-        fittingSucceeded = fit2D(true,chi2X,chi2Z); // fit with error using the initial values
-        if (!fittingSucceeded) continue;
-        MyNamedVerbose("Tracking",Form("       2D FITTING w/  error RESULT: x=%.3e*(y-%.3e)+%.3e, chi2 = %.3e, z=%.3e*(y-%.3e)+%.3e, chi2 = %.3e; chi2 %.3e chi2a %.3e",islx,GeometryManager::Get().ReferenceY,iinx,chi2X,islz,GeometryManager::Get().ReferenceY,iinz,chi2Z,chi2i,chi2ai));
+        MyNamedVerbose("Tracking",Form("       2D FITTING RESULT: x=%.3e*(y-%.3e)+%.3e, chi2 = %.3e, z=%.3e*(y-%.3e)+%.3e, chi2 = %.3e; chi2 %.3e chi2a %.3e",islx,GeometryManager::Get().ReferenceY,iinx,chi2X,islz,GeometryManager::Get().ReferenceY,iinz,chi2Z,chi2i,chi2ai));
         // if the quality is too bad, skip 3-D fitting to save time
         if (minChi2Input&&chi2i>minChi2Input) continue;
 
@@ -359,8 +349,8 @@ void Tracker::reset2DFunctions(double MoveRatioX, double MoveRatioZ){
                                BeamManager::Get().beamSlz);
 }
 
-bool Tracker::fit2D(bool fitWithError, double & chi2X, double & chi2Z ){
-    setPairPositionGraphs(fitWithError);
+bool Tracker::fit2D(double & chi2X, double & chi2Z ){
+    setPairPositionGraphs();
 
     // prepare to do the 1-D fitting
     // Do the fitting on Z pairs
@@ -405,7 +395,7 @@ bool Tracker::fit2D(bool fitWithError, double & chi2X, double & chi2Z ){
     double iinz = func_pairYZ->Eval(GeometryManager::Get().ReferenceY);
     double islx = func_pairYX->GetParameter(1);
     double islz = func_pairYZ->GetParameter(1);
-    int nGoodPairs = getChi2XZ(chi2X,chi2Z);
+    getChi2XZ(chi2X,chi2Z);
     TString debugContent = Form("%.3e %.3e %.3e %.3e",islx,iinx,islz,iinz);
     for (int ipair = 0; ipair<pairs.size(); ipair++){
         debugContent += Form(" %.3e %.3e %.3e %.3e",pairs[ipair].pairX,func_pairYX->Eval(pairs[ipair].pairY),pairs[ipair].pairZ,func_pairYZ->Eval(pairs[ipair].pairY));
@@ -484,7 +474,7 @@ double Tracker::getWireY(int lid, int wid){
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////
-int Tracker::setPairPositionGraphs(bool withError){
+int Tracker::setPairPositionGraphs(){
     size_t nPairs = pairs.size();
     graph_pairX->Set(nPairs);
     graph_pairZ->Set(nPairs);
@@ -492,61 +482,24 @@ int Tracker::setPairPositionGraphs(bool withError){
         graph_pairX->SetPoint(i,pairs[i].pairY,pairs[i].pairX);
         graph_pairZ->SetPoint(i,pairs[i].pairY,pairs[i].pairZ);
     }
-    double errorzMax0 = 0;
-    double errorzMax1 = 0;
-    int errorzMax0_i = -1;
-    int errorzMax1_i = -1;
-    for (int ipair = 0; ipair<nPairs; ipair++){
-        double errorz = 0;
-        double errorx = 0;
-        if (withError){
-            errorz = fabs(func_pairYZ->Eval(pairs[ipair].pairY)-pairs[ipair].pairZ);
-            errorx = fabs(func_pairYX->Eval(pairs[ipair].pairY)-pairs[ipair].pairX);
-        }
-        if (errorzMax0<errorz){
-            errorzMax0 = errorz;
-            errorzMax0_i = ipair;
-        }
-        else if (errorzMax1<errorz){
-            errorzMax1 = errorz;
-            errorzMax1_i = ipair;
-        }
-        graph_pairZ->SetPointError(ipair,0,0.1);
-        graph_pairX->SetPointError(ipair,0,0.1);
-    }
-    if (errorzMax0>4) {
-        graph_pairZ->SetPointError(errorzMax0_i,0,10);
-        graph_pairX->SetPointError(errorzMax0_i,0,10);
-        MyNamedVerbose("Tracking",Form("           setPairPositionGraphs pair[%d]: error x = ->10, error z = %.3e->10",errorzMax0_i,errorzMax0));
-    }
-    if (errorzMax1>4) {
-        graph_pairZ->SetPointError(errorzMax1_i,0,10);
-        graph_pairX->SetPointError(errorzMax1_i,0,10);
-        MyNamedVerbose("Tracking",Form("           setPairPositionGraphs pair[%d]: error x = ->10, error z = %.3e->10",errorzMax1_i,errorzMax1));
-    }
     return 0;
 }
 
-int Tracker::getChi2XZ(double & chi2X, double & chi2Z){
+void Tracker::getChi2XZ(double & chi2X, double & chi2Z){
     // calculate pairXyz
     chi2X = 0;
     chi2Z = 0;
-    int nCount = 0;
     for (int ipair = 0; ipair<pairs.size(); ipair++){
         double tchi2Z = pairs[ipair].pairZ-func_pairYZ->Eval(pairs[ipair].pairY);
         double tchi2X = pairs[ipair].pairX-func_pairYX->Eval(pairs[ipair].pairY);
-        MyNamedVerbose("Tracking",Form("           getChi2XZ pair[%d]: error x = %.3e, error z = %.3e",ipair,tchi2X,tchi2Z));
-        if (fabs(tchi2Z)<4&&fabs(tchi2X)<1){ // TODO LATER: error limit should be tuned
-            chi2Z += pow(tchi2Z,2);
-            chi2X += pow(tchi2X,2);
-            nCount++;
-        }
+        MyNamedVerbose("getChi2XZ",Form("           getChi2XZ pair[%d]: error x = %.3e, error z = %.3e",ipair,tchi2X,tchi2Z));
+        chi2Z += pow(tchi2Z,2);
+        chi2X += pow(tchi2X,2);
     }
-    if (nCount){
-        chi2Z/=nCount;
-        chi2X/=nCount;
+    if (pairs.size()){
+        chi2Z/=pairs.size();
+        chi2X/=pairs.size();
     }
-    return nCount;
 }
 
 void Tracker::doFitting(double sliX, double iniX,double sliZ, double iniZ){

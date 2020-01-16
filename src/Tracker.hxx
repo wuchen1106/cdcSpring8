@@ -63,12 +63,12 @@ private:
     int fitting(int iselection); /// Fit the track with given selection of hits
     void setLeftRight(int icombi); /// get left/right from the given combination index
     void reset2DFunctions(double MoveRatioX = 0, double MoveRatioZ = 0); /// get the 2-D fitting functions reset to default values. If arguements are given, then set with them as offsets
-    bool fit2D(bool fitWithError, double & chi2X, double & chi2Z); /// do the 2-D fitting. Firstly the pair positions will be recalculated according to the track parameters stored in the 2-D functions. Then the 2-D functions will be updated with new fitting.
-    int getChi2XZ(double & chi2x, double & chi2z); /// get chi2 for 2-D fittings on Y-X and Y-Z planes
+    bool fit2D(double & chi2X, double & chi2Z); /// do the 2-D fitting. Firstly the pair positions will be recalculated according to the track parameters stored in the 2-D functions. Then the 2-D functions will be updated with new fitting.
+    void getChi2XZ(double & chi2x, double & chi2z); /// get chi2 for 2-D fittings on Y-X and Y-Z planes
     void formPairs(void);
     bool updatePairPosition(Pair & aPair); /// update pair position
     double getWireY(int lid, int wid);
-    int setPairPositionGraphs(bool noError); /// set graphs containing pair position information; errors are given by calculating the difference between pair position and the current track parameters (stored in the 2-D fitting functions)
+    int setPairPositionGraphs(); /// set graphs containing pair position information
     void pickUpHitsForFitting(double slx, double inx, double slz, double inz, double residualCut); /// pick up hits from the given layer hit map. In each layer only choose one hit that is closest to the track. Abandon some layers if the residual of the closest one is still too larger than the residual cut
     void doFitting(double sliX, double iniX,double sliZ, double iniZ); /// The core part of track fitting
     static void fcn(int &npar, double *gin, double &f, double *par, int iflag); /// The function to be used by TMinuit
