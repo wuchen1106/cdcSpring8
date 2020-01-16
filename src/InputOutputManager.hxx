@@ -116,10 +116,10 @@ public:
     double                slopeX[NCAND];
     double                slopeZ[NCAND];
     double                chi2[NCAND];
-    double                chi2WithTestLayer[NCAND];
+    double                chi2a[NCAND];
     double                pValue[NCAND];
     double                chi2mc[NCAND];
-    double                chi2WithTestLayermc[NCAND];
+    double                chi2amc[NCAND];
     double                pValuemc[NCAND];
     // trivial fitting informaiton
     int                   nPairs[NCAND];
@@ -131,7 +131,7 @@ public:
     double                chi2ZInput[NCAND];
     double                chi2Input[NCAND];
     double                pValueInput[NCAND];
-    double                chi2WithTestLayerInput[NCAND];
+    double                chi2aInput[NCAND];
 
 private:
     /// The static pointer to the singleton instance.

@@ -170,7 +170,7 @@ void Tracker::Print(TString opt){
         for (int i = 0; i<nGoodTracks; i++){
             printf(" => %d: [%d,%d] nHitsS %d chi2 %.1e chi2-wt %.1e slx %.2e slz %.2e inx %.2e inz %.2e\n",
                     i,track2Ds[i].iSelection,track2Ds[i].iCombination,
-                    (int)track3Ds[i].hitIndexSelected.size(),track3Ds[i].chi2,track3Ds[i].chi2WithTestLayer,
+                    (int)track3Ds[i].hitIndexSelected.size(),track3Ds[i].chi2,track3Ds[i].chi2a,
                     track3Ds[i].slopeX,track3Ds[i].slopeZ,track3Ds[i].interceptX,track3Ds[i].interceptZ);
         }
     }
@@ -307,7 +307,7 @@ int Tracker::fitting(int iselection){
         currentTrack2D.chi2X = chi2X;
         currentTrack2D.chi2Z = chi2Z;
         currentTrack2D.chi2 = chi2i;
-        currentTrack2D.chi2WithTestLayer = chi2ai;
+        currentTrack2D.chi2a = chi2ai;
         currentTrack2D.pValue = chi2pi;
         currentTrack3D.slopeX = slx;
         currentTrack3D.slopeZ = slz;
@@ -315,7 +315,7 @@ int Tracker::fitting(int iselection){
         currentTrack3D.interceptZ = inz;
         currentTrack3D.chi2 = chi2;
         currentTrack3D.pValue = chi2p;
-        currentTrack3D.chi2WithTestLayer = chi2a;
+        currentTrack3D.chi2a = chi2a;
         if (fMaxResults){ // there is a limit on number of fitting results to save. Sort by chi2 and NDF.
             checkAndFitIn();
         }
@@ -551,6 +551,7 @@ void Tracker::getchi2(double &f, double & cp, double & ca, double slx, double in
     double dfit;
 
     int N = -currentTrack3D.nPars();
+    bool LayerUsed[NLAY] = {false};
     for (size_t i=0;i<currentTrack3D.hitIndexSelected.size(); i++) {
         int iHit = currentTrack3D.hitIndexSelected[i];
         int lr = currentTrack3D.hitLeftRightSelected[i];
@@ -561,41 +562,40 @@ void Tracker::getchi2(double &f, double & cp, double & ca, double slx, double in
         double error = XTManager::Get().GetError(fabs(dd));
         delta  = (dfit-dd)/error;
         chisq += delta*delta;
+        LayerUsed[lid] = true;
         N++;
     }
-    if (N>0) chisq/=N;
     f = chisq;
+    if (N>0) f/=N;
+
     if (all){ // should calculate chi2_pValue (cp) and chi2_all (ca)
         cp = TMath::Prob(f*N,N);
+        ca = chisq;
         // now find the closest hit in the test layer and add it into ca
-        double minres = 1e9;
-        bool found = false;
-        double theDD = 0;
-        int thelid = 0;
-        int thewid = 0;
-        for (size_t i=0;i<hitIndexInTestLayer->size(); i++) {
-            int iHit = hitIndexInTestLayer->at(i);
-            int lid = InputOutputManager::Get().LayerID->at(iHit);
-            int wid = InputOutputManager::Get().CellID->at(iHit);
-            dfit = GeometryManager::Get().GetDOCA(lid,wid,slx,inx,slz,inz);
-            double dd = dfit>=0?hitIndexDriftDRightMap[iHit]:hitIndexDriftDLeftMap[iHit];
-            if (fabs(minres)>fabs(dfit-dd)){
-                minres = dfit-dd;
-                theDD = dd;
-                found = true;
-                thelid = lid;
-                thewid = wid;
+        int nLayerAdded = 0;
+        for (int lid = 0; lid<NLAY; lid++){
+            if (LayerUsed[lid]) continue; // already used this layer in chi2
+            bool found = false;
+            double minres = 1e9;
+            double theDD = 0;
+            for (size_t i=0;i<hitLayerIndexMap->at(lid)->size(); i++) {
+                int iHit = hitLayerIndexMap->at(lid)->at(i);
+                int wid = InputOutputManager::Get().CellID->at(iHit);
+                dfit = GeometryManager::Get().GetDOCA(lid,wid,slx,inx,slz,inz);
+                double dd = dfit>=0?hitIndexDriftDRightMap[iHit]:hitIndexDriftDLeftMap[iHit];
+                if (fabs(minres)>fabs(dfit-dd)){
+                    minres = dfit-dd;
+                    theDD = dd;
+                    found = true;
+                }
+            }
+            if (found){
+                double error = XTManager::Get().GetError(fabs(theDD));
+                ca += minres*minres/error/error;
+                nLayerAdded++;
             }
         }
-        if (found){
-            double error = XTManager::Get().GetError(fabs(theDD));
-            ca = f*N+minres*minres/error/error;
-            ca/=(N+1);
-            MyNamedVerbose("Tracking","   Best hit in test layer "<<thelid<<" "<<thewid<<" "<<theDD<<" "<<minres<<" "<<error<<" "<<f<<" "<<N<<" "<<ca);
-        }
-        else{
-            ca = f;
-        }
+        if (N+nLayerAdded>0) ca/=(N+nLayerAdded);
     }
 }
 
@@ -620,7 +620,7 @@ double Tracker::getchi2Graph(TGraphErrors* graph, double v0, double sl){
 }
 
 bool Tracker::checkAndFitIn(){
-    MyNamedVerbose("Tracking"," checking new result with "<<currentTrack3D.hitIndexSelected.size()<<" hits and chi2 = "<<currentTrack3D.chi2<<" chi2a = "<<currentTrack3D.chi2WithTestLayer);
+    MyNamedVerbose("Tracking"," checking new result with "<<currentTrack3D.hitIndexSelected.size()<<" hits and chi2 = "<<currentTrack3D.chi2<<" chi2a = "<<currentTrack3D.chi2a);
     int insertAt = -1;
     int takeOut = -1;
     // scan through current results rank list
@@ -629,14 +629,14 @@ bool Tracker::checkAndFitIn(){
     for (int i = 0; i<nGoodTracks; i++){
         if (currentTrack3D.hitIndexSelected.size()<track3Ds[i].hitIndexSelected.size()) continue;
         // WARNING: now we rely on total chi2 including test layer hit, a slight bias
-        if ((sortByChi2All&&currentTrack3D.chi2WithTestLayer<track3Ds[i].chi2WithTestLayer)
+        if ((sortByChi2All&&currentTrack3D.chi2a<track3Ds[i].chi2a)
          ||(!sortByChi2All
              &&(currentTrack3D.hitIndexSelected.size()>track3Ds[i].hitIndexSelected.size()
                 ||(currentTrack3D.hitIndexSelected.size()==track3Ds[i].hitIndexSelected.size()&&currentTrack3D.chi2<track3Ds[i].chi2)
                )
            )){
             if (insertAt<0){ // modify the index to be insert at if it's not set yet. Keep on searching in case we may find a bad candidate later with the same hits.
-                MyNamedVerbose("Tracking"," better than Cand#"<<i<<" with "<<track3Ds[i].hitIndexSelected.size()<<" hits and chi2 = "<<track3Ds[i].chi2<<" chi2a = "<<track3Ds[i].chi2WithTestLayer);
+                MyNamedVerbose("Tracking"," better than Cand#"<<i<<" with "<<track3Ds[i].hitIndexSelected.size()<<" hits and chi2 = "<<track3Ds[i].chi2<<" chi2a = "<<track3Ds[i].chi2a);
                 insertAt = i;
             }
             if (currentTrack3D == track3Ds[i]){ // they have used the same hits (with same left/right)

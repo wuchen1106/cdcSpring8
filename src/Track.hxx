@@ -37,7 +37,7 @@ public:
     int    iCombination;
     double t0Offset;
     double chi2;
-    double chi2WithTestLayer;
+    double chi2a;
     double pValue;
     double NDF;
 };
