@@ -50,7 +50,9 @@ Tracker::Tracker(InputOutputManager::InputHitType theInputHitType):
     inxMax(0),
     inzStep(1),
     inzMin(0),
-    inzMax(0)
+    inzMax(0),
+    t0Offset(0),
+    t0OffsetRange(0)
 {
     hitIndexInTestLayer = new std::vector<int>;
     hitLayerIndexMap = new std::vector<std::vector<int>*>;
@@ -173,9 +175,12 @@ void Tracker::Print(TString opt){
 
 void Tracker::DoTracking(){
     size_t nSelections = 0;
-    // TODO: add another loop on t0 if needed
-    updateDriftD();
-    tracking(0,nSelections); // 0 means starting from layer 0; nSelections is the number of possible choices by selecting one hit per layer (will increment in the recursive function)
+    for (int it0 = -t0OffsetRange; it0<=t0OffsetRange; it0++){
+        t0Offset = it0;
+        MyNamedInfo("Tracking","Setting t0 offset to "<<t0Offset<<" ns");
+        updateDriftD();
+        tracking(0,nSelections); // 0 means starting from layer 0; nSelections is the number of possible choices by selecting one hit per layer (will increment in the recursive function)
+    }
 }
 
 void Tracker::updateDriftD(){
@@ -184,7 +189,7 @@ void Tracker::updateDriftD(){
         size_t nHits = hitLayerIndexMap->at(lid)->size();
         for (size_t i = 0; i<nHits; i++){
             int hitIndex = hitLayerIndexMap->at(lid)->at(i);
-            double driftT = InputOutputManager::Get().DriftT->at(hitIndex); // TODO LATER: should add t0 offset consideration here
+            double driftT = InputOutputManager::Get().DriftT->at(hitIndex)+t0Offset; // TODO LATER: should add t0 offset consideration here
             int wid = InputOutputManager::Get().CellID->at(hitIndex);
             int status;
             hitIndexDriftDLeftMap[hitIndex] = XTManager::Get().t2x(driftT,lid,wid,-1,status);
@@ -196,7 +201,7 @@ void Tracker::updateDriftD(){
     MyNamedVerbose("Tracking","  Assigning driftD to "<<hitIndexInTestLayer->size()<<" hits in test layer");
     for (size_t i = 0; i<nHits; i++){
         int hitIndex = hitIndexInTestLayer->at(i);
-        double driftT = InputOutputManager::Get().DriftT->at(hitIndex); // TODO LATER: should add t0 offset consideration here
+        double driftT = InputOutputManager::Get().DriftT->at(hitIndex)+t0Offset; // TODO LATER: should add t0 offset consideration here
         int lid = InputOutputManager::Get().LayerID->at(hitIndex);
         int wid = InputOutputManager::Get().CellID->at(hitIndex);
         int status;
@@ -306,7 +311,7 @@ int Tracker::fitting(int iselection){
         currentTrack2D.chi2X = chi2X;
         currentTrack2D.chi2Z = chi2Z;
         double chi2i, chi2pi, chi2ai;
-        getchi2(chi2i,chi2pi,chi2ai,islx,iinx,islz,iinz,0,true);
+        getchi2(chi2i,chi2pi,chi2ai,islx,iinx,islz,iinz,true);
         currentTrack2D.chi2 = chi2i;
         currentTrack2D.chi2WithTestLayer = chi2ai;
         currentTrack2D.pValue = chi2pi;
@@ -321,14 +326,14 @@ int Tracker::fitting(int iselection){
         // update fitD
         // reselect
         double chi2, chi2p, chi2a;
-        getchi2(chi2,chi2p,chi2a,slx,inx,slz,inz,0,true);
+        getchi2(chi2,chi2p,chi2a,slx,inx,slz,inz,true);
         int nHitsSel = currentTrack3D.hitIndexSelected.size();
         MyNamedVerbose("Tracking",Form("       TMinuit fitting RESULT: nHitsSel = %d, x=%.3e*(y-%.3e)+%.3e, z=%.3e*(y-%.3e)+%.3e, chi2i = %.3e chi2 = %.3e",nHitsSel,slx,GeometryManager::Get().ReferenceY,inx,slz,GeometryManager::Get().ReferenceY,inz,chi2i,chi2));
         ///    At last, if the newly fitted track meets our requirments, store the fitting result.
         // update chi2
         if (inputHitType == InputOutputManager::kMCDriftD || inputHitType == InputOutputManager::kMCDriftT){
             // TODO LATER: get mc input
-            //getchi2(chi2mc,chi2pmc,chi2amc,i_slxmc,i_inxmc,i_slzmc,i_inzmc,0,true);
+            //getchi2(chi2mc,chi2pmc,chi2amc,i_slxmc,i_inxmc,i_slzmc,i_inzmc,true);
         }
         currentTrack3D.slopeX = slx;
         currentTrack3D.slopeZ = slz;
@@ -594,11 +599,11 @@ void Tracker::fcn(int &npar, double *gin, double &f, double *par, int iflag)
         MyError("Not enough par! npar = "<<npar<<", but we need 4");
     }
     else{
-        getchi2(f,cp,ca,*par,*(par+1),*(par+2),*(par+3),0,false);
+        getchi2(f,cp,ca,*par,*(par+1),*(par+2),*(par+3),false);
     }
 }
 
-void Tracker::getchi2(double &f, double & cp, double & ca, double slx, double inx, double slz, double inz, double t0Offset,bool all)
+void Tracker::getchi2(double &f, double & cp, double & ca, double slx, double inx, double slz, double inz, bool all)
 {
     //calculate chisquare
     double chisq = 0;
@@ -681,7 +686,6 @@ bool Tracker::checkAndFitIn(){
     // scan through current results rank list
     // mark insertAt as the rank of the new result (keep -1 if not good enough or the list is empty)
     // mark takeOut if the new result if identical to one on the list and the new result is better (keep -1 if not)
-    // TODO: add currentTrack2D??
     for (int i = 0; i<nGoodTracks; i++){
         if (currentTrack3D.nHitsSel<track3Ds[i].nHitsSel) continue;
         // WARNING: now we rely on total chi2 including test layer hit, a slight bias

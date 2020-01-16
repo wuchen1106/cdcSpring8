@@ -37,6 +37,7 @@ public:
     void DoTracking(); /// the main function to get tracks from the current event with given hit list
     bool SetMaxResults(int n); /// set the maximum number of fitting results to keep while fitting one event; 0 means to save all without sorting.
     void Print(TString opt = "");
+    void SetT0OffsetRange(int n){t0OffsetRange = n;};
 
     static Track2D currentTrack2D;
     static Track3D currentTrack3D;
@@ -69,7 +70,7 @@ private:
     static void fcn(int &npar, double *gin, double &f, double *par, int iflag); /// The function to be used by TMinuit
     static void fcnZ(int &npar, double *gin, double &f, double *par, int iflag);
     static void fcnX(int &npar, double *gin, double &f, double *par, int iflag);
-    static void getchi2(double &f, double & cp, double & ca, double slx, double inx, double slz, double inz, double t0offset,bool all); /// get the chi2 with 3-D track
+    static void getchi2(double &f, double & cp, double & ca, double slx, double inx, double slz, double inz, bool all); /// get the chi2 with 3-D track
     static double getchi2Graph(TGraphErrors* graph, double v0, double sl);
     bool checkAndFitIn(); /// Compare the new tracking result (written in currentTrack3D & currentTrack2D) with previously stored candidates (stored in track3Ds & track2Ds) and put it in correct place if needed.
 
@@ -104,6 +105,9 @@ private:
     double inzStep;
     double inzMin;
     double inzMax;
+
+    int    t0Offset;
+    int    t0OffsetRange;
 };
 
 #endif
