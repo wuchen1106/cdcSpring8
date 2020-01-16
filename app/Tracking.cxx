@@ -72,7 +72,7 @@ int main(int argc, char** argv){
 
     // Load options
     int    opt_result;
-    while((opt_result=getopt(argc,argv,"A:B:C:D:E:L:MN:O:P:R:S:TV:s:c:a:h"))!=-1){
+    while((opt_result=getopt(argc,argv,"A:B:C:D:E:L:MN:O:P:R:S:TV:ac:hs"))!=-1){
         switch(opt_result){
             case 'M':
                 m_memdebug = true;
