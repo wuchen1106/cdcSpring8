@@ -52,7 +52,10 @@ Tracker::Tracker(InputOutputManager::InputHitType theInputHitType):
     inzMin(0),
     inzMax(0),
     t0Offset(0),
-    t0OffsetRange(0)
+    t0OffsetRange(0),
+    skipLayerAllowed(false),
+    minChi2Input(0),
+    sortByChi2All(false)
 {
     hitIndexInTestLayer = new std::vector<int>;
     hitLayerIndexMap = new std::vector<std::vector<int>*>;
@@ -167,7 +170,7 @@ void Tracker::Print(TString opt){
         for (int i = 0; i<nGoodTracks; i++){
             printf(" => %d: [%d,%d] nHitsS %d chi2 %.1e chi2-wt %.1e slx %.2e slz %.2e inx %.2e inz %.2e\n",
                     i,track2Ds[i].iSelection,track2Ds[i].iCombination,
-                    (int)track3Ds[i].nHitsSel,track3Ds[i].chi2,track3Ds[i].chi2WithTestLayer,
+                    (int)track3Ds[i].hitIndexSelected.size(),track3Ds[i].chi2,track3Ds[i].chi2WithTestLayer,
                     track3Ds[i].slopeX,track3Ds[i].slopeZ,track3Ds[i].interceptX,track3Ds[i].interceptZ);
         }
     }
@@ -224,7 +227,7 @@ int Tracker::tracking(int iLayer,size_t & iselection){
     else{
         for (int i = -1; i<(int)hitLayerIndexMap->at(iLayer)->size(); i++){ // -1 means don't pick up any hit in this layer 
             if (i==-1){
-                if (NLAY-iLayer-1+currentTrack3D.hitIndexSelected.size()-currentTrack3D.nPars()>=1){
+                if (hitLayerIndexMap->at(iLayer)->size()==0||(skipLayerAllowed&&NLAY-iLayer-1+currentTrack3D.hitIndexSelected.size()-currentTrack3D.nPars()>=1)){
                     MyNamedVerbose("Tracking",Form(" => skip layer %d",iLayer));
                     tracking(iLayer+1,iselection);
                 }
@@ -253,55 +256,58 @@ int Tracker::fitting(int iselection){
     for (int icombi = 0; icombi<ncombi; icombi++){ // each combination corresponds to a unique left/right selection set
         currentTrack3D.iSelection = iselection;
         currentTrack3D.iCombination = icombi;
-        MyNamedVerbose("Tracking",Form("     combi %d",icombi));
         bool fittingSucceeded = false;
         double chi2X = 0;
         double chi2Z = 0;
 
-        /// 1. set left right for picked hits and reset 2D functions
+        /// 1. set left right for picked hits and reset 2-D functions
         setLeftRight(icombi);
         reset2DFunctions();
 
         /// 2.A Fit pairs on Y-X and Y-Z plains without error
-        formPairs(); // using the default 2D functions
+        formPairs(); // using the default 2-D functions
+        MyNamedVerbose("Tracking","     combi "<<icombi<<" nPairs (default) = "<<pairs.size());
         if (pairs.size()<nPairsMin){
             continue;
         }
-        fittingSucceeded = fit2D(2.5,false,chi2X,chi2Z); // fit without error
+        fittingSucceeded = fit2D(false,chi2X,chi2Z); // fit without error
         if (!fittingSucceeded) continue;
-
-        /// 3.B Fit pairs on Y-X and Y-Z plains with error
-        formPairs(); // using the newly acquired 2D functions
-        if (pairs.size()<nPairsMin){
-            continue;
-        }
-        fittingSucceeded = fit2D(2.5,true,chi2X,chi2Z); // fit with error using the initial values
-        if (!fittingSucceeded) continue;
-        ///    If fitting result is not good, reset the initial values of these 2-D functions
-        ///    Do the 2-D fitting again based on the previous fitting resutl with error set
-        //if (!fromSource||!inScint) reset2DFunctions();
-        //fittingSucceeded = fit2D(2.5,true,chi2X,chi2Z,inScint,fromSource); // fit with error
-        //if (!fittingSucceeded) continue;
-        //if (!fromSource||!inScint) reset2DFunctions();
-        //fittingSucceeded = fit2D(2.5,true,chi2X,chi2Z,inScint,fromSource); // fit with error
-        //if (!fittingSucceeded) continue;
-        /////    If fitting result is not good, reset the initial values of these 2-D functions with 1/2 offset (on Z direction)
-        /////    Do the 2-D fitting again based on the previous fitting resutl with error set
-        //if (!fromSource||!inScint) reset2DFunctions(0,0.5);
-        //fittingSucceeded = fit2D(2.5,true,chi2X,chi2Z,inScint,fromSource); // fit with error
-        //if (!fittingSucceeded) continue;
-        /////    If fitting result is not good, reset the initial values of these 2-D functions with -1/2 offset (on Z direction)
-        /////    Do the 2-D fitting again based on the previous fitting resutl with error set
-        //if (!fromSource||!inScint) reset2DFunctions(0,-0.5);
-        //fittingSucceeded = fit2D(2.5,true,chi2X,chi2Z,inScint,fromSource); // fit with error
-        //if (!fittingSucceeded) continue;
-        
-        /// 4. If the 2-D fitting is successfull, proceed to 3-D fitting
         double iinx = func_pairYX->Eval(GeometryManager::Get().ReferenceY);
         double iinz = func_pairYZ->Eval(GeometryManager::Get().ReferenceY);
         double islx = func_pairYX->GetParameter(1);
         double islz = func_pairYZ->GetParameter(1);
-        // set the initial track candidate from 2-D fitting
+        double chi2i, chi2pi, chi2ai;
+        getchi2(chi2i,chi2pi,chi2ai,islx,iinx,islz,iinz,true);
+        MyNamedVerbose("Tracking",Form("       2D FITTING w/o error RESULT: x=%.3e*(y-%.3e)+%.3e, chi2 = %.3e, z=%.3e*(y-%.3e)+%.3e, chi2 = %.3e; chi2 %.3e chi2a %.3e",islx,GeometryManager::Get().ReferenceY,iinx,chi2X,islz,GeometryManager::Get().ReferenceY,iinz,chi2Z,chi2i,chi2ai));
+
+        /// 3.B Fit pairs on Y-X and Y-Z plains with error
+        formPairs(); // using the newly acquired 2-D functions
+        MyNamedVerbose("Tracking","             nPairs (after fitting) = "<<pairs.size());
+        if (pairs.size()<nPairsMin){
+            continue;
+        }
+        fittingSucceeded = fit2D(true,chi2X,chi2Z); // fit with error using the initial values
+        if (!fittingSucceeded) continue;
+        MyNamedVerbose("Tracking",Form("       2D FITTING w/  error RESULT: x=%.3e*(y-%.3e)+%.3e, chi2 = %.3e, z=%.3e*(y-%.3e)+%.3e, chi2 = %.3e; chi2 %.3e chi2a %.3e",islx,GeometryManager::Get().ReferenceY,iinx,chi2X,islz,GeometryManager::Get().ReferenceY,iinz,chi2Z,chi2i,chi2ai));
+        // if the quality is too bad, skip 3-D fitting to save time
+        if (minChi2Input&&chi2i>minChi2Input) continue;
+
+
+        /// 4. if 2-D fitting is successful, do 3-D fitting with TMinuit using 2-D fitting result as input
+        doFitting(islx,iinx,islz,iinz);
+        // check the result
+        double temp;
+        double slx,inx,slz,inz;
+        gMinuit->GetParameter(0, slx, temp);
+        gMinuit->GetParameter(1, inx, temp);
+        gMinuit->GetParameter(2, slz, temp);
+        gMinuit->GetParameter(3, inz, temp);
+        double chi2, chi2p, chi2a;
+        getchi2(chi2,chi2p,chi2a,slx,inx,slz,inz,true);
+        int nHitsSel = currentTrack3D.hitIndexSelected.size();
+        MyNamedVerbose("Tracking",Form("       TMinuit fitting RESULT: nHitsSel = %d, x=%.3e*(y-%.3e)+%.3e, z=%.3e*(y-%.3e)+%.3e, chi2i = %.3e chi2 = %.3e",nHitsSel,slx,GeometryManager::Get().ReferenceY,inx,slz,GeometryManager::Get().ReferenceY,inz,chi2i,chi2));
+
+        /// 5. At last, if the newly fitted track meets our requirments, store the fitting result.
         currentTrack2D = (TrackCandidate)currentTrack3D;
         currentTrack2D.nPairs = pairs.size();
         currentTrack2D.interceptX = iinx;
@@ -310,31 +316,9 @@ int Tracker::fitting(int iselection){
         currentTrack2D.slopeZ = islz;
         currentTrack2D.chi2X = chi2X;
         currentTrack2D.chi2Z = chi2Z;
-        double chi2i, chi2pi, chi2ai;
-        getchi2(chi2i,chi2pi,chi2ai,islx,iinx,islz,iinz,true);
         currentTrack2D.chi2 = chi2i;
         currentTrack2D.chi2WithTestLayer = chi2ai;
         currentTrack2D.pValue = chi2pi;
-        // fitting with TMinuit
-        doFitting(islx,iinx,islz,iinz);
-        double temp;
-        double slx,inx,slz,inz;
-        gMinuit->GetParameter(0, slx, temp);
-        gMinuit->GetParameter(1, inx, temp);
-        gMinuit->GetParameter(2, slz, temp);
-        gMinuit->GetParameter(3, inz, temp);
-        // update fitD
-        // reselect
-        double chi2, chi2p, chi2a;
-        getchi2(chi2,chi2p,chi2a,slx,inx,slz,inz,true);
-        int nHitsSel = currentTrack3D.hitIndexSelected.size();
-        MyNamedVerbose("Tracking",Form("       TMinuit fitting RESULT: nHitsSel = %d, x=%.3e*(y-%.3e)+%.3e, z=%.3e*(y-%.3e)+%.3e, chi2i = %.3e chi2 = %.3e",nHitsSel,slx,GeometryManager::Get().ReferenceY,inx,slz,GeometryManager::Get().ReferenceY,inz,chi2i,chi2));
-        ///    At last, if the newly fitted track meets our requirments, store the fitting result.
-        // update chi2
-        if (inputHitType == InputOutputManager::kMCDriftD || inputHitType == InputOutputManager::kMCDriftT){
-            // TODO LATER: get mc input
-            //getchi2(chi2mc,chi2pmc,chi2amc,i_slxmc,i_inxmc,i_slzmc,i_inzmc,true);
-        }
         currentTrack3D.slopeX = slx;
         currentTrack3D.slopeZ = slz;
         currentTrack3D.interceptX = inx;
@@ -342,7 +326,6 @@ int Tracker::fitting(int iselection){
         currentTrack3D.chi2 = chi2;
         currentTrack3D.pValue = chi2p;
         currentTrack3D.chi2WithTestLayer = chi2a;
-        currentTrack3D.nHitsSel = currentTrack3D.hitIndexSelected.size();
         if (fMaxResults){ // there is a limit on number of fitting results to save. Sort by chi2 and NDF.
             checkAndFitIn();
         }
@@ -351,6 +334,11 @@ int Tracker::fitting(int iselection){
                 track3Ds[nGoodTracks] = currentTrack3D;
                 nGoodTracks++;
             }
+        }
+
+        // TODO LATER: get mc input
+        if (inputHitType == InputOutputManager::kMCDriftD || inputHitType == InputOutputManager::kMCDriftT){
+            //getchi2(chi2mc,chi2pmc,chi2amc,i_slxmc,i_inxmc,i_slzmc,i_inzmc,true);
         }
     }
     return 0;
@@ -371,7 +359,7 @@ void Tracker::reset2DFunctions(double MoveRatioX, double MoveRatioZ){
                                BeamManager::Get().beamSlz);
 }
 
-bool Tracker::fit2D(double safetyFactor, bool fitWithError, double & chi2X, double & chi2Z ){
+bool Tracker::fit2D(bool fitWithError, double & chi2X, double & chi2Z ){
     setPairPositionGraphs(fitWithError);
 
     // prepare to do the 1-D fitting
@@ -418,7 +406,6 @@ bool Tracker::fit2D(double safetyFactor, bool fitWithError, double & chi2X, doub
     double islx = func_pairYX->GetParameter(1);
     double islz = func_pairYZ->GetParameter(1);
     int nGoodPairs = getChi2XZ(chi2X,chi2Z);
-    MyNamedVerbose("Tracking",Form("       2D FITTING RESULT: nGoodPairs = %d; x=%.3e*(y-%.3e)+%.3e, chi2 = %.3e, z=%.3e*(y-%.3e)+%.3e, chi2 = %.3e",nGoodPairs,islx,GeometryManager::Get().ReferenceY,iinx,chi2X,islz,GeometryManager::Get().ReferenceY,iinz,chi2Z));
     TString debugContent = Form("%.3e %.3e %.3e %.3e",islx,iinx,islz,iinz);
     for (int ipair = 0; ipair<pairs.size(); ipair++){
         debugContent += Form(" %.3e %.3e %.3e %.3e",pairs[ipair].pairX,func_pairYX->Eval(pairs[ipair].pairY),pairs[ipair].pairZ,func_pairYZ->Eval(pairs[ipair].pairY));
@@ -680,20 +667,23 @@ double Tracker::getchi2Graph(TGraphErrors* graph, double v0, double sl){
 }
 
 bool Tracker::checkAndFitIn(){
-    MyNamedVerbose("Tracking"," checking new result with "<<currentTrack3D.hitIndexSelected.size()<<" hits and chi2a = "<<currentTrack3D.chi2WithTestLayer);
+    MyNamedVerbose("Tracking"," checking new result with "<<currentTrack3D.hitIndexSelected.size()<<" hits and chi2 = "<<currentTrack3D.chi2<<" chi2a = "<<currentTrack3D.chi2WithTestLayer);
     int insertAt = -1;
     int takeOut = -1;
     // scan through current results rank list
     // mark insertAt as the rank of the new result (keep -1 if not good enough or the list is empty)
     // mark takeOut if the new result if identical to one on the list and the new result is better (keep -1 if not)
     for (int i = 0; i<nGoodTracks; i++){
-        if (currentTrack3D.nHitsSel<track3Ds[i].nHitsSel) continue;
+        if (currentTrack3D.hitIndexSelected.size()<track3Ds[i].hitIndexSelected.size()) continue;
         // WARNING: now we rely on total chi2 including test layer hit, a slight bias
-        // TODO Later: make this an option
-        if (currentTrack3D.nHitsSel>track3Ds[i].nHitsSel
-                ||currentTrack3D.pValue>track3Ds[i].pValue){
+        if ((sortByChi2All&&currentTrack3D.chi2WithTestLayer<track3Ds[i].chi2WithTestLayer)
+         ||(!sortByChi2All
+             &&(currentTrack3D.hitIndexSelected.size()>track3Ds[i].hitIndexSelected.size()
+                ||(currentTrack3D.hitIndexSelected.size()==track3Ds[i].hitIndexSelected.size()&&currentTrack3D.chi2<track3Ds[i].chi2)
+               )
+           )){
             if (insertAt<0){ // modify the index to be insert at if it's not set yet. Keep on searching in case we may find a bad candidate later with the same hits.
-                MyNamedVerbose("Tracking"," better than Cand#"<<i<<" with "<<track3Ds[i].hitIndexSelected.size()<<" hits and chi2a = "<<track3Ds[i].chi2WithTestLayer);
+                MyNamedVerbose("Tracking"," better than Cand#"<<i<<" with "<<track3Ds[i].hitIndexSelected.size()<<" hits and chi2 = "<<track3Ds[i].chi2<<" chi2a = "<<track3Ds[i].chi2WithTestLayer);
                 insertAt = i;
             }
             if (currentTrack3D == track3Ds[i]){ // they have used the same hits (with same left/right)

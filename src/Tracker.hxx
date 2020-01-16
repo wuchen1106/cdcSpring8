@@ -38,6 +38,10 @@ public:
     bool SetMaxResults(int n); /// set the maximum number of fitting results to keep while fitting one event; 0 means to save all without sorting.
     void Print(TString opt = "");
     void SetT0OffsetRange(int n){t0OffsetRange = n;};
+    void SetLayerSkipping(bool b){skipLayerAllowed = b;};
+    void SetMinChi2Input(double v){minChi2Input = v;};
+    void SetSortByChi2All(void){sortByChi2All = true;};
+    void SetSortByChi2(void){sortByChi2All = false;};
 
     static Track2D currentTrack2D;
     static Track3D currentTrack3D;
@@ -59,7 +63,7 @@ private:
     int fitting(int iselection); /// Fit the track with given selection of hits
     void setLeftRight(int icombi); /// get left/right from the given combination index
     void reset2DFunctions(double MoveRatioX = 0, double MoveRatioZ = 0); /// get the 2-D fitting functions reset to default values. If arguements are given, then set with them as offsets
-    bool fit2D(double safetyFactor, bool fitWithError, double & chi2X, double & chi2Z); /// do the 2-D fitting. Firstly the pair positions will be recalculated according to the track parameters stored in the 2-D functions. Then the 2-D functions will be updated with new fitting.
+    bool fit2D(bool fitWithError, double & chi2X, double & chi2Z); /// do the 2-D fitting. Firstly the pair positions will be recalculated according to the track parameters stored in the 2-D functions. Then the 2-D functions will be updated with new fitting.
     int getChi2XZ(double & chi2x, double & chi2z); /// get chi2 for 2-D fittings on Y-X and Y-Z planes
     void formPairs(void);
     bool updatePairPosition(Pair & aPair); /// update pair position
@@ -108,6 +112,9 @@ private:
 
     int    t0Offset;
     int    t0OffsetRange;
+    bool   skipLayerAllowed;
+    double minChi2Input;
+    bool   sortByChi2All;
 };
 
 #endif

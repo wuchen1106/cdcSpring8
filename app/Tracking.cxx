@@ -66,10 +66,13 @@ int main(int argc, char** argv){
     bool m_createTrivialBranches = false;
     TString m_wireAdjustmentFile = "";
     int m_t0OffsetRange = 0;
+    bool m_sortByChi2All = false;
+    double m_minChi2Input = 0;
+    bool m_skipLayerAllowed = false;
 
     // Load options
     int    opt_result;
-    while((opt_result=getopt(argc,argv,"A:B:C:D:E:L:MN:O:P:R:S:TV:h"))!=-1){
+    while((opt_result=getopt(argc,argv,"A:B:C:D:E:L:MN:O:P:R:S:TV:s:c:a:h"))!=-1){
         switch(opt_result){
             case 'M':
                 m_memdebug = true;
@@ -119,6 +122,18 @@ int main(int argc, char** argv){
             case 'A':
                 m_wireAdjustmentFile = optarg;
                 printf("Using wire adjustment file \"%s\"\n",optarg);
+                break;
+            case 'c':
+                m_minChi2Input = atof(optarg);
+                printf("Set input chi2 cut at %.3e to save tracking time\n",m_minChi2Input);
+                break;
+            case 's':
+                m_skipLayerAllowed = true;
+                printf("Allow tracker to skip layer even if there is good hit in it\n");
+                break;
+            case 'a':
+                m_sortByChi2All = true;
+                printf("Ask tracker to sort result by chi2All instead of NDF&chi2\n");
                 break;
             case 'D':
                 if (!Log::ConfigureD(optarg)) print_usage(argv[0]);
@@ -194,6 +209,10 @@ int main(int argc, char** argv){
     // Prepare Tracker
     Tracker * tracker = new Tracker(inputHitType);
     tracker->SetT0OffsetRange(m_t0OffsetRange);
+    tracker->SetLayerSkipping(m_skipLayerAllowed);
+    tracker->SetMinChi2Input(m_minChi2Input);
+    if (m_sortByChi2All){ tracker->SetSortByChi2All(); }
+    else { tracker->SetSortByChi2(); }
     tracker->SetMaxResults(m_resultsToSave);
 
     //===================Tracking====================================
@@ -317,6 +336,12 @@ void print_usage(char* prog_name)
     fprintf(stderr,"\t\t Set to scan t0 offset within +-n ns range\n");
     fprintf(stderr,"\t -S <nResults>\n");
     fprintf(stderr,"\t\t Save up to <nResults> fitting results; 0 means to save all without sorting.\n");
+    fprintf(stderr,"\t -c <v>\n");
+    fprintf(stderr,"\t\t Set input chi2 cut at <v> to save tracking time. By default it's 0 which means no cut\n");
+    fprintf(stderr,"\t -s\n");
+    fprintf(stderr,"\t\t Allow tracker to skip layer even if there is good hit in it\n");
+    fprintf(stderr,"\t -a\n");
+    fprintf(stderr,"\t\t Ask tracker to sort result by chi2All instead of NDF&chi2.\n");
     fprintf(stderr,"\t -T\n");
     fprintf(stderr,"\t\t Create trivial branches in the output file\n");
 }
