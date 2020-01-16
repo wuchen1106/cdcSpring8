@@ -65,10 +65,11 @@ int main(int argc, char** argv){
     int m_resultsToSave = 4;
     bool m_createTrivialBranches = false;
     TString m_wireAdjustmentFile = "";
+    int m_t0OffsetRange = 0;
 
     // Load options
     int    opt_result;
-    while((opt_result=getopt(argc,argv,"A:B:C:D:E:L:MN:P:R:S:TV:h"))!=-1){
+    while((opt_result=getopt(argc,argv,"A:B:C:D:E:L:MN:O:P:R:S:TV:h"))!=-1){
         switch(opt_result){
             case 'M':
                 m_memdebug = true;
@@ -102,6 +103,10 @@ int main(int argc, char** argv){
             case 'C':
                 getRunTimeParameters(optarg);
                 printf("Using configure file \"%s\"\n",optarg);
+                break;
+            case 'O':
+                m_t0OffsetRange = atoi(optarg);
+                printf("Set to scan t0 offset within -+ %d ns range.\n",m_t0OffsetRange);
                 break;
             case 'S':
                 m_resultsToSave = atoi(optarg);
@@ -188,6 +193,7 @@ int main(int argc, char** argv){
 
     // Prepare Tracker
     Tracker * tracker = new Tracker(inputHitType);
+    tracker->SetT0OffsetRange(m_t0OffsetRange);
     tracker->SetMaxResults(m_resultsToSave);
 
     //===================Tracking====================================
@@ -307,6 +313,8 @@ void print_usage(char* prog_name)
     fprintf(stderr,"\t\t Test layer set to l\n");
     fprintf(stderr,"\t -A <file>\n");
     fprintf(stderr,"\t\t Wire adjustment file set to file\n");
+    fprintf(stderr,"\t -O <n>\n");
+    fprintf(stderr,"\t\t Set to scan t0 offset within +-n ns range\n");
     fprintf(stderr,"\t -S <nResults>\n");
     fprintf(stderr,"\t\t Save up to <nResults> fitting results; 0 means to save all without sorting.\n");
     fprintf(stderr,"\t -T\n");
