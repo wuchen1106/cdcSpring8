@@ -507,9 +507,9 @@ int GetCandidate(TString & candSelBy){
         int minNhitsS = 0;
         for (int iCand = 0; iCand<NCAND; iCand++){
             if (candSelBy=="GlobalChi2"){
-                if ((minchi2>InputOutputManager::Get().chi2WithTestLayer[iCand]&&minNhitsS==InputOutputManager::Get().nHitsS[iCand])||minNhitsS<InputOutputManager::Get().nHitsS[iCand]){
+                if ((minchi2>InputOutputManager::Get().chi2a[iCand]&&minNhitsS==InputOutputManager::Get().nHitsS[iCand])||minNhitsS<InputOutputManager::Get().nHitsS[iCand]){
                     cand = iCand;
-                    minchi2 = InputOutputManager::Get().chi2WithTestLayer[iCand];
+                    minchi2 = InputOutputManager::Get().chi2a[iCand];
                     minNhitsS = InputOutputManager::Get().nHitsS[iCand];
                 }
             }
