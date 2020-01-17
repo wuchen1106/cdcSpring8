@@ -38,7 +38,7 @@ XTManager parameters
 XTAnalyzer parameters
 *******************************************************************************                                                                   
   event selection
-    < XTAnalyzer.CandSelBy = Original > Original LeastLateHit FittingChi2 GlobalChi2
+    < XTAnalyzer.CandSelBy = Original > Original LeastLateHit FittingChi2 GlobalChi2 GlobalChi2WithTestLayer
     < XTAnalyzer.RequireInTriggerCounter = false >
     < XTAnalyzer.RequireAllGoldenHits = false >
     < XTAnalyzer.AllGoodHitsUsed = true > no good hits left aside from the track
