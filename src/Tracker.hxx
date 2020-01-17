@@ -16,6 +16,12 @@ public:
     Tracker(InputOutputManager::InputHitType theInputHitType);
     virtual ~Tracker();
 
+    enum SortType{
+        NDFchi2 = 0,
+        chi2a,
+        chi2WithTestLayer
+    };
+
     struct Pair{
         Pair(int ihit, int jhit, int iLR, int jLR){
             hitIndexL = ihit;
@@ -40,8 +46,7 @@ public:
     void SetT0OffsetRange(int n){t0OffsetRange = n;};
     void SetLayerSkipping(bool b){skipLayerAllowed = b;};
     void SetMinChi2Input(double v){minChi2Input = v;};
-    void SetSortByChi2All(void){sortByChi2All = true;};
-    void SetSortByChi2(void){sortByChi2All = false;};
+    void SetSortType(SortType t);
 
     static Track2D currentTrack2D;
     static Track3D currentTrack3D;
@@ -74,7 +79,7 @@ private:
     static void fcn(int &npar, double *gin, double &f, double *par, int iflag); /// The function to be used by TMinuit
     static void fcnZ(int &npar, double *gin, double &f, double *par, int iflag);
     static void fcnX(int &npar, double *gin, double &f, double *par, int iflag);
-    static void getchi2(double &f, double & cp, double & ca, double slx, double inx, double slz, double inz, bool all); /// get the chi2 with 3-D track
+    static void getchi2(double &f, double & cp, double & ca, double & cw, double slx, double inx, double slz, double inz, bool all); /// get the chi2 with 3-D track
     static double getchi2Graph(TGraphErrors* graph, double v0, double sl);
     bool checkAndFitIn(); /// Compare the new tracking result (written in currentTrack3D & currentTrack2D) with previously stored candidates (stored in track3Ds & track2Ds) and put it in correct place if needed.
 
@@ -114,7 +119,8 @@ private:
     int    t0OffsetRange;
     bool   skipLayerAllowed;
     double minChi2Input;
-    bool   sortByChi2All;
+    SortType sortType;
+
 };
 
 #endif

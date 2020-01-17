@@ -66,13 +66,13 @@ int main(int argc, char** argv){
     bool m_createTrivialBranches = false;
     TString m_wireAdjustmentFile = "";
     int m_t0OffsetRange = 0;
-    bool m_sortByChi2All = false;
+    Tracker::SortType m_sortType = Tracker::NDFchi2;
     double m_minChi2Input = 0;
     bool m_skipLayerAllowed = false;
 
     // Load options
     int    opt_result;
-    while((opt_result=getopt(argc,argv,"A:B:C:D:E:L:MN:O:P:R:S:TV:ac:hs"))!=-1){
+    while((opt_result=getopt(argc,argv,"A:B:C:D:E:L:MN:O:P:R:S:TV:ac:hsw"))!=-1){
         switch(opt_result){
             case 'M':
                 m_memdebug = true;
@@ -132,8 +132,12 @@ int main(int argc, char** argv){
                 printf("Allow tracker to skip layer even if there is good hit in it\n");
                 break;
             case 'a':
-                m_sortByChi2All = true;
-                printf("Ask tracker to sort result by chi2All instead of NDF&chi2\n");
+                m_sortType = Tracker::chi2a;
+                printf("Ask tracker to sort result by chi2a instead of NDF&chi2\n");
+                break;
+            case 'w':
+                m_sortType = Tracker::chi2WithTestLayer;
+                printf("Ask tracker to sort result by chi2WithTestLayer instead of NDF&chi2\n");
                 break;
             case 'D':
                 if (!Log::ConfigureD(optarg)) print_usage(argv[0]);
@@ -211,8 +215,7 @@ int main(int argc, char** argv){
     tracker->SetT0OffsetRange(m_t0OffsetRange);
     tracker->SetLayerSkipping(m_skipLayerAllowed);
     tracker->SetMinChi2Input(m_minChi2Input);
-    if (m_sortByChi2All){ tracker->SetSortByChi2All(); }
-    else { tracker->SetSortByChi2(); }
+    tracker->SetSortType(m_sortType);
     tracker->SetMaxResults(m_resultsToSave);
 
     //===================Tracking====================================
@@ -341,7 +344,9 @@ void print_usage(char* prog_name)
     fprintf(stderr,"\t -s\n");
     fprintf(stderr,"\t\t Allow tracker to skip layer even if there is good hit in it\n");
     fprintf(stderr,"\t -a\n");
-    fprintf(stderr,"\t\t Ask tracker to sort result by chi2All instead of NDF&chi2.\n");
+    fprintf(stderr,"\t\t Ask tracker to sort result by chi2a instead of NDF&chi2.\n");
+    fprintf(stderr,"\t -w\n");
+    fprintf(stderr,"\t\t Ask tracker to sort result by chi2WithTestLayer instead of NDF&chi2.\n");
     fprintf(stderr,"\t -T\n");
     fprintf(stderr,"\t\t Create trivial branches in the output file\n");
 }

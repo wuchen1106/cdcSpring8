@@ -38,6 +38,7 @@ public:
     double t0Offset;
     double chi2;
     double chi2a;
+    double chi2WithTestLayer;
     double pValue;
     double NDF;
 };

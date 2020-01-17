@@ -25,6 +25,7 @@ void TrackCandidate::Reset(){
     interceptZ = 0;
     chi2 = 1e9;
     chi2a = 1e9;
+    chi2WithTestLayer = 1e9;
     pValue = 0;
 }
 

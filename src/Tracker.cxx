@@ -55,7 +55,7 @@ Tracker::Tracker(InputOutputManager::InputHitType theInputHitType):
     t0OffsetRange(0),
     skipLayerAllowed(false),
     minChi2Input(0),
-    sortByChi2All(false)
+    sortType(NDFchi2)
 {
     hitIndexInTestLayer = new std::vector<int>;
     hitLayerIndexMap = new std::vector<std::vector<int>*>;
@@ -115,6 +115,10 @@ void Tracker::Reset(){
     MyNamedVerbose("Tracking","  interceptZ: "<<inzStep*1000<<" um, "<<inzMin<<" ~ "<<inzMax<<" mm");
 }
 
+void Tracker::SetSortType(SortType t){
+    sortType = t;
+}
+
 bool Tracker::SetMaxResults(int n){
     if (n>NCAND){
         MyError("Maximum number of results required "<<n<<" is greater than its capacity "<<NCAND<<". Will ignore this setting and keep using "<<fMaxResults);
@@ -168,9 +172,9 @@ void Tracker::Print(TString opt){
     if (opt.Contains("t")){ // tracking results
         printf("There is %d tracks reconstructed!\n",nGoodTracks);
         for (int i = 0; i<nGoodTracks; i++){
-            printf(" => %d: [%d,%d] nHitsS %d chi2 %.1e chi2-wt %.1e slx %.2e slz %.2e inx %.2e inz %.2e\n",
+            printf(" => %d: [%d,%d] nHitsS %d chi2 %.1e chi2a %.1e chi2-wt %.1e slx %.2e slz %.2e inx %.2e inz %.2e\n",
                     i,track2Ds[i].iSelection,track2Ds[i].iCombination,
-                    (int)track3Ds[i].hitIndexSelected.size(),track3Ds[i].chi2,track3Ds[i].chi2a,
+                    (int)track3Ds[i].hitIndexSelected.size(),track3Ds[i].chi2,track3Ds[i].chi2a,track3Ds[i].chi2WithTestLayer,
                     track3Ds[i].slopeX,track3Ds[i].slopeZ,track3Ds[i].interceptX,track3Ds[i].interceptZ);
         }
     }
@@ -276,9 +280,9 @@ int Tracker::fitting(int iselection){
         double iinz = func_pairYZ->Eval(GeometryManager::Get().ReferenceY);
         double islx = func_pairYX->GetParameter(1);
         double islz = func_pairYZ->GetParameter(1);
-        double chi2i, chi2pi, chi2ai;
-        getchi2(chi2i,chi2pi,chi2ai,islx,iinx,islz,iinz,true);
-        MyNamedVerbose("Tracking",Form("       2D FITTING RESULT: x=%.3e*(y-%.3e)+%.3e, chi2 = %.3e, z=%.3e*(y-%.3e)+%.3e, chi2 = %.3e; chi2 %.3e chi2a %.3e",islx,GeometryManager::Get().ReferenceY,iinx,chi2X,islz,GeometryManager::Get().ReferenceY,iinz,chi2Z,chi2i,chi2ai));
+        double chi2i, chi2pi, chi2ai, chi2wi;
+        getchi2(chi2i,chi2pi,chi2ai,chi2wi,islx,iinx,islz,iinz,true);
+        MyNamedVerbose("Tracking",Form("       2D FITTING RESULT: x=%.3e*(y-%.3e)+%.3e, chi2 = %.3e, z=%.3e*(y-%.3e)+%.3e, chi2 = %.3e; chi2 %.3e chi2a %.3e chi2w",islx,GeometryManager::Get().ReferenceY,iinx,chi2X,islz,GeometryManager::Get().ReferenceY,iinz,chi2Z,chi2i,chi2ai,chi2wi));
         // if the quality is too bad, skip 3-D fitting to save time
         if (minChi2Input&&chi2i>minChi2Input) continue;
 
@@ -292,8 +296,8 @@ int Tracker::fitting(int iselection){
         gMinuit->GetParameter(1, inx, temp);
         gMinuit->GetParameter(2, slz, temp);
         gMinuit->GetParameter(3, inz, temp);
-        double chi2, chi2p, chi2a;
-        getchi2(chi2,chi2p,chi2a,slx,inx,slz,inz,true);
+        double chi2, chi2p, chi2a, chi2w;
+        getchi2(chi2,chi2p,chi2a,chi2w,slx,inx,slz,inz,true);
         int nHitsSel = currentTrack3D.hitIndexSelected.size();
         MyNamedVerbose("Tracking",Form("       TMinuit fitting RESULT: nHitsSel = %d, x=%.3e*(y-%.3e)+%.3e, z=%.3e*(y-%.3e)+%.3e, chi2i = %.3e chi2 = %.3e",nHitsSel,slx,GeometryManager::Get().ReferenceY,inx,slz,GeometryManager::Get().ReferenceY,inz,chi2i,chi2));
 
@@ -308,6 +312,7 @@ int Tracker::fitting(int iselection){
         currentTrack2D.chi2Z = chi2Z;
         currentTrack2D.chi2 = chi2i;
         currentTrack2D.chi2a = chi2ai;
+        currentTrack2D.chi2WithTestLayer = chi2wi;
         currentTrack2D.pValue = chi2pi;
         currentTrack3D.slopeX = slx;
         currentTrack3D.slopeZ = slz;
@@ -316,6 +321,7 @@ int Tracker::fitting(int iselection){
         currentTrack3D.chi2 = chi2;
         currentTrack3D.pValue = chi2p;
         currentTrack3D.chi2a = chi2a;
+        currentTrack3D.chi2WithTestLayer = chi2w;
         if (fMaxResults){ // there is a limit on number of fitting results to save. Sort by chi2 and NDF.
             checkAndFitIn();
         }
@@ -328,7 +334,7 @@ int Tracker::fitting(int iselection){
 
         // TODO LATER: get mc input
         if (inputHitType == InputOutputManager::kMCDriftD || inputHitType == InputOutputManager::kMCDriftT){
-            //getchi2(chi2mc,chi2pmc,chi2amc,i_slxmc,i_inxmc,i_slzmc,i_inzmc,true);
+            //getchi2(chi2mc,chi2pmc,chi2amc,chi2wmc,i_slxmc,i_inxmc,i_slzmc,i_inzmc,true);
         }
     }
     return 0;
@@ -534,16 +540,16 @@ void Tracker::doFitting(double sliX, double iniX,double sliZ, double iniZ){
 void Tracker::fcn(int &npar, double *gin, double &f, double *par, int iflag)
 {
     // TODO LATER: consider about different track representation
-    double cp,ca;
+    double cp,ca,cw;
     if (npar<4){
         MyError("Not enough par! npar = "<<npar<<", but we need 4");
     }
     else{
-        getchi2(f,cp,ca,*par,*(par+1),*(par+2),*(par+3),false);
+        getchi2(f,cp,ca,cw,*par,*(par+1),*(par+2),*(par+3),false);
     }
 }
 
-void Tracker::getchi2(double &f, double & cp, double & ca, double slx, double inx, double slz, double inz, bool all)
+void Tracker::getchi2(double &f, double & cp, double & ca, double & cw, double slx, double inx, double slz, double inz, bool all)
 {
     //calculate chisquare
     double chisq = 0;
@@ -570,14 +576,16 @@ void Tracker::getchi2(double &f, double & cp, double & ca, double slx, double in
 
     if (all){ // should calculate chi2_pValue (cp) and chi2_all (ca)
         cp = TMath::Prob(f*N,N);
-        ca = chisq;
         // now find the closest hit in the test layer and add it into ca
         int nLayerAdded = 0;
+        bool found = false;
+        double minres = 1e9;
+        double theDD = 0;
         for (int lid = 0; lid<NLAY; lid++){
             if (LayerUsed[lid]) continue; // already used this layer in chi2
-            bool found = false;
-            double minres = 1e9;
-            double theDD = 0;
+            found = false;
+            minres = 1e9;
+            theDD = 0;
             for (size_t i=0;i<hitLayerIndexMap->at(lid)->size(); i++) {
                 int iHit = hitLayerIndexMap->at(lid)->at(i);
                 int wid = InputOutputManager::Get().CellID->at(iHit);
@@ -591,11 +599,36 @@ void Tracker::getchi2(double &f, double & cp, double & ca, double slx, double in
             }
             if (found){
                 double error = XTManager::Get().GetError(fabs(theDD));
-                ca += minres*minres/error/error;
+                chisq += minres*minres/error/error;
                 nLayerAdded++;
             }
         }
+        ca = chisq;
         if (N+nLayerAdded>0) ca/=(N+nLayerAdded);
+        // then calculate with test layer hit
+        found = false;
+        minres = 1e9;
+        theDD = 0;
+        for (size_t i=0;i<hitIndexInTestLayer->size(); i++) {
+            int iHit = hitIndexInTestLayer->at(i);
+            int lid = InputOutputManager::Get().LayerID->at(iHit);
+            int wid = InputOutputManager::Get().CellID->at(iHit);
+            dfit = GeometryManager::Get().GetDOCA(lid,wid,slx,inx,slz,inz);
+            double dd = dfit>=0?hitIndexDriftDRightMap[iHit]:hitIndexDriftDLeftMap[iHit];
+            if (fabs(minres)>fabs(dfit-dd)){
+                minres = dfit-dd;
+                theDD = dd;
+                found = true;
+            }
+        }
+        if (found){
+            double error = XTManager::Get().GetError(fabs(theDD));
+            chisq += minres*minres/error/error;
+            cw = chisq/(N+nLayerAdded+1);
+        }
+        else{
+            cw = ca;
+        }
     }
 }
 
@@ -620,7 +653,7 @@ double Tracker::getchi2Graph(TGraphErrors* graph, double v0, double sl){
 }
 
 bool Tracker::checkAndFitIn(){
-    MyNamedVerbose("Tracking"," checking new result with "<<currentTrack3D.hitIndexSelected.size()<<" hits and chi2 = "<<currentTrack3D.chi2<<" chi2a = "<<currentTrack3D.chi2a);
+    MyNamedVerbose("Tracking"," checking new result with "<<currentTrack3D.hitIndexSelected.size()<<" hits and chi2 = "<<currentTrack3D.chi2<<" chi2a = "<<currentTrack3D.chi2a<<" chi2w = "<<currentTrack3D.chi2WithTestLayer);
     int insertAt = -1;
     int takeOut = -1;
     // scan through current results rank list
@@ -629,14 +662,16 @@ bool Tracker::checkAndFitIn(){
     for (int i = 0; i<nGoodTracks; i++){
         if (currentTrack3D.hitIndexSelected.size()<track3Ds[i].hitIndexSelected.size()) continue;
         // WARNING: now we rely on total chi2 including test layer hit, a slight bias
-        if ((sortByChi2All&&currentTrack3D.chi2a<track3Ds[i].chi2a)
-         ||(!sortByChi2All
+        if ((sortType==chi2a&&currentTrack3D.chi2a<track3Ds[i].chi2a)
+          ||(sortType==chi2WithTestLayer&&currentTrack3D.chi2WithTestLayer<track3Ds[i].chi2WithTestLayer)
+          ||(sortType==NDFchi2
              &&(currentTrack3D.hitIndexSelected.size()>track3Ds[i].hitIndexSelected.size()
                 ||(currentTrack3D.hitIndexSelected.size()==track3Ds[i].hitIndexSelected.size()&&currentTrack3D.chi2<track3Ds[i].chi2)
                )
-           )){
+            )
+           ){
             if (insertAt<0){ // modify the index to be insert at if it's not set yet. Keep on searching in case we may find a bad candidate later with the same hits.
-                MyNamedVerbose("Tracking"," better than Cand#"<<i<<" with "<<track3Ds[i].hitIndexSelected.size()<<" hits and chi2 = "<<track3Ds[i].chi2<<" chi2a = "<<track3Ds[i].chi2a);
+                MyNamedVerbose("Tracking"," better than Cand#"<<i<<" with "<<track3Ds[i].hitIndexSelected.size()<<" hits and chi2 = "<<track3Ds[i].chi2<<" chi2a = "<<track3Ds[i].chi2a<<" chi2w = "<<track3Ds[i].chi2WithTestLayer);
                 insertAt = i;
             }
             if (currentTrack3D == track3Ds[i]){ // they have used the same hits (with same left/right)

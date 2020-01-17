@@ -502,7 +502,7 @@ int GetCandidate(TString & candSelBy){
             }
         }
     }
-    else if (candSelBy=="FittingChi2"||candSelBy=="GlobalChi2"){
+    else if (candSelBy=="FittingChi2"||candSelBy=="GlobalChi2"||candSelBy=="GlobalChi2WithTestLayer"){
         double minchi2 = 1e9;
         int minNhitsS = 0;
         for (int iCand = 0; iCand<NCAND; iCand++){
@@ -510,6 +510,13 @@ int GetCandidate(TString & candSelBy){
                 if ((minchi2>InputOutputManager::Get().chi2a[iCand]&&minNhitsS==InputOutputManager::Get().nHitsS[iCand])||minNhitsS<InputOutputManager::Get().nHitsS[iCand]){
                     cand = iCand;
                     minchi2 = InputOutputManager::Get().chi2a[iCand];
+                    minNhitsS = InputOutputManager::Get().nHitsS[iCand];
+                }
+            }
+            else if (candSelBy=="GlobalChi2WithTestLayer"){
+                if ((minchi2>InputOutputManager::Get().chi2WithTestLayer[iCand]&&minNhitsS==InputOutputManager::Get().nHitsS[iCand])||minNhitsS<InputOutputManager::Get().nHitsS[iCand]){
+                    cand = iCand;
+                    minchi2 = InputOutputManager::Get().chi2WithTestLayer[iCand];
                     minNhitsS = InputOutputManager::Get().nHitsS[iCand];
                 }
             }

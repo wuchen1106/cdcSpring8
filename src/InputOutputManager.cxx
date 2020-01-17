@@ -121,10 +121,12 @@ bool InputOutputManager::Initialize(bool withTrivialBranches){
         fInputTrackChain->SetBranchAddress("slopeZ",slopeZ);
         fInputTrackChain->SetBranchAddress("chi2",chi2);
         fInputTrackChain->SetBranchAddress("chi2a",chi2a);
+        fInputTrackChain->SetBranchAddress("chi2WithTestLayer",chi2WithTestLayer);
         fInputTrackChain->SetBranchAddress("pValue",pValue);
         if (inputHitType!=kData){
             fInputTrackChain->SetBranchAddress("chi2mc",chi2mc);
             fInputTrackChain->SetBranchAddress("chi2amc",chi2amc);
+            fInputTrackChain->SetBranchAddress("chi2WithTestLayermc",chi2WithTestLayermc);
             fInputTrackChain->SetBranchAddress("pValuemc",pValuemc);
             fInputTrackChain->SetBranchAddress("inxmc",&interceptXmc);
             fInputTrackChain->SetBranchAddress("inzmc",&interceptZmc);
@@ -140,6 +142,7 @@ bool InputOutputManager::Initialize(bool withTrivialBranches){
             fInputTrackChain->SetBranchAddress("chi2ZInput",chi2ZInput);
             fInputTrackChain->SetBranchAddress("chi2Input",chi2Input);
             fInputTrackChain->SetBranchAddress("chi2aInput",chi2aInput);
+            fInputTrackChain->SetBranchAddress("chi2WithTestLayerInput",chi2WithTestLayerInput);
             fInputTrackChain->SetBranchAddress("pValueInput",pValueInput);
         }
     }
@@ -169,10 +172,12 @@ bool InputOutputManager::Initialize(bool withTrivialBranches){
         fOutputTrackTree->Branch("slopeZ",slopeZ,"slopeZ[nFind]/D");
         fOutputTrackTree->Branch("chi2",chi2,"chi2[nFind]/D");
         fOutputTrackTree->Branch("chi2a",chi2a,"chi2a[nFind]/D");
+        fOutputTrackTree->Branch("chi2WithTestLayer",chi2WithTestLayer,"chi2WithTestLayer[nFind]/D");
         fOutputTrackTree->Branch("pValue",pValue,"pValue[nFind]/D");
         if (inputHitType!=kData){
             fOutputTrackTree->Branch("chi2mc",chi2mc,"chi2mc[nFind]/D");
             fOutputTrackTree->Branch("chi2amc",chi2amc,"chi2amc[nFind]/D");
+            fOutputTrackTree->Branch("chi2WithTestLayermc",chi2WithTestLayermc,"chi2WithTestLayermc[nFind]/D");
             fOutputTrackTree->Branch("pValuemc",pValuemc,"pValuemc[nFind]/D");
             fOutputTrackTree->Branch("inxmc",&interceptXmc);
             fOutputTrackTree->Branch("inzmc",&interceptZmc);
@@ -188,6 +193,7 @@ bool InputOutputManager::Initialize(bool withTrivialBranches){
             fOutputTrackTree->Branch("chi2ZInput",chi2ZInput,"chi2ZInput[nFind]/D");
             fOutputTrackTree->Branch("chi2Input",chi2Input,"chi2Input[nFind]/D");
             fOutputTrackTree->Branch("chi2aInput",chi2aInput,"chi2aInput[nFind]/D");
+            fOutputTrackTree->Branch("chi2WithTestLayerInput",chi2WithTestLayerInput,"chi2WithTestLayerInput[nFind]/D");
             fOutputTrackTree->Branch("pValueInput",pValueInput,"pValueInput[nFind]/D");
         }
     }
@@ -217,6 +223,7 @@ void InputOutputManager::Reset(){ // called at the beginning of every event
         chi2ZInput[iCand] = -1;
         chi2Input[iCand] = -1;
         chi2aInput[iCand] = -1;
+        chi2WithTestLayerInput[iCand] = -1;
         pValueInput[iCand] = -1;
         interceptX[iCand] = 0;
         interceptZ[iCand] = 0;
@@ -224,9 +231,11 @@ void InputOutputManager::Reset(){ // called at the beginning of every event
         slopeZ[iCand] = 0;
         chi2[iCand] = -1;
         chi2a[iCand] = -1;
+        chi2WithTestLayer[iCand] = -1;
         pValue[iCand] = -1;
         chi2mc[iCand] = -1;
         chi2amc[iCand] = -1;
+        chi2WithTestLayermc[iCand] = -1;
         pValuemc[iCand] = -1;
     }
 }
@@ -309,6 +318,7 @@ bool InputOutputManager::SetTrack(int iFound, const Track3D * track3D, const Tra
     chi2[iFound] = track3D->chi2;
     pValue[iFound] = track3D->pValue;
     chi2a[iFound] = track3D->chi2a;
+    chi2WithTestLayer[iFound] = track3D->chi2WithTestLayer;
     for (int lid = 0; lid<NLAY; lid++){
         hitIndexSelected[lid][iFound] = -1;
     }
@@ -328,6 +338,7 @@ bool InputOutputManager::SetTrack(int iFound, const Track3D * track3D, const Tra
         chi2ZInput[iFound] = track2D->chi2Z;
         chi2Input[iFound] = track2D->chi2;
         chi2aInput[iFound] = track2D->chi2a;
+        chi2WithTestLayerInput[iFound] = track2D->chi2WithTestLayer;
         pValueInput[iFound] = track2D->pValue;
     }
     return true;
