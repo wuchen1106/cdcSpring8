@@ -38,7 +38,7 @@
 ///    * all tracking-related parameters are loaded here through ParameterManager
 /// 4. Set the track results to InputOutputManager and fill into the output file
 ///    * number of candidates is adjustable: 0 means to save all and without sorting. others mean to save up to that number with sorting
-///    * sorting method is also adjustable TODO: implement it
+///    * sorting method is also adjustable
 
 //============================================================
 // Global controlers
@@ -54,8 +54,8 @@ void print_usage(char* prog_name);
 int main(int argc, char** argv){
     TString HOME=getenv("CDCS8WORKING_DIR");;
     int m_runNo = 0;
-    TString m_preRunName = "pre";
-    TString m_runName = "cur";
+    TString m_inputXTFile = "";
+    TString m_runName = "";
     int m_iEntryStart = -1;
     int m_iEntryStop = -1;
     int m_nEntries = 0;
@@ -162,12 +162,12 @@ int main(int argc, char** argv){
         print_usage(argv[0]);
         return -1;
     }
-    m_preRunName = argv[optind++];
+    m_inputXTFile = argv[optind++];
     m_runName= argv[optind++];
 
     printf("##############%s##################\n",argv[0]);
     printf("runNo       = %d\n",m_runNo);
-    printf("preRunName  = \"%s\"\n",m_preRunName.Data());
+    printf("input XT file = \"%s\"\n",m_inputXTFile.Data());
     printf("runName     = \"%s\"\n",m_runName.Data());
     printf("test layer  = %d\n",m_testLayer);
     printf("Start Entry = %d\n",m_iEntryStart);
@@ -182,18 +182,20 @@ int main(int argc, char** argv){
 
     // Prepare managers
     bool success = false;
-    success = RunInfoManager::Get().Initialize(m_runNo,m_preRunName,m_runName,m_testLayer);RunInfoManager::Get().Print();
+    success = RunInfoManager::Get().Initialize(m_runNo,m_runName,m_testLayer);RunInfoManager::Get().Print();
     if (!success) {MyError("Cannot initialize RunInfoManager"); return 1;}
     success = BeamManager::Get().Initialize(ParameterManager::Get().beamType);BeamManager::Get().Print();
     if (!success) {MyError("Cannot initialize BeamManager"); return 1;}
     success = GeometryManager::Get().Initialize(ParameterManager::Get().geoSetup,ParameterManager::Get().connectionType,ParameterManager::Get().chamberType); GeometryManager::Get().Print();
     if (!success) {MyError("Cannot initialize GeometryManager"); return 1;}
-    if (m_wireAdjustmentFile=="") m_wireAdjustmentFile = Form("%s/info/offset.%d.%s.root",HOME.Data(),m_runNo,m_preRunName.Data());
-    success = GeometryManager::Get().AdjustWirePosition(m_wireAdjustmentFile);
-    if (!success) MyWarn("Cannot load offset file for wire adjustment. Will ignore this step.");
-    success = XTManager::Get().Initialize();
+    if (!(m_wireAdjustmentFile=="")){
+        success = GeometryManager::Get().AdjustWirePosition(m_wireAdjustmentFile);
+        if (!success) MyWarn("Cannot load offset file for wire adjustment. Will ignore this step.");
+    }
+    success = XTManager::Get().SetInputFileXT(m_inputXTFile);
+    if (!success){MyError("Invalid input XT file"); return 1;}
+    success = XTManager::Get().Initialize();XTManager::Get().Print();
     if (!success) {MyError("Cannot initialize XTManager"); return 1;}
-    XTManager::Get().Print();
     InputOutputManager::Get().readHitFile = true;
     InputOutputManager::Get().writeTrackFile = true;
     success = InputOutputManager::Get().Initialize(m_createTrivialBranches);
@@ -309,7 +311,7 @@ void getRunTimeParameters(TString configureFile){
 
 void print_usage(char* prog_name)
 {
-    fprintf(stderr,"Usage %s [options] preRunName runName\n",prog_name);
+    fprintf(stderr,"Usage %s [options] inputXTFile runName\n",prog_name);
     fprintf(stderr,"[options]\n");
     fprintf(stderr,"\t -D <name>=[error,severe,warn,debug,trace]\n");
     fprintf(stderr,"\t\t Change the named debug level\n");

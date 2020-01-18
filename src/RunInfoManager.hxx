@@ -18,10 +18,9 @@ public:
         return *fRunInfoManager;
     }
 
-    bool Initialize(int theRunNo, TString thePreRunName, TString theRunName, int theTestLayer);
+    bool Initialize(int theRunNo, TString theRunName, int theTestLayer);
     void Print();
 
-    TString preRunName;
     TString runName;
     int     testLayer;
     int     runNo;

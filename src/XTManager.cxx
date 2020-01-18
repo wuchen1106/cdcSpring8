@@ -45,23 +45,32 @@ XTManager::~XTManager(){
     if (fResIntrinsic) delete fResIntrinsic;
 }
 
+bool XTManager::SetInputFileXT(TString file){
+    fInputFileXT = new TFile(file);
+    if (!fInputFileXT||fInputFileXT->IsZombie()){
+        fInputFileXT = NULL;
+        MyWarn("The given XT file \""<<file<<"\" is not available! will disard this setting and seek for default XT.");
+        return false;
+    }
+    return true;
+}
+
 bool XTManager::Initialize(){
     TString HOME=getenv("CDCS8WORKING_DIR");;
     int runNo = RunInfoManager::Get().runNo;
     TString gasTypeShort = RunInfoManager::Get().gasTypeShort;
     int HV = RunInfoManager::Get().HV;
-    TString runName = RunInfoManager::Get().preRunName;
+    TString runName = RunInfoManager::Get().runName;
 
     xtType = ParameterManager::Get().XTManagerParameters.xtType;
 
     // Prepare XT functions
-    fInputFileXT = new TFile(HOME+Form("/info/xt.%d.",runNo)+runName+".root");
     if (!fInputFileXT||fInputFileXT->IsZombie()){
-        MyWarn("Cannot find xt file according to the given run name. Will use garfield xt instead.");
-        fInputFileXT = new TFile(HOME+Form("/info/xt.%s.%d.root",gasTypeShort.Data(),HV));
-        if (!fInputFileXT||fInputFileXT->IsZombie()){
-            MyError("Cannot find the default garfield xt: "<<HOME+Form("/info/xt.%s.%d.root",gasTypeShort.Data(),HV));
-            return false;
+        if(!SetInputFileXT(HOME+Form("/info/xt.%d.%s.root",runNo,runName.Data()))){
+            if(!SetInputFileXT(HOME+Form("/info/xt.%s.%d.root",gasTypeShort.Data(),HV))){
+                MyError("Cannot find the default XT neither! XTManager failed to initialize.");
+                return false;
+            }
         }
     }
     for (int i = 1; i<NLAY; i++){ // first layer (0) is dummy

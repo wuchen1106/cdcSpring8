@@ -7,7 +7,6 @@
 RunInfoManager* RunInfoManager::fRunInfoManager = NULL;
 
 RunInfoManager::RunInfoManager():
-    preRunName(""),
     runName(""),
     testLayer(0),
     runNo(0),
@@ -28,8 +27,7 @@ RunInfoManager::RunInfoManager():
 {
 }
 
-bool RunInfoManager::Initialize(int theRunNo, TString thePreRunName, TString theRunName, int theTestLayer){
-    preRunName = thePreRunName;
+bool RunInfoManager::Initialize(int theRunNo, TString theRunName, int theTestLayer){
     runName = theRunName;
     testLayer = theTestLayer;
     TString HOME=getenv("CDCS8WORKING_DIR");;
@@ -89,5 +87,5 @@ bool RunInfoManager::Initialize(int theRunNo, TString thePreRunName, TString the
 void RunInfoManager::Print(){
     printf("#########################RunInfoManager###########################\n");
     printf("  runNo#%d: %s, %d, %s, %d V, %d mV, %.0f sec\n",runNo,gasType.Data(),runGr,duration.Data(),HV,THR,durationTime);
-    printf("  Test layer %d, previous run: \"%s\", this run: \"%s\"\n",testLayer,preRunName.Data(),runName.Data());
+    printf("  Test layer %d, run name: \"%s\"\n",testLayer,runName.Data());
 }
