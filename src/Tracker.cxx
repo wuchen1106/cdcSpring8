@@ -260,6 +260,7 @@ int Tracker::fitting(int iselection){
     for (int icombi = 0; icombi<ncombi; icombi++){ // each combination corresponds to a unique left/right selection set
         currentTrack3D.iSelection = iselection;
         currentTrack3D.iCombination = icombi;
+        currentTrack3D.t0Offset = t0Offset;
         bool fittingSucceeded = false;
         double chi2X = 0;
         double chi2Z = 0;
