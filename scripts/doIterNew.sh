@@ -147,10 +147,10 @@ fi
 echo "Will use following files as input"
 if [ $IterStart == 1 ]
 then
-    prerunname="${StartName}"
+    inputXTrunname="${StartName}"
 else
     im1=$((IterStart-1))
-    prerunname="${runName}.i${im1}"
+    inputXTrunname="${runName}.i${im1}"
 fi
 if [ -e $CDCS8WORKING_DIR/root/hits/h_$runNo.root ]
 then
@@ -159,11 +159,11 @@ else
     echo "$CDCS8WORKING_DIR/root/hits/h_$runNo.root doesn't exist!"
     exit 1
 fi
-if [ -e $CDCS8WORKING_DIR/info/wire-position.$runNo.$prerunname.root ]
+if [ -e $CDCS8WORKING_DIR/info/wire-position.$runNo.$inputXTrunname.root ]
 then
-    ls -ltr $CDCS8WORKING_DIR/info/wire-position.$runNo.$prerunname.root
+    ls -ltr $CDCS8WORKING_DIR/info/wire-position.$runNo.$inputXTrunname.root
 else
-    echo "$CDCS8WORKING_DIR/info/wire-position.$runNo.$prerunname.root doesn't exist!"
+    echo "$CDCS8WORKING_DIR/info/wire-position.$runNo.$inputXTrunname.root doesn't exist!"
     if [ -e $CDCS8WORKING_DIR/Input/wire-position.root ]
     then
         echo "Will use $CDCS8WORKING_DIR/Input/wire-position.root by default"
@@ -172,11 +172,11 @@ else
         exit 1
     fi
 fi
-if [ -e $CDCS8WORKING_DIR/info/xt.$runNo.$prerunname.root ]
+if [ -e $CDCS8WORKING_DIR/info/xt.$runNo.$inputXTrunname.root ]
 then
-    ls -ltr $CDCS8WORKING_DIR/info/xt.$runNo.$prerunname.root
+    ls -ltr $CDCS8WORKING_DIR/info/xt.$runNo.$inputXTrunname.root
 else
-    echo "$CDCS8WORKING_DIR/info/xt.$runNo.$prerunname.root doesn't exist!"
+    echo "$CDCS8WORKING_DIR/info/xt.$runNo.$inputXTrunname.root doesn't exist!"
     echo "Will use default garfield xt"
 fi
 
@@ -262,10 +262,10 @@ do
     if [ $iter == 1 ]
     then
         currunname="${runName}.i${iter}"
-        prerunname="${StartName}"
+        inputXTrunname="${StartName}"
     else
         currunname="${runName}.i${iter}"
-        prerunname="${runName}.i${im1}"
+        inputXTrunname="${runName}.i${im1}"
     fi
 
     if $PROGRAMMED
@@ -367,7 +367,7 @@ do
             logtemp="$CDCS8WORKING_DIR/root/tracks/t_${runNo}.${temprunname}.layer${testlayer}.log"
             errtemp="$CDCS8WORKING_DIR/root/tracks/t_${runNo}.${temprunname}.layer${testlayer}.err"
             sourcefiles[testlayer]="${sourcefiles[testlayer]} t_${runNo}.${temprunname}.layer${testlayer}.root"
-            tempconfig="Tracking $arg_tracking -C $CONFIGTABLEDEFAULT $arg_configure $arg_adjust -R $runNo -L $testlayer -B $iEntryStart -E $iEntryStop $prerunname $temprunname > $logtemp 2> $errtemp"
+            tempconfig="Tracking $arg_tracking -C $CONFIGTABLEDEFAULT $arg_configure $arg_adjust -R $runNo -L $testlayer -B $iEntryStart -E $iEntryStop info/xt.${runNo}.${inputXTrunname}.root $temprunname > $logtemp 2> $errtemp"
             echo $tempconfig
 
             rootfile="root/tracks/t_${jobname}.root"
@@ -468,7 +468,7 @@ do
                     iEntryStop=`echo $jobname | sed 's/.*\.\(\w*\)-\(\w*\)\..*/\2/g'`
                     logtemp="$CDCS8WORKING_DIR/root/tracks/t_${runNo}.${temprunname}.layer${testlayer}.log"
                     errtemp="$CDCS8WORKING_DIR/root/tracks/t_${runNo}.${temprunname}.layer${testlayer}.err"
-                    tempconfig="Tracking $arg_tracking -C $CONFIGTABLEDEFAULT $arg_configure $arg_adjust -R $runNo -L $testlayer -B $iEntryStart -E $iEntryStop $prerunname $temprunname > $logtemp 2> $errtemp"
+                    tempconfig="Tracking $arg_tracking -C $CONFIGTABLEDEFAULT $arg_configure $arg_adjust -R $runNo -L $testlayer -B $iEntryStart -E $iEntryStop info/xt.${runNo}.${inputXTrunname}.root $temprunname > $logtemp 2> $errtemp"
                     echo $tempconfig
 
                     findVacentThread
@@ -542,5 +542,5 @@ do
         cd ../..
     fi
 
-    GetXT -C $CONFIGTABLEDEFAULT $arg_configure $arg_cell $arg_adjust -R $runNo $prerunname $currunname
+    GetXT -C $CONFIGTABLEDEFAULT $arg_configure $arg_cell $arg_adjust -R $runNo info/xt.${runNo}.${inputXTrunname}.root $currunname
 done
