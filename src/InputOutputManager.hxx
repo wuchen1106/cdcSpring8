@@ -1,7 +1,9 @@
 #ifndef InputOutputManager_hxx_seen
 #define InputOutputManager_hxx_seen
 
-#define NCAND 10000
+#define NCAND  10000
+#define NCHMAX 5000
+#define NSAM   32
 
 #include <TString.h>
 
@@ -77,8 +79,14 @@ public:
     /// the current entry; increment once GetEntry(iEntry) is called
     int                   fCurrentEntry;
 
-    /// raw hits
     int                   triggerNumber;
+    /// raw
+    int                   tdcNhit[NCHMAX];
+    int                   clockNumber[NCHMAX][NSAM];
+    int                   adc[NCHMAX][NSAM];
+    int                   tdc[NCHMAX][NSAM];
+
+    /// hits
     int                   nHits;
     std::vector<int> *    LayerID;
     std::vector<int> *    CellID;
@@ -142,6 +150,7 @@ private:
 
     TTree  * fOutputTrackTree;
     TFile  * fOutputTrackFile;
+    TChain * fInputRawChain;
     TChain * fInputHitChain;
     TChain * fInputTrackChain;
 };

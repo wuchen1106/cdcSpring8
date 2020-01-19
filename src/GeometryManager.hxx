@@ -4,7 +4,6 @@
 #include <TVector3.h>
 
 // Single board parameters
-#define NSAM 32
 #define NCHS 48
 #define MIN_ADCL -50  // used in getH
 #define MAX_ADCL 1000 // used in getH

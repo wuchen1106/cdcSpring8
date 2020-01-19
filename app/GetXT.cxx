@@ -160,7 +160,7 @@ int main(int argc, char** argv){
 
     printf("##############%s##################\n",argv[0]);
     printf("runNo               = %d\n",m_runNo);
-    printf("inputXTFile          = \"%s\"\n",m_inputXTFile.Data());
+    printf("input XT File     = \"%s\"\n",m_inputXTFile.Data());
     printf("runName             = \"%s\"\n",m_runName.Data());
     printf("Start Entry         = %d\n",m_iEntryStart);
     printf("Stop Entry          = %d\n",m_iEntryStop);

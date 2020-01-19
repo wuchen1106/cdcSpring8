@@ -46,6 +46,7 @@ InputOutputManager::InputOutputManager():
     nCandidatesFound(0),
     fOutputTrackTree(0),
     fOutputTrackFile(0),
+    fInputRawChain(0),
     fInputHitChain(0),
     fInputTrackChain(0)
 {
@@ -63,7 +64,16 @@ bool InputOutputManager::Initialize(bool withTrivialBranches){
     int testLayer = RunInfoManager::Get().testLayer;
     InputHitType inputHitType = ParameterManager::Get().inputHitType;
 
-    // Need to load hit file?
+    if (readRawFile){
+        if (fInputRawChain) delete fInputRawChain;
+        fInputRawChain = new TChain("t","t");
+        fInputRawChain->Add(HOME+Form("/root/raw/run_%0.6d_built.root",runNo));
+	fInputRawChain->SetBranchAddress("triggerNumber",&triggerNumber);
+	fInputRawChain->SetBranchAddress("tdcNhit",tdcNhit);
+	fInputRawChain->SetBranchAddress("clockNumberDriftTime",clockNumber);
+	fInputRawChain->SetBranchAddress("driftTime",tdc);
+	fInputRawChain->SetBranchAddress("adc",adc);
+    }
     if (readHitFile){
         if (fInputHitChain) delete fInputHitChain;
         fInputHitChain = new TChain("t","t");
@@ -253,6 +263,7 @@ void InputOutputManager::Close(){
 }
 
 void InputOutputManager::GetEntry(Long64_t iEntry){
+    if (readRawFile&&fInputRawChain) fInputRawChain->GetEntry(iEntry); 
     if (readHitFile&&fInputHitChain) fInputHitChain->GetEntry(iEntry); 
     if (readTrackFile&&fInputTrackChain) fInputTrackChain->GetEntry(iEntry); 
     fCurrentEntry = iEntry;
@@ -263,6 +274,8 @@ Long64_t InputOutputManager::GetEntries(){
         return fInputTrackChain->GetEntries();
     else if (readHitFile&&fInputHitChain)
         return fInputHitChain->GetEntries();
+    else if (readRawFile&&fInputRawChain)
+        return fInputRawChain->GetEntries();
     else
         return 0;
 }
