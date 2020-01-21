@@ -196,7 +196,7 @@ void Tracker::updateDriftD(){
         size_t nHits = hitLayerIndexMap->at(lid)->size();
         for (size_t i = 0; i<nHits; i++){
             int hitIndex = hitLayerIndexMap->at(lid)->at(i);
-            double driftT = InputOutputManager::Get().DriftT->at(hitIndex)+t0Offset;
+            double driftT = InputOutputManager::Get().DriftT->at(hitIndex)-t0Offset;
             int wid = InputOutputManager::Get().CellID->at(hitIndex);
             int status;
             hitIndexDriftDLeftMap[hitIndex] = XTManager::Get().t2x(driftT,lid,wid,-1,status);
@@ -208,7 +208,7 @@ void Tracker::updateDriftD(){
     MyNamedVerbose("Tracking","  Assigning driftD to "<<hitIndexInTestLayer->size()<<" hits in test layer");
     for (size_t i = 0; i<nHits; i++){
         int hitIndex = hitIndexInTestLayer->at(i);
-        double driftT = InputOutputManager::Get().DriftT->at(hitIndex)+t0Offset;
+        double driftT = InputOutputManager::Get().DriftT->at(hitIndex)-t0Offset;
         int lid = InputOutputManager::Get().LayerID->at(hitIndex);
         int wid = InputOutputManager::Get().CellID->at(hitIndex);
         int status;
