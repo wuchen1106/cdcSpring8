@@ -204,6 +204,14 @@ void Chamber::Print(){
     printf("  Chamber geometry:\n");
 }
 
+double Chamber::GetX(int lid, int wid, double z){
+    return ((chamberLength/2-z)*wire_x[lid][wid][0]+(chamberLength/2+z)*wire_x[lid][wid][1])/chamberLength;
+}
+
+double Chamber::GetY(int lid, int wid, double z){
+    return ((chamberLength/2-z)*wire_y[lid][wid][0]+(chamberLength/2+z)*wire_y[lid][wid][1])/chamberLength;
+}
+
 GeometryManager* GeometryManager::fGeometryManager = NULL;
 
 GeometryManager::GeometryManager():

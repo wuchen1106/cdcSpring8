@@ -131,6 +131,8 @@ public:
     bool LoadWireMap(TString file);
     bool LoadCrossPoints(TString file);
     bool AdjustWirePosition(TString file);
+    double GetX(int lid, int wid, double z);
+    double GetY(int lid, int wid, double z);
 
     // Cell shape
     double cellHeight;

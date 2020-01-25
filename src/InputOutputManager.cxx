@@ -47,6 +47,7 @@ InputOutputManager::InputOutputManager():
     fOutputTrackTree(0),
     fOutputTrackFile(0),
     fInputRawChain(0),
+    fInputPeakChain(0),
     fInputHitChain(0),
     fInputTrackChain(0)
 {
@@ -66,7 +67,7 @@ bool InputOutputManager::Initialize(bool withTrivialBranches){
 
     if (readRawFile){
         if (fInputRawChain) delete fInputRawChain;
-        fInputRawChain = new TChain("t","t");
+        fInputRawChain = new TChain("tree","tree");
         fInputRawChain->Add(HOME+Form("/root/raw/run_%0.6d_built.root",runNo));
 	fInputRawChain->SetBranchAddress("triggerNumber",&triggerNumber);
 	fInputRawChain->SetBranchAddress("tdcNhit",tdcNhit);
@@ -264,20 +265,53 @@ void InputOutputManager::Close(){
 
 void InputOutputManager::GetEntry(Long64_t iEntry){
     if (readRawFile&&fInputRawChain) fInputRawChain->GetEntry(iEntry); 
+    if (readPeakFile&&fInputPeakChain) fInputPeakChain->GetEntry(iEntry); 
     if (readHitFile&&fInputHitChain) fInputHitChain->GetEntry(iEntry); 
     if (readTrackFile&&fInputTrackChain) fInputTrackChain->GetEntry(iEntry); 
     fCurrentEntry = iEntry;
 }
 
+bool InputOutputManager::IsRawFileReady(void){
+    bool isReady = false;
+    if (readRawFile&&fInputRawChain&&fInputRawChain->GetEntries()>0) isReady = true;
+    return isReady;
+}
+
+bool InputOutputManager::IsPeakFileReady(void){
+    bool isReady = false;
+    if (readPeakFile&&fInputPeakChain&&fInputPeakChain->GetEntries()>0) isReady = true;
+    return isReady;
+}
+
+bool InputOutputManager::IsHitFileReady(void){
+    bool isReady = false;
+    if (readHitFile&&fInputHitChain&&fInputHitChain->GetEntries()>0) isReady = true;
+    return isReady;
+}
+
+bool InputOutputManager::IsTrackFileReady(void){
+    bool isReady = false;
+    if (readTrackFile&&fInputTrackChain&&fInputTrackChain->GetEntries()>0) isReady = true;
+    return isReady;
+}
+
 Long64_t InputOutputManager::GetEntries(){
-    if (readTrackFile&&fInputTrackChain)
-        return fInputTrackChain->GetEntries();
-    else if (readHitFile&&fInputHitChain)
-        return fInputHitChain->GetEntries();
-    else if (readRawFile&&fInputRawChain)
-        return fInputRawChain->GetEntries();
-    else
-        return 0;
+    Long64_t N = 0;
+    TChain * chain = getChain();
+    if (chain){
+        N = chain->GetEntries();
+    }
+    return N;
+}
+
+Long64_t InputOutputManager::GetTriggerNumberMax(){
+    Long64_t TriMax = 1;
+    TChain * chain = getChain();
+    if (chain&&chain->GetEntries()>0){
+        chain->GetEntry(chain->GetEntries()-1);
+        TriMax = triggerNumber;
+    }
+    return TriMax;
 }
 
 void InputOutputManager::Print(TString opt){
@@ -356,3 +390,17 @@ bool InputOutputManager::SetTrack(int iFound, const Track3D * track3D, const Tra
     }
     return true;
 }
+
+TChain * InputOutputManager::getChain(){
+    if (readTrackFile&&fInputTrackChain)
+        return fInputTrackChain;
+    else if (readHitFile&&fInputHitChain)
+        return fInputHitChain;
+    else if (readPeakFile&&fInputPeakChain)
+        return fInputPeakChain;
+    else if (readRawFile&&fInputRawChain)
+        return fInputRawChain;
+    else
+        return 0;
+}
+

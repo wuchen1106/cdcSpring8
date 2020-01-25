@@ -65,8 +65,13 @@ public:
     void Close(); ///< Close the output file
     void GetEntry(Long64_t iEntry); ///< Should be called at the beginning of every event AFTER Reset()
     Long64_t GetEntries();
+    Long64_t GetTriggerNumberMax();
     void Print(TString opt = "");
     bool SetTrack(int iFound, const Track3D* track3D, const Track2D* track2D = 0);
+    bool IsRawFileReady(void);
+    bool IsPeakFileReady(void);
+    bool IsHitFileReady(void);
+    bool IsTrackFileReady(void);
 
     /// flags about which to read and which to write
     bool                  readRawFile;
@@ -144,13 +149,18 @@ public:
     double                chi2aInput[NCAND];
     double                chi2WithTestLayerInput[NCAND];
 
+    Long64_t              triggerNumberMax;
+
 private:
+    TChain * getChain();
+
     /// The static pointer to the singleton instance.
     static InputOutputManager* fInputOutputManager;
 
     TTree  * fOutputTrackTree;
     TFile  * fOutputTrackFile;
     TChain * fInputRawChain;
+    TChain * fInputPeakChain;
     TChain * fInputHitChain;
     TChain * fInputTrackChain;
 };
