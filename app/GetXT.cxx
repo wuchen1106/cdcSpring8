@@ -180,7 +180,7 @@ int main(int argc, char** argv){
     if (!success) {MyError("Cannot initialize BeamManager"); return 1;}
     success = GeometryManager::Get().Initialize(ParameterManager::Get().geoSetup,ParameterManager::Get().connectionType,ParameterManager::Get().chamberType); GeometryManager::Get().Print();
     if (!success) {MyError("Cannot initialize GeometryManager"); return 1;}
-    if (!(m_wireAdjustmentFile=="")){
+    if (m_wireAdjustmentFile!=""){
         success = GeometryManager::Get().AdjustWirePosition(m_wireAdjustmentFile);
         if (!success) MyWarn("Cannot load offset file for wire adjustment. Will ignore this step.");
     }
