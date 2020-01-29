@@ -7,6 +7,7 @@
 
 class TFile;
 class TF1;
+class TH2D;
 class TGraph;
 
 class XTManager{
@@ -35,6 +36,7 @@ public:
 
     bool Initialize();
     double t2x(double time, int lid, int wid, double lr, int & status);
+    double RandomDrfitT(double doca, int lid, int wid);
     double GetError(double dd);
     bool SetInputFileXT(TString file);
     void Print();
@@ -57,6 +59,10 @@ private:
     TF1    * fXTLeftDefault;
     TF1    * fXTRightDefault;
     TGraph * fResIntrinsic; // TODO: support multiple resolution graphs in the future
+    TH2D   * fXTHist[NLAY];
+    TH2D   * fXTHistOdd;
+    TH2D   * fXTHistEven;
+    TH2D   * fXTHistDefault;
 };
 
 #endif

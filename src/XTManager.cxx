@@ -1,6 +1,7 @@
 #include <stdio.h>  /* printf, getenv */
 #include <TFile.h>
 #include <TF1.h>
+#include <TH2D.h>
 #include <TGraph.h>
 
 #include "Log.hxx"
@@ -19,12 +20,16 @@ XTManager::XTManager():
     fXTRightOdd(NULL),
     fXTLeftDefault(NULL),
     fXTRightDefault(NULL),
+    fXTHistEven(NULL),
+    fXTHistOdd(NULL),
+    fXTHistDefault(NULL),
     fResIntrinsic(NULL),
     xtType(kSingleFolded)
 {
     for (int i = 0; i<NLAY; i++){
         fXTLeft[i] = NULL; 
         fXTRight[i] = NULL;
+        fXTHist[i] = NULL;
     }
 }
 
@@ -38,9 +43,13 @@ XTManager::~XTManager(){
     if (fXTRightOdd) delete fXTRightOdd;
     if (fXTLeftDefault) delete fXTLeftDefault;
     if (fXTRightDefault) delete fXTRightDefault;
+    if (fXTHistEven) delete fXTHistEven;
+    if (fXTHistOdd) delete fXTHistOdd;
+    if (fXTHistDefault) delete fXTHistDefault;
     for (int i = 0; i<NLAY; i++){
         if (fXTLeft[i]) delete fXTLeft[i]; 
         if (fXTRight[i]) delete fXTRight[i];
+        if (fXTHist[i]) delete fXTHist[i];
     }
     if (fResIntrinsic) delete fResIntrinsic;
 }
@@ -76,27 +85,36 @@ bool XTManager::Initialize(){
     for (int i = 1; i<NLAY; i++){ // first layer (0) is dummy
         fXTLeft[i] = (TF1*) fInputFileXT->Get(Form("fl_%d",i));
         fXTRight[i] = (TF1*) fInputFileXT->Get(Form("fr_%d",i));
+        fXTHist[i] = (TH2D*) fInputFileXT->Get(Form("h2_xt_%d",i));
         if (fXTLeft[i]) fXTLeftDefault = fXTLeft[i];
         if (fXTRight[i]) fXTRightDefault = fXTRight[i];
+        if (fXTHist[i]) fXTHistDefault = fXTHist[i];
     }
     int lid = ParameterManager::Get().XTManagerParameters.defaultLayer;
     if (lid>=NLAY||lid<0) {MyError("Invalid default layer "<<lid); return false;}
     if (fXTLeft[lid]) fXTLeftDefault = fXTLeft[lid];
     if (fXTRight[lid]) fXTRightDefault = fXTRight[lid];
+    if (fXTHist[lid]) fXTHistDefault = fXTHist[lid];
     if (!fXTLeftDefault) fXTLeftDefault = (TF1*) fInputFileXT->Get("fl_0");
     if (!fXTRightDefault) fXTRightDefault = (TF1*) fInputFileXT->Get("fr_0");
+    if (!fXTHistDefault) fXTHistDefault = (TH2D*) fInputFileXT->Get("h2_xt_0");
     if (!fXTLeftDefault||!fXTRightDefault){
         MyError("Cannot find the default xt functions in the given xt file!");
         return false;
+    }
+    if (!fXTHistDefault){
+        MyWarn("Cannot find the default xt 2D histogram. XTManager will continue to serve for t2x function but will fail at RandomDrfitT function!!!");
     }
     lid = ParameterManager::Get().XTManagerParameters.evenLayer;
     if (lid>=NLAY||lid<0) {MyError("Invalid even layer "<<lid); return false;}
     fXTLeftEven = fXTLeft[lid];
     fXTRightEven = fXTRight[lid];
+    fXTHistEven = fXTHist[lid];
     lid = ParameterManager::Get().XTManagerParameters.oddLayer;
     if (lid>=NLAY||lid<0) {MyError("Invalid odd layer "<<lid); return false;}
     fXTLeftOdd = fXTLeft[lid];
     fXTRightOdd = fXTRight[lid];
+    fXTHistOdd = fXTHist[lid];
 
     // Prepare error function
     fInputFileRes = new TFile(HOME+Form("/info/reso.%d.",runNo)+runName+".root");
@@ -113,6 +131,7 @@ bool XTManager::Initialize(){
     return true;
 }
 
+// TODO: better to make status as return value and the to-be-calculated number (x) as an input reference. Same task goes with RandomDrfitT
 double XTManager::t2x(double time, int lid, int wid, double lr, int & status){ // 1: right; 2: right end; -1: left; -2: left end; 0 out of range
     TF1* f=0;
     // FIXME: consider to use left/right case and folded case
@@ -182,6 +201,20 @@ double XTManager::t2x(double time, int lid, int wid, double lr, int & status){ /
         dd = f->Eval(time);
     }
     return dd;
+}
+
+double XTManager::RandomDrfitT(double doca, int lid, int wid){
+    TH2D* h=0;
+    // FIXME: consider to add customizable parameters
+    if (fXTHist[lid]) h = fXTHist[lid];
+    else if (fXTHistDefault) h = fXTHistDefault;
+    if (!h){
+        MyError("Cannot get XT relation 2D histogram for layer "<<lid<<"!\n");
+        return 0;
+    }
+    int ibin = h->ProjectionY()->FindBin(doca);
+    TH1D * ht = h->ProjectionX(Form("px%d_%d",lid,ibin),ibin,ibin);
+    return ht->GetRandom();
 }
 
 double XTManager::GetError(double dd){
