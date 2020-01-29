@@ -14,6 +14,7 @@ ParameterManager::ParameterManager()
     connectionType = GeometryManager::kSPring8;
     beamType = BeamManager::kSPring8;
     inputHitType = InputOutputManager::kData;
+    inputTrackType = InputOutputManager::kData;
     peakType = TrackingPara::kFirstPeak;
 }
 
@@ -56,6 +57,14 @@ void ParameterManager::LoadParameters(ParaBlock theParaBlock){
         if (name == "data") inputHitType = InputOutputManager::kData;
         else if (name == "mc" || name == "mcdriftt") inputHitType = InputOutputManager::kMCDriftT;
         else if (name == "mcdriftd") inputHitType = InputOutputManager::kMCDriftD;
+    }
+    parName="inputTrackType";
+    if (MyRuntimeParameters::Get().HasParameter(parName)){
+        TString name = MyRuntimeParameters::Get().GetParameterS(parName);
+        name.ToLower();
+        if (name == "data") inputTrackType = InputOutputManager::kData;
+        else if (name == "mc" || name == "mcdriftt") inputTrackType = InputOutputManager::kMCDriftT;
+        else if (name == "mcdriftd") inputTrackType = InputOutputManager::kMCDriftD;
     }
     parName="peakType";
     if (MyRuntimeParameters::Get().HasParameter(parName)){
@@ -204,7 +213,8 @@ void ParameterManager::Print(){
     printf("  connection type:   %d\n",connectionType);
     printf("  geometry setup:    %d\n",geoSetup);
     printf("  beam type:         %d\n",beamType);
-    printf("  input type:        %d\n",inputHitType);
+    printf("  input hit type:    %d\n",inputHitType);
+    printf("  input track type:  %d\n",inputTrackType);
     printf("  peak type:         %d\n",peakType);
     TrackingParameters.Print();
     CalibParameters.Print();

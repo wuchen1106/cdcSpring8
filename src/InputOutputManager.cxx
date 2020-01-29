@@ -7,6 +7,7 @@
 #include "InputOutputManager.hxx"
 #include "ParameterManager.hxx"
 #include "RunInfoManager.hxx"
+#include "XTManager.hxx"
 #include "Track.hxx"
 
 InputOutputManager* InputOutputManager::fInputOutputManager = NULL;
@@ -16,6 +17,7 @@ InputOutputManager::InputOutputManager():
     readPeakFile(false),
     readHitFile(false),
     readTrackFile(false),
+    writeHitFile(false),
     writeTrackFile(false),
     writeAnaFile(false),
     fCurrentEntry(0),
@@ -44,6 +46,8 @@ InputOutputManager::InputOutputManager():
     slopeZmc(0),
     nHitsG(0),
     nCandidatesFound(0),
+    fOutputHitTree(0),
+    fOutputHitFile(0),
     fOutputTrackTree(0),
     fOutputTrackFile(0),
     fInputRawChain(0),
@@ -54,6 +58,22 @@ InputOutputManager::InputOutputManager():
 }
 
 InputOutputManager::~InputOutputManager(){
+    if (LayerID) {delete LayerID;}
+    if (CellID) {delete CellID;}
+    if (TDCClock) {delete TDCClock;}
+    if (DriftT) {delete DriftT;}
+    if (DriftDmc) {delete DriftDmc;}
+    if (DOCA) {delete DOCA;}
+    if (Pedestal) {delete Pedestal;}
+    if (ADCheight) {delete ADCheight;}
+    if (ADCpeak) {delete ADCpeak;}
+    if (ADCsumPacket) {delete ADCsumPacket;}
+    if (ADCsumAll) {delete ADCsumAll;}
+    if (PacketWidth) {delete PacketWidth;}
+    if (nPeaksInChannel) {delete nPeaksInChannel;}
+    if (iPeakInChannel) {delete iPeakInChannel;}
+    if (nPeaksInPacket) {delete nPeaksInPacket;}
+    if (iPeakInPacket) {delete iPeakInPacket;}
 }
 
 /// This is to set branches for input and output files
@@ -63,7 +83,27 @@ bool InputOutputManager::Initialize(bool withTrivialBranches){
     int runNo = RunInfoManager::Get().runNo;
     TString runName = RunInfoManager::Get().runName;
     int testLayer = RunInfoManager::Get().testLayer;
-    InputHitType inputHitType = ParameterManager::Get().inputHitType;
+    DataType inputHitType = ParameterManager::Get().inputHitType;
+    DataType inputTrackType = ParameterManager::Get().inputTrackType;
+
+    if (!readHitFile){
+        if (LayerID) {delete LayerID;} LayerID = new std::vector<int>;
+        if (CellID) {delete CellID;} CellID = new std::vector<int>;
+        if (TDCClock) {delete TDCClock;} TDCClock = new std::vector<int>;
+        if (DriftT) {delete DriftT;} DriftT = new std::vector<double>;
+        if (DriftDmc) {delete DriftDmc;} DriftDmc = new std::vector<double>; // For MC input
+        if (DOCA) {delete DOCA;} DOCA = new std::vector<double>; // For MC input
+        if (Pedestal) {delete Pedestal;} Pedestal = new std::vector<double>;
+        if (ADCheight) {delete ADCheight;} ADCheight = new std::vector<int>;
+        if (ADCpeak) {delete ADCpeak;} ADCpeak = new std::vector<int>;
+        if (ADCsumPacket) {delete ADCsumPacket;} ADCsumPacket = new std::vector<double>;
+        if (ADCsumAll) {delete ADCsumAll;} ADCsumAll = new std::vector<double>;
+        if (PacketWidth) {delete PacketWidth;} PacketWidth = new std::vector<int>;
+        if (nPeaksInChannel) {delete nPeaksInChannel;} nPeaksInChannel = new std::vector<int>;
+        if (iPeakInChannel) {delete iPeakInChannel;} iPeakInChannel = new std::vector<int>;
+        if (nPeaksInPacket) {delete nPeaksInPacket;} nPeaksInPacket = new std::vector<int>;
+        if (iPeakInPacket) {delete iPeakInPacket;} iPeakInPacket = new std::vector<int>;
+    }
 
     if (readRawFile){
         if (fInputRawChain) delete fInputRawChain;
@@ -134,7 +174,7 @@ bool InputOutputManager::Initialize(bool withTrivialBranches){
         fInputTrackChain->SetBranchAddress("chi2a",chi2a);
         fInputTrackChain->SetBranchAddress("chi2WithTestLayer",chi2WithTestLayer);
         fInputTrackChain->SetBranchAddress("pValue",pValue);
-        if (inputHitType!=kData){
+        if (inputTrackType!=kData){
             fInputTrackChain->SetBranchAddress("chi2mc",chi2mc);
             fInputTrackChain->SetBranchAddress("chi2amc",chi2amc);
             fInputTrackChain->SetBranchAddress("chi2WithTestLayermc",chi2WithTestLayermc);
@@ -159,6 +199,42 @@ bool InputOutputManager::Initialize(bool withTrivialBranches){
     }
 
     //===================Prepare output ROOT file============================
+    if (writeHitFile){
+        if (fOutputHitTree) delete fOutputHitTree;
+        if (fOutputHitFile) fOutputHitFile->Close();
+        fInputHitChain = new TChain("t","t");
+        if (inputHitType==kData)
+            fOutputHitFile = new TFile(Form("%s/root/hits/h_%d.root",HOME.Data(),runNo),"RECREATE");
+        else
+            fOutputHitFile = new TFile(Form("%s/root/hits/h_%d.MC.root",HOME.Data(),runNo),"RECREATE");
+        fOutputHitTree = new TTree("t","t");
+        fOutputHitTree->Branch("triggerNumber",&triggerNumber);
+        fOutputHitTree->Branch("nHits",&nHits);
+        fOutputHitTree->Branch("driftT",&DriftT);
+        if (inputHitType==kMCDriftD||inputHitType==kMCDriftT) fOutputHitTree->Branch("DOCA",&DOCA);
+        if (inputHitType==kMCDriftD) fOutputHitTree->Branch("driftD",&DriftDmc);
+        fOutputHitTree->Branch("layerID",&LayerID);
+        fOutputHitTree->Branch("wireID",&CellID);
+        //fOutputHitTree->Branch("type",&type); // 0 center, 1 left, 2 right, 3 guard, 4 dummy
+        fOutputHitTree->Branch("ped",&Pedestal);
+        fOutputHitTree->Branch("height",&ADCheight);
+        fOutputHitTree->Branch("peak",&ADCpeak);
+        //fOutputHitTree->Branch("rank",&rank);
+        fOutputHitTree->Branch("sum",&ADCsumPacket);
+        fOutputHitTree->Branch("aa",&ADCsumAll);
+        fOutputHitTree->Branch("width",&PacketWidth);
+        fOutputHitTree->Branch("np",&nPeaksInChannel);
+        fOutputHitTree->Branch("ip",&iPeakInChannel);
+        fOutputHitTree->Branch("mpn",&nPeaksInPacket);
+        fOutputHitTree->Branch("mpi",&iPeakInPacket);
+        fOutputHitTree->Branch("clk",&TDCClock);
+        if (inputHitType==kMCDriftD||inputHitType==kMCDriftT){
+            fOutputHitTree->Branch("inxmc",&interceptXmc);
+            fOutputHitTree->Branch("inzmc",&interceptZmc);
+            fOutputHitTree->Branch("slxmc",&slopeXmc);
+            fOutputHitTree->Branch("slzmc",&slopeZmc);
+        }
+    }
     if (writeTrackFile){
         if (fOutputTrackTree) delete fOutputTrackTree; // FIXME: double delete?
         if (fOutputTrackFile) fOutputTrackFile->Close();
@@ -185,7 +261,7 @@ bool InputOutputManager::Initialize(bool withTrivialBranches){
         fOutputTrackTree->Branch("chi2a",chi2a,"chi2a[nFind]/D");
         fOutputTrackTree->Branch("chi2WithTestLayer",chi2WithTestLayer,"chi2WithTestLayer[nFind]/D");
         fOutputTrackTree->Branch("pValue",pValue,"pValue[nFind]/D");
-        if (inputHitType!=kData){
+        if (inputTrackType!=kData){
             fOutputTrackTree->Branch("chi2mc",chi2mc,"chi2mc[nFind]/D");
             fOutputTrackTree->Branch("chi2amc",chi2amc,"chi2amc[nFind]/D");
             fOutputTrackTree->Branch("chi2WithTestLayermc",chi2WithTestLayermc,"chi2WithTestLayermc[nFind]/D");
@@ -249,17 +325,39 @@ void InputOutputManager::Reset(){ // called at the beginning of every event
         chi2WithTestLayermc[iCand] = -1;
         pValuemc[iCand] = -1;
     }
+    if (!readHitFile&&writeHitFile){
+        LayerID->clear();
+        CellID->clear();
+        TDCClock->clear();
+        DriftT->clear();
+        DriftDmc->clear();
+        DOCA->clear();
+        Pedestal->clear();
+        ADCheight->clear();
+        ADCpeak->clear();
+        ADCsumPacket->clear();
+        ADCsumAll->clear();
+        PacketWidth->clear();
+        nPeaksInChannel->clear();
+        iPeakInChannel->clear();
+        nPeaksInPacket->clear();
+        iPeakInPacket->clear();
+        nHits = 0;
+    }
 }
 
 void InputOutputManager::Fill(){
+    if (writeHitFile) fOutputHitTree->Fill();
     if (writeTrackFile) fOutputTrackTree->Fill();
 }
 
 void InputOutputManager::Write(){
+    if (writeHitFile) fOutputHitTree->Write();
     if (writeTrackFile) fOutputTrackTree->Write();
 }
 
 void InputOutputManager::Close(){
+    if (writeHitFile) fOutputHitFile->Close();
     if (writeTrackFile) fOutputTrackFile->Close();
 }
 
@@ -316,7 +414,7 @@ Long64_t InputOutputManager::GetTriggerNumberMax(){
 
 void InputOutputManager::Print(TString opt){
     printf("Entry %d, triggerNumber %d:\n",fCurrentEntry,triggerNumber);
-    if (readHitFile){
+    if (readHitFile||writeHitFile){
         printf("  Total hits: %d, good hits after cuts: %d\n",nHits,nHitsG);
         if (opt.Contains("h")){
             int iPacket = 0;
@@ -335,6 +433,7 @@ void InputOutputManager::Print(TString opt){
                 double sumA   = ADCsumAll->at(iHit);
                 double sumL   = ADCsumPacket->at(iHit);
                 double driftT = DriftT->at(iHit);
+                // TODO: add MC hit info
                 if (iPeakA==0){
                     printf("[%2d,%2d] :  %3d TDCs,  total ADC sum %.1f, pedestal %.1f\n",lid,cid,nPeakA,sumA,ped);
                     iPacket = 0;
@@ -389,6 +488,28 @@ bool InputOutputManager::SetTrack(int iFound, const Track3D * track3D, const Tra
         pValueInput[iFound] = track2D->pValue;
     }
     return true;
+}
+
+void InputOutputManager::PushHitMC(int lid, int wid, double driftT, double doca){
+    // TODO: currently this is for kMCDriftT; Add support for kMCDriftD
+    int status;
+    LayerID->push_back(lid);
+    CellID->push_back(wid);
+    TDCClock->push_back(0);
+    DriftT->push_back(driftT);
+    DriftDmc->push_back(XTManager::Get().t2x(lid,wid,driftT,doca,status)); // For MC input
+    DOCA->push_back(doca); // For MC input
+    Pedestal->push_back(0);
+    ADCheight->push_back(0);
+    ADCpeak->push_back(0);
+    ADCsumPacket->push_back(0);
+    ADCsumAll->push_back(0);
+    PacketWidth->push_back(0);
+    nPeaksInChannel->push_back(0);
+    iPeakInChannel->push_back(0);
+    nPeaksInPacket->push_back(0);
+    iPeakInPacket->push_back(0);
+    nHits++;
 }
 
 TChain * InputOutputManager::getChain(){

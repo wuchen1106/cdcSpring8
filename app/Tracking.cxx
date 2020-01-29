@@ -210,7 +210,7 @@ int main(int argc, char** argv){
     double tmin = ParameterManager::Get().TrackingParameters.tmin;
     double tmax = ParameterManager::Get().TrackingParameters.tmax;
     TrackingPara::PeakType peakType = ParameterManager::Get().peakType;
-    InputOutputManager::InputHitType inputHitType = ParameterManager::Get().inputHitType;
+    InputOutputManager::DataType inputHitType = ParameterManager::Get().inputHitType;
 
     // Prepare Tracker
     Tracker * tracker = new Tracker(inputHitType);

@@ -22,7 +22,7 @@ class Track3D;
 /// This manager is supposed to manage all kinds of input and output files including \n
 /// -# raw data file as input
 /// -# peaks file as input
-/// -# hits file as input, including Data, MCDriftT, MCDriftD, defined as InputHitType
+/// -# hits file as input
 /// -# track file as input
 /// -# track file as output
 /// -# analysis file as output
@@ -52,7 +52,7 @@ public:
         return *fInputOutputManager;
     }
 
-    enum InputHitType{
+    enum DataType{
         kData,
         kMCDriftT,
         kMCDriftD
@@ -72,12 +72,14 @@ public:
     bool IsPeakFileReady(void);
     bool IsHitFileReady(void);
     bool IsTrackFileReady(void);
+    void PushHitMC(int lid, int wid, double driftT, double doca);
 
     /// flags about which to read and which to write
     bool                  readRawFile;
     bool                  readPeakFile;
     bool                  readHitFile;
     bool                  readTrackFile;
+    bool                  writeHitFile;
     bool                  writeTrackFile;
     bool                  writeAnaFile;
 
@@ -157,6 +159,8 @@ private:
     /// The static pointer to the singleton instance.
     static InputOutputManager* fInputOutputManager;
 
+    TTree  * fOutputHitTree;
+    TFile  * fOutputHitFile;
     TTree  * fOutputTrackTree;
     TFile  * fOutputTrackFile;
     TChain * fInputRawChain;

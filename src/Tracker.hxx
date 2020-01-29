@@ -13,7 +13,7 @@ class TGraphErrors;
 
 class Tracker{
 public:
-    Tracker(InputOutputManager::InputHitType theInputHitType);
+    Tracker(InputOutputManager::DataType theInputHitType);
     virtual ~Tracker();
 
     enum SortType{
@@ -88,7 +88,7 @@ private:
     static TGraphErrors * graph_pairX; /// a graph to store pair positions with error on Y-X plane;
     static TGraphErrors * graph_pairZ; /// a graph to store pair positions with error on Y-X plane
 
-    InputOutputManager::InputHitType inputHitType;
+    InputOutputManager::DataType inputHitType;
 
     /// maximum number of fitting results to keep; 0 means to save all without sorting.
     int   fMaxResults;

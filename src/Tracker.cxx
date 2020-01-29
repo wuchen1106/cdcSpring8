@@ -26,7 +26,7 @@ std::map <int, double> Tracker::hitIndexDriftDRightMap;
 TGraphErrors * Tracker::graph_pairX = NULL;
 TGraphErrors * Tracker::graph_pairZ = NULL;
 
-Tracker::Tracker(InputOutputManager::InputHitType theInputHitType):
+Tracker::Tracker(InputOutputManager::DataType theInputHitType):
     nGoodTracks(0),
     func_pairYX(0),
     func_pairYZ(0),
