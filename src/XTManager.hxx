@@ -36,7 +36,7 @@ public:
 
     bool Initialize();
     double t2x(double time, int lid, int wid, double lr, int & status);
-    double RandomDrfitT(double doca, int lid, int wid);
+    double RandomDriftT(double doca, int lid, int wid);
     double GetError(double dd);
     bool SetInputFileXT(TString file);
     void Print();

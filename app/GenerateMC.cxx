@@ -251,7 +251,7 @@ int main(int argc, char** argv){
                     }
                 }
                 if (theWid>=0&&fabs(minDOCA)<GeometryManager::Get().GetChamber()->cellWidth/2){
-                    double driftT = XTManager::Get().RandomDrfitT(minDOCA,lid,theWid);
+                    double driftT = XTManager::Get().RandomDriftT(minDOCA,lid,theWid);
                     InputOutputManager::Get().PushHitMC(lid,theWid,driftT,minDOCA);
                 }
             }

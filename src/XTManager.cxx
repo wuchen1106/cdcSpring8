@@ -103,7 +103,7 @@ bool XTManager::Initialize(){
         return false;
     }
     if (!fXTHistDefault){
-        MyWarn("Cannot find the default xt 2D histogram. XTManager will continue to serve for t2x function but will fail at RandomDrfitT function!!!");
+        MyWarn("Cannot find the default xt 2D histogram. XTManager will continue to serve for t2x function but will fail at RandomDriftT function!!!");
     }
     lid = ParameterManager::Get().XTManagerParameters.evenLayer;
     if (lid>=NLAY||lid<0) {MyError("Invalid even layer "<<lid); return false;}
@@ -131,7 +131,7 @@ bool XTManager::Initialize(){
     return true;
 }
 
-// TODO: better to make status as return value and the to-be-calculated number (x) as an input reference. Same task goes with RandomDrfitT
+// TODO: better to make status as return value and the to-be-calculated number (x) as an input reference. Same task goes with RandomDriftT
 double XTManager::t2x(double time, int lid, int wid, double lr, int & status){ // 1: right; 2: right end; -1: left; -2: left end; 0 out of range
     TF1* f=0;
     // FIXME: consider to use left/right case and folded case
@@ -203,7 +203,7 @@ double XTManager::t2x(double time, int lid, int wid, double lr, int & status){ /
     return dd;
 }
 
-double XTManager::RandomDrfitT(double doca, int lid, int wid){
+double XTManager::RandomDriftT(double doca, int lid, int wid){
     TH2D* h=0;
     // FIXME: consider to add customizable parameters
     if (fXTHist[lid]) h = fXTHist[lid];
@@ -212,9 +212,12 @@ double XTManager::RandomDrfitT(double doca, int lid, int wid){
         MyError("Cannot get XT relation 2D histogram for layer "<<lid<<"!\n");
         return 0;
     }
-    int ibin = h->ProjectionY()->FindBin(doca);
-    TH1D * ht = h->ProjectionX(Form("px%d_%d",lid,ibin),ibin,ibin);
-    return ht->GetRandom();
+    TH1D * hpy = (TH1D*)gFile->Get("RandomDriftT_py");
+    if (!hpy) hpy = h->ProjectionY("RandomDriftT_py");
+    int ibin = hpy->FindBin(doca);
+    TH1D * hpx = (TH1D*)gFile->Get(Form("RandomDriftT_px%d_%d",lid,ibin));
+    if (!hpx) hpx = h->ProjectionX(Form("RandomDriftT_px%d_%d",lid,ibin),ibin,ibin);
+    return hpx->GetRandom();
 }
 
 double XTManager::GetError(double dd){
