@@ -41,6 +41,7 @@ public:
     bool SetInputFileXT(TString file);
     void Print();
     bool PrintXTfunc(const TF1 * fl, const TF1 * fr);
+    TH2D * GetXTHistDefault(){return fXTHistDefault;};
 
     int xtType;
 

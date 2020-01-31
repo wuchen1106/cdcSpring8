@@ -85,7 +85,8 @@ bool XTManager::Initialize(){
     for (int i = 1; i<NLAY; i++){ // first layer (0) is dummy
         fXTLeft[i] = (TF1*) fInputFileXT->Get(Form("fl_%d",i));
         fXTRight[i] = (TF1*) fInputFileXT->Get(Form("fr_%d",i));
-        fXTHist[i] = (TH2D*) fInputFileXT->Get(Form("h2_xt_%d",i));
+        fXTHist[i] = (TH2D*) fInputFileXT->Get(Form("h2_dt_%d",i));
+        if (!fXTHist[i]) fXTHist[i] = (TH2D*) fInputFileXT->Get(Form("h2_xt_%d",i));
         if (fXTLeft[i]) fXTLeftDefault = fXTLeft[i];
         if (fXTRight[i]) fXTRightDefault = fXTRight[i];
         if (fXTHist[i]) fXTHistDefault = fXTHist[i];

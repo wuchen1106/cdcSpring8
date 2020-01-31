@@ -264,6 +264,7 @@ bool GeometryManager::IsInScinti(double saftyFactor,double inx, double slx, doub
 
 double GeometryManager::GetDOCA(int lid, int wid, double slx, double inx, double slz, double inz)
 {
+    if (fChamber->wire_ch[lid][wid]<0) {return 1e9;} // FIXME: this is the temporary method to tell if this wire information is loaded or not.
     double ydown = fScintillator->Ydown;
     double xdown = inx-slx*(ReferenceY-ydown);
     double zdown = inz-slz*(ReferenceY-ydown);
