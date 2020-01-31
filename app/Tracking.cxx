@@ -243,8 +243,6 @@ int main(int argc, char** argv){
         InputOutputManager::Get().nHitsG = 0; // number of good hits in this event
         int iPeakOverCut = 0;
         for (int iHit = 0; iHit<InputOutputManager::Get().nHits; iHit++){
-            double aa = InputOutputManager::Get().ADCsumAll->at(iHit);
-            double sum = InputOutputManager::Get().ADCsumPacket->at(iHit);
             double driftT = InputOutputManager::Get().DriftT->at(iHit);
             int iPeak = InputOutputManager::Get().iPeakInChannel->at(iHit);
             if (iPeak == 0) iPeakOverCut = 0;
@@ -256,8 +254,12 @@ int main(int argc, char** argv){
                 tracker->hitIndexInTestLayer->push_back(iHit);
                 continue;
             }
-            if (aa<aaCut) continue;
-            if (sum<sumCut) continue;
+            if (inputHitType==InputOutputManager::kData){
+                double aa = InputOutputManager::Get().ADCsumAll->at(iHit);
+                double sum = InputOutputManager::Get().ADCsumPacket->at(iHit);
+                if (aa<aaCut) continue;
+                if (sum<sumCut) continue;
+            }
             iPeakOverCut++; // only count peaks over size cut
             if (driftT<tmin||driftT>tmax) continue;
             tracker->hitLayerIndexMap->at(lid)->push_back(iHit);

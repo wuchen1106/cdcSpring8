@@ -30,6 +30,7 @@
 double t_min = 0;
 double t_max = 0;
 double sumCut = 0;
+InputOutputManager::DataType inputHitType = InputOutputManager::kData;
 double aaCut = 0;
 // definition of golden hit
 double gold_t_min = 0;
@@ -196,6 +197,7 @@ int main(int argc, char** argv){
     }
 
     // for getting XT
+    inputHitType = ParameterManager::Get().inputHitType;
     sumCut = ParameterManager::Get().TrackingParameters.sumCut;
     aaCut = ParameterManager::Get().TrackingParameters.aaCut;
     t_min = ParameterManager::Get().TrackingParameters.tmin;
@@ -448,8 +450,10 @@ int main(int argc, char** argv){
 bool isGoodHit(int iHit){ // Here I neglected the cut on ipeak, layerID cause when I call this function I'm counting hits in a selected cell or a cell in test layer
     if (iHit<0||iHit>=InputOutputManager::Get().nHits) return false;
     if (InputOutputManager::Get().DriftT->at(iHit)<t_min||InputOutputManager::Get().DriftT->at(iHit)>t_max) return false;
-    if (InputOutputManager::Get().ADCsumAll->at(iHit)<aaCut) return false;
-    if (InputOutputManager::Get().ADCsumPacket->at(iHit)<sumCut) return false;
+    if (inputHitType==InputOutputManager::kData){
+        if (InputOutputManager::Get().ADCsumAll->at(iHit)<aaCut) return false;
+        if (InputOutputManager::Get().ADCsumPacket->at(iHit)<sumCut) return false;
+    }
     return true;
 }
 
