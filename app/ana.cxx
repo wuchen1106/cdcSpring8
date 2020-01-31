@@ -215,6 +215,10 @@ int main(int argc, char** argv){
     double o_inz[3];
     double o_slx[3];
     double o_slz[3];
+    double o_inxmc;
+    double o_inzmc;
+    double o_slxmc;
+    double o_slzmc;
     double o_chi2[3];
     double o_chi2a[3];
     double o_chi2w[3];
@@ -224,21 +228,33 @@ int main(int argc, char** argv){
     double o_driftD[3][9];
     double o_driftT[3][9];
     double o_DOCA[3][9];
+    double o_DOCAmc[3][9];
     int    o_ipeak[3][9];
     double o_ADCheight[3][9];
     double o_ADCsumPkt[3][9];
     double o_ADCsumAll[3][9];
     bool   o_foundTestLayerHit[3];
+    if (inputHitType!=InputOutputManager::kData){
+        otree->Branch("inxmc",&o_inxmc);
+        otree->Branch("inzmc",&o_inzmc);
+        otree->Branch("slxmc",&o_slxmc);
+        otree->Branch("slzmc",&o_slzmc);
+    }
     for (int iCand = 0; iCand<3; iCand++){
         for (int i = 1; i<9; i++){
             otree->Branch(Form("w%d%d",i,iCand),&o_wid[iCand][i]);
             otree->Branch(Form("D%d%d",i,iCand),&o_DOCA[iCand][i]);
             otree->Branch(Form("d%d%d",i,iCand),&o_driftD[iCand][i]);
             otree->Branch(Form("t%d%d",i,iCand),&o_driftT[iCand][i]);
-            otree->Branch(Form("i%d%d",i,iCand),&o_ipeak[iCand][i]);
-            otree->Branch(Form("height%d%d",i,iCand),&o_ADCheight[iCand][i]);
-            otree->Branch(Form("sum%d%d",i,iCand),&o_ADCsumPkt[iCand][i]);
-            otree->Branch(Form("all%d%d",i,iCand),&o_ADCsumAll[iCand][i]);
+            if (inputHitType==InputOutputManager::kData){
+                otree->Branch(Form("i%d%d",i,iCand),&o_ipeak[iCand][i]);
+                otree->Branch(Form("height%d%d",i,iCand),&o_ADCheight[iCand][i]);
+                otree->Branch(Form("sum%d%d",i,iCand),&o_ADCsumPkt[iCand][i]);
+                otree->Branch(Form("all%d%d",i,iCand),&o_ADCsumAll[iCand][i]);
+            }
+            else{
+                otree->Branch(Form("Dmc%d%d",i,iCand),&o_DOCAmc[iCand][i]);
+            }
         }
         otree->Branch(Form("nHits%d",iCand),o_nHits+iCand);
         otree->Branch(Form("nHitsG%d",iCand),o_nHitsG+iCand);
@@ -415,6 +431,10 @@ int main(int argc, char** argv){
                 if (layerID==0){continue;} // don't include the guard layer
                 int wireID = InputOutputManager::Get().CellID->at(iHit);
                 int iPeak = InputOutputManager::Get().iPeakInChannel->at(iHit);
+                double DOCAmc = 0;
+                if (inputHitType!=InputOutputManager::kData){
+                    DOCAmc = InputOutputManager::Get().DriftDmc->at(iHit);
+                }
                 double DOCA = GeometryManager::Get().GetDOCA(layerID,wireID,slx,inx,slz,inz);
                 double DriftT = InputOutputManager::Get().DriftT->at(iHit)+InputOutputManager::Get().t0Offset[theCand]; // consider the t0 offset suggested by this candidate
                 int status;
@@ -444,6 +464,9 @@ int main(int argc, char** argv){
                             residualMinimal = residual;
                             o_wid[iCand][layerID] = wireID;
                             o_DOCA[iCand][layerID] = DOCA;
+                            if (inputHitType!=InputOutputManager::kData){
+                                o_DOCAmc[iCand][layerID] = DOCAmc;
+                            }
                             o_driftD[iCand][layerID] = DriftD;
                             o_driftT[iCand][layerID] = DriftT;
                             o_ipeak[iCand][layerID] = iPeak;
@@ -457,6 +480,9 @@ int main(int argc, char** argv){
                     if (iHit == InputOutputManager::Get().hitIndexSelected[layerID][theCand]){ // this is the signal hit
                         o_wid[iCand][layerID] = wireID;
                         o_DOCA[iCand][layerID] = DOCA;
+                        if (inputHitType!=InputOutputManager::kData){
+                            o_DOCAmc[iCand][layerID] = DOCAmc;
+                        }
                         o_driftD[iCand][layerID] = DriftD;
                         o_driftT[iCand][layerID] = DriftT;
                         o_ipeak[iCand][layerID] = iPeak;
@@ -522,11 +548,21 @@ int main(int argc, char** argv){
             o_nHits[iCand] = nHits;
             o_nHitsG[iCand] = nHitsG;
             o_nHitsS[iCand] = nHitsS;
+            o_inx[iCand] = inx;
+            o_inz[iCand] = inz;
+            o_slx[iCand] = slx;
+            o_slz[iCand] = slz;
             o_chi2[iCand] = chi2;
             o_chi2a[iCand] = chi2a;
             o_chi2w[iCand] = chi2w;
             o_pValue[iCand] = pValue;
             o_foundTestLayerHit[iCand] = foundTestLayerHit;
+        }
+        if (inputHitType!=InputOutputManager::kData){
+            o_inxmc = InputOutputManager::Get().interceptXmc;
+            o_inzmc = InputOutputManager::Get().interceptZmc;
+            o_slxmc = InputOutputManager::Get().slopeXmc;
+            o_slzmc = InputOutputManager::Get().slopeZmc;
         }
         otree->Fill();
         MyNamedDebug("Memory","Memory size: @"<<__LINE__<<": "<<pMyProcessManager->GetMemorySize());
