@@ -9,237 +9,81 @@
 #include "TFile.h"
 #include "TCanvas.h"
 #include "TH1D.h"
-#include "TH1I.h"
 #include "TH2D.h"
-#include "TF1.h"
-#include "TTree.h"
-#include "TChain.h"
-#include "TVector3.h"
-#include "TStyle.h"
-#include "TGraphErrors.h"
-#include "TLegend.h"
 #include "TLine.h"
 #include "TLatex.h"
+#include "TStyle.h"
+#include "TGaxis.h"
+
+#include "MyProcessManager.hxx"
+#include "Log.hxx"
+
+#include "ParameterManager.hxx"
+#include "RunInfoManager.hxx"
+#include "BeamManager.hxx"
+#include "GeometryManager.hxx"
+#include "XTManager.hxx"
+#include "InputOutputManager.hxx"
 
 #include "XTAnalyzer.hxx"
-#include "MyProcessManager.hxx"
-#include "MyRuntimeParameters.hxx"
-#include "Log.hxx"
-#include "header.hxx"
 
-#define NBINS    20
-#define MAXTRUNC 6
+// for selecting good hits in tracking
+double t_min = 0;
+double t_max = 0;
+double sumCut = 0;
+InputOutputManager::DataType inputHitType = InputOutputManager::kData;
+double aaCut = 0;
+// definition of golden hit
+double gold_t_min = 0;
+double gold_t_max = 0;
 
-#define NWIRES4CALIB 4
-#define FIRSTWIRE4CALIB 3
-
-// run time parameters
-int m_runNo = 0;
-TString m_prerunname  = "prerun";
-TString m_runname = "currun";
-TString m_suffix = "";
-int m_iEntryStart = 0;
-int m_iEntryStop = 0;
-int m_verboseLevelXT = 0;
-int m_modulo = 10000;
-bool m_memdebug = false;
-int m_saveHists = 0;
-bool m_outputEventTree = false;
-bool m_OneWirePerStep = false;
-bool m_DrawDetails = false;
-int m_defaultLayerID = 4;
-int m_geoSetup = 0; // 0: normal scintillator; 1: finger scintillator
-int m_inputType = 0; // 1 for MC; 0 for data
-int m_xtType = 55; // XYZ means polX for center, polY for middle and polZ for tail. If X is 0 then let middle function fit the center region.
-bool m_AsymXT = false; // use asymmetric xt curve or not
-TString m_CandSelBy = "Original"; // find the candidate with the smallest chi2 without the test layer; otherwise use chi2 wit the test layer (default order from tracking);
-bool m_ClosestPeak = false; // To get XT: find the peak with the smallest residual. Otherwise choose the first one over threshold; NOTE: in analysis part, it's always the closest peak chosen to get efficiency and residual
-bool m_UpdateWireMap = false; // by default don't update the wire map (i.e. no calibration of wire position)
-TString m_ExternalXT = ""; // if this is not an empty string, then skip generating xt file but use this one as external XTs
-// for updating wiremap
-double m_scale = 1; // normalize the step size with this scale when updating wiremap
-double m_stepSize = 0;
-double m_minDeltaSlz = 0;
-double m_maxDeltaSlz = 0;
-double m_minDeltaInx = 0;
-double m_maxDeltaInx = 0;
-double m_calib_maxslz = 0;
-double m_calib_maxFD = 7.5;
-double m_calib_minFD = 0.5;
-bool   m_calib_allGolden = false;
-std::map<int,bool> m_wireIDWhiteList; // a list of wire IDs to be updated in new wire map
-int m_XTLayerForRes = 0;
-// for cutting
-bool m_RequireInTriggerCounter = true;
-bool m_RequireAllGoldenHits = false;
-int m_nHitsMax = 30;
-int m_nHitsSmin = 7;
-int m_sumCut = -30;
-int m_aaCut = 0;
-double m_maxchi2 = 2;
-double m_maxslz = 0.1;
-double m_maxFD = 6; // only count hits with DOCA smaller than 6 mm
-int    m_tmaxSet = 0;
-//for binning
-double m_tmin = -25-1/0.96/2; // t range for one x bin
-double m_tmax = 800+1/0.96/2;
-double m_xmin = -0.02; // x range for one t bin
-double m_xmax = 10.02; // x range for one t bin
-int    m_NbinT = 792+1;
-int    m_NbinX = 501;
-int    m_NbinRes = 256;
-double m_minchi2p = 1;
-double m_maxRes = 2;
-// for ADC2Charge
-TString m_adc2charge = "2.0158464*x";
-
-// map for wire position
-double  map_x[NLAY][NCEL][2];
-double  map_y[NLAY][NCEL][2];
-double  map_off_current[NLAY][NCEL];
-int     map_off_nEvents[NLAY][NCEL];
-bool    map_has[NLAY][NCEL];
-int     map_ch[NLAY][NCEL];
-int     map_bid[NLAY][NCEL];
-double  npair_per_cm = 0;
-TF1 * f_left = 0;
-TF1 * f_right = 0;
-// map for wire position adjustment
-double  map_adjust_old[NLAY][NCEL]; // wire position adjustment loaded from previous run; will get new adjustment at the end of the run
-
-//==================About Resolution======================
-TF1 * f_res = 0;
-
-//==================About RECBE======================
-TF1 * fADC2ChargeFunction = 0;
-
-//==================About Scintillator======================
-// normal scintillator
-double sciYup = 0;
-double sciYdown = 0;
-double sciHL = 0;
-double sciHW = 0;
-
-//===================for get dist============================
-TVector3 vTrackU, vTrackD, vTrack;
-TVector3 vWireHV, vWireRO, vWire;
-TVector3 vDist;
-TVector3 vAxis;
-
-//===================for input===============================
-// input file
-int triggerNumber;
-int nHits;
-int nHitsG;
-std::vector<int> *    i_layerID = 0;
-std::vector<int> *    i_wireID = 0;
-std::vector<double> * i_driftT = 0;
-std::vector<double> * i_driftDmc = 0;
-std::vector<int> *    i_type = 0;
-std::vector<int> *    i_np = 0;
-std::vector<int> *    i_ip = 0;
-std::vector<int> *    i_clk = 0;
-std::vector<int> *    i_width = 0;
-std::vector<int> *    i_peak = 0;
-std::vector<int> *    i_height = 0;
-std::vector<int> *    i_mpn = 0;
-std::vector<int> *    i_mpi = 0;
-std::vector<int> *    i_rank = 0;
-bool has_rank = false;
-std::vector<double> * i_ped = 0;
-bool has_ped = false;
-std::vector<double> * i_sum = 0;
-std::vector<double> * i_aa = 0;
-std::vector<double> * i_driftD[NCAND] = {0};
-std::vector<double> * i_calD[NCAND] = {0};
-std::vector<double> * i_fitD[NCAND] = {0};
-std::vector<int> * i_sel[NCAND] = {0};
-int npairs[NCAND];
-int isel[NCAND];
-int icom[NCAND];
-double iinx[NCAND];
-double iinz[NCAND];
-double islx[NCAND];
-double islz[NCAND];
-double chi2x[NCAND];
-double chi2z[NCAND];
-double chi2i[NCAND];
-int nHitsS[NCAND];
-double inx[NCAND];
-double inz[NCAND];
-double slx[NCAND];
-double slz[NCAND];
-double t0offset[NCAND];
-double chi2[NCAND];
-double chi2p[NCAND];
-double chi2a[NCAND];
-double chi2mc[NCAND];
-double chi2pmc[NCAND];
-double chi2amc[NCAND];
-double inxmc;
-double inzmc;
-double slxmc;
-double slzmc;
-
-double ADC2Charge(double adc); // fC
-double get_dist(int lid, int wid, double slx, double inx, double slz, double inz);
-double getGG(double aa, double slx, double slz);
-int t2d(double t, double & d, bool isRight, double tmaxSet = 0);
-double findFirstX(TF1 * f, double val, double xmin, double xmax, double delta);
-void doFit(TH1D * h,double leftRatio = 1/3., double rightRatio = 1/3., double leftEnd = -2, double rightEnd = 2);
 void print_usage(char * prog_name);
-int getHitType(int type,bool isRight);
-int GetCandidate(TString & candSelBy, std::vector<int> * layerID, std::vector<int> * type, std::vector<double> * fitD[NCAND], std::vector<int> * sel[NCAND], int * nHitsS, double * chi2, double * chi2a);
-bool isInTriggerCounter(int geoSetup, double tinz, double tslz);
+bool isGoodHit(int iHit);
+bool isGoldenHit(int iHit);
+int CountGoodHitBeforeIt(int iHit);
+int CountNotGoldenHitSelected(int iCand);
+int GetCandidate(TString candSelBy, int nHitsS = 0);
 void getRunTimeParameters(TString configureFile);
-void SetInputBranchAdress(TChain * ichain);
 
 MyProcessManager * pMyProcessManager;
 
 int main(int argc, char** argv){
-    int temp_geoSetup = 0; bool set_geoSetup = false;
-    int temp_inputType = 0; bool set_inputType = false;
-    int temp_xtType = 0; bool set_xtType = false;
-    int temp_XTLayerForRes = 0; bool set_XTLayerForRes = false;
-    double temp_calib_maxslz = 0; bool set_calib_maxslz = false;
-    double temp_calib_maxFD = 0; bool set_calib_maxFD = false;
-    double temp_calib_minFD = 0; bool set_calib_minFD = false;
-    //for cutting
-    int temp_nHitsMax = 0; bool set_nHitsMax = false;
-    int temp_nHitsSmin = 0; bool set_nHitsSmin = false;
-    int temp_sumCut = 0; bool set_sumCut = false;
-    int temp_aaCut = 0; bool set_aaCut = false;
-    double temp_maxchi2 = 0; bool set_maxchi2 = false;
-    double temp_minchi2p = 0; bool set_minchi2p = false;
-    double temp_maxRes = 0; bool set_maxRes = false;
-    double temp_maxslz = 0; bool set_maxslz = false;
-    double temp_maxFD = 0; bool set_maxFD = false;
-    int    temp_tmaxSet = 0; bool set_tmaxSet = false;
-    //for binning
-    double temp_tmin = 0; bool set_tmin = false;
-    double temp_tmax = 0; bool set_tmax = false;
-    double temp_xmin = 0; bool set_xmin = false;
-    double temp_xmax = 0; bool set_xmax = false;
-    int    temp_NbinT = 0; bool set_NbinT = false;
-    int    temp_NbinX = 0; bool set_NbinX = false;
-    int    temp_NbinRes = 0; bool set_NbinRes = false;
-    bool temp_AsymXT = false; bool set_AsymXT = false;
-    TString temp_CandSelBy = "Original"; bool set_CandSelBy = false;
-    bool temp_ClosestPeak = false; bool set_ClosestPeak = false;
+    TString HOME=getenv("CDCS8WORKING_DIR");;
+    int m_runNo = 0;
+    TString m_inputXTFile = "";
+    TString m_runName = "";
+    int m_testLayer = 4;
+    int m_iEntryStart = -1;
+    int m_iEntryStop = -1;
+    int m_nEntries = 0;
+    int m_modulo = 10000;
+    bool m_memdebug = false;
+    bool m_DrawDetails = false;
+    bool m_SeparateWires = false;
+    TString m_wireAdjustmentFile = "";
 
-    std::map<std::string, Log::ErrorPriority> namedDebugLevel;
-    std::map<std::string, Log::LogPriority> namedLogLevel;
+    // Load options
     int    opt_result;
-    while((opt_result=getopt(argc,argv,"AB:C:D:E:F:GH:L:M:OPR:S:TV:WX:Za:b:c:d:e:f:g:i:l:m:n:o:p:q:r:s:t:u:v:x:y:z:"))!=-1){
+    std::string opt_name;
+    std::size_t opt_pos;
+    while((opt_result=getopt(argc,argv,"A:B:C:D:E:HL:MN:P:R:V:Wh"))!=-1){
         switch(opt_result){
             /* INPUTS */
             case 'M':
+                m_memdebug = true;
+                printf("Turning on memory debug\n");
+                break;
+            case 'P':
                 m_modulo = atoi(optarg);
                 printf("Printing modulo set to %d\n",m_modulo);
                 break;
             case 'R':
                 m_runNo = atoi(optarg);
                 printf("Run number set to %d\n",m_runNo);
+                break;
+            case 'L':
+                m_testLayer = atoi(optarg);
+                printf("Test layer set to %d\n",m_testLayer);
                 break;
             case 'B':
                 m_iEntryStart = atoi(optarg);
@@ -249,211 +93,32 @@ int main(int argc, char** argv){
                 m_iEntryStop = atoi(optarg);
                 printf("Stopping entry index set to %d\n",m_iEntryStop);
                 break;
-            case 'L':
-                m_defaultLayerID = atoi(optarg);
-                printf("Test layer set to %d\n",m_defaultLayerID);
-                break;
-            case 'H':
-                m_saveHists = atoi(optarg);
-                printf("Histogram saving level set to %d\n",m_saveHists);
+            case 'N':
+                m_nEntries = atoi(optarg);
+                printf("Number of entries set to %d\n",m_nEntries);
                 break;
             case 'C':
                 getRunTimeParameters(optarg);
                 printf("Using configure file \"%s\"\n",optarg);
                 break;
-            case 'T':
-                m_RequireInTriggerCounter = false;
-                printf("Disable in-trigger cut\n");
-            case 'G':
-                m_RequireAllGoldenHits = true;
-                printf("In getting offset and new xt, require all hits used in tracking are golden hits\n");
-            case 'F':
-                m_suffix = optarg;
-                printf("Adding suffix \"%s\"\n",optarg);
-                break;
-            case 'O':
-                m_OneWirePerStep = true;
-                printf("Update only one wire position per step (the one with the largest offset)\n");
-                break;
-            case 'W':
-                m_UpdateWireMap = true;
-                printf("Will update wire map\n");
-                break;
-            case 'X':
-                m_ExternalXT = optarg;
-                printf("Will not generate new xt file but use \"%s\"\n",optarg);
-                break;
-            case 'Z':
+            case 'H':
                 m_DrawDetails = true;
-                printf("Will draw detail plots\n");
-                break;
-            case 'n':
-                temp_nHitsMax = atoi(optarg);set_nHitsMax = true;
-                printf("Maximum number of hits cut set to %d\n",temp_nHitsMax);
-                break;
-            case 'f':
-                temp_nHitsSmin = atoi(optarg);set_nHitsSmin = true;
-                printf("Minimum number of selected hits cut set to %d\n",temp_nHitsSmin);
-                break;
-            case 'c':
-                temp_maxchi2 = atof(optarg);set_maxchi2 = true;
-                printf("Maximum chi2 cut set to %.3e\n",temp_maxchi2);
-                break;
-            case 'v':
-                temp_minchi2p = atof(optarg);set_minchi2p = true;
-                printf("Minimum p-value cut set to %.3e\n",temp_minchi2p);
-                break;
-            case 'r':
-                temp_maxRes = atof(optarg);set_maxRes = true;
-                printf("Maximum resolution cut set to %.3e\n",temp_maxRes);
-                break;
-            case 'z':
-                temp_maxslz = atof(optarg);set_maxslz = true;
-                printf("Maximum y-z slope cut set to %.3e\n",temp_maxslz);
-                break;
-            case 'd':
-                temp_maxFD = atof(optarg);set_maxFD = true;
-                printf("Maximum fitD cut set to %.3e\n",temp_maxFD);
-                break;
-            case 'o':
-                temp_tmaxSet = atoi(optarg);set_tmaxSet = true;
-                printf("Maximum cap to the time range set to %d\n",temp_tmaxSet);
-                break;
-            case 'p':
-                temp_calib_minFD = atoi(optarg);set_calib_minFD = true;
-                printf("Minimum |theFD| for offset is %d\n",temp_calib_minFD);
-                break;
-            case 'q':
-                temp_calib_maxFD = atoi(optarg);set_calib_maxFD = true;
-                printf("Maximum |theFD| for offset is %d\n",temp_calib_maxFD);
-                break;
-            case 's':
-                temp_sumCut = atoi(optarg);set_sumCut = true;
-                printf("ADC sum over peak cut set to %d\n",temp_sumCut);
-                break;
-            case 'a':
-                temp_aaCut = atoi(optarg);set_aaCut = true;
-                printf("ADC sum over all cut set to %d\n",temp_aaCut);
-                break;
-            case 'b':
-                temp_calib_maxslz = atof(optarg);set_calib_maxslz = true;
-                printf("Maximum slope z for offset is %f\n",temp_calib_maxslz);
-                break;
-            case 'l':
-                temp_tmin = atof(optarg);set_tmin = true;
-                printf("Minimum time on axis set to %.3e\n",temp_tmin);
-                break;
-            case 'u':
-                temp_tmax = atof(optarg);set_tmax = true;
-                printf("Maximum time on axis set to %.3e\n",temp_tmax);
-                break;
-            case 't':
-                temp_NbinT = atoi(optarg);set_NbinT = true;
-                printf("Number of bins on time axis set to %d\n",temp_NbinT);
-                break;
-            case 'm':
-                temp_NbinX = atoi(optarg);set_NbinX = true;
-                printf("Number of bins on space axis set to %d\n",temp_NbinX);
-                break;
-            case 'y':
-                temp_NbinRes = atoi(optarg);set_NbinRes = true;
-                printf("Number of bins on resolution axis set to %d\n",temp_NbinRes);
-                break;
-            case 'g':
-                temp_geoSetup = atoi(optarg);set_geoSetup = true;
-                printf("Geometry setup set to %d\n",temp_geoSetup);
-                break;
-            case 'i':
-                temp_inputType = atoi(optarg);set_inputType = true;
-                printf("Input type set to %d\n",temp_inputType);
-                break;
-            case 'x':
-                temp_xtType = atoi(optarg);set_xtType = true;
-                printf("XT type set to %d\n",temp_xtType);
+                printf("Draw bin-by-bin histogram \n");
                 break;
             case 'A':
-                temp_AsymXT = true; set_AsymXT = true;
-                printf("Use asymmetric XT\n");
-                break;
-            case 'e':
-                temp_XTLayerForRes = atoi(optarg); set_XTLayerForRes = true;
-                printf("Use XT from layer %d to update residual\n",temp_XTLayerForRes);
-                break;
-            case 'S':
-                temp_CandSelBy = optarg; set_CandSelBy = true;
-                if (temp_CandSelBy!="Original"&&temp_CandSelBy!="FittingChi2"&&temp_CandSelBy!="GlobalChi2"&&temp_CandSelBy!="LeastLatePeak"){
-                    MyNamedWarn("Ana","The xt analyzing option \""<<temp_CandSelBy<<" is not known. Candidates are: Original, FittingChi2, GlobalChi2, LeastLatePeak. Will choose Original.");
-                    temp_CandSelBy = "Original";
-                }
-                printf("Choose the candidate by %s\n",temp_CandSelBy.Data());
-                break;
-            case 'P':
-                temp_ClosestPeak = true; set_ClosestPeak = true;
-                printf("Use the peak with smallest residual to get driftT. Otherwise just use the first one\n");
+                m_wireAdjustmentFile = optarg;
+                printf("Using wire adjustment file \"%s\"\n",optarg);
                 break;
             case 'D':
-                {
-                    // Set the debug level for a named trace.
-                    std::string arg(optarg);
-                    std::size_t sep = arg.find("=");
-                    if (sep != std::string::npos) {
-                        std::string name = arg.substr(0,sep);
-                        if (name=="Memory"||name=="memory") m_memdebug = true;
-                        std::string levelName = arg.substr(sep+1);
-                        switch (levelName[0]) {
-                            case 'e': case 'E':
-                                namedDebugLevel[name.c_str()] = Log::ErrorLevel;
-                                break;
-                            case 's': case 'S':
-                                namedDebugLevel[name.c_str()] = Log::SevereLevel;
-                                break;
-                            case 'w': case 'W':
-                                namedDebugLevel[name.c_str()] = Log::WarnLevel;
-                                break;
-                            case 'd': case 'D':
-                                namedDebugLevel[name.c_str()] = Log::DebugLevel;
-                                break;
-                            case 't': case 'T':
-                                namedDebugLevel[name.c_str()] = Log::TraceLevel;
-                                break;
-                            default:
-                                print_usage(argv[0]);
-                        }
-                    }
+                    if (!Log::ConfigureD(optarg)) print_usage(argv[0]);
                     break;
-                }
             case 'V':
-                {
-                    // Set the debug level for a named trace.
-                    std::string arg(optarg);
-                    std::size_t sep = arg.find("=");
-                    if (sep != std::string::npos) {
-                        std::string name = arg.substr(0,sep);
-                        std::string levelName = arg.substr(sep+1);
-                        if (name == "XTAnalyzer"){
-                            m_verboseLevelXT = atoi(levelName.c_str());
-                        }
-                        else{
-                            switch (levelName[0]) {
-                                case 'q': case 'Q':
-                                    namedLogLevel[name.c_str()] = Log::QuietLevel;
-                                    break;
-                                case 'l': case 'L':
-                                    namedLogLevel[name.c_str()] = Log::LogLevel;
-                                    break;
-                                case 'i': case 'I':
-                                    namedLogLevel[name.c_str()] = Log::InfoLevel;
-                                    break;
-                                case 'v': case 'V':
-                                    namedLogLevel[name.c_str()] = Log::VerboseLevel;
-                                    break;
-                                default:
-                                    print_usage(argv[0]);
-                            }
-                        }
-                    }
+                    if (!Log::ConfigureV(optarg)) print_usage(argv[0]);
                     break;
-                }
+            case 'W':
+                    m_SeparateWires = true;
+                    printf("Will separate wires\n");
+                    break;
             case '?':
                 printf("Wrong option! optopt=%c, optarg=%s\n", optopt, optarg);
             case 'h':
@@ -462,119 +127,26 @@ int main(int argc, char** argv){
                 return 1;
         }
     }
-    for (std::map<std::string,Log::ErrorPriority>::iterator i 
-            = namedDebugLevel.begin();
-            i != namedDebugLevel.end();
-            ++i) {
-        Log::SetDebugLevel(i->first.c_str(), i->second);
+    if (m_nEntries>0){
+        if (m_iEntryStart<0) m_iEntryStart = 0;
+        m_iEntryStop = m_iEntryStart+m_nEntries-1;
     }
-
-    for (std::map<std::string,Log::LogPriority>::iterator i 
-            = namedLogLevel.begin();
-            i != namedLogLevel.end();
-            ++i) {
-        Log::SetLogLevel(i->first.c_str(), i->second);
-    }
-
-    if (set_geoSetup) m_geoSetup = temp_geoSetup;
-    if (set_inputType) m_inputType = temp_inputType;
-    if (set_xtType) m_xtType = temp_xtType;
-    if (set_AsymXT) m_AsymXT = temp_AsymXT;
-    if (set_CandSelBy) m_CandSelBy = temp_CandSelBy;
-    if (set_ClosestPeak) m_ClosestPeak = temp_ClosestPeak;
-    if (set_calib_maxslz) m_calib_maxslz = temp_calib_maxslz;
-    if (set_calib_maxFD) m_calib_maxFD = temp_calib_maxFD;
-    if (set_calib_minFD) m_calib_minFD = temp_calib_minFD;
-    // for cutting
-    if (set_nHitsMax) m_nHitsMax = temp_nHitsMax;
-    if (set_nHitsSmin) m_nHitsSmin = temp_nHitsSmin;
-    if (set_sumCut) m_sumCut = temp_sumCut;
-    if (set_aaCut) m_aaCut = temp_aaCut;
-    if (set_maxchi2) m_maxchi2 = temp_maxchi2;
-    if (set_maxslz) m_maxslz = temp_maxslz;
-    if (set_maxFD) m_maxFD = temp_maxFD;
-    if (set_tmaxSet) m_tmaxSet = temp_tmaxSet;
-    //for binning
-    if (set_tmin) m_tmin = temp_tmin;
-    if (set_tmax) m_tmax = temp_tmax;
-    if (set_xmin) m_xmin = temp_xmin;
-    if (set_xmax) m_xmax = temp_xmax;
-    if (set_NbinT) m_NbinT = temp_NbinT;
-    if (set_NbinX) m_NbinX = temp_NbinX;
-    if (set_NbinRes) m_NbinRes = temp_NbinRes;
-    if (set_minchi2p) m_minchi2p = temp_minchi2p;
-    if (set_maxRes) m_maxRes = temp_maxRes;
-    if (set_XTLayerForRes) m_XTLayerForRes = temp_XTLayerForRes;
 
     if (argc-optind<2){
         print_usage(argv[0]);
         return -1;
     }
-    m_prerunname = argv[optind++];
-    m_runname= argv[optind++];
-    TString m_runnameout = m_runname;
-    if (m_suffix!=""){
-        m_runnameout=m_runname+"."+m_suffix;
-    }
-
-    if (argc-optind>0){
-        for (;optind<argc; optind++){
-            m_wireIDWhiteList[atoi(argv[optind])] = true;
-        }
-    }
-    else{
-        for (int i = 0; i<NCEL; i++){
-            m_wireIDWhiteList[i] = true;
-        }
-    }
+    m_inputXTFile = argv[optind++];
+    m_runName= argv[optind++];
 
     printf("##############%s##################\n",argv[0]);
-    printf("runNo       = %d\n",m_runNo);
-    printf("prerunname  = \"%s\"\n",m_prerunname.Data());
-    printf("runname     = \"%s\"\n",m_runname.Data());
-    printf("suffix      = \"%s\"\n",m_suffix.Data());
-    printf("default layer: %d\n",m_defaultLayerID);
-    printf("geoSetup:     %s\n",m_geoSetup==0?"normal scintillator":"finger scintillator");
-    printf("Use external XT? %s\n",m_ExternalXT==""?"No, generate new one":("Yes"+m_ExternalXT).Data());
-    printf("Draw detailed plots? %s\n",m_DrawDetails?"Yes":"No");
-    printf("Update wire map? %s\n",m_UpdateWireMap?"Yes":"No");
-    printf("For wire map update, stepSize    = %.3e\n",m_stepSize);
-    printf("For wire map update, scale on each step: %.3e\n",m_scale);
-    printf("For wire map update, min delta slz = %.3e\n",m_minDeltaSlz);
-    printf("For wire map update, max delta slz = %.3e\n",m_maxDeltaSlz);
-    printf("For wire map update, min delta inx = %.3e\n",m_minDeltaInx);
-    printf("For wire map update, max delta inx = %.3e\n",m_maxDeltaInx);
-    printf("For wire map update, max slz for each event = %.3e\n",m_calib_maxslz);
-    printf("For wire map update, max |theFD| for each event = %.3e\n",m_calib_maxFD);
-    printf("For wire map update, min |theFD| for each event = %.3e\n",m_calib_minFD);
-    printf("For wire map update, wires to be calibrated: ");
-    for (std::map<int,bool>::iterator i = m_wireIDWhiteList.begin(); i != m_wireIDWhiteList.end(); ++i) {
-        printf("%d ",i->first);
-    }
-    printf("Require in trigger? %s\n",m_RequireInTriggerCounter?"Yes":"No");
-    printf("Require all golden hit? %s\n",m_RequireAllGoldenHits?"Yes":"No");
-    printf("xtType:       %d\n",m_xtType);
-    printf("Asymmetric XT? %s\n",m_AsymXT?"yes":"no");
-    printf("Candidate selected by? %s\n",m_CandSelBy.Data());
-    printf("Choose Closest peak? %s\n",m_ClosestPeak?"yes":"no");
-    printf("inputType   = %d, %s\n",m_inputType,m_inputType==0?"Real Data":"MC");
-    printf("maxchi2     = %.3e\n",m_maxchi2);
-    printf("maxslz      = %.3e\n",m_maxslz);
-    printf("nHits max   = %d\n",m_nHitsMax);
-    printf("nHitsSmin   = %d\n",m_nHitsSmin);
-    printf("Q cut       = %d\n",m_aaCut);
-    printf("tmax for canvas and getting xt: %d\n",m_tmax);
-    printf("cap for tmax = %d\n",m_tmaxSet);
-    printf("debugXT     = %d\n",m_verboseLevelXT);
-    printf("print modulo= %d\n",m_modulo);
-    printf("save fitting histograms at level %d\n",m_saveHists);
-    printf("output EventTree? %s\n",m_outputEventTree?"yes":"no");
-    printf("Entries:     [%d~%d]\n",m_iEntryStart,m_iEntryStop);
-    printf("ADC -> Charge: %s\n",m_adc2charge.Data());
-    printf("Use XT from layer %d to get residual\n",m_XTLayerForRes);
-    fflush(stdout);
-
-    TString HOME=getenv("CDCS8WORKING_DIR");
+    printf("runNo               = %d\n",m_runNo);
+    printf("input XT File       = \"%s\"\n",m_inputXTFile.Data());
+    printf("runName             = \"%s\"\n",m_runName.Data());
+    printf("Test layer ID       = %d\n",m_testLayer);
+    printf("Start Entry         = %d\n",m_iEntryStart);
+    printf("Stop Entry          = %d\n",m_iEntryStop);
+    ParameterManager::Get().Print();
 
     if (m_memdebug){
         pMyProcessManager = MyProcessManager::GetMyProcessManager();
@@ -582,1913 +154,555 @@ int main(int argc, char** argv){
     }
     MyNamedDebug("Memory","Memory size: @"<<__LINE__<<": "<<pMyProcessManager->GetMemorySize());
 
-    TString filename = "";
-    //=================================================Get related info========================================================
-    // get run info
-    filename = HOME+"/Input/run-info.root";
-    TChain * iChain_run = new TChain("t");
-    iChain_run->Add(filename);
-    if (!iChain_run->GetEntries()){
-        MyError(Form("Cannot find \"%.s\"!\n",filename.Data()));
-        return 1;
+    // Prepare managers
+    bool success = false;
+    success = RunInfoManager::Get().Initialize(m_runNo,m_runName,m_testLayer);RunInfoManager::Get().Print();
+    if (!success) {MyNamedError("Analyze","Cannot initialize RunInfoManager"); return 1;}
+    success = BeamManager::Get().Initialize(ParameterManager::Get().beamType);BeamManager::Get().Print();
+    if (!success) {MyNamedError("Analyze","Cannot initialize BeamManager"); return 1;}
+    success = GeometryManager::Get().Initialize(ParameterManager::Get().geoSetup,ParameterManager::Get().connectionType,ParameterManager::Get().chamberType); GeometryManager::Get().Print();
+    if (!success) {MyNamedError("Analyze","Cannot initialize GeometryManager"); return 1;}
+    if (m_wireAdjustmentFile!=""){
+        success = GeometryManager::Get().AdjustWirePosition(m_wireAdjustmentFile);
+        if (!success) MyWarn("Cannot load offset file for wire adjustment. Will ignore this step.");
     }
-    int i_runNo, gasID, runGr, HV, THR;
-    char runDu[128];
-    double t00, t01, aacut, sumcut;
-    iChain_run->SetBranchAddress("run_number",&i_runNo);
-    iChain_run->SetBranchAddress("gas_mixture_id",&gasID);
-    iChain_run->SetBranchAddress("hv_ch0",&HV);
-    iChain_run->SetBranchAddress("recbe_th_input_bd0",&THR);
-    iChain_run->SetBranchAddress("duration",&runDu);
-    iChain_run->SetBranchAddress("run_grade",&runGr);
-    iChain_run->SetBranchAddress("t00",&t00);
-    iChain_run->SetBranchAddress("t01",&t01);
-    iChain_run->SetBranchAddress("aa",&aacut);
-    iChain_run->SetBranchAddress("sum",&sumcut);
-    for(int i = 0; i<iChain_run->GetEntries(); i++){
-        iChain_run->GetEntry(i);
-        if (i_runNo == m_runNo) break;
-    }
-    npair_per_cm = 60;
-    TString gastype = "He:C_{2}H_{6}(50:50)";
-    TString gastypeshort = "C2H6";
-    double W = 32; // eV
-    if (gasID==1){
-        gastype = "He:iC_{4}H_{10}(90:10)";
-        gastypeshort = "C4H10";
-        npair_per_cm = 29;
-        W = 39; // eV
-    }
-    else if (gasID==2){
-        gastype = "He:CH_{4}(80:20)";
-        gastypeshort = "CH4";
-        npair_per_cm = 17;
-        W = 39; // eV
-    }
-    TString duration = runDu;
-    const char *sep = ":";
-    char * durationSep = strtok(runDu,sep);
-    double durationTime = 0;
-    double timeunit = 3600;
-    while(durationSep){
-        durationTime += timeunit*strtol(durationSep,NULL,10);
-        timeunit/=60;
-        durationSep = strtok(NULL,sep);
-    }
-    printf("runNo#%d: %s, %d, %s, %d V, %d mV, %.0f sec\n",m_runNo,gastype.Data(),runGr,duration.Data(),HV,THR,durationTime);
+    success = XTManager::Get().SetInputFileXT(m_inputXTFile);
+    if (!success){MyError("Invalid input XT file"); return 1;}
+    success = XTManager::Get().Initialize();XTManager::Get().Print();
+    if (!success) {MyNamedError("Analyze","Cannot initialize XTManager"); return 1;}
+    InputOutputManager::Get().readHitFile = true;
+    InputOutputManager::Get().readTrackFile = true;
+    success = InputOutputManager::Get().Initialize();
+    if (!success) {MyNamedError("Analyze","Cannot initialize InputOutputManager"); return 1;}
 
-    //Prepare Maps
-    for (int lid = 0; lid<NLAY; lid++){
-        for (int wid = 0; wid<NCEL; wid++){
-            map_off_current[lid][wid] = 0;
-            map_off_nEvents[lid][wid] = 0;
-            map_has[lid][wid] = false;
-            map_ch[lid][wid] = -1;
-            map_bid[lid][wid] = -1;
+    // for hit classification
+    inputHitType = ParameterManager::Get().inputHitType;
+    sumCut = ParameterManager::Get().TrackingParameters.sumCut;
+    aaCut = ParameterManager::Get().TrackingParameters.aaCut;
+    t_min = ParameterManager::Get().TrackingParameters.tmin;
+    t_max = ParameterManager::Get().TrackingParameters.tmax;
+    gold_t_min = ParameterManager::Get().XTAnalyzerParameters.gold_t_min;
+    gold_t_max = ParameterManager::Get().XTAnalyzerParameters.gold_t_max;
+    // for event selection
+    TString CandSelBy = ParameterManager::Get().XTAnalyzerParameters.CandSelBy;
+    bool RequireInTriggerCounter = ParameterManager::Get().XTAnalyzerParameters.RequireInTriggerCounter;
+    bool RequireAllGoldenHits = ParameterManager::Get().XTAnalyzerParameters.RequireAllGoldenHits;
+    int nHitsGMax = ParameterManager::Get().TrackingParameters.nHitsGMax;
+    int nHits_max = ParameterManager::Get().XTAnalyzerParameters.nHits_max;
+    int nHitsS_min = ParameterManager::Get().XTAnalyzerParameters.nHitsS_min;
+    double chi2_max = ParameterManager::Get().XTAnalyzerParameters.chi2_max;
+    double pValue_min = ParameterManager::Get().XTAnalyzerParameters.pValue_min;
+    double slz_min = ParameterManager::Get().XTAnalyzerParameters.slz_min;
+    double slz_max = ParameterManager::Get().XTAnalyzerParameters.slz_max;
+    // for plotting
+    double draw_tmin = ParameterManager::Get().XTAnalyzerParameters.draw_tmin;
+    double draw_tmax = ParameterManager::Get().XTAnalyzerParameters.draw_tmax;
+    double draw_xmin = ParameterManager::Get().XTAnalyzerParameters.draw_xmin;
+    double draw_xmax = ParameterManager::Get().XTAnalyzerParameters.draw_xmax;
+    int    draw_tnum = (draw_tmax-draw_tmin)*0.96;
+
+    gStyle->SetOptStat(0);
+    gStyle->SetPadTickX(1);
+    gStyle->SetPadTickY(1);
+
+    //----------------------------------Prepare tree--------------------------------------------
+    TFile * ofile = new TFile(Form("root/ana/ana.%d.%s.layer%d.root",m_runNo,m_runName.Data(),m_testLayer),"RECREATE");
+    TTree * otree = new TTree("t","t");
+    int    o_nHits[3];
+    int    o_nHitsG[3];
+    int    o_nHitsS[3];
+    double o_inx[3];
+    double o_inz[3];
+    double o_slx[3];
+    double o_slz[3];
+    double o_chi2[3];
+    double o_chi2a[3];
+    double o_chi2w[3];
+    double o_pValue[3];
+    bool   o_isGood[3];
+    int    o_wid[3][9];
+    double o_driftD[3][9];
+    double o_driftT[3][9];
+    double o_DOCA[3][9];
+    int    o_ipeak[3][9];
+    double o_ADCheight[3][9];
+    double o_ADCsumPkt[3][9];
+    double o_ADCsumAll[3][9];
+    bool   o_foundTestLayerHit[3];
+    for (int iCand = 0; iCand<3; iCand++){
+        for (int i = 1; i<9; i++){
+            otree->Branch(Form("w%d%d",i,iCand),&o_wid[iCand][i]);
+            otree->Branch(Form("D%d%d",i,iCand),&o_DOCA[iCand][i]);
+            otree->Branch(Form("d%d%d",i,iCand),&o_driftD[iCand][i]);
+            otree->Branch(Form("t%d%d",i,iCand),&o_driftT[iCand][i]);
+            otree->Branch(Form("i%d%d",i,iCand),&o_ipeak[iCand][i]);
+            otree->Branch(Form("height%d%d",i,iCand),&o_ADCheight[iCand][i]);
+            otree->Branch(Form("sum%d%d",i,iCand),&o_ADCsumPkt[iCand][i]);
+            otree->Branch(Form("all%d%d",i,iCand),&o_ADCsumAll[iCand][i]);
+        }
+        otree->Branch(Form("nHits%d",iCand),o_nHits+iCand);
+        otree->Branch(Form("nHitsG%d",iCand),o_nHitsG+iCand);
+        otree->Branch(Form("nHitsS%d",iCand),o_nHitsS+iCand);
+        otree->Branch(Form("inx%d",iCand),o_inx+iCand);
+        otree->Branch(Form("inz%d",iCand),o_inz+iCand);
+        otree->Branch(Form("slx%d",iCand),o_slx+iCand);
+        otree->Branch(Form("slz%d",iCand),o_slz+iCand);
+        otree->Branch(Form("chi2%d",iCand),o_chi2+iCand);
+        otree->Branch(Form("chi2a%d",iCand),o_chi2a+iCand);
+        otree->Branch(Form("chi2w%d",iCand),o_chi2w+iCand);
+        otree->Branch(Form("pValue%d",iCand),o_pValue+iCand);
+        otree->Branch(Form("isGood%d",iCand),o_isGood+iCand);
+        otree->Branch(Form("found%d",iCand),o_foundTestLayerHit+iCand);
+    }
+    
+    //----------------------------------Prepare histograms--------------------------------------------
+    // Prepare histograms for hit map
+    TH2D * h_hitmap = new TH2D("h_hitmap","Hit Map",1024,-10,0,NLAY,-0.5,NLAY-0.5); h_hitmap->SetContour(100);
+    h_hitmap->GetYaxis()->SetTitle("Layer ID");
+    h_hitmap->GetXaxis()->SetLabelOffset(10);
+    // Prepare histograms for ADC & drift time distribution
+    std::vector<std::vector<int> > wiresToConsider;
+    for (int i = 0; i<9; i++){
+        std::vector<int> wires;
+        wiresToConsider.push_back(wires);
+    }
+    int lidTemp = 1;
+    wiresToConsider[lidTemp].push_back(4);wiresToConsider[lidTemp].push_back(5);lidTemp++; // layer 1
+    wiresToConsider[lidTemp].push_back(3);wiresToConsider[lidTemp].push_back(4);lidTemp++; // layer 2
+    wiresToConsider[lidTemp].push_back(4);wiresToConsider[lidTemp].push_back(5);lidTemp++; // layer 3
+    wiresToConsider[lidTemp].push_back(4);wiresToConsider[lidTemp].push_back(5);lidTemp++; // layer 4
+    wiresToConsider[lidTemp].push_back(5);wiresToConsider[lidTemp].push_back(6);lidTemp++; // layer 5
+    wiresToConsider[lidTemp].push_back(4);wiresToConsider[lidTemp].push_back(5);lidTemp++; // layer 6
+    wiresToConsider[lidTemp].push_back(5);wiresToConsider[lidTemp].push_back(6);lidTemp++; // layer 7
+    wiresToConsider[lidTemp].push_back(4);wiresToConsider[lidTemp].push_back(5);lidTemp++; // layer 8
+    TH1D * h_DriftT_all[9][11];
+    TH1D * h_DriftT_sig[9][11];
+    TH1D * h_DriftT_bkg[9][11];
+    TH1D * h_ADCsumPkt_all[9][11];
+    TH1D * h_ADCsumPkt_sig[9][11];
+    TH1D * h_ADCsumPkt_bkg[9][11];
+    TH1D * h_ADCsumAll_all[9][11];
+    TH1D * h_ADCsumAll_sig[9][11];
+    TH1D * h_ADCsumAll_bkg[9][11];
+    TH2D * h_AVT_sig[9][11];
+    TH2D * h_AVT_siglate[9][11];
+    TH2D * h_AVT_bkg[9][11];
+    TH2D * h_SVT_sig[9][11];
+    TH2D * h_SVT_siglate[9][11];
+    TH2D * h_SVT_bkg[9][11];
+
+    for (int lid = 0; lid<=8; lid++){
+        for (int wid = 0; wid<=10; wid++){
+            h_DriftT_all[lid][wid] = new TH1D(Form("h_DriftT_all_%d_%d",lid,wid),Form("DriftT of all hits: layer %d wire %d",lid,wid),draw_tnum,draw_tmin,draw_tmax); h_DriftT_all[lid][wid]->SetLineColor(kBlack);
+            h_DriftT_all[lid][wid]->GetXaxis()->SetTitle("Drift Time [ns]");
+            h_DriftT_all[lid][wid]->GetYaxis()->SetTitle("Count");
+            h_DriftT_sig[lid][wid] = new TH1D(Form("h_DriftT_sig_%d_%d",lid,wid),Form("DriftT of signal hits: layer %d wire %d",lid,wid),draw_tnum,draw_tmin,draw_tmax); h_DriftT_sig[lid][wid]->SetLineColor(kRed);
+            h_DriftT_sig[lid][wid]->GetXaxis()->SetTitle("Drift Time [ns]");
+            h_DriftT_sig[lid][wid]->GetYaxis()->SetTitle("Count");
+            h_DriftT_bkg[lid][wid] = new TH1D(Form("h_DriftT_bkg_%d_%d",lid,wid),Form("DriftT of noise hits: layer %d wire %d",lid,wid),draw_tnum,draw_tmin,draw_tmax); h_DriftT_bkg[lid][wid]->SetLineColor(kBlue);
+            h_DriftT_bkg[lid][wid]->GetXaxis()->SetTitle("Drift Time [ns]");
+            h_DriftT_bkg[lid][wid]->GetYaxis()->SetTitle("Count");
+            h_ADCsumPkt_all[lid][wid] = new TH1D(Form("h_ADCsumPkt_all_%d_%d",lid,wid),Form("ADCsumPkt of all hits: layer %d wire %d",lid,wid),850,-50,800); h_ADCsumPkt_all[lid][wid]->SetLineColor(kBlack);
+            h_ADCsumPkt_all[lid][wid]->GetXaxis()->SetTitle("ADC sum");
+            h_ADCsumPkt_all[lid][wid]->GetYaxis()->SetTitle("Count");
+            h_ADCsumPkt_sig[lid][wid] = new TH1D(Form("h_ADCsumPkt_sig_%d_%d",lid,wid),Form("ADCsumPkt of signal hits: layer %d wire %d",lid,wid),850,-50,800); h_ADCsumPkt_sig[lid][wid]->SetLineColor(kRed);
+            h_ADCsumPkt_sig[lid][wid]->GetXaxis()->SetTitle("ADC sum");
+            h_ADCsumPkt_sig[lid][wid]->GetYaxis()->SetTitle("Count");
+            h_ADCsumPkt_bkg[lid][wid] = new TH1D(Form("h_ADCsumPkt_bkg_%d_%d",lid,wid),Form("ADCsumPkt of noise hits: layer %d wire %d",lid,wid),850,-50,800); h_ADCsumPkt_bkg[lid][wid]->SetLineColor(kBlue);
+            h_ADCsumPkt_bkg[lid][wid]->GetXaxis()->SetTitle("ADC sum");
+            h_ADCsumPkt_bkg[lid][wid]->GetYaxis()->SetTitle("Count");
+            h_ADCsumAll_all[lid][wid] = new TH1D(Form("h_ADCsumAll_all_%d_%d",lid,wid),Form("ADCsumAll of all hits: layer %d wire %d",lid,wid),850,-50,800); h_ADCsumAll_all[lid][wid]->SetLineColor(kBlack);
+            h_ADCsumAll_all[lid][wid]->GetXaxis()->SetTitle("ADC sum");
+            h_ADCsumAll_all[lid][wid]->GetYaxis()->SetTitle("Count");
+            h_ADCsumAll_sig[lid][wid] = new TH1D(Form("h_ADCsumAll_sig_%d_%d",lid,wid),Form("ADCsumAll of signal hits: layer %d wire %d",lid,wid),850,-50,800); h_ADCsumAll_sig[lid][wid]->SetLineColor(kRed);
+            h_ADCsumAll_sig[lid][wid]->GetXaxis()->SetTitle("ADC sum");
+            h_ADCsumAll_sig[lid][wid]->GetYaxis()->SetTitle("Count");
+            h_ADCsumAll_bkg[lid][wid] = new TH1D(Form("h_ADCsumAll_bkg_%d_%d",lid,wid),Form("ADCsumAll of noise hits: layer %d wire %d",lid,wid),850,-50,800); h_ADCsumAll_bkg[lid][wid]->SetLineColor(kBlue);
+            h_ADCsumAll_bkg[lid][wid]->GetXaxis()->SetTitle("ADC sum");
+            h_ADCsumAll_bkg[lid][wid]->GetYaxis()->SetTitle("Count");
+            h_AVT_sig[lid][wid] = new TH2D(Form("h_AVT_sig_%d_%d",lid,wid),Form("ADCsumAll VS DriftT of signal hits: layer %d wire %d",lid,wid),draw_tnum,draw_tmin,draw_tmax,850,-50,800); h_AVT_sig[lid][wid]->SetContour(100);
+            h_AVT_sig[lid][wid]->GetXaxis()->SetTitle("Drift Time [ns]");
+            h_AVT_sig[lid][wid]->GetYaxis()->SetTitle("ADC");
+            h_AVT_siglate[lid][wid] = new TH2D(Form("h_AVT_siglate_%d_%d",lid,wid),Form("ADCsumAll VS DriftT of late signal hits: layer %d wire %d",lid,wid),draw_tnum,draw_tmin,draw_tmax,850,-50,800); h_AVT_siglate[lid][wid]->SetContour(100);
+            h_AVT_siglate[lid][wid]->GetXaxis()->SetTitle("Drift Time [ns]");
+            h_AVT_siglate[lid][wid]->GetYaxis()->SetTitle("ADC");
+            h_AVT_bkg[lid][wid] = new TH2D(Form("h_AVT_bkg_%d_%d",lid,wid),Form("ADCsumAll VS DriftT of noise hits: layer %d wire %d",lid,wid),draw_tnum,draw_tmin,draw_tmax,850,-50,800); h_AVT_sig[lid][wid]->SetContour(100);
+            h_AVT_bkg[lid][wid]->GetXaxis()->SetTitle("Drift Time [ns]");
+            h_AVT_bkg[lid][wid]->GetYaxis()->SetTitle("ADC");
+            h_SVT_sig[lid][wid] = new TH2D(Form("h_SVT_sig_%d_%d",lid,wid),Form("ADCsumPkt VS DriftT of signal hits: layer %d wire %d",lid,wid),draw_tnum,draw_tmin,draw_tmax,850,-50,800); h_SVT_sig[lid][wid]->SetContour(100);
+            h_SVT_sig[lid][wid]->GetXaxis()->SetTitle("Drift Time [ns]");
+            h_SVT_sig[lid][wid]->GetYaxis()->SetTitle("ADC");
+            h_SVT_siglate[lid][wid] = new TH2D(Form("h_SVT_siglate_%d_%d",lid,wid),Form("ADCsumPkt VS DriftT of late signal hits: layer %d wire %d",lid,wid),draw_tnum,draw_tmin,draw_tmax,850,-50,800); h_SVT_siglate[lid][wid]->SetContour(100);
+            h_SVT_siglate[lid][wid]->GetXaxis()->SetTitle("Drift Time [ns]");
+            h_SVT_siglate[lid][wid]->GetYaxis()->SetTitle("ADC");
+            h_SVT_bkg[lid][wid] = new TH2D(Form("h_SVT_bkg_%d_%d",lid,wid),Form("ADCsumPkt VS DriftT of noise hits: layer %d wire %d",lid,wid),draw_tnum,draw_tmin,draw_tmax,850,-50,800); h_SVT_sig[lid][wid]->SetContour(100);
+            h_SVT_bkg[lid][wid]->GetXaxis()->SetTitle("Drift Time [ns]");
+            h_SVT_bkg[lid][wid]->GetYaxis()->SetTitle("ADC");
         }
     }
+    // Prepare histograms for nHitsG
+    TH2I * h_nGoodHits = new TH2I("h_nGoodHits","Number of good hits VS ADC sum cut",50,0,50,100,0,100); h_nGoodHits->SetContour(100);
+    h_nGoodHits->GetXaxis()->SetTitle("ADC sum cut");
+    h_nGoodHits->GetYaxis()->SetTitle("Number of good hits");
 
-    // get slzmc inxmc of each wire
-    filename = Form("%s/Input/beammap.%d.root",HOME.Data(),m_runNo);
-    TChain * iChain_beam = new TChain("t","t");
-    iChain_beam->Add(filename);
-    if (iChain_beam->GetEntries()){
-        double beam_inxmc;
-        double beam_slzmc;
-        int    beam_lid;
-        int    beam_wid;
-        iChain_beam->SetBranchAddress("lid",&beam_lid);
-        iChain_beam->SetBranchAddress("wid",&beam_wid);
-        for (int i = 0; i<iChain_beam->GetEntries(); i++){
-            iChain_beam->GetEntry(i);
-            if (beam_lid<0||beam_lid>=NLAY||beam_wid<0||beam_wid>=NCEL) continue;
+    //----------------------------------Do the analysis--------------------------------------------
+    MyNamedLog("Analyze","  Start analyzing");
+    Long64_t N = InputOutputManager::Get().GetEntries();
+    int nGoodPeaks[50] = {0};
+    if (m_iEntryStop<0||m_iEntryStart<0){m_iEntryStart = 0; m_iEntryStop=N-1;}
+    MyNamedDebug("Memory","Memory size: @"<<__LINE__<<": "<<pMyProcessManager->GetMemorySize());
+    for (Long64_t iEntry = m_iEntryStart; iEntry<=m_iEntryStop; iEntry++){
+        MyNamedInfo("Analyze","############ Entry "<<iEntry<<" #############");
+        MyNamedTrace("Memory","Memory size: @"<<__LINE__<<": "<<pMyProcessManager->GetMemorySize());
+        if (iEntry%m_modulo == 0){
+            MyNamedDebug("Memory","Memory size: @"<<__LINE__<<": "<<pMyProcessManager->GetMemorySize());
+            std::cout<<iEntry<<std::endl;
         }
-    }
-    else{
-        printf("Cannot find \"%s\", will assume slzmc/inxmc center at 0\n",filename.Data());
-    }
+        InputOutputManager::Get().Reset();
+        InputOutputManager::Get().GetEntry(iEntry);
 
-    // get old wire map adjustment
-    filename = Form("%s/info/offset.%d.%s.root",HOME.Data(),m_runNo,m_prerunname.Data());
-    TChain * iChain_offset = new TChain("t");
-    iChain_offset->Add(filename);
-    if (iChain_offset->GetEntries()){
-        int off_lid;
-        int off_wid;
-        double off_adjustment;
-        iChain_offset->SetBranchAddress("lid",&off_lid);
-        iChain_offset->SetBranchAddress("wid",&off_wid);
-        iChain_offset->SetBranchAddress("adjust",&off_adjustment);
-        for (int i = 0; i<iChain_offset->GetEntries(); i++){
-            iChain_offset->GetEntry(i);
-            map_adjust_old[off_lid][off_wid] = off_adjustment;
-        }
-    }
-    else{
-        MyNamedWarn("Ana",Form("Cannot find \"%.s\"! Will assume 0 adjustment to default wire positions\n",filename.Data()));
-    }
-
-    // get wire map
-    filename = HOME+"/Input/wire-position.root";
-    TChain * iChain_wirepos = new TChain("t");
-    iChain_wirepos->Add(filename);
-    if (!iChain_wirepos->GetEntries()){
-        MyError(Form("Cannot find \"%.s\"!\n",filename.Data()));
-        return 1;
-    }
-    int     wp_bid;
-    int     wp_ch;
-    int     wp_wid;
-    int     wp_lid;
-    double  wp_xro;
-    double  wp_yro;
-    double  wp_xhv;
-    double  wp_yhv;
-    iChain_wirepos->SetBranchAddress("b",&wp_bid);
-    iChain_wirepos->SetBranchAddress("ch",&wp_ch);
-    iChain_wirepos->SetBranchAddress("l",&wp_lid);
-    iChain_wirepos->SetBranchAddress("w",&wp_wid);
-    iChain_wirepos->SetBranchAddress("xhv",&wp_xhv);
-    iChain_wirepos->SetBranchAddress("yhv",&wp_yhv);
-    iChain_wirepos->SetBranchAddress("xro",&wp_xro);
-    iChain_wirepos->SetBranchAddress("yro",&wp_yro);
-    for (int i = 0; i<iChain_wirepos->GetEntries(); i++){
-        iChain_wirepos->GetEntry(i);
-        if (wp_lid>=0&&wp_lid<NLAY&&wp_wid>=0&&wp_wid<NCEL){
-            map_x[wp_lid][wp_wid][0] = wp_xhv+map_adjust_old[wp_lid][wp_wid];
-            map_y[wp_lid][wp_wid][0] = wp_yhv;
-            map_x[wp_lid][wp_wid][1] = wp_xro+map_adjust_old[wp_lid][wp_wid];
-            map_y[wp_lid][wp_wid][1] = wp_yro;
-            map_ch[wp_lid][wp_wid] = wp_ch;
-            map_bid[wp_lid][wp_wid] = wp_bid;
-            map_has[wp_lid][wp_wid] = true;
-        }
-    }
-
-    // prepare XT files
-    TFile * preXTFile = 0;
-    TFile * newXTFile = 0;
-    TTree * newXTTree = 0;
-    if (m_ExternalXT==""){
-        preXTFile = new TFile(Form("%s/info/xt.%d.%s.root",HOME.Data(),m_runNo,m_prerunname.Data()));
-        if (!preXTFile||preXTFile->IsZombie()){
-            MyNamedWarn("Ana","Cannot find xt file according to the given prerunname. Will use garfield xt instead.");
-            preXTFile = new TFile(HOME+Form("/info/xt.%s.%d.root",gastypeshort.Data(),HV));
-            if (!preXTFile||preXTFile->IsZombie()){
-                MyError("Cannot find the default garfield xt: "<<HOME+Form("/info/xt.%s.%d.root",gastypeshort.Data(),HV));
-                return -1;
+        int    nHits = InputOutputManager::Get().nHits;
+        int    nHitsG = InputOutputManager::Get().nHitsG;
+        bool isGoodEvent = true;
+        // should have result
+        if (!nHitsGMax&&InputOutputManager::Get().nCandidatesFound) isGoodEvent = false;
+        // nHits cut
+        if (nHits_max&&nHits>nHits_max) isGoodEvent = false;
+        // decide which candidate to use
+        int cur_nHitsS = 7;
+        for (int iCand = 0; iCand<3; iCand++){
+            int theCand = -1;
+            o_isGood[iCand] = false;
+            for (;cur_nHitsS>=5;cur_nHitsS--){
+                theCand = GetCandidate("Original",cur_nHitsS);
+                if (theCand>=0) break;
             }
-        }
-        newXTFile = new TFile(Form("%s/info/xt.%d.%s.root",HOME.Data(),m_runNo,m_runnameout.Data()),"RECREATE");
-        newXTTree = new TTree("t","t");
-        double mX;
-        double mT;
-        int mLayerID;
-        double mSig;
-        double mChi2;
-        int mEntries;
-        int mType;
-        newXTTree->Branch("x",&mX);
-        newXTTree->Branch("t",&mT);
-        newXTTree->Branch("lid",&mLayerID);
-        newXTTree->Branch("sig",&mSig);
-        newXTTree->Branch("chi2",&mChi2);
-        newXTTree->Branch("n",&mEntries);
-        newXTTree->Branch("type",&mType);
-    }
-    else{
-        newXTFile = new TFile(m_ExternalXT);
-        if (!newXTFile||newXTFile->IsZombie()){
-            MyError("External XT file \""<<m_ExternalXT<<"\" doesn't exist!");
-            return -1;
-        }
-    }
-
-    //===================Set scintillator geometry============================
-    if (m_geoSetup==0){
-        // normal scintillator
-        sciYup = chamberCY+chamberHH+180; // mm
-        sciYdown = chamberCY-chamberHH-180; 
-        sciHL = 300/2.;
-        sciHW = 90/2.;
-    }
-    else{
-        // finger scintillator
-        sciYup = chamberCY+chamberHH+250; // mm
-        sciYdown = chamberCY-chamberHH-195; 
-        sciHL = 33/2.;
-        sciHW = 33/2.;
-    }
-    printf("    # Geometry:\n");
-    printf("    sciYup      = %.3e\n",sciYup);
-    printf("    sciYdown    = %.3e\n",sciYdown);
-    printf("    sciHL       = %.3e\n",sciHL);
-    printf("    sciHW       = %.3e\n",sciHW);
-
-    // set RECBE ADC function
-    fADC2ChargeFunction = new TF1("a2c",m_adc2charge,-10,800);
-
-    //==============================================Prepare input file & output variables=================================================
-    // output file
-    // the closest peak to the track in the test layer
-    bool isGood = false; // if this event meets all cuts
-    double res = 1e9;
-    int    nHitsT = 0; // number of hits in the test layer is by default 1
-    double theDD[2] = {1e9};
-    double theDT[2] = {1e9};
-    double theFD[2] = {1e9};
-    int    theST[2] = {0}; // status of t-x translation
-    double theAA[2] = {0};
-    double theCharge = 0; // charge in the test layer
-    bool   hashit[2] = {false};
-    int    theWid[2] = {-1};
-    double theSum[2] = {0};
-    double thePeak[2] = {0};
-    double theHeight[2] = {0};
-    double sum1st[2] = {0};
-    double dt1st[2] = {0};
-    int theIp[2] = {0};
-    int theMpi[2] = {0};
-    int theCand = 0;
-    // the highest hit in this event
-    int highBid = 0;
-    int highCh = 0;
-    int highLid = 0;
-    int highWid = 0;
-    int highIp = 0;
-    double highSum = 0;
-    double highAA = 0;
-    double highDT = 0;
-    // dE/dX related
-    int nLayersOnTrack = 0; // number of layers used for chage on track
-    double chargeOnTrack[NLAY]; // charge along the track
-    double adcsumOnTrack[NLAY]; // ADC sum along the track
-    int    chargeOnTrackIndex[NLAY]; // index of the corresponding hit along the track
-    double theGG = 0;
-    double trackGG = 0;
-    // event info
-    int nHitsSmallAll = 0; // Number of hits with `aa` smaller than 35
-    int nHitsSmallSASD = 0; // Number of hits with `aa` smaller than 35 and in the same ASD chip as the highest peak of the event
-    int nSmallSumHits = 0; // Number of selected peak which is not the highest on in its channel
-    int nShadowedHits = 0; // Number of selected peak which is not the first sub-peak in its packet
-    int nLateHits = 0; // Number of selected peak which is not the first peak in its channel
-    int nBoundaryHits = 0; // Number of selected peak which corresponds to the boundary (`DD<1 mm || DD>7mm`)
-    int nSmallBoundaryHits = 0; // Number of selected peak which corresponds to the small boundary (`DD<0.5 mm || DD>7.5mm`)
-    std::vector<double> * o_driftD = 0;
-    std::vector<int>    * o_driftDs = 0;
-    std::vector<int> * o_channelID = 0;
-    std::vector<int> * o_boardID = 0;
-
-    // prepare the function to fit the residual distribution
-    f_res = new TF1("fres","gaus",-m_maxRes,m_maxRes);
-    //=================================================Loop in layers to get XTs====================================================
-    // Prepare XTAnalyzer
-    XTAnalyzer * fXTAnalyzer = new XTAnalyzer(gasID,m_verboseLevelXT);
-    fXTAnalyzer->SetBinning(m_NbinT,m_tmin,m_tmax,m_NbinX,m_xmin,m_xmax);
-    // Loop in layers
-    for (int testLayer = 0; testLayer<NLAY; testLayer++){
-        //----------------------------------Set input file--------------------------------------------
-        MyNamedLog("Ana","In Layer "<<testLayer<<": preparing input TChain");
-        TChain * ichain = new TChain("t","t");
-        ichain->Add(Form("%s/root/tracks/t_%d.%s.layer%d.root",HOME.Data(),m_runNo,m_runname.Data(),testLayer));
-        ichain->GetEntries();
-        Long64_t N = ichain->GetEntries();
-        if (N==0){
-            fprintf(stderr,"WARNING: \"%s/root/tracks/t_%d.%s.layer%d.root\" is empty! Will ignore this layer.\n",HOME.Data(),m_runNo,m_runname.Data(),testLayer);
-            continue;
-        }
-        SetInputBranchAdress(ichain);
-
-        if (m_ExternalXT==""){
-            //----------------------------------Start to get XT--------------------------------------------
-            //Initialize the analyzer
-            int saveEvenOdd = 0; if (testLayer==4) saveEvenOdd = 1; else if (testLayer==5) saveEvenOdd = -1;
-            int statusInitialize = fXTAnalyzer->Initialize(Form("%d.%s.layer%d",m_runNo,m_runnameout.Data(),testLayer),testLayer,preXTFile,newXTFile,newXTTree,m_xtType,!m_AsymXT,m_saveHists,m_DrawDetails, testLayer==m_defaultLayerID, saveEvenOdd, testLayer!=0);
-            if (statusInitialize){
-                fprintf(stderr,"WARNING: something wrong with initializing XTAnalyzer for layer[%d], will ignore this layer!\n",testLayer);
-                continue;
-            }
-            MyNamedInfo("Ana",Form("##############Layer %d: loop to get new XTs#############",testLayer));
-            //for ( int iEntry = (m_iEntryStart?m_iEntryStart:0); iEntry<(m_iEntryStop?m_iEntryStop-1:N); iEntry++){
-            for ( int iEntry = 0; iEntry<N; iEntry++){ // better not to skip anything before we get the XT file
-                if (iEntry%m_modulo==0) MyNamedInfo("Ana",iEntry);
-                MyNamedVerbose("Ana","Entry"<<iEntry<<":");
-                ichain->GetEntry(iEntry);
-
-                // decide which candidate to use
-                theCand = GetCandidate(m_CandSelBy, i_layerID, i_type, i_fitD, i_sel, nHitsS, chi2, chi2a);
-
-                // ignore events with bad fitting
-                if (nHitsS[theCand]<m_nHitsSmin) continue;
-                if (chi2[theCand]>m_maxchi2) continue;
-                //if (nHitsG>nHitsS[theCand]) continue;
-                if (m_RequireInTriggerCounter&&!isInTriggerCounter(m_geoSetup,inz[theCand],slz[theCand])) continue;
-                if (m_nHitsMax&&nHits>m_nHitsMax) continue;
-
-                MyNamedVerbose("Ana","  Good Event! Looping in "<<nHits<<" hits");
-                // find the closest hit in the test layer
-                double res_temp = 1e9;
-                bool foundhit = false;
-                double driftT, fitD;
-                bool hasBadHit = false;
-                bool wireChecked[NCEL] = {false};
-                for (int ihit = 0; ihit<nHits; ihit++){
-                    int tlayerID = (*i_layerID)[ihit];
-                    int twireID = (*i_wireID)[ihit];
-                    double tfitD = (*i_fitD[theCand])[ihit];
-                    double tdriftD = (*i_driftD[theCand])[ihit];
-                    double tsum = (*i_sum)[ihit];
-                    double taa = (*i_aa)[ihit];
-                    if ((*i_sel[theCand])[ihit]==1&&(fabs(tdriftD)<m_calib_minFD||fabs(tdriftD)>m_calib_maxFD)) hasBadHit = true;
-                    if (tlayerID!=testLayer) continue;
-                    if (tsum<m_sumCut||taa<m_aaCut) continue;
-                    if (m_ClosestPeak&&twireID<NCEL&&wireChecked[twireID]) continue; // for each cell only get the first peak over the threshold
-                    if (fabs(tfitD-tdriftD)<fabs(res_temp)){ // Get the one with smallest residual
-                        res_temp = tfitD-tdriftD;
-                        fitD = tfitD;
-                        driftT = (*i_driftT)[ihit]-t0offset[theCand];
-                        if (twireID<NCEL) wireChecked[twireID] = true;
-                        foundhit = true;
-                    }
-                }
-                if (!foundhit) continue; // no hits found in test layer
-                if (hasBadHit&&m_RequireAllGoldenHits) continue;
-
-                MyNamedVerbose("Ana","  Found hit! pushing to XTAnalyzer");
-                // tell analyzer a new data point
-                fXTAnalyzer->Push(driftT,fitD);
-            }
-            MyNamedVerbose("Ana","Starting XT analysis");
-            // fit histograms/graphs, make plots, and save new xt file
-            fXTAnalyzer->Process();
-        }
-    }
-
-    //=================================================Loop in layers to get residual====================================================
-    double offset_max = 0;
-    int    offset_max_lid = 0;
-    int    offset_max_wid = 0;
-    // Loop in layers
-    for (int testLayer = 0; testLayer<NLAY; testLayer++){
-        MyNamedLog("Ana","In Layer "<<testLayer<<": preparing input TChain");
-        TChain * ichain = new TChain("t","t");
-        ichain->Add(Form("%s/root/tracks/t_%d.%s.layer%d.root",HOME.Data(),m_runNo,m_runname.Data(),testLayer));
-        ichain->GetEntries();
-        Long64_t N = ichain->GetEntries();
-        if (N==0){
-            fprintf(stderr,"WARNING: \"%s/root/tracks/t_%d.%s.layer%d.root\" is empty! Will ignore this layer.\n",HOME.Data(),m_runNo,m_runname.Data(),testLayer);
-            continue;
-        }
-        SetInputBranchAdress(ichain);
-
-        // get XT file
-        TFile * XTFile = newXTFile;
-        f_left = (TF1*) XTFile->Get(Form("flc_%d",m_XTLayerForRes));
-        f_right = (TF1*) XTFile->Get(Form("frc_%d",m_XTLayerForRes));
-        if (!f_left||!f_right){
-            MyNamedWarn("Ana","Cannot find the xt curves of layer "<<m_XTLayerForRes<<". Will load the default ones.");
-            f_left = (TF1*) XTFile->Get("fl_0");
-            f_right = (TF1*) XTFile->Get("fr_0");
-        }
-        if (!f_left||!f_right){
-            MyError("Cannot find the default xt curves!");
-            return 1;
-        }
-        double minDT = f_left->GetXmin()>f_right->GetXmin()?f_right->GetXmin():f_left->GetXmin();
-        double maxDT =  f_left->GetXmax()<f_right->GetXmax()?f_right->GetXmax():f_left->GetXmax();
-        if (m_tmaxSet)
-            maxDT = m_tmaxSet;
-
-        //----------------------------------prepare for output ROOT file--------------------------------------------
-        TFile * ofileana = new TFile(Form("%s/root/ana/ana_%d.%s.layer%d.root",HOME.Data(),m_runNo,m_runnameout.Data(),testLayer),"RECREATE");
-        TTree * otree = new TTree("t","t");
-        otree->Branch("triggerNumber",&triggerNumber);
-        otree->Branch("isGood",&isGood);
-        otree->Branch("res",&res);
-        otree->Branch("nHitsT",&nHitsT);
-        for (int ihit = 0; ihit<2; ihit++){
-            otree->Branch(Form("hashit%d",ihit),&(hashit[ihit]));
-            otree->Branch(Form("theFD%d",ihit),&(theFD[ihit]));
-            otree->Branch(Form("theDD%d",ihit),&(theDD[ihit]));
-            otree->Branch(Form("theDT%d",ihit),&(theDT[ihit]));
-            otree->Branch(Form("theST%d",ihit),&(theST[ihit]));
-            otree->Branch(Form("theAA%d",ihit),&(theAA[ihit]));
-            otree->Branch(Form("theWid%d",ihit),&(theWid[ihit]));
-            otree->Branch(Form("theSum%d",ihit),&(theSum[ihit]));
-            otree->Branch(Form("sum1st%d",ihit),&(sum1st[ihit]));
-            otree->Branch(Form("dt1st%d",ihit),&(dt1st[ihit]));
-            otree->Branch(Form("thePeak%d",ihit),&(thePeak[ihit]));
-            otree->Branch(Form("theHeight%d",ihit),&(theHeight[ihit]));
-            otree->Branch(Form("theIp%d",ihit),&(theIp[ihit]));
-            otree->Branch(Form("theMpi%d",ihit),&(theMpi[ihit]));
-        }
-        otree->Branch("theCand",&theCand);
-        otree->Branch("highBid",&highBid);
-        otree->Branch("highCh",&highCh);
-        otree->Branch("highLid",&highLid);
-        otree->Branch("highWid",&highWid);
-        otree->Branch("highIp",&highIp);
-        otree->Branch("highSum",&highSum);
-        otree->Branch("highAA",&highAA);
-        otree->Branch("highDT",&highDT);
-        otree->Branch("theCharge",&theCharge);
-        for (int i = 0; i<NLAY; i++){
-            otree->Branch(Form("chargeOnTrack%d",i),&(chargeOnTrack[i]));
-            otree->Branch(Form("adcsumOnTrack%d",i),&(adcsumOnTrack[i]));
-            otree->Branch(Form("chargeOnTrackIndex%d",i),&(chargeOnTrackIndex[i]));
-        }
-        otree->Branch("theGG",&theGG);
-        otree->Branch("trackGG",&trackGG);
-        otree->Branch("nLayers",&nLayersOnTrack);
-        otree->Branch("nHitsSmallAll",&nHitsSmallAll);
-        otree->Branch("nHitsSmallSASD",&nHitsSmallSASD);
-        otree->Branch("nSHits",&nShadowedHits);
-        otree->Branch("nLHits",&nLateHits);
-        otree->Branch("nSSHits",&nSmallSumHits);
-        otree->Branch("nBHits",&nBoundaryHits);
-        otree->Branch("nSBHits",&nSmallBoundaryHits);
-        otree->Branch("nHits",&nHits);
-        otree->Branch("nHitsG",&nHitsG);
-        otree->Branch("layerID",&i_layerID);
-        otree->Branch("wireID",&i_wireID);
-        otree->Branch("channelID",&o_channelID);
-        otree->Branch("boardID",&o_boardID);
-        otree->Branch("driftT",&i_driftT);
-        if (m_inputType) otree->Branch("driftDmc",&i_driftDmc);
-        otree->Branch("type",&i_type);
-        otree->Branch("np",&i_np);
-        otree->Branch("ip",&i_ip);
-        otree->Branch("clk",&i_clk);
-        otree->Branch("width",&i_width);
-        otree->Branch("peak",&i_peak);
-        otree->Branch("height",&i_height);
-        otree->Branch("mpn",&i_mpn);
-        otree->Branch("mpi",&i_mpi);
-        if (has_rank) otree->Branch("rank",&i_rank);
-        if (has_ped) otree->Branch("ped",&i_ped);
-        otree->Branch("sum",&i_sum);
-        otree->Branch("aa",&i_aa);
-        otree->Branch("driftD",&o_driftD);
-        otree->Branch("driftDs",&o_driftDs);
-        otree->Branch("driftD0",&(i_driftD[0]));
-        otree->Branch("calD",&(i_calD[0]));
-        otree->Branch("fitD",&(i_fitD[0]));
-        otree->Branch("sel",&(i_sel[0]));
-        otree->Branch("icom",&(icom[0]));
-        otree->Branch("isel",&(isel[0]));
-        otree->Branch("npairs",&(npairs[0]));
-        otree->Branch("iinx",&(iinx[0]));
-        otree->Branch("iinz",&(iinz[0]));
-        otree->Branch("islx",&(islx[0]));
-        otree->Branch("islz",&(islz[0]));
-        otree->Branch("chi2x",&(chi2x[0]));
-        otree->Branch("chi2z",&(chi2z[0]));
-        otree->Branch("chi2i",&(chi2i[0]));
-        otree->Branch("nHitsS",&(nHitsS[0]));
-        otree->Branch("inx",&(inx[0]));
-        otree->Branch("inz",&(inz[0]));
-        otree->Branch("slx",&(slx[0]));
-        otree->Branch("slz",&(slz[0]));
-        otree->Branch("chi2",&(chi2[0]));
-        otree->Branch("chi2p",&(chi2p[0]));
-        otree->Branch("chi2a",&(chi2a[0]));
-        if (m_inputType){
-            otree->Branch("chi2mc",&(chi2mc[0]));
-            otree->Branch("chi2pmc",&(chi2pmc[0]));
-            otree->Branch("chi2amc",&(chi2amc[0]));
-            otree->Branch("inxmc",&inxmc);
-            otree->Branch("inzmc",&inzmc);
-            otree->Branch("slxmc",&slxmc);
-            otree->Branch("slzmc",&slzmc);
-        }
-        o_driftD = new std::vector<double>;
-        o_driftDs = new std::vector<int>;
-        o_channelID = new std::vector<int>;
-        o_boardID = new std::vector<int>;
-
-        //Prepare histograms, function and counters
-        TH1I * h_nHits = new TH1I("hnHits","Number of TDC hits in each event",100,0,100);
-        TH1I * h_DOF = new TH1I("hDOF","Number of DOF",5,0,5);
-        TH1D * h_chi2 = new TH1D("hchi2","#chi^{2} of fitting",256,0,10);
-        TH1D * h_slz = new TH1D("hslz","Slope on z direction",256,-0.3,0.3);
-        TH1D * h_DOCA = new TH1D("hDOCA","DOCA with Left/Right",m_NbinX,-m_xmax,m_xmax);
-        TH1D * h_DOCAb = new TH1D("hDOCAb","DOCA without Left/Right",m_NbinX/2,0,m_xmax);
-        TH1D * h_DriftD = new TH1D("hDriftD","Drift distance with Left/Right",m_NbinX,-m_xmax,m_xmax);
-        TH1D * h_DriftDb = new TH1D("hDriftDb","Drift distance without Left/Right",m_NbinX/2,0,m_xmax);
-        TH2D * h_aaVST = new TH2D("haaVST","ADC sum VS driftT",m_NbinT,m_tmin,m_tmax,200,-50,550);
-        TH2D * h_aaVSD = new TH2D("haaVSD","ADC sum VS driftD",m_NbinX,0,m_xmax,200,-50,550);
-        TH2D * h_ggVSX = new TH2D("hggVSX","Gas gain VS DOCA",m_NbinX,-m_xmax,m_xmax,256,0,2e5);
-        TH1D * h_ggall = new TH1D("hggall","Gas gain",256,0,2e5);
-        TH2D * h_xt = new TH2D("hxt","Time space relation",m_NbinT,m_tmin,m_tmax,m_NbinX,-m_xmax,m_xmax);
-        TH2D * h_tx = new TH2D("htx","Space time relation",m_NbinX,-m_xmax,m_xmax,m_NbinT,m_tmin,m_tmax);
-        TH2D * h_resVSX = new TH2D("hresVSX","Residual VS DOCA",m_NbinX,-m_xmax,m_xmax,m_NbinRes,-m_maxRes,m_maxRes);
-        TH2D * h_resVSXwire[NWIRES4CALIB];
-        for (int iwire = 0; iwire<NWIRES4CALIB; iwire++){
-            h_resVSXwire[iwire] = new TH2D(Form("hresVSXw%d",iwire),"Residual VS DOCA",m_NbinX,-m_xmax,m_xmax,m_NbinRes,-m_maxRes,m_maxRes);
-        }
-        TH2D * h_resVSD = new TH2D("hresVSD","Residual VS drift distance",m_NbinX,-m_xmax,m_xmax,m_NbinRes,-m_maxRes,m_maxRes);
-        TH1D * h_resD[NBINS];
-        TH1D * h_resX[NBINS];
-        TH1D * h_resDb[NBINS]; // for both sides case
-        TH1D * h_resXb[NBINS]; // for both sides case
-        TH1D * h_dedx[MAXTRUNC];
-        for (int i = 0; i<NBINS; i++){
-            double xmin = m_xmax*(i)/NBINS;
-            double xmax = m_xmax*(i+1)/NBINS;
-            h_resD[i] = new TH1D(Form("hresD%d",i),Form("Residual with drift distance in [%.1f,%.1f] mm",xmin,xmax),m_NbinRes,-m_maxRes,m_maxRes);
-            h_resD[i]->GetXaxis()->SetTitle("Residual [mm]");
-            h_resX[i] = new TH1D(Form("hresX%d",i),Form("Residual with DOCA in [%.1f,%.1f] mm",xmin,xmax),m_NbinRes,-m_maxRes,m_maxRes);
-            h_resX[i]->GetXaxis()->SetTitle("Residual [mm]");
-            xmin = -m_xmax+2*m_xmax*(i)/NBINS;
-            xmax = -m_xmax+2*m_xmax*(i+1)/NBINS;
-            h_resXb[i] = new TH1D(Form("hresXb%d",i),Form("Residual with DOCA in [%.1f,%.1f] mm",xmin,xmax),m_NbinRes,-m_maxRes,m_maxRes);
-            h_resXb[i]->GetXaxis()->SetTitle("Residual [mm]");
-            h_resDb[i] = new TH1D(Form("hresDb%d",i),Form("Residual with drift distance in [%.1f,%.1f] mm",xmin,xmax),m_NbinRes,-m_maxRes,m_maxRes);
-            h_resDb[i]->GetXaxis()->SetTitle("Residual [mm]");
-        }
-        TH1D * h_resXwire[NWIRES4CALIB][NBINS];
-        for (int i = 0; i<NBINS; i++){
-            for (int iwire = 0; iwire<NWIRES4CALIB; iwire++){
-                double xmin = m_xmax*(2*i-NBINS)/NBINS;
-                double xmax = m_xmax*(2*(i+1)-NBINS)/NBINS;
-                h_resXwire[iwire][i] = new TH1D(Form("hresXw%d_%d",iwire,i),Form("Residual with DOCA in [%.1f,%.1f] mm in wire %d",xmin,xmax,iwire+FIRSTWIRE4CALIB),m_NbinRes,-m_maxRes,m_maxRes);
-                h_resXwire[iwire][i]->GetXaxis()->SetTitle("Residual [mm]");
-            }
-        }
-        for (int i = 0; i<MAXTRUNC; i++){
-            h_dedx[i] = new TH1D(Form("hdedx%d",i),Form("dEdX with %d hits omitted",i),256,0,3);
-            h_dedx[i]->GetXaxis()->SetTitle("dE/dX [keV/cm]");
-        }
-        h_nHits->GetXaxis()->SetTitle("Number of Hits");
-        h_DOF->GetXaxis()->SetTitle("DOF");
-        h_chi2->GetXaxis()->SetTitle("#chi^{2}");
-        h_slz->GetXaxis()->SetTitle("tan#theta_{z}");
-        h_DOCA->GetXaxis()->SetTitle("DOCA with left(-)/right(+) [mm]");
-        h_DOCAb->GetXaxis()->SetTitle("DOCA [mm]");
-        h_DriftD->GetXaxis()->SetTitle("Drift distance [mm]");
-        h_DriftDb->GetXaxis()->SetTitle("Drift distance with left(-)/right(+) [mm]");
-        h_aaVST->GetXaxis()->SetTitle("Drift time [ns]");
-        h_aaVST->GetYaxis()->SetTitle("ADC sum");
-        h_aaVSD->GetXaxis()->SetTitle("Drift distance [mm]");
-        h_aaVSD->GetYaxis()->SetTitle("ADC sum");
-        h_ggVSX->GetXaxis()->SetTitle("DOCA [mm]");
-        h_ggVSX->GetYaxis()->SetTitle("Gas gain");
-        h_ggall->GetXaxis()->SetTitle("Gas gain");
-        h_xt->GetXaxis()->SetTitle("Drift time [ns]");
-        h_xt->GetYaxis()->SetTitle("DOCA [mm]");
-        h_tx->GetXaxis()->SetTitle("DOCA [mm]");
-        h_tx->GetYaxis()->SetTitle("Drift time [ns]");
-        h_resVSX->GetXaxis()->SetTitle("DOCA [mm]");
-        h_resVSX->GetYaxis()->SetTitle("Residual [mm]");
-        for (int iwire = 0; iwire<NWIRES4CALIB; iwire++){
-            h_resVSXwire[iwire]->GetXaxis()->SetTitle("DOCA [mm]");
-            h_resVSXwire[iwire]->GetYaxis()->SetTitle("Residual [mm]");
-        }
-        h_resVSD->GetXaxis()->SetTitle("Drift distance [mm]");
-        h_resVSD->GetYaxis()->SetTitle("Residual [mm]");
-        int N_ALL = 0;
-        int N_CUT1 = 0;
-        int N_CUT2 = 0;
-        int N_CUT3 = 0;
-        int N_CUT4 = 0;
-        int N_CUT5 = 0;
-        int N_BIN[NBINS] = {0};
-        double closeFD;
-        double closeFD2;
-        int    closeWid;
-        int    closeWid2;
-        double averageGG = 0;
-        double averageGGErr = 0;
-        int prevTheCand = 0;
-        //----------------------------------Start the analysis to get residual and etc--------------------------------------------
-        double closestchi2 = 1e9;
-        MyNamedInfo("Ana",Form("##############Layer %d: loop to get residual#############",testLayer));
-        for ( int iEntry = (m_iEntryStart?m_iEntryStart:0); iEntry<(m_iEntryStop?m_iEntryStop+1:N); iEntry++){
-            if (iEntry%m_modulo==0) MyNamedInfo("Ana",iEntry);
-            MyNamedVerbose("Ana","Entry"<<iEntry<<":");
-            ichain->GetEntry(iEntry);
-
-            // decide which candidate to use
-            theCand = GetCandidate(m_CandSelBy, i_layerID, i_type, i_fitD, i_sel, nHitsS, chi2, chi2a);
-            if (theCand!=prevTheCand){
-                prevTheCand = theCand;
-                otree->SetBranchAddress("driftD",&(i_driftD[theCand]));
-                otree->SetBranchAddress("npairs",&(npairs[theCand]));
-                otree->SetBranchAddress("isel",&(isel[theCand]));
-                otree->SetBranchAddress("icom",&(icom[theCand]));
-                otree->SetBranchAddress("iinx",&(iinx[theCand]));
-                otree->SetBranchAddress("iinz",&(iinz[theCand]));
-                otree->SetBranchAddress("islx",&(islx[theCand]));
-                otree->SetBranchAddress("islz",&(islz[theCand]));
-                otree->SetBranchAddress("chi2x",&(chi2x[theCand]));
-                otree->SetBranchAddress("chi2z",&(chi2z[theCand]));
-                otree->SetBranchAddress("chi2i",&(chi2i[theCand]));
-                otree->SetBranchAddress("calD",&(i_calD[theCand]));
-                otree->SetBranchAddress("nHitsS",&(nHitsS[theCand]));
-                otree->SetBranchAddress("inx",&(inx[theCand]));
-                otree->SetBranchAddress("inz",&(inz[theCand]));
-                otree->SetBranchAddress("slx",&(slx[theCand]));
-                otree->SetBranchAddress("slz",&(slz[theCand]));
-                otree->SetBranchAddress("chi2",&(chi2[theCand]));
-                otree->SetBranchAddress("chi2p",&(chi2p[theCand]));
-                otree->SetBranchAddress("chi2a",&(chi2a[theCand]));
-                if (m_inputType){
-                    otree->SetBranchAddress("chi2mc",&(chi2mc[theCand]));
-                    otree->SetBranchAddress("chi2pmc",&(chi2pmc[theCand]));
-                    otree->SetBranchAddress("chi2amc",&(chi2amc[theCand]));
-                    otree->SetBranchAddress("inxmc",&inxmc);
-                    otree->SetBranchAddress("inzmc",&inzmc);
-                    otree->SetBranchAddress("slxmc",&slxmc);
-                    otree->SetBranchAddress("slzmc",&slzmc);
-                }
-                otree->SetBranchAddress("fitD",&(i_fitD[theCand]));
-                otree->SetBranchAddress("sel",&(i_sel[theCand]));
-            }
-
-            // update m_minchi2p
-            if (fabs(chi2[theCand]-m_maxchi2)<fabs(closestchi2-m_maxchi2)){
-                closestchi2 = chi2[theCand];
-                m_minchi2p = chi2p[theCand];
-            }
+            if (theCand<0) break;
+            double slx = InputOutputManager::Get().slopeX[theCand];
+            double inx = InputOutputManager::Get().interceptX[theCand];
+            double slz = InputOutputManager::Get().slopeZ[theCand];
+            double inz = InputOutputManager::Get().interceptZ[theCand];
+            double chi2 = InputOutputManager::Get().chi2[theCand];
+            double chi2a = InputOutputManager::Get().chi2a[theCand];
+            double chi2w = InputOutputManager::Get().chi2WithTestLayer[theCand];
+            double pValue = InputOutputManager::Get().pValue[theCand];
+            int    nHitsS = InputOutputManager::Get().nHitsS[theCand];
 
             // ignore events with bad fitting
-            isGood = true;
-            N_ALL++;
-            h_nHits->Fill(nHits);
-            if (m_nHitsMax&&nHits>m_nHitsMax) isGood = false;
-            if (isGood) N_CUT1++;
-            if (isGood) h_DOF->Fill(nHitsS[theCand]-4);
-            if (nHitsS[theCand]<m_nHitsSmin) isGood = false;
-            if (isGood) N_CUT2++;
-            if (isGood) h_chi2->Fill(chi2[theCand]);
-            if (chi2[theCand]>m_maxchi2) isGood = false;
-            if (isGood) N_CUT3++;
-            if (isGood) h_slz->Fill(slz[theCand]);
-            if (fabs(slz[theCand])>m_maxslz) isGood = false;
-            if (isGood) N_CUT4++;
+            if (nHitsS<nHitsS_min) isGoodEvent = false;
+            if (chi2_max&&chi2>chi2_max) isGoodEvent = false;
+            if (pValue<pValue_min) isGoodEvent = false;
+            // slope distribution?
+            if (slz<slz_min) isGoodEvent = false;
+            if (slz>slz_max) isGoodEvent = false;
+            // extra cuts
+            if (RequireInTriggerCounter&&!GeometryManager::Get().IsInScinti(1.5,inx,slx,inz,slz)) isGoodEvent = false;
+            if (RequireAllGoldenHits&&CountNotGoldenHitSelected(theCand)) isGoodEvent = false;
 
-            // get closest wires
-            closeFD = 1e3;
-            closeWid = 0;
-            closeFD2 = 1e3;
-            closeWid2 = 0;
-            for (int wid = 0; wid<NCEL; wid++){
-                double fitD = get_dist(testLayer,wid,slx[theCand],inx[theCand],slz[theCand],inz[theCand]);
-                if (fabs(closeFD)>fabs(fitD)){
-                    closeFD2 = closeFD;
-                    closeWid2 = closeWid;
-                    closeWid = wid;
-                    closeFD = fitD;
-                }
-                else if (fabs(closeFD2)>fabs(fitD)){
-                    closeWid2 = wid;
-                    closeFD2 = fitD;
-                }
-            }
-            MyNamedVerbose("Ana","  iEntry = "<<iEntry<<", theCand = "<<theCand<<", "<<(isGood?"Good":"Bad")<<" event, closeWid = "<<closeWid<<", closeFD = "<<closeFD<<", closeWid2 = "<<closeWid2<<", closeFD2 = "<<closeFD2<<", nHits = "<<nHits);
-            theFD[0] = closeFD;
-            int ibinX = fabs(closeFD)/m_xmax*NBINS; // bin index for DOCA
-            if (ibinX>=NBINS) isGood = false; // too far away from any cell
-            if (isGood) N_CUT5++;
-            nHitsT = 1; // number of hits in the test layer is by default 1
-            int ibinX2 = fabs(closeFD2)/m_xmax*NBINS; // bin index for the next closest DOCA
-            if (fabs(closeFD2+closeFD)<4&&ibinX2<NBINS){
-                nHitsT = 2; // there is one more hit in the test layer
-                theFD[1] = closeFD2;
-            }
-            if (isGood){
-                h_DOCA->Fill(closeFD);
-                h_DOCAb->Fill(fabs(closeFD));
-                N_BIN[ibinX]++;
-                if (nHitsT==2){
-                    h_DOCA->Fill(closeFD2);
-                    h_DOCAb->Fill(fabs(closeFD2));
-                    N_BIN[ibinX2]++;
-                }
-            }
-
-            // find the signal hits (possibly 2)
-            // record drift and charge info
-            double minRes[2] = {1e3}; // minimal residual in the test layer
-            hashit[0] = false;
-            hashit[1] = false;
+            // reset o_wid
             for (int lid = 0; lid<NLAY; lid++){
-                chargeOnTrack[lid] = 0;
-                adcsumOnTrack[lid] = 0;
-                chargeOnTrackIndex[lid] = 0;
+                o_wid[iCand][lid] = -1;
             }
 
-            // set driftD and extra info
-            o_driftD->clear();
-            o_driftDs->clear();
-            o_channelID->clear();
-            o_boardID->clear();
+            MyNamedVerbose("Analyze","  Good Event! Looping in "<<nHits<<" hits");
+            for (int i = 0; i<50; i++){
+                nGoodPeaks[i] = 0;
+            }
+            double residualMinimal = 1e9;
+            bool   foundTestLayerHit = false;
+            for (int iHit = 0; iHit<nHits; iHit++){
+                int layerID = InputOutputManager::Get().LayerID->at(iHit);
+                if (layerID==0){continue;} // don't include the guard layer
+                int wireID = InputOutputManager::Get().CellID->at(iHit);
+                int iPeak = InputOutputManager::Get().iPeakInChannel->at(iHit);
+                double DOCA = GeometryManager::Get().GetDOCA(layerID,wireID,slx,inx,slz,inz);
+                double DriftT = InputOutputManager::Get().DriftT->at(iHit)+InputOutputManager::Get().t0Offset[theCand]; // consider the t0 offset suggested by this candidate
+                int status;
+                double DriftD = XTManager::Get().t2x(DriftT,layerID,wireID,DOCA,status);
+                double ADCheight = InputOutputManager::Get().ADCheight->at(iHit);
+                double ADCsumPkt = InputOutputManager::Get().ADCsumPacket->at(iHit);
+                double ADCsumAll = InputOutputManager::Get().ADCsumAll->at(iHit);
+                h_DriftT_all[layerID][wireID]->Fill(DriftT);
+                h_ADCsumPkt_all[layerID][wireID]->Fill(ADCsumPkt);
+                if (iPeak==0){
+                    h_ADCsumAll_all[layerID][wireID]->Fill(ADCsumAll);
+                }
+                for (int i = 0; i<50; i++){
+                    sumCut = i; // adjust the cut
+                    aaCut = -1e9;
+                    if (isGoldenHit(iHit)) nGoodPeaks[i]++;
+                }
+                sumCut = ParameterManager::Get().TrackingParameters.sumCut;
+                aaCut = ParameterManager::Get().TrackingParameters.aaCut;
 
-            theCharge = 0; // charge in the test layer
-            res = 1e9;
-            highBid = -1;
-            highCh = -1;
-            highLid = -1;
-            highWid = -1;
-            highIp = -1;
-            highAA=0;
-            highSum=-1e9;
-            highDT=0;
-            nHitsSmallSASD = 0;
-            nHitsSmallAll = 0;
-            nSmallSumHits = 0;
-            nShadowedHits = 0;
-            nLateHits = 0;
-            nSmallBoundaryHits = 0;
-            nBoundaryHits = 0;
-            for (int ihit = 0; ihit<nHits; ihit++){
-                // get hit info updated
-                int lid = (*i_layerID)[ihit];
-                int wid = (*i_wireID)[ihit];
-                int ch = map_ch[lid][wid];
-                int bid = map_bid[lid][wid];
-                double aa = (*i_aa)[ihit];
-                double sum = (*i_sum)[ihit];
-                double peak = (*i_peak)[ihit];
-                double height = (*i_height)[ihit];
-                double fitD = (*i_fitD[theCand])[ihit];
-                int type = getHitType((*i_type)[ihit],fitD>=0);
-                (*i_driftT)[ihit]-=t0offset[theCand];
-                double dt = (*i_driftT)[ihit];
-                double dd;
-                double dd0 = (*i_driftD[theCand])[ihit];
-                int status = t2d(dt,dd,fitD>0);
-                o_driftD->push_back(dd);
-                o_driftDs->push_back(status);
-                o_channelID->push_back(ch);
-                o_boardID->push_back(bid);
-                (*i_fitD[theCand])[ihit]=fitD;
-                int ip = (*i_ip)[ihit];
-                int mpi = (*i_mpi)[ihit];
-                double charge = ADC2Charge(aa); // ADC -> charge = e*Nt*GG; while Nt = dE/W = dEdX*trackL/W.
-                double fd = get_dist(lid,wid,slx[theCand],inx[theCand],slz[theCand],inz[theCand]);
-
-                // accumulate charge info
-                if ((*i_ip)[ihit]==0){ // to calculate the distance to track, only count first peaks
-                    //if (fabs(fd)<CELLW/2+0.5){ // along the track: distance smaller than half cell size (plus safety margin 0.5 mm)
-                    if (fabs(fd)<m_maxFD){ // along the track: distance smaller than half cell size (plus safety margin 0.5 mm)
-                        // FIXME: should decide whether to include the boundary layers or not: slightly smaller ADC, why?
-                        //if (lid>0&&lid<NLAY-1){ // don't count the last layer: guard layer
-                        //if (lid>1&&lid<NLAY){ // don't count the first layer: guard layer
-                        if (lid>1&&lid<NLAY-1){ // don't count the first layer and the last layer: guard layers
-                            //if (lid>0&&lid<NLAY){ // count all layers
-                            if (!chargeOnTrack[lid]||charge>chargeOnTrack[lid]) chargeOnTrackIndex[lid] = ihit;
-                            chargeOnTrack[lid]+=charge;
-                            adcsumOnTrack[lid]+=aa;
+                if (!isGoodEvent) continue;
+                if (layerID==m_testLayer){
+                    if (isGoodHit(iHit)&&fabs(DOCA)<20){ // in test layer, on track, check if it's closer
+                        foundTestLayerHit = true;
+                        double residual = DriftD-DOCA;
+                        if (fabs(residual)<fabs(residualMinimal)){
+                            residualMinimal = residual;
+                            o_wid[iCand][layerID] = wireID;
+                            o_DOCA[iCand][layerID] = DOCA;
+                            o_driftD[iCand][layerID] = DriftD;
+                            o_driftT[iCand][layerID] = DriftT;
+                            o_ipeak[iCand][layerID] = iPeak;
+                            o_ADCheight[iCand][layerID] = ADCheight;
+                            o_ADCsumPkt[iCand][layerID] = ADCsumPkt;
+                            o_ADCsumAll[iCand][layerID] = ADCsumAll;
                         }
-                        if (lid==testLayer){ // in test layer hits
-                            theCharge+=charge;
-                        }
-                    }
-                    if (isGood&&(*i_layerID)[ihit]==testLayer){
-                        // aa
-                        h_aaVST->Fill(dt,aa);
-                        h_aaVSD->Fill(dd,aa);
-                    }
-                }
-
-                // check the closest peak in the test layer
-                if ((*i_layerID)[ihit]==testLayer){
-                    int isig = -1;
-                    if (wid==closeWid) isig = 0;
-                    else if (wid==closeWid2&&nHitsT==2) isig = 1;
-                    if (isig>=0){
-                        double resi = fabs(dd)-fabs(fd);
-                        if (status==0&&fabs(resi)<fabs(minRes[isig])){ // Should have cut for test layer! otherwise XT will not be well tuned
-                            hashit[isig] = true;
-                            theFD[isig] = fd;
-                            theDD[isig] = dd;
-                            theDT[isig] = dt;
-                            theST[isig] = status;
-                            theAA[isig] = aa;
-                            minRes[isig] = resi;
-                            theWid[isig] = wid;
-                            theSum[isig] = sum;
-                            thePeak[isig] = peak;
-                            theHeight[isig] = height;
-                            theIp[isig] = ip;
-                            theMpi[isig] = mpi;
-                            if (fabs(resi)<fabs(res)) res = resi;
-                        }
-                        if (ip==0){ // record the ADC sum and the drift time for the first peak in the on track cell in the test layer
-                            sum1st[isig] = sum;
-                            dt1st[isig] = dt;
-                        }
-                    }
-                }
-
-                // check the highest hit
-                if (highSum<sum){
-                    highBid = bid;
-                    highCh = ch;
-                    highLid = lid;
-                    highWid = wid;
-                    highIp = ip;
-                    highAA=aa;
-                    highSum=sum;
-                    highDT=dt;
-                }
-
-                // get nXXXHits according to the original hit distance
-                if ((*i_sel[theCand])[ihit]==1){
-                    if((fabs(dd0)<0.5||fabs(dd0)>7.5))
-                        nBoundaryHits++;
-                    if((fabs(dd0)<0.25||fabs(dd0)>7.75))
-                        nSmallBoundaryHits++;
-                    if(ip!=0){
-                        nLateHits++;
-                    }
-                    if((*i_mpi)[ihit]!=0)
-                        nShadowedHits++;
-                    if(has_rank&&(*i_rank)[ihit]!=0)
-                        nSmallSumHits++;
-                }
-
-            }
-
-            // get statistics relating to the ADC with the highest hit
-            for (int ihit = 0; ihit<nHits; ihit++){
-                int lid = (*i_layerID)[ihit];
-                int wid = (*i_wireID)[ihit];
-                int ch = map_ch[lid][wid];
-                int bid = map_bid[lid][wid];
-                double aa = (*i_aa)[ihit];
-                double dt = (*i_driftT)[ihit];
-                if (aa<35){
-                    nHitsSmallAll++;
-                    if (bid==highBid&&ch/8==highCh/8){
-                        nHitsSmallSASD++;
-                    }
-                }
-            }
-
-            // Count number of layers used for charge on track
-            nLayersOnTrack = 0;
-            double totalCharge = 0;
-            for (int lid = 1; lid<NLAY; lid++){
-                if (chargeOnTrack[lid]) nLayersOnTrack++;
-                totalCharge+=chargeOnTrack[lid];
-            }
-
-            // sort the layers by charge from small to large
-            for (int lid = 1; lid<NLAY; lid++){ // ignore layer 0
-                for (int ljd = lid+1; ljd<NLAY; ljd++){
-                    if (chargeOnTrack[lid]>chargeOnTrack[ljd]){
-                        double temp = chargeOnTrack[lid];
-                        chargeOnTrack[lid] = chargeOnTrack[ljd];
-                        chargeOnTrack[ljd] = temp;
-                        temp = adcsumOnTrack[lid];
-                        adcsumOnTrack[lid] = adcsumOnTrack[ljd];
-                        adcsumOnTrack[ljd] = temp;
-                        int tempi = chargeOnTrackIndex[lid];
-                        chargeOnTrackIndex[lid] = chargeOnTrackIndex[ljd];
-                        chargeOnTrackIndex[ljd] = tempi;
-                    }
-                }
-            }
-
-            // get gg
-            theGG = 0;
-            if (isGood&&theCharge){
-                int isig = -1;
-                if (hashit[0]) isig = 0;
-                else if (hashit[1]) isig = 1;
-                if (isig!=-1){
-                    double gg = getGG(theCharge,slx[theCand],slz[theCand]);
-                    h_ggVSX->Fill(theFD[isig],gg); // only record the gas gain VS x in the test layer
-                    if (gg>theGG) theGG = gg;
-                }
-                double gg = getGG(totalCharge/nLayersOnTrack,slx[theCand],slz[theCand]);
-                h_ggall->Fill(gg);
-                trackGG = gg;
-            }
-            otree->Fill();
-        }
-        // get averageGG
-        //averageGG = h_ggVSX->GetMean(2);
-        //averageGGErr = h_ggVSX->GetRMS(2);
-        averageGG = h_ggall->GetMean();
-        averageGGErr = h_ggall->GetRMS();
-
-        double trackCharge[MAXTRUNC] = {0};
-        //----------------------------------loop again for filling histograms--------------------------------------------
-        MyNamedInfo("Ana",Form("##############Layer %d: loop to get fill histograms#############",testLayer));
-        for ( int iEntry = (m_iEntryStart?m_iEntryStart:0); iEntry<(m_iEntryStop?m_iEntryStop+1:N); iEntry++){
-            if (iEntry%m_modulo==0) MyNamedInfo("Ana",iEntry);
-            otree->GetEntry(iEntry);
-            MyNamedVerbose("Ana","  iEntry = "<<iEntry<<", "<<(isGood?"Good":"Bad")<<" event, nHits = "<<nHits<<", "<<nHitsT<<" hits in the test layer on track path");
-            if (!isGood) continue; // not successfully reconstructed
-            // get the truncated charge
-            double totalCharge = 0;
-            for (int itrunc = 0; itrunc < MAXTRUNC; itrunc++){
-                trackCharge[itrunc] = 0;
-            }
-            for (int lid = 1; lid<NLAY; lid++){
-                totalCharge+=chargeOnTrack[lid];
-                if (NLAY-1-lid>=0&&NLAY-1-lid<MAXTRUNC){
-                    trackCharge[NLAY-1-lid] = totalCharge;
-                }
-            }
-            // Fill histograms if needed;
-            for (int itrunc = 0; itrunc < MAXTRUNC; itrunc++){
-                if (!trackCharge[itrunc]) continue;
-                double theDE = trackCharge[itrunc]*1e-15/averageGG/1.6e-19*W;
-                double theDX = (nLayersOnTrack-itrunc)*CELLH*sqrt(1+slx[theCand]*slx[theCand]+slz[theCand]*slz[theCand]);
-                h_dedx[itrunc]->Fill(theDE/1000/(theDX/10));
-            }
-            for (int i = 0; i<nHitsT; i++){
-                if (!hashit[i]) continue;
-                int status = theST[i];
-                double fd = theFD[i];
-                double dd = theDD[i];
-                double dt = theDT[i];
-                double aa = theAA[i];
-                int wid = theWid[i];
-                if (status) continue; // out of range
-                // if (aa<m_aaCut) continue; // too small
-                h_DriftD->Fill(dd);
-                h_DriftDb->Fill(fabs(dd));
-                //dd = (*i_driftD)[ihit];
-                double resi = fabs(dd) - fabs(fd);
-                // xt
-                h_tx->Fill(fd,dt);
-                h_xt->Fill(dt,fd);
-                // resi VS x/d
-                h_resVSX->Fill(fd,resi);
-                if (wid>=FIRSTWIRE4CALIB&&wid-FIRSTWIRE4CALIB<NWIRES4CALIB){
-                    h_resVSXwire[wid-FIRSTWIRE4CALIB]->Fill(fd,resi);
-                }
-                h_resVSD->Fill(dd,resi);
-                // resi
-                int ibx = fabs(fd)/m_xmax*NBINS;
-                int ib = fabs(dd)/m_xmax*NBINS;
-                if (ib>=0&&ib<NBINS) h_resD[ib]->Fill(resi);
-                if (ibx>=0&&ibx<NBINS) h_resX[ibx]->Fill(resi);
-                // for both side case
-                if (fabs(fd)>m_calib_minFD&&fabs(fd)<m_calib_maxFD&&(!m_calib_maxslz||fabs(slz[theCand])<m_calib_maxslz)){ // only trust the body part
-                    ibx = (fd+m_xmax)/2./m_xmax*NBINS;
-                    if (ibx>=0&&ibx<NBINS){
-                        h_resXb[ibx]->Fill(resi);
-                        if (wid>=FIRSTWIRE4CALIB&&wid-FIRSTWIRE4CALIB<NWIRES4CALIB){
-                            h_resXwire[wid-FIRSTWIRE4CALIB][ibx]->Fill(resi);
-                        }
-                    }
-                }
-                ib = (dd+m_xmax)/2./m_xmax*NBINS;
-                if (ib>=0&&ib<NBINS) h_resDb[ib]->Fill(resi);
-            }
-        }
-
-        otree->Write();
-        //=================================================Get bin by bin information====================================================
-        TFile * ofileresi = new TFile(Form("%s/info/resi_%d.%s.layer%d.root",HOME.Data(),m_runNo,m_runnameout.Data(),testLayer),"RECREATE");
-        otree = new TTree("t","t");
-        int o_ibin;
-        double o_xmin;
-        double o_xmid;
-        double o_xmidb; // for both sides case
-        double o_xmax;
-        double o_xres;
-        double o_xreserr;
-        double o_xrms;
-        double o_xrmserr;
-        double o_xeff;
-        double o_xeff3sig;
-        double o_xeff3sigerr;
-        double o_xeff5sig;
-        double o_xeff500um;
-        double o_xeff500umerr;
-        double o_xeff1mm;
-        double o_xoff;
-        double o_xoffwire[NWIRES4CALIB];
-        double o_dres;
-        double o_dreserr;
-        double o_drms;
-        double o_drmserr;
-        double o_deff3sig;
-        double o_deff5sig;
-        double o_deff500um;
-        double o_deff1mm;
-        double o_doff;
-        double o_nx;
-        double o_nxh;
-        double o_nxhb; // for both sides case
-        double o_nd;
-        double o_ndb; // for both sides case
-        otree->Branch("ibin",&o_ibin);
-        otree->Branch("xmin",&o_xmin);
-        otree->Branch("xmid",&o_xmid);
-        otree->Branch("xmax",&o_xmax);
-        otree->Branch("xmidb",&o_xmidb);
-        otree->Branch("xres",&o_xres);
-        otree->Branch("xreserr",&o_xreserr);
-        otree->Branch("xrms",&o_xrms);
-        otree->Branch("xrmserr",&o_xrmserr);
-        otree->Branch("xeff",&o_xeff);
-        otree->Branch("xeff3sig",&o_xeff3sig);
-        otree->Branch("xeff3sigerr",&o_xeff3sigerr);
-        otree->Branch("xeff5sig",&o_xeff5sig);
-        otree->Branch("xeff500um",&o_xeff500um);
-        otree->Branch("xeff500umerr",&o_xeff500umerr);
-        otree->Branch("xeff1mm",&o_xeff1mm);
-        otree->Branch("xoff",&o_xoff);
-        for (int iwire = 0; iwire<NWIRES4CALIB; iwire++){
-            otree->Branch(Form("xoffw%d",iwire+FIRSTWIRE4CALIB),&(o_xoffwire[iwire]));
-        }
-        otree->Branch("dres",&o_dres);
-        otree->Branch("dreserr",&o_dreserr);
-        otree->Branch("drms",&o_drms);
-        otree->Branch("drmserr",&o_drmserr);
-        otree->Branch("deff3sig",&o_deff3sig);
-        otree->Branch("deff5sig",&o_deff5sig);
-        otree->Branch("deff500um",&o_deff500um);
-        otree->Branch("deff1mm",&o_deff1mm);
-        otree->Branch("doff",&o_doff);
-        otree->Branch("nx",&o_nx);
-        otree->Branch("nxh",&o_nxh);
-        otree->Branch("nxhb",&o_nxhb);
-        otree->Branch("nd",&o_nd);
-        otree->Branch("ndb",&o_ndb);
-
-        std::vector<double> v_xx;
-        std::vector<double> v_xxb; // both-side case
-        std::vector<double> v_xxerr;
-        std::vector<double> v_dx;
-        std::vector<double> v_dxb;
-        std::vector<double> v_dxerr;
-        std::vector<double> v_xeff;
-        std::vector<double> v_xeff3s;
-        std::vector<double> v_xeff500um;
-        std::vector<double> v_xres;
-        std::vector<double> v_xrms;
-        std::vector<double> v_xreserr;
-        std::vector<double> v_xrmserr;
-        std::vector<double> v_xoff;
-        std::vector<double> v_xoffwire[NWIRES4CALIB];
-        std::vector<double> v_xxwire[NWIRES4CALIB];
-        std::vector<double> v_deff;
-        std::vector<double> v_deff3s;
-        std::vector<double> v_deff500um;
-        std::vector<double> v_dres;
-        std::vector<double> v_drms;
-        std::vector<double> v_dreserr;
-        std::vector<double> v_drmserr;
-        std::vector<double> v_doff;
-
-        int ibinl = 0;
-        int ibinr = 0;
-        TCanvas * canv_bin = 0;
-        if (m_saveHists){
-            canv_bin = new TCanvas("canv_bin","canv_bin",1024,768);
-            gStyle->SetPalette(1);
-            gStyle->SetOptStat(0);
-            gStyle->SetPadTickX(1);
-            gStyle->SetPadTickY(1);
-            gStyle->SetOptFit(1);
-            gPad->SetGridx(1);
-            gPad->SetGridy(1);
-        }
-        int NusedD = 0;
-        int NusedX = 0;
-        double averageEffD = 0;
-        double averageRMSD = 0;
-        double averageEff3sD = 0;
-        double averageResD = 0;
-        double averageEffX = 0;
-        double averageEffXErr = 0;
-        double averageRMSX = 0;
-        double averageRMSXErr = 0;
-        double averageEff3sX = 0;
-        double averageEff3sXErr = 0;
-        double averageResX = 0;
-        double averageResXErr = 0;
-        double bestEffD = 0;
-        double bestResD = 1e6;
-        double bestRMSD = 1e6;
-        double bestEffX = 0;
-        double bestResX = 1e6;
-        double bestRMSX = 1e6;
-        for (int ibin = 0; ibin<NBINS; ibin++){
-            // x axis is from 0 to m_xmax
-            o_ibin = ibin;
-            o_xmin = m_xmax*(ibin)/NBINS;
-            o_xmid = m_xmax*(ibin+0.5)/NBINS;
-            o_xmax = m_xmax*(ibin+1)/NBINS;
-            // for both-sides case, x axis is from 0 to m_xmax
-            o_xmidb = -m_xmax+2*m_xmax*(ibin+0.5)/NBINS;
-            // get values of this bin
-            o_nx = N_BIN[ibin];
-            o_nxh = h_resX[ibin]->GetEntries();
-            o_nxhb = h_resXb[ibin]->GetEntries();
-            o_nd = h_resD[ibin]->GetEntries();
-            o_ndb = h_resDb[ibin]->GetEntries();
-            o_xrms = h_resX[ibin]->GetRMS();
-            o_xrmserr = h_resX[ibin]->GetRMSError();
-            o_drms = h_resD[ibin]->GetRMS();
-            o_drmserr = h_resD[ibin]->GetRMSError();
-            // fit the resolution for fitD case
-            if (o_nxh&&h_resX[ibin]->Integral()>0){
-                o_xeff = (double)o_nxh/o_nx;
-                if (o_xmid<0.5)
-                    doFit(h_resX[ibin],3/4.,1/4.,0,m_maxRes);
-                else if (o_xmid>7)
-                    doFit(h_resX[ibin],1/3.,2/3.,-m_maxRes,m_maxRes);
-                else
-                    doFit(h_resX[ibin],1/3.,1/3.,-m_maxRes,m_maxRes);
-                o_xres = f_res->GetParameter(2);
-                o_xreserr = f_res->GetParError(2);
-                double xoff = f_res->GetParameter(1);
-                ibinl = h_resX[ibin]->FindBin(xoff-o_xrms*3); 
-                ibinr = h_resX[ibin]->FindBin(xoff+o_xrms*3); 
-                o_xeff3sig = h_resX[ibin]->Integral(ibinl,ibinr)/o_nx;
-                o_xeff3sigerr = sqrt(o_xeff3sig*(1-o_xeff3sig)/o_nx);
-                ibinl = h_resX[ibin]->FindBin(xoff-o_xrms*5); 
-                ibinr = h_resX[ibin]->FindBin(xoff+o_xrms*5); 
-                o_xeff5sig = h_resX[ibin]->Integral(ibinl,ibinr)/o_nx;
-                ibinl = h_resX[ibin]->FindBin(xoff-0.5); 
-                ibinr = h_resX[ibin]->FindBin(xoff+0.5); 
-                o_xeff500um = h_resX[ibin]->Integral(ibinl,ibinr)/o_nx;
-                o_xeff500umerr = sqrt(o_xeff500um*(1-o_xeff500um)/o_nx);
-                ibinl = h_resX[ibin]->FindBin(xoff-1); 
-                ibinr = h_resX[ibin]->FindBin(xoff+1); 
-                o_xeff1mm = h_resX[ibin]->Integral(ibinl,ibinr)/o_nx;
-                if (m_saveHists){
-                    h_resX[ibin]->Draw();
-                    canv_bin->SaveAs(Form("resX%d_%d.%s.layer%d.png",ibin,m_runNo,m_runnameout.Data(),testLayer));
-                }
-            }
-            else{
-                o_xres = 0;
-                o_xeff = 0;
-                o_xeff3sig  = 0;
-                o_xeff5sig  = 0;
-                o_xeff500um = 0;
-                o_xeff1mm   = 0;
-            }
-            // fit the resolution for fitD and both sides case
-            if (o_nxhb&&h_resXb[ibin]->Integral()>0){
-                if (fabs(o_xmidb)<0.5)
-                    doFit(h_resXb[ibin],3/4.,1/4.,0,m_maxRes);
-                else if (fabs(o_xmidb)>7)
-                    doFit(h_resXb[ibin],1/3.,2/3.,-m_maxRes,m_maxRes);
-                else
-                    doFit(h_resXb[ibin],1/3.,1/3.,-m_maxRes,m_maxRes);
-                o_xoff = f_res->GetParameter(1);
-            }
-            else{
-                o_xoff = 0;
-            }
-            // fit the resolution for driftD case
-            if (h_resD[ibin]->Integral()>0){
-                if (o_xmid<0.5)
-                    doFit(h_resD[ibin],1/4.,3/4.,-m_maxRes,m_maxRes);
-                else if (o_xmid>7)
-                    doFit(h_resD[ibin],2/3.,1/3.,-m_maxRes,m_maxRes);
-                else
-                    doFit(h_resD[ibin],1/3.,1/3.,-m_maxRes,m_maxRes);
-                o_dres = f_res->GetParameter(2);
-                o_dreserr = f_res->GetParError(2);
-                double doff = f_res->GetParameter(1);
-                ibinl = h_resD[ibin]->FindBin(doff-o_drms*3); 
-                ibinr = h_resD[ibin]->FindBin(doff+o_drms*3); 
-                o_deff3sig = h_resD[ibin]->Integral(ibinl,ibinr)/o_nd;
-                ibinl = h_resD[ibin]->FindBin(doff-o_drms*5); 
-                ibinr = h_resD[ibin]->FindBin(doff+o_drms*5); 
-                o_deff5sig = h_resD[ibin]->Integral(ibinl,ibinr)/o_nd;
-                ibinl = h_resD[ibin]->FindBin(doff-0.5); 
-                ibinr = h_resD[ibin]->FindBin(doff+0.5); 
-                o_deff500um = h_resD[ibin]->Integral(ibinl,ibinr)/o_nd;
-                ibinl = h_resD[ibin]->FindBin(doff-1); 
-                ibinr = h_resD[ibin]->FindBin(doff+1); 
-                o_deff1mm = h_resD[ibin]->Integral(ibinl,ibinr)/o_nd;
-                if (m_saveHists){
-                    h_resD[ibin]->Draw();
-                    canv_bin->SaveAs(Form("resD%d_%d.%s.layer%d.png",ibin,m_runNo,m_runnameout.Data(),testLayer));
-                }
-            }
-            else{
-                o_dres = 0;
-                o_deff3sig  = 0;
-                o_deff5sig  = 0;
-                o_deff500um = 0;
-                o_deff1mm   = 0;
-            }
-            // fit the resolution for driftD and both sides case
-            if (o_ndb&&h_resDb[ibin]->Integral()>0){
-                if (fabs(o_xmidb)<0.5)
-                    doFit(h_resDb[ibin],3/4.,1/4.,0,m_maxRes);
-                else if (fabs(o_xmidb)>7)
-                    doFit(h_resDb[ibin],1/3.,2/3.,-m_maxRes,m_maxRes);
-                else
-                    doFit(h_resDb[ibin],1/3.,1/3.,-m_maxRes,m_maxRes);
-                o_doff = f_res->GetParameter(1);
-            }
-            else{
-                o_doff = 0;
-            }
-            // fit the resolution for each wire
-            for (int iwire = 0; iwire<NWIRES4CALIB; iwire++){
-                if (h_resXwire[iwire][ibin]->Integral()>100){
-                    if (fabs(o_xmidb)<0.5)
-                        doFit(h_resXwire[iwire][ibin],3/4.,1/4.,0,m_maxRes);
-                    else if (fabs(o_xmidb)>7)
-                        doFit(h_resXwire[iwire][ibin],1/3.,2/3.,-m_maxRes,m_maxRes);
-                    else
-                        doFit(h_resXwire[iwire][ibin],1/3.,1/3.,-m_maxRes,m_maxRes);
-                    o_xoffwire[iwire] = f_res->GetParameter(1);
-                    if (fabs(f_res->GetParError(1))>0.1){
-                        MyNamedWarn("Ana","Bad fitting for h_resXwire["<<iwire<<"]["<<ibin<<"], off = "<<o_xoffwire[iwire]<<", err = "<<f_res->GetParError(1)<<"!");
-                        o_xoffwire[iwire] = h_resXwire[iwire][ibin]->GetMean();
                     }
                 }
                 else{
-                    o_xoffwire[iwire] = 0;
+                    if (iHit == InputOutputManager::Get().hitIndexSelected[layerID][theCand]){ // this is the signal hit
+                        o_wid[iCand][layerID] = wireID;
+                        o_DOCA[iCand][layerID] = DOCA;
+                        o_driftD[iCand][layerID] = DriftD;
+                        o_driftT[iCand][layerID] = DriftT;
+                        o_ipeak[iCand][layerID] = iPeak;
+                        o_ADCheight[iCand][layerID] = ADCheight;
+                        o_ADCsumPkt[iCand][layerID] = ADCsumPkt;
+                        o_ADCsumAll[iCand][layerID] = ADCsumAll;
+                    }
+                    else{ // this is the noise hit
+                        h_DriftT_bkg[layerID][wireID]->Fill(DriftT);
+                        h_ADCsumPkt_bkg[layerID][wireID]->Fill(ADCsumPkt);
+                        h_AVT_bkg[layerID][wireID]->Fill(DriftT,ADCsumAll);
+                        h_SVT_bkg[layerID][wireID]->Fill(DriftT,ADCsumPkt);
+                        if (iPeak==0){
+                            h_ADCsumAll_bkg[layerID][wireID]->Fill(ADCsumAll);
+                        }
+                    }
                 }
             }
-            // fill the entry
-            otree->Fill();
-            // push values to vectors for graphs later
-            if (o_nd>100){
-                if (o_xmid<m_maxFD){
-                    NusedD++;
-                    averageResD+=o_dres;
-                    averageRMSD+=o_drms;
-                    averageEffD+=o_deff500um;
-                    averageEff3sD+=o_deff3sig;
-                    if (bestResD>o_dres) bestResD = o_dres;
-                    if (bestRMSD>o_drms) bestRMSD = o_drms;
-                    if (bestEffD<o_deff500um) bestEffD = o_deff500um;
+            for (int i = 0; i<50; i++){
+                h_nGoodHits->Fill(i,nGoodPeaks[i]);
+            }
+
+            if (isGoodEvent&&iCand==0){
+                for (int lid = 1; lid<=8; lid++){ // fill histograms related with signal hits
+                    if (lid==m_testLayer&&(!foundTestLayerHit)){ continue; }
+                    int wid = o_wid[iCand][lid];
+                    if (wid==-1) continue;
+                    double cellCoordinate = -wid+0.5+o_DOCA[iCand][lid]/GeometryManager::Get().fChamber->cellWidth;
+                    h_hitmap->Fill(cellCoordinate,lid);
+                    h_DriftT_sig[lid][wid]->Fill(o_driftT[iCand][lid]);
+                    h_ADCsumPkt_sig[lid][wid]->Fill(o_ADCsumPkt[iCand][lid]);
+                    h_AVT_sig[lid][wid]->Fill(o_driftT[iCand][lid],o_ADCsumAll[iCand][lid]);
+                    h_SVT_sig[lid][wid]->Fill(o_driftT[iCand][lid],o_ADCsumPkt[iCand][lid]);
+                    if (o_ipeak[iCand][lid]>0) {
+                        h_AVT_siglate[lid][wid]->Fill(o_driftT[iCand][lid],o_ADCsumAll[iCand][lid]);
+                        h_SVT_siglate[lid][wid]->Fill(o_driftT[iCand][lid],o_ADCsumPkt[iCand][lid]);
+                    }
+                    h_ADCsumAll_sig[lid][wid]->Fill(o_ADCsumAll[iCand][lid]);
                 }
-                v_dx.push_back(o_xmid);
-                v_dxerr.push_back((o_xmax-o_xmin)/2.);
-                v_deff3s.push_back(o_deff3sig);
-                v_deff500um.push_back(o_deff500um);
-                v_dres.push_back(o_dres);
-                v_dreserr.push_back(o_dreserr);
-                v_drms.push_back(o_drms);
-                v_drmserr.push_back(o_drmserr);
-            }
-            if (o_ndb>100){
-                v_dxb.push_back(o_xmidb);
-                v_doff.push_back(o_doff);
-            }
-            if (o_nxh>100){
-                if (o_xmid<m_maxFD){
-                    NusedX++;
-                    averageResX+=o_xres;
-                    averageResXErr+=o_xreserr;
-                    averageRMSX+=o_xrms;
-                    averageRMSXErr+=o_xrmserr;
-                    averageEffX+=o_xeff500um;
-                    averageEffXErr+=o_xeff500umerr;
-                    averageEff3sX+=o_xeff3sig;
-                    averageEff3sXErr+=o_xeff3sigerr;
-                    if (bestResX>o_xres) bestResX = o_xres;
-                    if (bestRMSX>o_xrms) bestRMSX = o_xrms;
-                    if (bestEffX<o_xeff500um) bestEffX = o_xeff500um;
-                }
-                v_xx.push_back(o_xmid);
-                v_xxerr.push_back((o_xmax-o_xmin)/2.);
-                v_xeff.push_back(o_xeff);
-                v_xeff3s.push_back(o_xeff3sig);
-                v_xeff500um.push_back(o_xeff500um);
-                v_xres.push_back(o_xres);
-                v_xreserr.push_back(o_xreserr);
-                v_xrms.push_back(o_xrms);
-                v_xrmserr.push_back(o_xrmserr);
-            }
-            if (o_nxhb>100){
-                v_xxb.push_back(o_xmidb);
-                v_xoff.push_back(o_xoff);
-            }
-            for (int iwire = 0; iwire<NWIRES4CALIB; iwire++){
-                if (h_resXwire[iwire][ibin]->GetEntries()>100&&h_resXwire[iwire][ibin]->Integral()){
-                    v_xoffwire[iwire].push_back(o_xoffwire[iwire]);
-                    v_xxwire[iwire].push_back(o_xmidb);
+                for (int iHit = 0; iHit<nHits; iHit++){ // add noise hits of the test layer
+                    int layerID = InputOutputManager::Get().LayerID->at(iHit);
+                    int wireID = InputOutputManager::Get().CellID->at(iHit);
+                    int iPeak = InputOutputManager::Get().iPeakInChannel->at(iHit);
+                    if (layerID!=m_testLayer||(wireID==o_wid[iCand][layerID]&&iPeak==o_ipeak[iCand][layerID])){continue;} // only test layer, only hits not picked as signal
+                    double DOCA = GeometryManager::Get().GetDOCA(layerID,wireID,slx,inx,slz,inz);
+                    double DriftT = InputOutputManager::Get().DriftT->at(iHit);
+                    int status;
+                    double DriftD = XTManager::Get().t2x(DriftT,layerID,wireID,DOCA,status);
+                    double ADCheight = InputOutputManager::Get().ADCheight->at(iHit);
+                    double ADCsumPkt = InputOutputManager::Get().ADCsumPacket->at(iHit);
+                    double ADCsumAll = InputOutputManager::Get().ADCsumAll->at(iHit);
+                    h_DriftT_bkg[layerID][wireID]->Fill(DriftT);
+                    h_ADCsumPkt_bkg[layerID][wireID]->Fill(ADCsumPkt);
+                    h_AVT_bkg[layerID][wireID]->Fill(DriftT,ADCsumAll);
+                    h_SVT_bkg[layerID][wireID]->Fill(DriftT,ADCsumPkt);
+                    if (iPeak==0){
+                        h_ADCsumAll_bkg[layerID][wireID]->Fill(ADCsumAll);
+                    }
                 }
             }
+
+            o_isGood[iCand] = isGoodEvent;
+            o_nHits[iCand] = nHits;
+            o_nHitsG[iCand] = nHitsG;
+            o_nHitsS[iCand] = nHitsS;
+            o_chi2[iCand] = chi2;
+            o_chi2a[iCand] = chi2a;
+            o_chi2w[iCand] = chi2w;
+            o_pValue[iCand] = pValue;
+            o_foundTestLayerHit[iCand] = foundTestLayerHit;
         }
-
-        // get bin by bin information for each wire
-        for (int ibin = 0; ibin<NBINS; ibin++){
-        }
-        NusedD?averageEffD/=NusedD:averageEffD=0;
-        NusedD?averageResD/=NusedD:averageResD=0;
-        NusedD?averageRMSD/=NusedD:averageRMSD=0;
-        NusedX?averageEff3sD/=NusedD:averageEff3sD=0;
-        NusedX?averageEffX/=NusedX:averageEffX=0;
-        NusedX?averageEffXErr/=NusedX:averageEffXErr=0;
-        NusedX?averageEff3sX/=NusedX:averageEff3sX=0;
-        NusedX?averageEff3sXErr/=NusedX:averageEff3sXErr=0;
-        NusedX?averageResX/=NusedX:averageResX=0;
-        NusedX?averageRMSX/=NusedX:averageRMSX=0;
-        NusedX?averageRMSXErr/=NusedX:averageRMSXErr=0;
-        // print out the result
-        printf("=>  %s   %s   %s   %s   %s   %s   %s   %s   %s   %s   %s   %s   %s   %s   %s   %s   %s   %s   %s   %s   %s   %s   %s   %s   %s   %s\n",
-                    "runNo/I","testLayer/I","HV/I","THR/I","gasID/I","aaCut/I",
-                    "averageGG","averageGGErr",
-                    "averageEffX","averageEff3sX","averageRMSX","averageResX",
-                    "averageEffXErr","averageEff3sXErr","averageRMSXErr","averageResXErr",
-                    "averageEffD","averageEff3sD","averageRMSD","averageResD",
-                    "bestEffD","bestRMSD","bestResD","bestEffX","bestRMSX","bestResX");
-        printf("==> %4d  %d   %d   %2d  %d   %2d  %.3e %.3e %.3e %.3e %.3e %.3e %.3e %.3e %.3e %.3e %.3e %.3e %.3e %.3e %.3e %.3e %.3e %.3e %.3e %.3e\n",
-                    m_runNo,testLayer,HV,THR,gasID,m_aaCut,
-                    averageGG,averageGGErr,
-                    averageEffX,averageEff3sX,averageRMSX,averageResX,
-                    averageEffXErr,averageEff3sXErr,averageRMSXErr,averageResXErr,
-                    averageEffD,averageEff3sD,averageRMSD,averageResD,
-                    bestEffD,bestRMSD,bestResD,bestEffX,bestRMSX,bestResX);
-
-        //=================================================Set histograms and graphs====================================================
-        h_DOCA->GetYaxis()->SetRangeUser(0,h_DOCA->GetMaximum()*1.1);
-        h_DOCAb->GetYaxis()->SetRangeUser(0,h_DOCAb->GetMaximum()*1.1);
-        h_DriftD->GetYaxis()->SetRangeUser(0,h_DriftD->GetMaximum()*1.1);
-        h_DriftDb->GetYaxis()->SetRangeUser(0,h_DriftDb->GetMaximum()*1.1);
-        h_xt->GetXaxis()->SetRangeUser(minDT,maxDT);
-        h_tx->GetYaxis()->SetRangeUser(minDT,maxDT);
-
-        int maxEntry = 0;
-        for (int i = 0; i<MAXTRUNC; i++){
-            int entries = h_dedx[i]->GetMaximum();
-            if (maxEntry<entries) maxEntry = entries;
-        }
-        h_dedx[0]->SetLineColor(1);
-        h_dedx[0]->GetYaxis()->SetRangeUser(0,maxEntry*1.1);
-        for (int i = 1; i<MAXTRUNC; i++){
-            h_dedx[i]->SetLineColor(i+1);
-        }
-
-        TGraphErrors * g_xeff = new TGraphErrors(v_xx.size(),&(v_xx[0]),&(v_xeff[0]));
-        TGraphErrors * g_xeff3s = new TGraphErrors(v_xx.size(),&(v_xx[0]),&(v_xeff3s[0]));
-        TGraphErrors * g_xeff500 = new TGraphErrors(v_xx.size(),&(v_xx[0]),&(v_xeff500um[0]));
-        g_xeff->SetName("gxeff");
-        g_xeff3s->SetName("gxeff3s");
-        g_xeff500->SetName("gxeff500um");
-        g_xeff->SetTitle("Efficiency VS DOCA");
-        g_xeff->GetXaxis()->SetTitle("DOCA [mm]");
-        g_xeff->GetYaxis()->SetTitle("Efficiency");
-        g_xeff->SetMarkerStyle(20);
-        g_xeff->SetMarkerColor(kBlack);
-        g_xeff->SetLineColor(kBlack);
-        g_xeff->GetYaxis()->SetRangeUser(0,1.1);
-        g_xeff500->SetMarkerStyle(20);
-        g_xeff500->SetMarkerColor(kRed);
-        g_xeff500->SetLineColor(kRed);
-        g_xeff3s->SetMarkerStyle(20);
-        g_xeff3s->SetMarkerColor(kBlue);
-        g_xeff3s->SetLineColor(kBlue);
-
-        TGraphErrors * g_deff3s = new TGraphErrors(v_dx.size(),&(v_dx[0]),&(v_deff3s[0]));
-        TGraphErrors * g_deff500 = new TGraphErrors(v_dx.size(),&(v_dx[0]),&(v_deff500um[0]));
-        g_deff3s->SetName("gdeff3s");
-        g_deff500->SetName("gdeff500um");
-        g_deff500->SetTitle("Efficiency VS drift distance");
-        g_deff500->GetXaxis()->SetTitle("Drift distance [mm]");
-        g_deff500->GetYaxis()->SetTitle("Efficiency");
-        g_deff500->SetMarkerStyle(20);
-        g_deff500->SetMarkerColor(kRed);
-        g_deff500->SetLineColor(kRed);
-        g_deff500->GetYaxis()->SetRangeUser(0,1.1);
-        g_deff3s->SetMarkerStyle(20);
-        g_deff3s->SetMarkerColor(kBlue);
-        g_deff3s->SetLineColor(kBlue);
-
-        TGraphErrors * g_xres = new TGraphErrors(v_xx.size(),&(v_xx[0]),&(v_xres[0]),&(v_xxerr[0]),&(v_xreserr[0]));
-        g_xres->SetName("gxres");
-        g_xres->SetTitle("#sigma of residual VS DOCA");
-        g_xres->GetXaxis()->SetTitle("Drift distance [mm]");
-        g_xres->GetYaxis()->SetTitle("#sigma [mm]");
-        g_xres->SetMarkerStyle(20);
-        g_xres->SetMarkerColor(kBlack);
-        g_xres->SetLineColor(kBlack);
-
-        TGraphErrors * g_dres = new TGraphErrors(v_dx.size(),&(v_dx[0]),&(v_dres[0]),&(v_dxerr[0]),&(v_dreserr[0]));
-        g_dres->SetName("gdres");
-        g_dres->SetTitle("#sigma of residual VS drift distance");
-        g_dres->GetXaxis()->SetTitle("Drift distance [mm]");
-        g_dres->GetYaxis()->SetTitle("#sigma [mm]");
-        g_dres->SetMarkerStyle(20);
-        g_dres->SetMarkerColor(kBlack);
-        g_dres->SetLineColor(kBlack);
-
-        TGraphErrors * g_xrms = new TGraphErrors(v_xx.size(),&(v_xx[0]),&(v_xrms[0]),&(v_xxerr[0]),&(v_xrmserr[0]));
-        g_xrms->SetName("gxrms");
-        g_xrms->SetTitle("RMS of residual VS DOCA");
-        g_xrms->GetXaxis()->SetTitle("Drift distance [mm]");
-        g_xrms->GetYaxis()->SetTitle("RMS [mm]");
-        g_xrms->SetMarkerStyle(20);
-        g_xrms->SetMarkerColor(kBlack);
-        g_xrms->SetLineColor(kBlack);
-
-        TGraphErrors * g_drms = new TGraphErrors(v_dx.size(),&(v_dx[0]),&(v_drms[0]),&(v_dxerr[0]),&(v_drmserr[0]));
-        g_drms->SetName("gdrms");
-        g_drms->SetTitle("RMS of residual VS drift distance");
-        g_drms->GetXaxis()->SetTitle("Drift distance [mm]");
-        g_drms->GetYaxis()->SetTitle("RMS [mm]");
-        g_drms->SetMarkerStyle(20);
-        g_drms->SetMarkerColor(kBlack);
-        g_drms->SetLineColor(kBlack);
-
-        TGraphErrors * g_xoff = new TGraphErrors(v_xxb.size(),&(v_xxb[0]),&(v_xoff[0]));
-        g_xoff->SetName("gxoff");
-        g_xoff->SetTitle(Form("Offset VS DOCA: %.0f um",g_xoff->GetMean(2)*1000));
-        g_xoff->GetXaxis()->SetTitle("Drift distance [mm]");
-        g_xoff->GetYaxis()->SetTitle("offset [mm]");
-        g_xoff->SetMarkerStyle(20);
-        g_xoff->SetMarkerColor(kBlack);
-        g_xoff->SetLineColor(kBlack);
-        TGraphErrors * g_xoffwire[NWIRES4CALIB];
-        for (int iwire = 0; iwire<NWIRES4CALIB; iwire++){
-            g_xoffwire[iwire]= new TGraphErrors(v_xxwire[iwire].size(),&(v_xxwire[iwire][0]),&(v_xoffwire[iwire][0]));
-            g_xoffwire[iwire]->SetName(Form("gxoffw%d",iwire+FIRSTWIRE4CALIB));
-            g_xoffwire[iwire]->SetTitle(Form("Offset VS DOCA in wire %d: %.0f um",iwire+FIRSTWIRE4CALIB,g_xoffwire[iwire]->GetMean(2)*1000));
-            g_xoffwire[iwire]->GetXaxis()->SetTitle("Drift distance [mm]");
-            g_xoffwire[iwire]->GetYaxis()->SetTitle("offset [mm]");
-            g_xoffwire[iwire]->SetMarkerStyle(20);
-            g_xoffwire[iwire]->SetMarkerColor(kBlack);
-            g_xoffwire[iwire]->SetLineColor(kBlack);
-        }
-
-        TGraphErrors * g_doff = new TGraphErrors(v_dxb.size(),&(v_dxb[0]),&(v_doff[0]));
-        g_doff->SetName("gdoff");
-        g_doff->SetTitle(Form("Offset VS drift distance: %.0f um",g_doff->GetMean(2)*1000));
-        g_doff->GetXaxis()->SetTitle("Drift distance [mm]");
-        g_doff->GetYaxis()->SetTitle("offset [mm]");
-        g_doff->SetMarkerStyle(20);
-        g_doff->SetMarkerColor(kBlack);
-        g_doff->SetLineColor(kBlack);
-
-        //=================================================Draw====================================================
-        TCanvas * canv_tracking = new TCanvas("canv_tracking","canv_tracking",1024,768);
-        gStyle->SetPalette(1);
-        gStyle->SetOptStat(0);
-        gStyle->SetPadTickX(1);
-        gStyle->SetPadTickY(1);
-        canv_tracking->Divide(2,2);
-        canv_tracking->cd(1);
-        gPad->SetGridx(1);
-        gPad->SetGridy(1);
-        h_nHits->Draw();
-        TLine * line_nHits = new TLine(m_nHitsMax,0,m_nHitsMax,h_nHits->GetMaximum());
-        line_nHits->SetLineColor(kRed);
-        line_nHits->Draw("SAME");
-        TLatex * text_nHits = new TLatex(m_nHitsMax,h_nHits->GetMaximum()*0.7,Form("%d(%.1f%%)",N_CUT1,(double)N_CUT1/N_ALL*100));
-        text_nHits->SetTextColor(kRed);
-        text_nHits->SetTextSize(0.04);
-        text_nHits->Draw("SAME");
-        canv_tracking->cd(2);
-        gPad->SetGridx(1);
-        gPad->SetGridy(1);
-        h_DOF->Draw();
-        TLine * line_DOF = new TLine(m_nHitsSmin-4,0,m_nHitsSmin-4,h_DOF->GetMaximum());
-        line_DOF->SetLineColor(kRed);
-        line_DOF->Draw("SAME");
-        TLatex * text_DOF = new TLatex(m_nHitsSmin-4,h_DOF->GetMaximum()*0.7,Form("%d(%.1f%%)",N_CUT2,(double)N_CUT2/N_ALL*100));
-        text_DOF->SetTextColor(kRed);
-        text_DOF->SetTextSize(0.04);
-        text_DOF->Draw("SAME");
-        canv_tracking->cd(3);
-        gPad->SetGridx(1);
-        gPad->SetGridy(1);
-        h_chi2->Draw();
-        TLine * line_chi2 = new TLine(m_maxchi2,0,m_maxchi2,h_chi2->GetMaximum());
-        line_chi2->SetLineColor(kRed);
-        line_chi2->Draw("SAME");
-        TLatex * text_chi2 = new TLatex(m_maxchi2,h_chi2->GetMaximum()*0.7,Form("%d(%.1f%%)",N_CUT3,(double)N_CUT3/N_ALL*100));
-        text_chi2->SetTextColor(kRed);
-        text_chi2->SetTextSize(0.04);
-        text_chi2->Draw("SAME");
-        canv_tracking->cd(4);
-        gPad->SetGridx(1);
-        gPad->SetGridy(1);
-        h_slz->Draw();
-        TLine * line_slzl = new TLine(-m_maxslz,0,-m_maxslz,h_slz->GetMaximum());
-        line_slzl->SetLineColor(kRed);
-        line_slzl->Draw("SAME");
-        TLine * line_slzr = new TLine(m_maxslz,0,m_maxslz,h_slz->GetMaximum());
-        line_slzr->SetLineColor(kRed);
-        line_slzr->Draw("SAME");
-        TLatex * text_slz = new TLatex(m_maxslz,h_slz->GetMaximum()*0.7,Form("%d(%.1f%%)",N_CUT4,(double)N_CUT4/N_ALL*100));
-        text_slz->SetTextColor(kRed);
-        text_slz->SetTextSize(0.04);
-        text_slz->Draw("SAME");
-        canv_tracking->SaveAs(Form("track_%d.%s.layer%d.pdf",m_runNo,m_runnameout.Data(),testLayer));
-        canv_tracking->SaveAs(Form("track_%d.%s.layer%d.png",m_runNo,m_runnameout.Data(),testLayer));
-
-        if (m_DrawDetails){
-            TCanvas * canv_DOCA = new TCanvas("canv_DOCA","canv_DOCA",600,800);
-            gStyle->SetPalette(1);
-            gStyle->SetOptStat(0);
-            gStyle->SetPadTickX(1);
-            gStyle->SetPadTickY(1);
-            canv_DOCA->Divide(1,2);
-            canv_DOCA->cd(1);
-            gPad->SetGridx(1);
-            gPad->SetGridy(1);
-            h_DOCA->Draw();
-            canv_DOCA->cd(2);
-            gPad->SetGridx(1);
-            gPad->SetGridy(1);
-            h_DOCAb->Draw();
-            canv_DOCA->SaveAs(Form("DOCA_%d.%s.layer%d.pdf",m_runNo,m_runnameout.Data(),testLayer));
-            canv_DOCA->SaveAs(Form("DOCA_%d.%s.layer%d.png",m_runNo,m_runnameout.Data(),testLayer));
-            canv_DOCA->cd(1);
-            h_DriftD->Draw();
-            canv_DOCA->cd(2);
-            h_DriftDb->Draw();
-            canv_DOCA->SaveAs(Form("DriftD_%d.%s.layer%d.pdf",m_runNo,m_runnameout.Data(),testLayer));
-            canv_DOCA->SaveAs(Form("DriftD_%d.%s.layer%d.png",m_runNo,m_runnameout.Data(),testLayer));
-
-            TCanvas * canv_XT = new TCanvas("canv_XT","canv_XT",800,600);
-            gStyle->SetPalette(1);
-            gStyle->SetOptStat(0);
-            gStyle->SetPadTickX(1);
-            gStyle->SetPadTickY(1);
-            gPad->SetGridx(1);
-            gPad->SetGridy(1);
-            h_xt->Draw("COLZ");
-            f_left->Draw("SAME");
-            f_right->Draw("SAME");
-            canv_XT->SaveAs(Form("XT_%d.%s.layer%d.pdf",m_runNo,m_runnameout.Data(),testLayer));
-            canv_XT->SaveAs(Form("XT_%d.%s.layer%d.png",m_runNo,m_runnameout.Data(),testLayer));
-
-            TCanvas * canv_TX = new TCanvas("canv_TX","canv_TX",600,800);
-            gStyle->SetPalette(1);
-            gStyle->SetOptStat(0);
-            gStyle->SetPadTickX(1);
-            gStyle->SetPadTickY(1);
-            gPad->SetGridx(1);
-            gPad->SetGridy(1);
-            h_tx->Draw("COLZ");
-            h_tx->Draw("COLZ");
-            canv_TX->SaveAs(Form("TX_%d.%s.layer%d.pdf",m_runNo,m_runnameout.Data(),testLayer));
-            canv_TX->SaveAs(Form("TX_%d.%s.layer%d.png",m_runNo,m_runnameout.Data(),testLayer));
-
-            TCanvas * canv_general = new TCanvas("canv_general","canv_general",1024,768);
-            gStyle->SetPalette(1);
-            gStyle->SetOptStat(0);
-            gStyle->SetPadTickX(1);
-            gStyle->SetPadTickY(1);
-            gPad->SetGridx(1);
-            gPad->SetGridy(1);
-            h_resVSX->Draw("COLZ");
-            h_resVSX->SetTitle(Form("Residual VS DOCA: %.0f um",g_xoff->GetMean(2)*1000));
-            g_xoff->Draw("PLSAME");
-            canv_general->SaveAs(Form("resVSX_%d.%s.layer%d.pdf",m_runNo,m_runnameout.Data(),testLayer));
-            canv_general->SaveAs(Form("resVSX_%d.%s.layer%d.png",m_runNo,m_runnameout.Data(),testLayer));
-
-            h_resVSD->Draw("COLZ");
-            h_resVSD->SetTitle(Form("Residual VS drift distance: %.0f um",g_doff->GetMean(2)*1000));
-            g_doff->Draw("PLSAME");
-            canv_general->SaveAs(Form("resVSD_%d.%s.layer%d.pdf",m_runNo,m_runnameout.Data(),testLayer));
-            canv_general->SaveAs(Form("resVSD_%d.%s.layer%d.png",m_runNo,m_runnameout.Data(),testLayer));
-
-            h_aaVST->Draw("COLZ");
-            TLine * line_aaVST = new TLine(m_tmin,m_aaCut,m_tmax,m_aaCut);
-            line_aaVST->SetLineColor(kRed);
-            line_aaVST->Draw("SAME");
-            canv_general->SaveAs(Form("aaVST_%d.%s.layer%d.pdf",m_runNo,m_runnameout.Data(),testLayer));
-            canv_general->SaveAs(Form("aaVST_%d.%s.layer%d.png",m_runNo,m_runnameout.Data(),testLayer));
-
-            h_aaVSD->Draw("COLZ");
-            TLine * line_aaVSD = new TLine(0,m_aaCut,m_xmax,m_aaCut);
-            line_aaVSD->SetLineColor(kRed);
-            line_aaVSD->Draw("SAME");
-            canv_general->SaveAs(Form("aaVSD_%d.%s.layer%d.pdf",m_runNo,m_runnameout.Data(),testLayer));
-            canv_general->SaveAs(Form("aaVSD_%d.%s.layer%d.png",m_runNo,m_runnameout.Data(),testLayer));
-
-            h_ggVSX->Draw("COLZ");
-            canv_general->SaveAs(Form("ggVSX_%d.%s.layer%d.pdf",m_runNo,m_runnameout.Data(),testLayer));
-            canv_general->SaveAs(Form("ggVSX_%d.%s.layer%d.png",m_runNo,m_runnameout.Data(),testLayer));
-
-            TLegend* leg_dedx = new TLegend(0.7,0.7,0.9,0.9);
-            leg_dedx->AddEntry(h_dedx[0],Form("All hits used"));
-            h_dedx[0]->Draw();
-            for (int i = 1; i<MAXTRUNC; i++){
-                leg_dedx->AddEntry(h_dedx[i],Form("Neglecting %d hits",i));
-                h_dedx[i]->Draw("SAME");
-            }
-            leg_dedx->Draw();
-            canv_general->SaveAs(Form("dedx_%d.%s.layer%d.pdf",m_runNo,m_runnameout.Data(),testLayer));
-            canv_general->SaveAs(Form("dedx_%d.%s.layer%d.png",m_runNo,m_runnameout.Data(),testLayer));
-
-            g_xeff->Draw("APL");
-            g_xeff500->Draw("PLSAME");
-            g_xeff3s->Draw("PLSAME");
-            TLegend * leg_xeff = new TLegend(0.1,0.1,0.5,0.5);
-            leg_xeff->AddEntry(g_xeff,"Raw efficiency","PL");
-            leg_xeff->AddEntry(g_xeff3s,Form("Efficiency with 3#sigma cut %.1f%%",averageEff3sX*100),"PL");
-            leg_xeff->AddEntry(g_xeff500,Form("Efficiency with 500 um cut %.1f%%",averageEffX*100),"PL");
-            leg_xeff->Draw("SAME");
-            canv_general->SaveAs(Form("effx_%d.%s.layer%d.pdf",m_runNo,m_runnameout.Data(),testLayer));
-            canv_general->SaveAs(Form("effx_%d.%s.layer%d.png",m_runNo,m_runnameout.Data(),testLayer));
-
-            g_deff500->Draw("APL");
-            g_deff3s->Draw("PLSAME");
-            TLegend * leg_deff = new TLegend(0.1,0.1,0.5,0.5);
-            leg_deff->AddEntry(g_deff3s,Form("Efficiency with 3#sigma cut %.1f%%",averageEff3sD*100),"PL");
-            leg_deff->AddEntry(g_deff500,Form("Efficiency with 500 um cut %.1f%%",averageEffD*100),"PL");
-            leg_deff->Draw("SAME");
-            canv_general->SaveAs(Form("effd_%d.%s.layer%d.pdf",m_runNo,m_runnameout.Data(),testLayer));
-            canv_general->SaveAs(Form("effd_%d.%s.layer%d.png",m_runNo,m_runnameout.Data(),testLayer));
-
-            g_xres->Draw("APL");
-            canv_general->SaveAs(Form("resx_%d.%s.layer%d.pdf",m_runNo,m_runnameout.Data(),testLayer));
-            canv_general->SaveAs(Form("resx_%d.%s.layer%d.png",m_runNo,m_runnameout.Data(),testLayer));
-
-            g_dres->Draw("APL");
-            canv_general->SaveAs(Form("resd_%d.%s.layer%d.pdf",m_runNo,m_runnameout.Data(),testLayer));
-            canv_general->SaveAs(Form("resd_%d.%s.layer%d.png",m_runNo,m_runnameout.Data(),testLayer));
-
-            g_xrms->Draw("APL");
-            canv_general->SaveAs(Form("rmsx_%d.%s.layer%d.pdf",m_runNo,m_runnameout.Data(),testLayer));
-            canv_general->SaveAs(Form("rmsx_%d.%s.layer%d.png",m_runNo,m_runnameout.Data(),testLayer));
-
-            g_drms->Draw("APL");
-            canv_general->SaveAs(Form("rmsd_%d.%s.layer%d.pdf",m_runNo,m_runnameout.Data(),testLayer));
-            canv_general->SaveAs(Form("rmsd_%d.%s.layer%d.png",m_runNo,m_runnameout.Data(),testLayer));
-
-            TCanvas * canv_calib = new TCanvas("canv_calib","canv_calib",1024,768);
-            gStyle->SetPalette(1);
-            gStyle->SetOptStat(0);
-            gStyle->SetPadTickX(1);
-            gStyle->SetPadTickY(1);
-            canv_calib->Divide((int)sqrt(NWIRES4CALIB),NWIRES4CALIB/((int)sqrt(NWIRES4CALIB)));
-            for (int iwire = 0; iwire<NWIRES4CALIB; iwire++){
-                canv_calib->cd(iwire+1);
-                gPad->SetGridx(1);
-                gPad->SetGridy(1);
-                h_resVSXwire[iwire]->SetTitle(Form("Residual VS DOCA in wire %d: %.0f um",iwire+FIRSTWIRE4CALIB,g_xoffwire[iwire]->GetMean(2)*1000));
-                h_resVSXwire[iwire]->Draw("COLZ");
-                g_xoffwire[iwire]->Draw("PLSAME");
-            }
-            canv_calib->SaveAs(Form("offx_%d.%s.layer%d.pdf",m_runNo,m_runnameout.Data(),testLayer));
-            canv_calib->SaveAs(Form("offx_%d.%s.layer%d.png",m_runNo,m_runnameout.Data(),testLayer));
-        }
-
-        // update offset
-        for (int iwire = 0; iwire<NWIRES4CALIB; iwire++){
-            map_off_current[testLayer][iwire+FIRSTWIRE4CALIB] = g_xoffwire[iwire]->GetMean(2);
-            map_off_nEvents[testLayer][iwire+FIRSTWIRE4CALIB] = h_resVSXwire[iwire]->GetEntries();
-            if (fabs(map_off_current[testLayer][iwire+FIRSTWIRE4CALIB])>offset_max){
-                offset_max = map_off_current[testLayer][iwire+FIRSTWIRE4CALIB];
-                offset_max_lid = testLayer;
-                offset_max_wid = iwire+FIRSTWIRE4CALIB;
-            }
-        }
-
-        //=================================================Save====================================================
-        for (int i = 0; i<NBINS; i++){
-            h_resD[i]->Write();
-            h_resX[i]->Write();
-        }
-        for (int i = 0; i<MAXTRUNC; i++){
-            h_dedx[i]->Write();
-        }
-        h_resVSX->Write();
-        h_resVSD->Write();
-        h_xt->Write();
-        h_tx->Write();
-        h_aaVST->Write();
-        h_aaVSD->Write();
-        h_ggVSX->Write();
-        h_ggall->Write();
-        h_nHits->Write();
-        h_DOF->Write();
-        h_chi2->Write();
-        h_slz->Write();
-        h_DOCA->Write();
-        h_DOCAb->Write();
-        h_DriftD->Write();
-        h_DriftDb->Write();
-        g_deff500->Write();
-        g_xeff->Write();
-        g_xeff500->Write();
-        g_dres->Write();
-        g_xres->Write();
-        g_drms->Write();
-        g_xrms->Write();
-        g_doff->Write();
-        g_xoff->Write();
-        for (int iwire = 0; iwire<NWIRES4CALIB; iwire++){
-            g_xoffwire[iwire]->Write();
-        }
-        otree->Write();
-        ofileresi->Close();
-        ofileana->Close();
-
-        printf("All events %d\n",N_ALL);
-        printf("nHits<=%d: %d (%.1f%%)\n",m_nHitsMax,N_CUT1,(double)N_CUT1/N_ALL*100);
-        printf("nHitsS>=%d: %d (%.1f%%)\n",m_nHitsSmin,N_CUT2,(double)N_CUT2/N_ALL*100);
-        printf("chi2<%.1f (pvalue>%.1f): %d (%.1f%%)\n",m_maxchi2,m_minchi2p,N_CUT3,(double)N_CUT3/N_ALL*100);
-        printf("|slz|<=%.1f: %d (%.1f%%)\n",m_maxslz,N_CUT4,(double)N_CUT4/N_ALL*100);
-        printf("DOCA<=%.1f: %d (%.1f%%)\n",m_xmax,N_CUT5,(double)N_CUT5/N_ALL*100);
-
-        MyNamedVerbose("Ana","Finished!");
+        otree->Fill();
+        MyNamedDebug("Memory","Memory size: @"<<__LINE__<<": "<<pMyProcessManager->GetMemorySize());
     }
+    MyNamedDebug("Memory","Memory size: @"<<__LINE__<<": "<<pMyProcessManager->GetMemorySize());
 
-    //===================output offset file============================
-    TFile * ofileoffset = new TFile(Form("%s/info/offset.%d.%s.root",HOME.Data(),m_runNo,m_runnameout.Data()),"RECREATE");
-    TTree * otree = new TTree("t","t");
-    double o_off_delta; // The difference of track predicted wire position (fitD without adjustment) and the designed wire position (driftD)
-    double o_off_adjust;
-    int o_off_n;
-    int o_off_lid;
-    int o_off_wid;
-    otree->Branch("d",&o_off_delta);
-    otree->Branch("adjust",&o_off_adjust);
-    otree->Branch("n",&o_off_n);
-    otree->Branch("wid",&o_off_wid);
-    otree->Branch("lid",&o_off_lid);
-    for (int lid = 0; lid<NLAY; lid++){
-        // get offset
-        for (int wid = 0; wid<NCEL; wid++){
-            if (map_off_nEvents[lid][wid]<100) continue;
-            o_off_wid = wid;
-            o_off_lid = lid;
-            o_off_delta = map_off_current[lid][wid]+map_adjust_old[lid][wid]; // new delta should consider the adjusted amount
-            o_off_n = map_off_nEvents[lid][wid];
-            o_off_adjust = map_adjust_old[lid][wid]; // new adjustment should consider the adjusted amount
-            if (m_UpdateWireMap&&m_wireIDWhiteList[wid]){
-                double theOff = map_off_current[lid][wid]*m_scale;
-                if (m_stepSize){
-                    if(fabs(theOff)>m_stepSize) theOff = theOff>0?m_stepSize:-m_stepSize;
-                }
-                if (m_OneWirePerStep&&(lid!=offset_max_lid||wid!=offset_max_wid)){
-                    theOff = 0;
-                }
-                o_off_adjust += theOff;
-            }
-            MyNamedInfo("Ana","adjust["<<lid<<"]["<<wid<<"] = "<<map_adjust_old[lid][wid]<<"+"<<map_off_current[lid][wid]<<"*"<<m_scale<<" = "<<o_off_adjust);
-            otree->Fill();
+    // Draw the plots of ADC & drift time distributions
+    TCanvas * canv = new TCanvas("canv","",1024,800);
+    canv->Divide(3,3);
+    for (int lid = 1; lid<=8; lid++){
+        for (int iwire = 0; iwire<wiresToConsider[lid].size(); iwire++){
+            int wid = wiresToConsider[lid][iwire];
+            canv->cd(1);gPad->SetGridx(1);gPad->SetGridy(1); gPad->SetLogy(1);
+            h_ADCsumPkt_all[lid][wid]->Draw();
+            h_ADCsumPkt_sig[lid][wid]->Draw("SAME");
+            h_ADCsumPkt_bkg[lid][wid]->Draw("SAME");
+            canv->cd(2);gPad->SetGridx(1);gPad->SetGridy(1);
+            h_SVT_sig[lid][wid]->Draw("COLZ");
+            canv->cd(3);gPad->SetGridx(1);gPad->SetGridy(1);
+            h_SVT_bkg[lid][wid]->Draw("COLZ");
+            canv->cd(4);gPad->SetGridx(1);gPad->SetGridy(1); gPad->SetLogy(1);
+            h_ADCsumAll_all[lid][wid]->Draw();
+            h_ADCsumAll_sig[lid][wid]->Draw("SAME");
+            h_ADCsumAll_bkg[lid][wid]->Draw("SAME");
+            canv->cd(5);gPad->SetGridx(1);gPad->SetGridy(1);
+            h_AVT_sig[lid][wid]->Draw("COLZ");
+            canv->cd(6);gPad->SetGridx(1);gPad->SetGridy(1);
+            h_AVT_bkg[lid][wid]->Draw("COLZ");
+            canv->cd(7);gPad->SetGridx(1);gPad->SetGridy(1);
+            h_DriftT_all[lid][wid]->Draw();
+            h_DriftT_sig[lid][wid]->Draw("SAME");
+            h_DriftT_bkg[lid][wid]->Draw("SAME");
+            canv->cd(8);gPad->SetGridx(1);gPad->SetGridy(1); gPad->SetLogz(1);
+            h_SVT_siglate[lid][wid]->Draw("COLZ");
+            canv->cd(9);gPad->SetGridx(1);gPad->SetGridy(1); gPad->SetLogz(1);
+            h_AVT_siglate[lid][wid]->Draw("COLZ");
+            canv->SaveAs(Form("hits.%d.%s.layer%d.l%dw%d.png",m_runNo,m_runName.Data(),m_testLayer,lid,wid));
         }
     }
-    otree->Write();
-    ofileoffset->Close();
+    // Draw the nHits distribution
+    canv = new TCanvas("canv","",1024,800);
+    h_nGoodHits->Draw("COLZ");
+    canv->SaveAs(Form("nHitsG.%d.%s.layer%d.png",m_runNo,m_runName.Data(),m_testLayer));
+    // Draw the hit map
+    canv = new TCanvas("canv","",1024,800);
+    gPad->SetGridx(1);gPad->SetGridy(1);
+    h_hitmap->Draw("COLZ");
+    TGaxis * newXaxis = new TGaxis(h_hitmap->GetXaxis()->GetXmax(),h_hitmap->GetYaxis()->GetXmin(),h_hitmap->GetXaxis()->GetXmin(),h_hitmap->GetYaxis()->GetXmin()
+                                 ,-h_hitmap->GetXaxis()->GetXmax(),-h_hitmap->GetXaxis()->GetXmin(),510,"-");
+    newXaxis->SetLabelOffset(-0.03);
+    newXaxis->SetLabelFont(42);
+    newXaxis->SetTextFont(42);
+    newXaxis->SetTitle("Cell ID + DOCA/CellSize");
+    newXaxis->Draw();
+    canv->SaveAs(Form("map.%d.%s.layer%d.png",m_runNo,m_runName.Data(),m_testLayer));
+
+    // Save the histograms and tree
+    for (int lid = 1; lid<=8; lid++){
+        for (int wid = 0; wid<=10; wid++){
+            h_DriftT_all[lid][wid]->Write();
+            h_DriftT_bkg[lid][wid]->Write();
+            h_DriftT_sig[lid][wid]->Write();
+            h_ADCsumPkt_all[lid][wid]->Write();
+            h_ADCsumPkt_bkg[lid][wid]->Write();
+            h_ADCsumPkt_sig[lid][wid]->Write();
+            h_ADCsumAll_all[lid][wid]->Write();
+            h_ADCsumAll_bkg[lid][wid]->Write();
+            h_ADCsumAll_sig[lid][wid]->Write();
+            h_AVT_bkg[lid][wid]->Write();
+            h_AVT_sig[lid][wid]->Write();
+        }
+    }
+    h_hitmap->Write();
+    h_nGoodHits->Write();
+    otree->Write();;
+    ofile->Close();
 
     return 0;
 }
 
-double ADC2Charge(double adc){ // fC
-    double charge = 0;
-    if (adc<735.346)
-        charge = fADC2ChargeFunction->Eval(adc);
-    else
-        charge = fADC2ChargeFunction->Eval(735);
-    return charge;
-}
-
-double getGG(double charge, double slx, double slz){
-    double nPairs = CELLH*sqrt(1+slx*slx+slz*slz)*npair_per_cm/10;
-    double gg = charge*1e-15/1.6e-19/nPairs;
-    return gg;
-}
-
-double get_dist(int lid, int wid, double slx, double inx, double slz, double inz)
-{
-    if (!map_has[lid][wid]) return 1e3;
-    double xdown = inx-slx*(sciYup-sciYdown);
-    double zdown = inz-slz*(sciYup-sciYdown);
-    vTrackU.SetXYZ(inx,sciYup,inz);
-    vTrackD.SetXYZ(xdown,sciYdown,zdown);
-    vWireHV.SetXYZ(map_x[lid][wid][0],map_y[lid][wid][0],-chamberHL);
-    vWireRO.SetXYZ(map_x[lid][wid][1],map_y[lid][wid][1],chamberHL);
-    vTrack = vTrackD-vTrackU;
-    vWire = vWireRO-vWireHV;
-    vDist = vWireHV-vTrackU;
-    vAxis = vWire.Cross(vTrack);
-    double value = -vDist*(vAxis.Unit());
-    return value;
-}
-
-int t2d(double t, double & d, bool isRight, double tmaxSet){
-    int status = 0;
-    TF1 * f = 0; // body
-
-    if (isRight) f = f_right;
-    else f = f_left;
-
-    double tRight = f->GetXmax();
-    double tmax = tRight;
-    if (tmaxSet&&tmax>tmaxSet) tmax = tmaxSet;
-    double tmin = f->GetXmin();
-
-    if (t<tmin){
-        status = -1;
-        d = 0;
+bool isGoodHit(int iHit){ // Here I neglected the cut on ipeak, layerID cause when I call this function I'm counting hits in a selected cell or a cell in test layer
+    if (iHit<0||iHit>=InputOutputManager::Get().nHits) return false;
+    if (InputOutputManager::Get().DriftT->at(iHit)<t_min||InputOutputManager::Get().DriftT->at(iHit)>t_max) return false;
+    if (inputHitType==InputOutputManager::kData){
+        if (InputOutputManager::Get().ADCsumAll->at(iHit)<aaCut) return false;
+        if (InputOutputManager::Get().ADCsumPacket->at(iHit)<sumCut) return false;
     }
-    else if (t>tmax){
-        status = 1;
-        if (t>tRight) d = f->Eval(tRight);
-        else d = f->Eval(t);
-    }
-    else{
-        status = 0;
-        d = f->Eval(t);
-    }
-
-    return status;
+    return true;
 }
 
-double findFirstX(TF1 * f, double val, double xmin, double xmax, double delta){
-    double theX = 0;
-    for (double x = xmin+delta; x<xmax; x+=delta){ // At least two solutions. Scan to find the smallest one
-        theX = f->GetX(val,xmin,x);
-        if (fabs(theX-x)>delta/10.&&fabs(theX-xmin)>delta/10.){
-            break;
+bool isGoldenHit(int iHit){ // Here I neglected the cut on ipeak, layerID cause when I call this function I'm counting hits in a selected cell or a cell in test layer
+    if (!isGoodHit(iHit)) return false;
+    if (InputOutputManager::Get().DriftT->at(iHit)<gold_t_min||InputOutputManager::Get().DriftT->at(iHit)>gold_t_max) return false;
+    return true;
+}
+
+int CountGoodHitBeforeIt(int iHit){
+    int ip = 0;
+    for (int jHit = iHit-1; jHit>0; jHit--){ // Here I'm assuming the hits in InputOutputManager is still kept in its original order in DAQ
+        if (InputOutputManager::Get().LayerID->at(jHit)!=InputOutputManager::Get().LayerID->at(iHit)||InputOutputManager::Get().CellID->at(jHit)!=InputOutputManager::Get().CellID->at(iHit)) break; // stop checking when it leaves the current cell
+        if (isGoodHit(jHit)) ip++; // only count peaks satisfying good hit requirement
+    }
+    return ip;
+}
+
+int CountLateHitSelected(int iCand){
+    int nHits = InputOutputManager::Get().nHits;
+    int nLateHits = 0;
+    for (int lid = 0; lid<NLAY; lid++){
+        int iHit = InputOutputManager::Get().hitIndexSelected[lid][iCand];
+        if (iHit>=0&&iHit<nHits){
+            nLateHits+=CountGoodHitBeforeIt(iHit);
         }
     }
-    return theX;
+    return nLateHits;
 }
 
-void doFit(TH1D * h,double leftRatio, double rightRatio, double leftEnd, double rightEnd){
-    int bmax = h->GetMaximumBin();
-    double max = h->GetBinContent(bmax)*leftRatio;
-    int binl = bmax-1;
-    for (;binl>=3; binl--){
-        double height3bins = h->GetBinContent(binl);
-        height3bins+=h->GetBinContent(binl-1);
-        height3bins+=h->GetBinContent(binl-2);
-        if (height3bins/3<max) break;
+int CountNotGoldenHitSelected(int iCand){
+    int nHits = InputOutputManager::Get().nHits;
+    int nBadHits = 0;
+    for (int lid = 0; lid<NLAY; lid++){
+        int iHit = InputOutputManager::Get().hitIndexSelected[lid][iCand];
+        if (iHit>=0&&iHit<nHits){
+            if (!isGoldenHit(iHit)) nBadHits++;
+        }
     }
-    binl-=1;
-    max = h->GetBinContent(bmax)*rightRatio;
-    int binr = bmax+1;
-    for (;binr<=h->GetNbinsX()-3; binr++){
-        double height3bins = h->GetBinContent(binr);
-        height3bins+=h->GetBinContent(binr+1);
-        height3bins+=h->GetBinContent(binr+2);
-        if (height3bins/3<max) break;
-    }
-    binr+=1;
-    double left = h->GetBinCenter(binl);
-    double right = h->GetBinCenter(binr);
-    if (left<leftEnd) left = leftEnd;
-    if (right>rightEnd) right = rightEnd;
-    f_res->SetParameter(1,(left+right)/2.);
-    h->Fit("fres","QG","",left,right);
+    return nBadHits;
 }
 
-int getHitType(int type,bool isRight){
-    // Original type is in decimal: [IMASTR]. I: peak index (only counting peaks over m_sumCut); M: peak index in a packet; A: smaller than aa cut? S: smaller than sum cut? T: 0 good, 3/6/7 very bad, 1/2/4/5 partly bad; R: 0 center, 1 left, 2 right, 3 guard, 4 dummy
-    int ttype = (type/10)%10;
-    if (isRight){
-        if (ttype==1||ttype==4) type-=ttype*10; // l- or l+
-    }
-    else{
-        if (ttype==2||ttype==5) type-=ttype*10; // r- or r+
-    }
-    return type;
-}
-
-int GetCandidate(TString & candSelBy, std::vector<int> * layerID, std::vector<int> * type, std::vector<double> * fitD[NCAND], std::vector<int> * sel[NCAND], int * nHitsS, double * chi2, double * chi2a){
+int GetCandidate(TString candSelBy, int nHitsS){
     int cand = 0;
     if (candSelBy=="Original"){
         cand = 0;
-    }
-    else if (candSelBy=="LeastLatePeak"){
-        int nLateHitsMin = 1e9;
-        for (int iCand = 0; iCand<NCAND; iCand++){
-            int nLateHits = 0;
-            for (int ihit = 0; ihit<layerID->size(); ihit++){
-                int ip = 0;
-                for (int jhit = ihit-1; jhit>0; jhit--){
-                    if ((*layerID)[jhit]!=(*layerID)[ihit]) break;
-                    int ttype = getHitType((*type)[jhit],(*fitD[iCand])[jhit]>=0);
-                    if (ttype<100) ip++;
-                }
-                if ((*sel[iCand])[ihit]==1){
-                    if(ip!=0)
-                        nLateHits++;
+        if (nHitsS>0){
+            cand = -1;
+            for (int iCand = 0; iCand<InputOutputManager::Get().nCandidatesFound; iCand++){
+                if (InputOutputManager::Get().nHitsS[iCand] == nHitsS){
+                    cand = iCand;
+                    break;
                 }
             }
-            if (nLateHits<nLateHitsMin){
-                nLateHitsMin = nLateHits;
+        }
+    }
+    else if (candSelBy=="LeastLateHit"){
+        int nLateHits_min = 1e9;
+        for (int iCand = 0; iCand<InputOutputManager::Get().nCandidatesFound; iCand++){
+            int nLateHits = CountLateHitSelected(iCand);
+            if (nLateHits<nLateHits_min){
+                nLateHits_min = nLateHits;
                 cand = iCand;
             }
         }
     }
-    else if (candSelBy=="FittingChi2"||candSelBy=="GlobalChi2"){
+    else if (candSelBy=="FittingChi2"||candSelBy=="GlobalChi2"||candSelBy=="GlobalChi2WithTestLayer"){
         double minchi2 = 1e9;
         int minNhitsS = 0;
-        for (int iCand = 0; iCand<NCAND; iCand++){
+        for (int iCand = 0; iCand<InputOutputManager::Get().nCandidatesFound; iCand++){
             if (candSelBy=="GlobalChi2"){
-                if ((minchi2>chi2a[iCand]&&minNhitsS==nHitsS[iCand])||minNhitsS<nHitsS[iCand]){
+                if ((minchi2>InputOutputManager::Get().chi2a[iCand]&&minNhitsS==InputOutputManager::Get().nHitsS[iCand])||minNhitsS<InputOutputManager::Get().nHitsS[iCand]){
                     cand = iCand;
-                    minchi2 = chi2a[iCand];
-                    minNhitsS = nHitsS[iCand];
+                    minchi2 = InputOutputManager::Get().chi2a[iCand];
+                    minNhitsS = InputOutputManager::Get().nHitsS[iCand];
+                }
+            }
+            else if (candSelBy=="GlobalChi2WithTestLayer"){
+                if ((minchi2>InputOutputManager::Get().chi2WithTestLayer[iCand]&&minNhitsS==InputOutputManager::Get().nHitsS[iCand])||minNhitsS<InputOutputManager::Get().nHitsS[iCand]){
+                    cand = iCand;
+                    minchi2 = InputOutputManager::Get().chi2WithTestLayer[iCand];
+                    minNhitsS = InputOutputManager::Get().nHitsS[iCand];
                 }
             }
             else if (candSelBy=="FittingChi2"){
-                if ((minchi2>chi2[iCand]&&minNhitsS==nHitsS[iCand])||minNhitsS<nHitsS[iCand]){
+                if ((minchi2>InputOutputManager::Get().chi2[iCand]&&minNhitsS==InputOutputManager::Get().nHitsS[iCand])||minNhitsS<InputOutputManager::Get().nHitsS[iCand]){
                     cand = iCand;
-                    minchi2 = chi2[iCand];
-                    minNhitsS = nHitsS[iCand];
+                    minchi2 = InputOutputManager::Get().chi2[iCand];
+                    minNhitsS = InputOutputManager::Get().nHitsS[iCand];
                 }
             }
         }
@@ -2499,211 +713,42 @@ int GetCandidate(TString & candSelBy, std::vector<int> * layerID, std::vector<in
     return cand;
 }
 
-bool isInTriggerCounter(int geoSetup, double tinz, double tslz){
-    bool isIn = true;
-    if (geoSetup==1){
-        if (fabs(tinz)>24) isIn = false;
-    }
-    else{
-        if (fabs(tslz)>0.11) isIn = false;
-    }
-    return isIn;
-}
-
-void getRunTimeParameters(TString configureFile){
-    if (configureFile!=""){
-        MyRuntimeParameters::Get().ReadInputFile(configureFile,"",false,false);
-        if (MyRuntimeParameters::Get().HasParameter("geoSetup")) m_geoSetup = MyRuntimeParameters::Get().GetParameterI("geoSetup");
-        if (MyRuntimeParameters::Get().HasParameter("inputType")) m_inputType = MyRuntimeParameters::Get().GetParameterI("inputType");
-        if (MyRuntimeParameters::Get().HasParameter("xtType")) m_xtType = MyRuntimeParameters::Get().GetParameterI("xtType");
-        if (MyRuntimeParameters::Get().HasParameter("ana.AsymXT")) m_AsymXT = MyRuntimeParameters::Get().GetParameterI("ana.AsymXT");
-        if (MyRuntimeParameters::Get().HasParameter("ana.CandSelBy")) m_CandSelBy = MyRuntimeParameters::Get().GetParameterS("ana.CandSelBy");
-        if (MyRuntimeParameters::Get().HasParameter("ana.ClosestPeak")) m_ClosestPeak = MyRuntimeParameters::Get().GetParameterI("ana.ClosestPeak");
-        if (MyRuntimeParameters::Get().HasParameter("ana.XTLayerForRes")) m_ClosestPeak = MyRuntimeParameters::Get().GetParameterI("ana.XTLayerForRes");
-        //for cutting
-        if (MyRuntimeParameters::Get().HasParameter("ana.nHitsMax")) m_nHitsMax = MyRuntimeParameters::Get().GetParameterI("ana.nHitsMax");
-        if (MyRuntimeParameters::Get().HasParameter("ana.nHitsSmin")) m_nHitsSmin = MyRuntimeParameters::Get().GetParameterI("ana.nHitsSmin");
-        if (MyRuntimeParameters::Get().HasParameter("ana.sumCut")) m_sumCut = MyRuntimeParameters::Get().GetParameterI("ana.sumCut");
-        if (MyRuntimeParameters::Get().HasParameter("ana.aaCut")) m_aaCut = MyRuntimeParameters::Get().GetParameterI("ana.aaCut");
-        if (MyRuntimeParameters::Get().HasParameter("ana.maxchi2")) m_maxchi2 = MyRuntimeParameters::Get().GetParameterD("ana.maxchi2");
-        if (MyRuntimeParameters::Get().HasParameter("ana.maxslz")) m_maxslz = MyRuntimeParameters::Get().GetParameterD("ana.maxslz");
-        if (MyRuntimeParameters::Get().HasParameter("ana.maxFD")) m_maxFD = MyRuntimeParameters::Get().GetParameterD("ana.maxFD");
-        if (MyRuntimeParameters::Get().HasParameter("ana.tmaxSet")) m_tmaxSet = MyRuntimeParameters::Get().GetParameterI("ana.tmaxSet");
-        //for binning
-        if (MyRuntimeParameters::Get().HasParameter("ana.tmin")) m_tmin = MyRuntimeParameters::Get().GetParameterD("ana.tmin");
-        if (MyRuntimeParameters::Get().HasParameter("ana.tmax")) m_tmax = MyRuntimeParameters::Get().GetParameterD("ana.tmax");
-        if (MyRuntimeParameters::Get().HasParameter("ana.xmin")) m_xmin = MyRuntimeParameters::Get().GetParameterD("ana.xmin");
-        if (MyRuntimeParameters::Get().HasParameter("ana.xmax")) m_xmax = MyRuntimeParameters::Get().GetParameterD("ana.xmax");
-        if (MyRuntimeParameters::Get().HasParameter("ana.NbinT")) m_NbinT = MyRuntimeParameters::Get().GetParameterI("ana.NbinT");
-        if (MyRuntimeParameters::Get().HasParameter("ana.NbinX")) m_NbinX = MyRuntimeParameters::Get().GetParameterI("ana.NbinX");
-        if (MyRuntimeParameters::Get().HasParameter("ana.NbinRes")) m_NbinRes = MyRuntimeParameters::Get().GetParameterI("ana.NbinRes");
-        if (MyRuntimeParameters::Get().HasParameter("ana.minchi2p")) m_minchi2p = MyRuntimeParameters::Get().GetParameterD("ana.minchi2p");
-        if (MyRuntimeParameters::Get().HasParameter("ana.maxRes")) m_maxRes = MyRuntimeParameters::Get().GetParameterD("ana.maxRes");
-        //for wire position calibration
-        if (MyRuntimeParameters::Get().HasParameter("ana.scale")) m_scale = MyRuntimeParameters::Get().GetParameterD("ana.scale");
-        if (MyRuntimeParameters::Get().HasParameter("ana.stepSize")) m_stepSize = MyRuntimeParameters::Get().GetParameterD("ana.stepSize");
-        if (MyRuntimeParameters::Get().HasParameter("ana.minDeltaSlz")) m_minDeltaSlz = MyRuntimeParameters::Get().GetParameterD("ana.minDeltaSlz");
-        if (MyRuntimeParameters::Get().HasParameter("ana.maxDeltaSlz")) m_maxDeltaSlz = MyRuntimeParameters::Get().GetParameterD("ana.maxDeltaSlz");
-        if (MyRuntimeParameters::Get().HasParameter("ana.minDeltaInx")) m_minDeltaInx = MyRuntimeParameters::Get().GetParameterD("ana.minDeltaInx");
-        if (MyRuntimeParameters::Get().HasParameter("ana.maxDeltaInx")) m_maxDeltaInx = MyRuntimeParameters::Get().GetParameterD("ana.maxDeltaInx");
-        if (MyRuntimeParameters::Get().HasParameter("ana.calib_maxslz")) m_calib_maxslz= MyRuntimeParameters::Get().GetParameterD("ana.calib_maxslz");
-        if (MyRuntimeParameters::Get().HasParameter("ana.calib_maxFD")) m_calib_maxFD= MyRuntimeParameters::Get().GetParameterD("ana.calib_maxFD");
-        if (MyRuntimeParameters::Get().HasParameter("ana.calib_minFD")) m_calib_minFD= MyRuntimeParameters::Get().GetParameterD("ana.calib_minFD");
-        if (MyRuntimeParameters::Get().HasParameter("ana.calib_allGolden")) m_calib_allGolden= MyRuntimeParameters::Get().GetParameterD("ana.calib_allGolden");
-    }
-}
-
-void SetInputBranchAdress(TChain * ichain){
-    ichain->SetBranchAddress("triggerNumber",&triggerNumber);
-    ichain->SetBranchAddress("nHits",&nHits);
-    ichain->SetBranchAddress("nHitsG",&nHitsG);
-    ichain->SetBranchAddress("layerID",&i_layerID);
-    ichain->SetBranchAddress("wireID",&i_wireID);
-    ichain->SetBranchAddress("driftT",&i_driftT);
-    if (m_inputType) ichain->SetBranchAddress("driftDmc",&i_driftDmc);
-    ichain->SetBranchAddress("type",&i_type);
-    ichain->SetBranchAddress("np",&i_np);
-    ichain->SetBranchAddress("ip",&i_ip);
-    ichain->SetBranchAddress("clk",&i_clk);
-    ichain->SetBranchAddress("width",&i_width);
-    ichain->SetBranchAddress("peak",&i_peak);
-    ichain->SetBranchAddress("height",&i_height);
-    ichain->SetBranchAddress("mpn",&i_mpn);
-    ichain->SetBranchAddress("mpi",&i_mpi);
-    has_rank = (ichain->SetBranchAddress("rank",&i_rank)==0);
-    has_ped = (ichain->SetBranchAddress("ped",&i_ped)==0);
-    ichain->SetBranchAddress("sum",&i_sum);
-    ichain->SetBranchAddress("aa",&i_aa);
-    for (int iCand = 0; iCand<NCAND; iCand++){
-        ichain->SetBranchAddress(Form("driftD%d",iCand),&(i_driftD[iCand]));
-        ichain->SetBranchAddress(Form("calD%d",iCand),&(i_calD[iCand]));
-        ichain->SetBranchAddress(Form("fitD%d",iCand),&(i_fitD[iCand]));
-        ichain->SetBranchAddress(Form("sel%d",iCand),&(i_sel[iCand]));
-        ichain->SetBranchAddress(Form("npairs%d",iCand),&(npairs[iCand]));
-        ichain->SetBranchAddress(Form("isel%d",iCand),&(isel[iCand]));
-        ichain->SetBranchAddress(Form("icom%d",iCand),&(icom[iCand]));
-        ichain->SetBranchAddress(Form("iinx%d",iCand),&(iinx[iCand]));
-        ichain->SetBranchAddress(Form("iinz%d",iCand),&(iinz[iCand]));
-        ichain->SetBranchAddress(Form("islx%d",iCand),&(islx[iCand]));
-        ichain->SetBranchAddress(Form("islz%d",iCand),&(islz[iCand]));
-        ichain->SetBranchAddress(Form("chi2x%d",iCand),&(chi2x[iCand]));
-        ichain->SetBranchAddress(Form("chi2z%d",iCand),&(chi2z[iCand]));
-        ichain->SetBranchAddress(Form("chi2i%d",iCand),&(chi2i[iCand]));
-        ichain->SetBranchAddress(Form("nHitsS%d",iCand),&(nHitsS[iCand]));
-        ichain->SetBranchAddress(Form("inx%d",iCand),&(inx[iCand]));
-        ichain->SetBranchAddress(Form("inz%d",iCand),&(inz[iCand]));
-        ichain->SetBranchAddress(Form("slx%d",iCand),&(slx[iCand]));
-        ichain->SetBranchAddress(Form("slz%d",iCand),&(slz[iCand]));
-        ichain->SetBranchAddress(Form("t0off%d",iCand),&(t0offset[iCand]));
-        ichain->SetBranchAddress(Form("chi2%d",iCand),&(chi2[iCand]));
-        ichain->SetBranchAddress(Form("chi2p%d",iCand),&(chi2p[iCand]));
-        ichain->SetBranchAddress(Form("chi2a%d",iCand),&(chi2a[iCand]));
-        if (m_inputType){
-            ichain->SetBranchAddress(Form("chi2mc%d",iCand),&(chi2mc[iCand]));
-            ichain->SetBranchAddress(Form("chi2pmc%d",iCand),&(chi2pmc[iCand]));
-            ichain->SetBranchAddress(Form("chi2amc%d",iCand),&(chi2amc[iCand]));
-        }
-    }
-    if (m_inputType){
-        ichain->SetBranchAddress("inxmc",&inxmc);
-        ichain->SetBranchAddress("inzmc",&inzmc);
-        ichain->SetBranchAddress("slxmc",&slxmc);
-        ichain->SetBranchAddress("slzmc",&slzmc);
-    }
-}
-
 void print_usage(char * prog_name){
-    fprintf(stderr,"Usage %s [options] prerunname runname [wires to be calibrated (all)]\n",prog_name);
+    fprintf(stderr,"Usage %s [options] inputXTFile runName\n",prog_name);
     fprintf(stderr,"[options]\n");
     fprintf(stderr,"\t -D <name>=[error,severe,warn,debug,trace]\n");
-    fprintf(stderr,"\t -D XTAnalyzer=N for debug level in XTAnalyzer\n");
     fprintf(stderr,"\t\t Change the named debug level\n");
+    fprintf(stderr,"\t\t if the given name is \"general\" then set the default debug level\n");
     fprintf(stderr,"\t -V <name>=[quiet,log,info,verbose]\n");
     fprintf(stderr,"\t\t Change the named log level\n");
-    fprintf(stderr,"\t\t If equal sign is not found, set verbose level to the given value\n");
+    fprintf(stderr,"\t\t if the given name is \"general\" then set the default log level\n");
+    fprintf(stderr,"\t -M\n");
+    fprintf(stderr,"\t\t Turning on memory debug mode\n");
     fprintf(stderr,"\t -C <file>\n");
     fprintf(stderr,"\t\t Set the configure file\n");
-    fprintf(stderr,"\t -M <n>\n");
+    fprintf(stderr,"\t -P <n>\n");
     fprintf(stderr,"\t\t Printing modulo set to n\n");
     fprintf(stderr,"\t -R <run>\n");
     fprintf(stderr,"\t\t Run number set to run\n");
+    fprintf(stderr,"\t -L <lid>\n");
+    fprintf(stderr,"\t\t Test layer set to lid\n");
     fprintf(stderr,"\t -B <n>\n");
     fprintf(stderr,"\t\t Starting entry index set to n\n");
     fprintf(stderr,"\t -E <n>\n");
     fprintf(stderr,"\t\t Stopping entry index set to n\n");
-    fprintf(stderr,"\t -L <l>\n");
-    fprintf(stderr,"\t\t Default layer set to l\n");
-    fprintf(stderr,"\t -H <h>\n");
-    fprintf(stderr,"\t\t Histogram saving level set to h\n");
-    fprintf(stderr,"\t -T\n");
-    fprintf(stderr,"\t\t Disable in-trigger cut\n");
-    fprintf(stderr,"\t -G\n");
-    fprintf(stderr,"\t\t In getting offset and new XT, require all hits used in tracking are golden hits\n");
-    fprintf(stderr,"\t -F <suffix>\n");
-    fprintf(stderr,"\t\t Adding suffix to output files\n");
-    fprintf(stderr,"\t -O\n");
-    fprintf(stderr,"\t\t (false) Update one wire per iteration (the wire with the largest offset)\n");
-    fprintf(stderr,"\t -W\n");
-    fprintf(stderr,"\t\t (false) Update wire map\n");
-    fprintf(stderr,"\t -X <xt file>\n");
-    fprintf(stderr,"\t\t Use given xt file instead of generating a new one\n");
-    fprintf(stderr,"\t -Z\n");
-    fprintf(stderr,"\t\t (false) Draw detail plots\n");
-    fprintf(stderr,"\t -n <n>\n");
-    fprintf(stderr,"\t\t Maximum number of hits cut set to n\n");
-    fprintf(stderr,"\t -f <f>\n");
-    fprintf(stderr,"\t\t Minimum number of selected hits cut set to f\n");
-    fprintf(stderr,"\t -c <c>\n");
-    fprintf(stderr,"\t\t Maximum chi2 cut set to c\n");
-    fprintf(stderr,"\t -v <v>\n");
-    fprintf(stderr,"\t\t Minimum p-value cut set to v\n");
-    fprintf(stderr,"\t -r <r>\n");
-    fprintf(stderr,"\t\t Maximum resolution cut set to r\n");
-    fprintf(stderr,"\t -z <z>\n");
-    fprintf(stderr,"\t\t Maximum y-z slope cut set to z\n");
-    fprintf(stderr,"\t -d <d>\n");
-    fprintf(stderr,"\t\t Maximum fitD cut set to d\n");
-    fprintf(stderr,"\t -o <o>\n");
-    fprintf(stderr,"\t\t Maximum time range set to o\n");
-    fprintf(stderr,"\t -s <s>\n");
-    fprintf(stderr,"\t\t ADC sum over peak cut set to s\n");
-    fprintf(stderr,"\t -a <a>\n");
-    fprintf(stderr,"\t\t ADC sum over all cut set to a\n");
-    fprintf(stderr,"\t -l <l>\n");
-    fprintf(stderr,"\t\t Minimum time on axis set to l\n");
-    fprintf(stderr,"\t -u <u>\n");
-    fprintf(stderr,"\t\t Maximum time on axis set to u\n");
-    fprintf(stderr,"\t -t <t>\n");
-    fprintf(stderr,"\t\t Number of bins on time axis set to t\n");
-    fprintf(stderr,"\t -m <m>\n");
-    fprintf(stderr,"\t\t Number of bins on space axis set to m\n");
-    fprintf(stderr,"\t -y <y>\n");
-    fprintf(stderr,"\t\t Number of bins on resolution axis set to y\n");
-    fprintf(stderr,"\t -g <g>\n");
-    fprintf(stderr,"\t\t Geometry setup set to g\n");
-    fprintf(stderr,"\t\t (0): normal; 1: finger\n");
-    fprintf(stderr,"\t -i <i>\n");
-    fprintf(stderr,"\t\t Input type set to i\n");
-    fprintf(stderr,"\t\t (0) for data; 1 for MC\n");
-    fprintf(stderr,"\t -x <x>\n");
-    fprintf(stderr,"\t\t xt type set to x\n");
-    fprintf(stderr,"\t\t XYZ (055) means polX for center, polY for middle and polZ for tail. If X is 0 then let middle function fit the center region.\n");
-    fprintf(stderr,"\t -A\n");
-    fprintf(stderr,"\t\t Use asymmetric XT\n");
-    fprintf(stderr,"\t -e\n");
-    fprintf(stderr,"\t\t Use XT from layer (%d) to get residual.\n",m_XTLayerForRes);
-    fprintf(stderr,"\t -b\n");
-    fprintf(stderr,"\t\t Set maximum slope z cut (%f) mm for each event in getting offset.\n",m_calib_maxslz);
-    fprintf(stderr,"\t -p\n");
-    fprintf(stderr,"\t\t Set minimum |theFD| cut (%f) mm for each event in getting offset.\n",m_calib_minFD);
-    fprintf(stderr,"\t -q\n");
-    fprintf(stderr,"\t\t Set maximum |theFD| cut (%f) mm for each event in getting offset.\n",m_calib_maxFD);
-    fprintf(stderr,"\t -S\n");
-    fprintf(stderr,"\t\t Select candidate by:\n");
-    fprintf(stderr,"\t\t ((O)riginal): the first one given by tracking (global chi2)\n");
-    fprintf(stderr,"\t\t (G)lobalChi2: find the candidate with the smallest global chi2 including the test layer\n");
-    fprintf(stderr,"\t\t (F)ittingChi2: find the candidate with the smallest fitting chi2\n");
-    fprintf(stderr,"\t\t (L)eastLatePeak: find the candidate with the least late arrival peaks\n");
-    fprintf(stderr,"\t -P\n");
-    fprintf(stderr,"\t\t Use the peak with smallest residual to get driftT. By default just use the first one\n");
+    fprintf(stderr,"\t -N <n>\n");
+    fprintf(stderr,"\t\t Maximum number of entries set to n\n");
+    fprintf(stderr,"\t -W \n");
+    fprintf(stderr,"\t\t Seperate wires\n");
+    fprintf(stderr,"\t -H \n");
+    fprintf(stderr,"\t\t Draw bin-by-bin histograms\n");
+}
+
+void getRunTimeParameters(TString configureFile){
+    if (configureFile!=""){
+        ParameterManager::Get().ReadInputFile(configureFile,"",false,false);
+        ParameterManager::Get().LoadParameters(ParameterManager::kTracking);
+        ParameterManager::Get().LoadParameters(ParameterManager::kXTManager);
+        ParameterManager::Get().LoadParameters(ParameterManager::kXTAnalyzer);
+    }
 }
