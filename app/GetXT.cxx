@@ -41,7 +41,7 @@ bool isGoodHit(int iHit);
 bool isGoldenHit(int iHit);
 int CountGoodHitBeforeIt(int iHit);
 int CountNotGoldenHitSelected(int iCand);
-int GetCandidate(TString & candSelBy);
+int GetCandidate(TString candSelBy, int nHitsS = 0);
 void getRunTimeParameters(TString configureFile);
 
 MyProcessManager * pMyProcessManager;
@@ -496,10 +496,19 @@ int CountNotGoldenHitSelected(int iCand){
     return nBadHits;
 }
 
-int GetCandidate(TString & candSelBy){
+int GetCandidate(TString candSelBy, int nHitsS){
     int cand = 0;
     if (candSelBy=="Original"){
         cand = 0;
+        if (nHitsS>0){
+            cand = -1;
+            for (int iCand = 0; iCand<InputOutputManager::Get().nCandidatesFound; iCand++){
+                if (InputOutputManager::Get().nHitsS[iCand] == nHitsS){
+                    cand = iCand;
+                    break;
+                }
+            }
+        }
     }
     else if (candSelBy=="LeastLateHit"){
         int nLateHits_min = 1e9;
@@ -514,7 +523,7 @@ int GetCandidate(TString & candSelBy){
     else if (candSelBy=="FittingChi2"||candSelBy=="GlobalChi2"||candSelBy=="GlobalChi2WithTestLayer"){
         double minchi2 = 1e9;
         int minNhitsS = 0;
-        for (int iCand = 0; iCand<NCAND; iCand++){
+        for (int iCand = 0; iCand<InputOutputManager::Get().nCandidatesFound; iCand++){
             if (candSelBy=="GlobalChi2"){
                 if ((minchi2>InputOutputManager::Get().chi2a[iCand]&&minNhitsS==InputOutputManager::Get().nHitsS[iCand])||minNhitsS<InputOutputManager::Get().nHitsS[iCand]){
                     cand = iCand;
