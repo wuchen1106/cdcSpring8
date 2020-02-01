@@ -393,6 +393,7 @@ int main(int argc, char** argv){
                 theCand = GetCandidate("Original",cur_nHitsS);
                 if (theCand>=0) break;
             }
+            MyNamedInfo("Analyze","    => iCand = "<<iCand<<", theCand = "<<theCand);
             if (theCand<0) break;
             double slx = InputOutputManager::Get().slopeX[theCand];
             double inx = InputOutputManager::Get().interceptX[theCand];
@@ -433,7 +434,7 @@ int main(int argc, char** argv){
                 int iPeak = InputOutputManager::Get().iPeakInChannel->at(iHit);
                 double DOCAmc = 0;
                 if (inputHitType!=InputOutputManager::kData){
-                    DOCAmc = InputOutputManager::Get().DriftDmc->at(iHit);
+                    DOCAmc = InputOutputManager::Get().DOCA->at(iHit);
                 }
                 double DOCA = GeometryManager::Get().GetDOCA(layerID,wireID,slx,inx,slz,inz);
                 double DriftT = InputOutputManager::Get().DriftT->at(iHit)+InputOutputManager::Get().t0Offset[theCand]; // consider the t0 offset suggested by this candidate
