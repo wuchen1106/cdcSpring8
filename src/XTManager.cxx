@@ -132,54 +132,9 @@ bool XTManager::Initialize(){
     return true;
 }
 
-// TODO: better to make status as return value and the to-be-calculated number (x) as an input reference. Same task goes with RandomDriftT
+// TODO: better to make status as return value and the to-be-calculated number (x) as an input reference. Same task goes with x2t and RandomDriftT
 double XTManager::t2x(double time, int lid, int wid, double lr, int & status){ // 1: right; 2: right end; -1: left; -2: left end; 0 out of range
-    TF1* f=0;
-    // FIXME: consider to use left/right case and folded case
-    if (xtType == kSingleFolded){
-        if (lr>=0) f = fXTRightDefault;
-        else       f = fXTLeftDefault;
-    }
-    else if (xtType == kSingleLeftRight){
-        if (lr>=0) f = fXTRightDefault;
-        else       f = fXTLeftDefault;
-    }
-    else if (xtType == kEvenOddFolded){
-        if (lid%2==0){
-            if (lr>=0) f = fXTRightEven;
-            else       f = fXTLeftEven;
-        }
-        else{
-            if (lr>=0) f = fXTRightOdd;
-            else       f = fXTLeftOdd;
-        }
-    }
-    else if (xtType == kEvenOddLeftRight){
-        if (lid%2==0){
-            if (lr>=0) f = fXTRightEven;
-            else       f = fXTLeftEven;
-        }
-        else{
-            if (lr>=0) f = fXTRightOdd;
-            else       f = fXTLeftOdd;
-        }
-    }
-    else if (xtType == kAllFolded){
-        if (lr>=0){
-            f = fXTRight[lid];
-        }
-        else {
-            f = fXTLeft[lid];
-        }
-    }
-    else if (xtType == kAllLeftRight){
-        if (lr>=0){
-            f = fXTRight[lid];
-        }
-        else {
-            f = fXTLeft[lid];
-        }
-    }
+    TF1* f = choseFunction(lid,wid,lr);
     if (!f){
         MyError("Cannot get XT curve for layer "<<lid<<"!\n");
         status = -2;
@@ -202,6 +157,16 @@ double XTManager::t2x(double time, int lid, int wid, double lr, int & status){ /
         dd = f->Eval(time);
     }
     return dd;
+}
+
+double XTManager::x2t(double doca, int lid, int wid){
+    TF1* f = choseFunction(lid,wid,doca);
+    if (!f){
+        MyError("Cannot get XT curve for layer "<<lid<<"!\n");
+        return 0;
+    }
+    double dt = f->GetX(doca);
+    return dt;
 }
 
 double XTManager::RandomDriftT(double doca, int lid, int wid){
@@ -280,4 +245,54 @@ bool XTManager::PrintXTfunc(const TF1 * fl, const TF1 * fr){
     xminr = fr->Eval(tminr);
     printf("Left %s (%.1f ns, %.2f mm)~(%.1f ns, %.2f mm), Right %s (%.1f ns, %.2f mm)~(%.1f ns, %.2f mm)\n",fl->GetName(),tmaxl,xmaxl,tminl,xminl,fr->GetName(),tminr,xminr,tmaxr,xmaxr);
     return true;
+}
+
+TF1 * XTManager::choseFunction(int lid, int wid, double lr){
+    TF1 * f = NULL;
+    // FIXME: consider to use left/right case and folded case
+    if (xtType == kSingleFolded){
+        if (lr>=0) f = fXTRightDefault;
+        else       f = fXTLeftDefault;
+    }
+    else if (xtType == kSingleLeftRight){
+        if (lr>=0) f = fXTRightDefault;
+        else       f = fXTLeftDefault;
+    }
+    else if (xtType == kEvenOddFolded){
+        if (lid%2==0){
+            if (lr>=0) f = fXTRightEven;
+            else       f = fXTLeftEven;
+        }
+        else{
+            if (lr>=0) f = fXTRightOdd;
+            else       f = fXTLeftOdd;
+        }
+    }
+    else if (xtType == kEvenOddLeftRight){
+        if (lid%2==0){
+            if (lr>=0) f = fXTRightEven;
+            else       f = fXTLeftEven;
+        }
+        else{
+            if (lr>=0) f = fXTRightOdd;
+            else       f = fXTLeftOdd;
+        }
+    }
+    else if (xtType == kAllFolded){
+        if (lr>=0){
+            f = fXTRight[lid];
+        }
+        else {
+            f = fXTLeft[lid];
+        }
+    }
+    else if (xtType == kAllLeftRight){
+        if (lr>=0){
+            f = fXTRight[lid];
+        }
+        else {
+            f = fXTLeft[lid];
+        }
+    }
+    return f;
 }

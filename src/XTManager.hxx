@@ -36,6 +36,7 @@ public:
 
     bool Initialize();
     double t2x(double time, int lid, int wid, double lr, int & status);
+    double x2t(double doca, int lid, int wid);
     double RandomDriftT(double doca, int lid, int wid);
     double GetError(double dd);
     bool SetInputFileXT(TString file);
@@ -46,6 +47,8 @@ public:
     int xtType;
 
 private:
+    TF1 * choseFunction(int lid, int wid, double lr);
+
     /// The static pointer to the singleton instance.
     static XTManager* fXTManager;
 

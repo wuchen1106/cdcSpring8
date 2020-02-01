@@ -72,7 +72,7 @@ public:
     bool IsPeakFileReady(void);
     bool IsHitFileReady(void);
     bool IsTrackFileReady(void);
-    void PushHitMC(int lid, int wid, double driftT, double doca);
+    void PushHitMC(int lid, int wid, double driftT, double driftD, double doca);
 
     /// flags about which to read and which to write
     bool                  readRawFile;

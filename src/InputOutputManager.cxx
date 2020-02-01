@@ -125,8 +125,10 @@ bool InputOutputManager::Initialize(bool withTrivialBranches){
         fInputHitChain->SetBranchAddress("triggerNumber",&triggerNumber);
         fInputHitChain->SetBranchAddress("nHits",&nHits);
         fInputHitChain->SetBranchAddress("driftT",&DriftT);
-        if (inputHitType==kMCDriftD||inputHitType==kMCDriftT) fInputHitChain->SetBranchAddress("DOCA",&DOCA);
-        if (inputHitType==kMCDriftD) fInputHitChain->SetBranchAddress("driftD",&DriftDmc);
+        if (inputHitType!=kData){
+            fInputHitChain->SetBranchAddress("DOCA",&DOCA);
+            fInputHitChain->SetBranchAddress("driftD",&DriftDmc);
+        }
         fInputHitChain->SetBranchAddress("layerID",&LayerID);
         fInputHitChain->SetBranchAddress("wireID",&CellID);
         //fInputHitChain->SetBranchAddress("type",&type); // 0 center, 1 left, 2 right, 3 guard, 4 dummy
@@ -142,7 +144,7 @@ bool InputOutputManager::Initialize(bool withTrivialBranches){
         fInputHitChain->SetBranchAddress("mpn",&nPeaksInPacket);
         fInputHitChain->SetBranchAddress("mpi",&iPeakInPacket);
         fInputHitChain->SetBranchAddress("clk",&TDCClock);
-        if (inputHitType==kMCDriftD||inputHitType==kMCDriftT){
+        if (inputHitType!=kData){
             fInputHitChain->SetBranchAddress("inxmc",&interceptXmc);
             fInputHitChain->SetBranchAddress("inzmc",&interceptZmc);
             fInputHitChain->SetBranchAddress("slxmc",&slopeXmc);
@@ -211,8 +213,10 @@ bool InputOutputManager::Initialize(bool withTrivialBranches){
         fOutputHitTree->Branch("triggerNumber",&triggerNumber);
         fOutputHitTree->Branch("nHits",&nHits);
         fOutputHitTree->Branch("driftT",&DriftT);
-        if (inputHitType==kMCDriftD||inputHitType==kMCDriftT) fOutputHitTree->Branch("DOCA",&DOCA);
-        if (inputHitType==kMCDriftD) fOutputHitTree->Branch("driftD",&DriftDmc);
+        if (inputHitType!=kData){
+            fOutputHitTree->Branch("DOCA",&DOCA);
+            fOutputHitTree->Branch("driftD",&DriftDmc);
+        }
         fOutputHitTree->Branch("layerID",&LayerID);
         fOutputHitTree->Branch("wireID",&CellID);
         //fOutputHitTree->Branch("type",&type); // 0 center, 1 left, 2 right, 3 guard, 4 dummy
@@ -228,7 +232,7 @@ bool InputOutputManager::Initialize(bool withTrivialBranches){
         fOutputHitTree->Branch("mpn",&nPeaksInPacket);
         fOutputHitTree->Branch("mpi",&iPeakInPacket);
         fOutputHitTree->Branch("clk",&TDCClock);
-        if (inputHitType==kMCDriftD||inputHitType==kMCDriftT){
+        if (inputHitType!=kData){
             fOutputHitTree->Branch("inxmc",&interceptXmc);
             fOutputHitTree->Branch("inzmc",&interceptZmc);
             fOutputHitTree->Branch("slxmc",&slopeXmc);
@@ -490,14 +494,14 @@ bool InputOutputManager::SetTrack(int iFound, const Track3D * track3D, const Tra
     return true;
 }
 
-void InputOutputManager::PushHitMC(int lid, int wid, double driftT, double doca){
+void InputOutputManager::PushHitMC(int lid, int wid, double driftT, double driftD, double doca){
     // TODO: currently this is for kMCDriftT; Add support for kMCDriftD
     int status;
     LayerID->push_back(lid);
     CellID->push_back(wid);
     TDCClock->push_back(0);
     DriftT->push_back(driftT);
-    DriftDmc->push_back(XTManager::Get().t2x(lid,wid,driftT,doca,status)); // For MC input
+    DriftDmc->push_back(driftD);
     DOCA->push_back(doca); // For MC input
     Pedestal->push_back(0);
     ADCheight->push_back(0);

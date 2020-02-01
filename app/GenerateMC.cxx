@@ -14,6 +14,7 @@
 #include "TLatex.h"
 #include "TStyle.h"
 #include "TGaxis.h"
+#include "TRandom.h"
 
 #include "MyProcessManager.hxx"
 #include "Log.hxx"
@@ -41,6 +42,13 @@ void getRunTimeParameters(TString configureFile);
 
 MyProcessManager * pMyProcessManager;
 
+enum SmearType{
+    kSpace,
+    kSpaceUniform,
+    kTime,
+    kTimeUniform
+} m_smearType;
+
 int main(int argc, char** argv){
     TString HOME=getenv("CDCS8WORKING_DIR");;
     int m_runNo = 0;
@@ -54,11 +62,17 @@ int main(int argc, char** argv){
     bool m_memdebug = false;
     bool m_DrawDetails = false;
     bool m_SeparateWires = false;
+    double m_spatialResolution = 0.2; // by default use 200 um
+    double m_timeResolution = 1; // by default use 1 ns
     TString m_wireAdjustmentFile = "";
 
     // Load options
     int    opt_result;
-    while((opt_result=getopt(argc,argv,"A:B:C:D:E:HL:MN:P:R:V:Wh"))!=-1){
+    std::size_t opt_pos;
+    std::string opt_name;
+    std::string opt_arg;
+    std::string opt_value = "";
+    while((opt_result=getopt(argc,argv,"A:B:C:D:E:HL:MN:P:R:V:Wr:h"))!=-1){
         switch(opt_result){
             /* INPUTS */
             case 'M':
@@ -100,6 +114,33 @@ int main(int argc, char** argv){
             case 'A':
                 m_wireAdjustmentFile = optarg;
                 printf("Using wire adjustment file \"%s\"\n",optarg);
+                break;
+            case 'r':
+                opt_arg = optarg;
+                opt_name = opt_arg;
+                opt_pos = opt_arg.find("=");
+                if (opt_pos != std::string::npos){
+                    opt_name = opt_arg.substr(0,opt_pos);
+                    opt_value = opt_arg.substr(opt_pos+1);
+                }
+                if (opt_name=="space"){
+                    m_smearType = kSpace;
+                    if (opt_value!=""){
+                        m_smearType = kSpaceUniform;
+                        m_spatialResolution = atof(opt_value.c_str());
+                    }
+                }
+                else{
+                    m_smearType = kTime;
+                    if (opt_value!=""){
+                        m_smearType = kTimeUniform;
+                        m_timeResolution = atof(opt_value.c_str());
+                    }
+                }
+                printf("Smearing on %s with %s\n",
+                        (m_smearType==kSpace||m_smearType==kSpaceUniform?"space":"time"),
+                        (m_smearType==kSpace||m_smearType==kTime?"given input XT file":(m_smearType==kSpaceUniform?Form("%.2f mm Gaussian",m_spatialResolution):Form("%.1f ns Gaussian",m_timeResolution)))
+                        );
                 break;
             case 'D':
                     if (!Log::ConfigureD(optarg)) print_usage(argv[0]);
@@ -251,8 +292,27 @@ int main(int argc, char** argv){
                     }
                 }
                 if (theWid>=0&&fabs(minDOCA)<GeometryManager::Get().GetChamber()->cellWidth/2){
-                    double driftT = XTManager::Get().RandomDriftT(minDOCA,lid,theWid);
-                    InputOutputManager::Get().PushHitMC(lid,theWid,driftT,minDOCA);
+                    double driftT, driftD;
+                    int status;
+                    if (m_smearType==kTime||m_smearType==kTimeUniform){
+                        if (m_smearType==kTime){
+                            driftT = XTManager::Get().RandomDriftT(minDOCA,lid,theWid);
+                        }
+                        else{
+                            driftT = XTManager::Get().x2t(minDOCA,lid,theWid);
+                            driftT += gRandom->Gaus(0,m_timeResolution);
+                        }
+                        driftD = XTManager::Get().t2x(driftT,lid,theWid,minDOCA,status);
+                    }
+                    else if (m_smearType==kSpace||m_smearType==kSpaceUniform){
+                        double err = m_spatialResolution;
+                        if (m_smearType==kSpace){
+                            err = XTManager::Get().GetError(minDOCA);
+                        }
+                        driftD = minDOCA+gRandom->Gaus(0,err);
+                        driftT = XTManager::Get().x2t(minDOCA,lid,theWid);
+                    }
+                    InputOutputManager::Get().PushHitMC(lid,theWid,driftT,driftD,minDOCA);
                 }
             }
             N_good++;
