@@ -207,33 +207,34 @@ int main(int argc, char** argv){
     //----------------------------------Prepare tree--------------------------------------------
     TFile * ofile = new TFile(Form("root/ana/ana.%d.%s.layer%d.root",m_runNo,m_runName.Data(),m_testLayer),"RECREATE");
     TTree * otree = new TTree("t","t");
-    int    o_nHits[3];
-    int    o_nHitsG[3];
-    int    o_nHitsS[3];
-    double o_inx[3];
-    double o_inz[3];
-    double o_slx[3];
-    double o_slz[3];
+    int    o_nHits;
+    int    o_nHitsG;
+    int    o_nHitsS;
+    double o_inx;
+    double o_inz;
+    double o_slx;
+    double o_slz;
+    double o_t0Offset;
     double o_inxmc;
     double o_inzmc;
     double o_slxmc;
     double o_slzmc;
     double o_t0mc;
-    double o_chi2[3];
-    double o_chi2a[3];
-    double o_chi2w[3];
-    double o_pValue[3];
-    bool   o_isGood[3];
-    int    o_wid[3][9];
-    double o_driftD[3][9];
-    double o_driftT[3][9];
-    double o_DOCA[3][9];
-    double o_DOCAmc[3][9];
-    int    o_ipeak[3][9];
-    double o_ADCheight[3][9];
-    double o_ADCsumPkt[3][9];
-    double o_ADCsumAll[3][9];
-    bool   o_foundTestLayerHit[3];
+    double o_chi2;
+    double o_chi2a;
+    double o_chi2w;
+    double o_pValue;
+    bool   o_isGood;
+    int    o_wid[NLAY];
+    double o_driftD[NLAY];
+    double o_driftT[NLAY];
+    double o_DOCA[NLAY];
+    double o_DOCAmc[NLAY];
+    int    o_ipeak[NLAY];
+    double o_ADCheight[NLAY];
+    double o_ADCsumPkt[NLAY];
+    double o_ADCsumAll[NLAY];
+    bool   o_foundTestLayerHit;
     if (m_isMC){
         otree->Branch("inxmc",&o_inxmc);
         otree->Branch("inzmc",&o_inzmc);
@@ -241,36 +242,35 @@ int main(int argc, char** argv){
         otree->Branch("slzmc",&o_slzmc);
         otree->Branch("t0mc",&o_t0mc);
     }
-    for (int iCand = 0; iCand<3; iCand++){
-        for (int i = 1; i<9; i++){
-            otree->Branch(Form("w%d%d",i,iCand),&o_wid[iCand][i]);
-            otree->Branch(Form("D%d%d",i,iCand),&o_DOCA[iCand][i]);
-            otree->Branch(Form("d%d%d",i,iCand),&o_driftD[iCand][i]);
-            otree->Branch(Form("t%d%d",i,iCand),&o_driftT[iCand][i]);
-            if (m_isMC){
-                otree->Branch(Form("Dmc%d%d",i,iCand),&o_DOCAmc[iCand][i]);
-            }
-            else{
-                otree->Branch(Form("i%d%d",i,iCand),&o_ipeak[iCand][i]);
-                otree->Branch(Form("height%d%d",i,iCand),&o_ADCheight[iCand][i]);
-                otree->Branch(Form("sum%d%d",i,iCand),&o_ADCsumPkt[iCand][i]);
-                otree->Branch(Form("all%d%d",i,iCand),&o_ADCsumAll[iCand][i]);
-            }
+    for (int i = 1; i<NLAY; i++){
+        otree->Branch(Form("w%d",i),&o_wid[i]);
+        otree->Branch(Form("D%d",i),&o_DOCA[i]);
+        otree->Branch(Form("d%d",i),&o_driftD[i]);
+        otree->Branch(Form("t%d",i),&o_driftT[i]);
+        if (m_isMC){
+            otree->Branch(Form("Dmc%d",i),&o_DOCAmc[i]);
         }
-        otree->Branch(Form("nHits%d",iCand),o_nHits+iCand);
-        otree->Branch(Form("nHitsG%d",iCand),o_nHitsG+iCand);
-        otree->Branch(Form("nHitsS%d",iCand),o_nHitsS+iCand);
-        otree->Branch(Form("inx%d",iCand),o_inx+iCand);
-        otree->Branch(Form("inz%d",iCand),o_inz+iCand);
-        otree->Branch(Form("slx%d",iCand),o_slx+iCand);
-        otree->Branch(Form("slz%d",iCand),o_slz+iCand);
-        otree->Branch(Form("chi2%d",iCand),o_chi2+iCand);
-        otree->Branch(Form("chi2a%d",iCand),o_chi2a+iCand);
-        otree->Branch(Form("chi2w%d",iCand),o_chi2w+iCand);
-        otree->Branch(Form("pValue%d",iCand),o_pValue+iCand);
-        otree->Branch(Form("isGood%d",iCand),o_isGood+iCand);
-        otree->Branch(Form("found%d",iCand),o_foundTestLayerHit+iCand);
+        else{
+            otree->Branch(Form("i%d",i),&o_ipeak[i]);
+            otree->Branch(Form("height%d",i),&o_ADCheight[i]);
+            otree->Branch(Form("sum%d",i),&o_ADCsumPkt[i]);
+            otree->Branch(Form("all%d",i),&o_ADCsumAll[i]);
+        }
     }
+    otree->Branch(Form("nHits"),&o_nHits);
+    otree->Branch(Form("nHitsG"),&o_nHitsG);
+    otree->Branch(Form("nHitsS"),&o_nHitsS);
+    otree->Branch(Form("inx"),&o_inx);
+    otree->Branch(Form("inz"),&o_inz);
+    otree->Branch(Form("slx"),&o_slx);
+    otree->Branch(Form("slz"),&o_slz);
+    otree->Branch(Form("t0Offset"),&o_t0Offset);
+    otree->Branch(Form("chi2"),&o_chi2);
+    otree->Branch(Form("chi2a"),&o_chi2a);
+    otree->Branch(Form("chi2w"),&o_chi2w);
+    otree->Branch(Form("pValue"),&o_pValue);
+    otree->Branch(Form("isGood"),&o_isGood);
+    otree->Branch(Form("found"),&o_foundTestLayerHit);
     
     //----------------------------------Prepare histograms--------------------------------------------
     // Prepare histograms for hit map
@@ -279,7 +279,7 @@ int main(int argc, char** argv){
     h_hitmap->GetXaxis()->SetLabelOffset(10);
     // Prepare histograms for ADC & drift time distribution
     std::vector<std::vector<int> > wiresToConsider;
-    for (int i = 0; i<9; i++){
+    for (int i = 0; i<NLAY; i++){
         std::vector<int> wires;
         wiresToConsider.push_back(wires);
     }
@@ -292,21 +292,21 @@ int main(int argc, char** argv){
     wiresToConsider[lidTemp].push_back(4);wiresToConsider[lidTemp].push_back(5);lidTemp++; // layer 6
     wiresToConsider[lidTemp].push_back(5);wiresToConsider[lidTemp].push_back(6);lidTemp++; // layer 7
     wiresToConsider[lidTemp].push_back(4);wiresToConsider[lidTemp].push_back(5);lidTemp++; // layer 8
-    TH1D * h_DriftT_all[9][11];
-    TH1D * h_DriftT_sig[9][11];
-    TH1D * h_DriftT_bkg[9][11];
-    TH1D * h_ADCsumPkt_all[9][11];
-    TH1D * h_ADCsumPkt_sig[9][11];
-    TH1D * h_ADCsumPkt_bkg[9][11];
-    TH1D * h_ADCsumAll_all[9][11];
-    TH1D * h_ADCsumAll_sig[9][11];
-    TH1D * h_ADCsumAll_bkg[9][11];
-    TH2D * h_AVT_sig[9][11];
-    TH2D * h_AVT_siglate[9][11];
-    TH2D * h_AVT_bkg[9][11];
-    TH2D * h_SVT_sig[9][11];
-    TH2D * h_SVT_siglate[9][11];
-    TH2D * h_SVT_bkg[9][11];
+    TH1D * h_DriftT_all[NLAY][NCEL];
+    TH1D * h_DriftT_sig[NLAY][NCEL];
+    TH1D * h_DriftT_bkg[NLAY][NCEL];
+    TH1D * h_ADCsumPkt_all[NLAY][NCEL];
+    TH1D * h_ADCsumPkt_sig[NLAY][NCEL];
+    TH1D * h_ADCsumPkt_bkg[NLAY][NCEL];
+    TH1D * h_ADCsumAll_all[NLAY][NCEL];
+    TH1D * h_ADCsumAll_sig[NLAY][NCEL];
+    TH1D * h_ADCsumAll_bkg[NLAY][NCEL];
+    TH2D * h_AVT_sig[NLAY][NCEL];
+    TH2D * h_AVT_siglate[NLAY][NCEL];
+    TH2D * h_AVT_bkg[NLAY][NCEL];
+    TH2D * h_SVT_sig[NLAY][NCEL];
+    TH2D * h_SVT_siglate[NLAY][NCEL];
+    TH2D * h_SVT_bkg[NLAY][NCEL];
 
     for (int lid = 0; lid<=8; lid++){
         for (int wid = 0; wid<=10; wid++){
@@ -380,32 +380,44 @@ int main(int argc, char** argv){
 
         int    nHits = InputOutputManager::Get().nHits;
         int    nHitsG = InputOutputManager::Get().nHitsG;
+        double slx = 0;
+        double inx = 0;
+        double slz = 0;
+        double inz = 0;
+        double t0Offset = 0;
+        double chi2 = 0;
+        double chi2a = 0;
+        double chi2w = 0;
+        double pValue = 0;
+        int    nHitsS = 0;
         bool isGoodEvent = true;
+        bool foundTestLayerHit = false;
         // should have result
-        if (!nHitsGMax&&InputOutputManager::Get().nCandidatesFound) isGoodEvent = false;
-        // nHits cut
-        if (nHits_max&&nHits>nHits_max) isGoodEvent = false;
-        // decide which candidate to use
-        int cur_nHitsS = 7;
-        for (int iCand = 0; iCand<3; iCand++){
-            int theCand = -1;
-            o_isGood[iCand] = false;
-            for (;cur_nHitsS>=5;cur_nHitsS--){
-                theCand = GetCandidate("Original",cur_nHitsS);
-                if (theCand>=0) break;
+        if (!nHitsGMax&&InputOutputManager::Get().nCandidatesFound){
+            isGoodEvent = false;
+        }
+        else{
+            // decide which candidate to use
+            int theCand = GetCandidate(ParameterManager::Get().XTAnalyzerParameters.CandSelBy);
+            if (theCand<0){
+                MyError("Cannot find a candidate for this event! nCandidatesFound = "<<InputOutputManager::Get().nCandidatesFound);
+                MyError("This will cause a mis match of entries among different files, thus we will stop this run.");
+                return -1;
             }
-            MyNamedInfo("Analyze","    => iCand = "<<iCand<<", theCand = "<<theCand);
-            if (theCand<0) break;
-            double slx = InputOutputManager::Get().slopeX[theCand];
-            double inx = InputOutputManager::Get().interceptX[theCand];
-            double slz = InputOutputManager::Get().slopeZ[theCand];
-            double inz = InputOutputManager::Get().interceptZ[theCand];
-            double chi2 = InputOutputManager::Get().chi2[theCand];
-            double chi2a = InputOutputManager::Get().chi2a[theCand];
-            double chi2w = InputOutputManager::Get().chi2WithTestLayer[theCand];
-            double pValue = InputOutputManager::Get().pValue[theCand];
-            int    nHitsS = InputOutputManager::Get().nHitsS[theCand];
+            MyNamedInfo("Analyze","    => theCand = "<<theCand);
+            slx = InputOutputManager::Get().slopeX[theCand];
+            inx = InputOutputManager::Get().interceptX[theCand];
+            slz = InputOutputManager::Get().slopeZ[theCand];
+            inz = InputOutputManager::Get().interceptZ[theCand];
+            t0Offset = InputOutputManager::Get().t0Offset[theCand];
+            chi2 = InputOutputManager::Get().chi2[theCand];
+            chi2a = InputOutputManager::Get().chi2a[theCand];
+            chi2w = InputOutputManager::Get().chi2WithTestLayer[theCand];
+            pValue = InputOutputManager::Get().pValue[theCand];
+            nHitsS = InputOutputManager::Get().nHitsS[theCand];
 
+            // nHits cut
+            if (nHits_max&&nHits>nHits_max) isGoodEvent = false;
             // ignore events with bad fitting
             if (nHitsS<nHitsS_min) isGoodEvent = false;
             if (chi2_max&&chi2>chi2_max) isGoodEvent = false;
@@ -419,15 +431,15 @@ int main(int argc, char** argv){
 
             // reset o_wid
             for (int lid = 0; lid<NLAY; lid++){
-                o_wid[iCand][lid] = -1;
+                o_wid[lid] = -1;
             }
 
             MyNamedVerbose("Analyze","  Good Event! Looping in "<<nHits<<" hits");
             for (int i = 0; i<50; i++){
                 nGoodPeaks[i] = 0;
             }
+            foundTestLayerHit = false;
             double residualMinimal = 1e9;
-            bool   foundTestLayerHit = false;
             for (int iHit = 0; iHit<nHits; iHit++){
                 int layerID = InputOutputManager::Get().LayerID->at(iHit);
                 if (layerID==0){continue;} // don't include the guard layer
@@ -464,33 +476,33 @@ int main(int argc, char** argv){
                         double residual = DriftD-DOCA;
                         if (fabs(residual)<fabs(residualMinimal)){
                             residualMinimal = residual;
-                            o_wid[iCand][layerID] = wireID;
-                            o_DOCA[iCand][layerID] = DOCA;
+                            o_wid[layerID] = wireID;
+                            o_DOCA[layerID] = DOCA;
                             if (m_isMC){
-                                o_DOCAmc[iCand][layerID] = DOCAmc;
+                                o_DOCAmc[layerID] = DOCAmc;
                             }
-                            o_driftD[iCand][layerID] = DriftD;
-                            o_driftT[iCand][layerID] = DriftT;
-                            o_ipeak[iCand][layerID] = iPeak;
-                            o_ADCheight[iCand][layerID] = ADCheight;
-                            o_ADCsumPkt[iCand][layerID] = ADCsumPkt;
-                            o_ADCsumAll[iCand][layerID] = ADCsumAll;
+                            o_driftD[layerID] = DriftD;
+                            o_driftT[layerID] = DriftT;
+                            o_ipeak[layerID] = iPeak;
+                            o_ADCheight[layerID] = ADCheight;
+                            o_ADCsumPkt[layerID] = ADCsumPkt;
+                            o_ADCsumAll[layerID] = ADCsumAll;
                         }
                     }
                 }
                 else{
                     if (iHit == InputOutputManager::Get().hitIndexSelected[layerID][theCand]){ // this is the signal hit
-                        o_wid[iCand][layerID] = wireID;
-                        o_DOCA[iCand][layerID] = DOCA;
+                        o_wid[layerID] = wireID;
+                        o_DOCA[layerID] = DOCA;
                         if (m_isMC){
-                            o_DOCAmc[iCand][layerID] = DOCAmc;
+                            o_DOCAmc[layerID] = DOCAmc;
                         }
-                        o_driftD[iCand][layerID] = DriftD;
-                        o_driftT[iCand][layerID] = DriftT;
-                        o_ipeak[iCand][layerID] = iPeak;
-                        o_ADCheight[iCand][layerID] = ADCheight;
-                        o_ADCsumPkt[iCand][layerID] = ADCsumPkt;
-                        o_ADCsumAll[iCand][layerID] = ADCsumAll;
+                        o_driftD[layerID] = DriftD;
+                        o_driftT[layerID] = DriftT;
+                        o_ipeak[layerID] = iPeak;
+                        o_ADCheight[layerID] = ADCheight;
+                        o_ADCsumPkt[layerID] = ADCsumPkt;
+                        o_ADCsumAll[layerID] = ADCsumAll;
                     }
                     else{ // this is the noise hit
                         h_DriftT_bkg[layerID][wireID]->Fill(DriftT);
@@ -506,60 +518,62 @@ int main(int argc, char** argv){
             for (int i = 0; i<50; i++){
                 h_nGoodHits->Fill(i,nGoodPeaks[i]);
             }
+        }
 
-            if (isGoodEvent&&iCand==0){
-                for (int lid = 1; lid<=8; lid++){ // fill histograms related with signal hits
-                    if (lid==m_testLayer&&(!foundTestLayerHit)){ continue; }
-                    int wid = o_wid[iCand][lid];
-                    if (wid==-1) continue;
-                    double cellCoordinate = -wid+0.5+o_DOCA[iCand][lid]/GeometryManager::Get().fChamber->cellWidth;
-                    h_hitmap->Fill(cellCoordinate,lid);
-                    h_DriftT_sig[lid][wid]->Fill(o_driftT[iCand][lid]);
-                    h_ADCsumPkt_sig[lid][wid]->Fill(o_ADCsumPkt[iCand][lid]);
-                    h_AVT_sig[lid][wid]->Fill(o_driftT[iCand][lid],o_ADCsumAll[iCand][lid]);
-                    h_SVT_sig[lid][wid]->Fill(o_driftT[iCand][lid],o_ADCsumPkt[iCand][lid]);
-                    if (o_ipeak[iCand][lid]>0) {
-                        h_AVT_siglate[lid][wid]->Fill(o_driftT[iCand][lid],o_ADCsumAll[iCand][lid]);
-                        h_SVT_siglate[lid][wid]->Fill(o_driftT[iCand][lid],o_ADCsumPkt[iCand][lid]);
-                    }
-                    h_ADCsumAll_sig[lid][wid]->Fill(o_ADCsumAll[iCand][lid]);
+        if (isGoodEvent){
+            for (int lid = 1; lid<=8; lid++){ // fill histograms related with signal hits
+                if (lid==m_testLayer&&(!foundTestLayerHit)){ continue; }
+                int wid = o_wid[lid];
+                if (wid==-1) continue;
+                double cellCoordinate = -wid+0.5+o_DOCA[lid]/GeometryManager::Get().fChamber->cellWidth;
+                h_hitmap->Fill(cellCoordinate,lid);
+                h_DriftT_sig[lid][wid]->Fill(o_driftT[lid]);
+                h_ADCsumPkt_sig[lid][wid]->Fill(o_ADCsumPkt[lid]);
+                h_AVT_sig[lid][wid]->Fill(o_driftT[lid],o_ADCsumAll[lid]);
+                h_SVT_sig[lid][wid]->Fill(o_driftT[lid],o_ADCsumPkt[lid]);
+                if (o_ipeak[lid]>0) {
+                    h_AVT_siglate[lid][wid]->Fill(o_driftT[lid],o_ADCsumAll[lid]);
+                    h_SVT_siglate[lid][wid]->Fill(o_driftT[lid],o_ADCsumPkt[lid]);
                 }
-                for (int iHit = 0; iHit<nHits; iHit++){ // add noise hits of the test layer
-                    int layerID = InputOutputManager::Get().LayerID->at(iHit);
-                    int wireID = InputOutputManager::Get().CellID->at(iHit);
-                    int iPeak = InputOutputManager::Get().iPeakInChannel->at(iHit);
-                    if (layerID!=m_testLayer||(wireID==o_wid[iCand][layerID]&&iPeak==o_ipeak[iCand][layerID])){continue;} // only test layer, only hits not picked as signal
-                    double DOCA = GeometryManager::Get().GetDOCA(layerID,wireID,slx,inx,slz,inz);
-                    double DriftT = InputOutputManager::Get().DriftT->at(iHit);
-                    int status;
-                    double DriftD = XTManager::Get().t2x(DriftT,layerID,wireID,DOCA,status);
-                    double ADCheight = InputOutputManager::Get().ADCheight->at(iHit);
-                    double ADCsumPkt = InputOutputManager::Get().ADCsumPacket->at(iHit);
-                    double ADCsumAll = InputOutputManager::Get().ADCsumAll->at(iHit);
-                    h_DriftT_bkg[layerID][wireID]->Fill(DriftT);
-                    h_ADCsumPkt_bkg[layerID][wireID]->Fill(ADCsumPkt);
-                    h_AVT_bkg[layerID][wireID]->Fill(DriftT,ADCsumAll);
-                    h_SVT_bkg[layerID][wireID]->Fill(DriftT,ADCsumPkt);
-                    if (iPeak==0){
-                        h_ADCsumAll_bkg[layerID][wireID]->Fill(ADCsumAll);
-                    }
+                h_ADCsumAll_sig[lid][wid]->Fill(o_ADCsumAll[lid]);
+            }
+            for (int iHit = 0; iHit<nHits; iHit++){ // add noise hits of the test layer
+                int layerID = InputOutputManager::Get().LayerID->at(iHit);
+                int wireID = InputOutputManager::Get().CellID->at(iHit);
+                int iPeak = InputOutputManager::Get().iPeakInChannel->at(iHit);
+                if (layerID!=m_testLayer||(wireID==o_wid[layerID]&&iPeak==o_ipeak[layerID])){continue;} // only test layer, only hits not picked as signal
+                double DOCA = GeometryManager::Get().GetDOCA(layerID,wireID,slx,inx,slz,inz);
+                double DriftT = InputOutputManager::Get().DriftT->at(iHit);
+                int status;
+                double DriftD = XTManager::Get().t2x(DriftT,layerID,wireID,DOCA,status);
+                double ADCheight = InputOutputManager::Get().ADCheight->at(iHit);
+                double ADCsumPkt = InputOutputManager::Get().ADCsumPacket->at(iHit);
+                double ADCsumAll = InputOutputManager::Get().ADCsumAll->at(iHit);
+                h_DriftT_bkg[layerID][wireID]->Fill(DriftT);
+                h_ADCsumPkt_bkg[layerID][wireID]->Fill(ADCsumPkt);
+                h_AVT_bkg[layerID][wireID]->Fill(DriftT,ADCsumAll);
+                h_SVT_bkg[layerID][wireID]->Fill(DriftT,ADCsumPkt);
+                if (iPeak==0){
+                    h_ADCsumAll_bkg[layerID][wireID]->Fill(ADCsumAll);
                 }
             }
-
-            o_isGood[iCand] = isGoodEvent;
-            o_nHits[iCand] = nHits;
-            o_nHitsG[iCand] = nHitsG;
-            o_nHitsS[iCand] = nHitsS;
-            o_inx[iCand] = inx;
-            o_inz[iCand] = inz;
-            o_slx[iCand] = slx;
-            o_slz[iCand] = slz;
-            o_chi2[iCand] = chi2;
-            o_chi2a[iCand] = chi2a;
-            o_chi2w[iCand] = chi2w;
-            o_pValue[iCand] = pValue;
-            o_foundTestLayerHit[iCand] = foundTestLayerHit;
         }
+
+        o_isGood = isGoodEvent;
+        o_nHits = nHits;
+        o_nHitsG = nHitsG;
+        o_nHitsS = nHitsS;
+        o_inx = inx;
+        o_inz = inz;
+        o_slx = slx;
+        o_slz = slz;
+        o_t0Offset = t0Offset;
+        o_chi2 = chi2;
+        o_chi2a = chi2a;
+        o_chi2w = chi2w;
+        o_pValue = pValue;
+        o_foundTestLayerHit = foundTestLayerHit;
+
         if (m_isMC){
             o_inxmc = InputOutputManager::Get().interceptXmc;
             o_inzmc = InputOutputManager::Get().interceptZmc;
