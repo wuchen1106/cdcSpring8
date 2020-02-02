@@ -20,6 +20,7 @@ InputOutputManager::InputOutputManager():
     writeHitFile(false),
     writeTrackFile(false),
     writeAnaFile(false),
+    suffixHitFile(""),
     fCurrentEntry(0),
     triggerNumber(0),
     nHits(0),
@@ -118,10 +119,7 @@ bool InputOutputManager::Initialize(bool withTrivialBranches){
     if (readHitFile){
         if (fInputHitChain) delete fInputHitChain;
         fInputHitChain = new TChain("t","t");
-        if (inputHitType==kData)
-            fInputHitChain->Add(HOME+Form("/root/hits/h_%d.root",runNo));
-        else
-            fInputHitChain->Add(HOME+Form("/root/hits/h_%d.MC.root",runNo));
+        fInputHitChain->Add(HOME+Form("/root/hits/h_%d%s.root",runNo,suffixHitFile.Data()));
         fInputHitChain->SetBranchAddress("triggerNumber",&triggerNumber);
         fInputHitChain->SetBranchAddress("nHits",&nHits);
         fInputHitChain->SetBranchAddress("driftT",&DriftT);
@@ -205,10 +203,7 @@ bool InputOutputManager::Initialize(bool withTrivialBranches){
         if (fOutputHitTree) delete fOutputHitTree;
         if (fOutputHitFile) fOutputHitFile->Close();
         fInputHitChain = new TChain("t","t");
-        if (inputHitType==kData)
-            fOutputHitFile = new TFile(Form("%s/root/hits/h_%d.root",HOME.Data(),runNo),"RECREATE");
-        else
-            fOutputHitFile = new TFile(Form("%s/root/hits/h_%d.MC.root",HOME.Data(),runNo),"RECREATE");
+        fOutputHitFile = new TFile(Form("%s/root/hits/h_%d%s.root",HOME.Data(),runNo,suffixHitFile.Data()),"RECREATE");
         fOutputHitTree = new TTree("t","t");
         fOutputHitTree->Branch("triggerNumber",&triggerNumber);
         fOutputHitTree->Branch("nHits",&nHits);

@@ -65,17 +65,17 @@ int main(int argc, char** argv){
     bool m_memdebug = false;
     int m_testLayer = 4;
     double m_slxini = 0;
+    TString m_suffixHitFile = "";
     TString m_wireAdjustmentFile = "";
     TString m_xtFile = "";
     bool    m_drawZX = false;
 
     // Load options
     int    opt_result;
-    while((opt_result=getopt(argc,argv,"A:B:C:D:E:L:MN:P:R:V:X:Zm:"))!=-1){
+    while((opt_result=getopt(argc,argv,"A:B:C:D:E:H:L:MN:P:R:V:X:Z"))!=-1){
         switch(opt_result){
             case 'M':
                 m_memdebug = true;
-                Log::ConfigureD("Memory=Debug");
                 printf("Turning on memory debug\n");
                 break;
             case 'P':
@@ -84,31 +84,29 @@ int main(int argc, char** argv){
                 break;
             case 'R':
                 m_runNo = atoi(optarg);
-                printf("Run number set to %d\n",m_runNo);
-                break;
-            case 'B':
-                m_iEntryStart = atoi(optarg);
-                printf("Starting entry index set to %d\n",m_iEntryStart);
-                break;
-            case 'E':
-                m_iEntryStop = atoi(optarg);
-                printf("Stopping entry index set to %d\n",m_iEntryStop);
-                break;
-            case 'N':
-                m_nEntries = atoi(optarg);
-                printf("Number of entries set to %d\n",m_nEntries);
                 break;
             case 'L':
                 m_testLayer = atoi(optarg);
-                printf("Test layer set to %d\n",m_testLayer);
+                break;
+            case 'B':
+                m_iEntryStart = atoi(optarg);
+                break;
+            case 'E':
+                m_iEntryStop = atoi(optarg);
+                break;
+            case 'N':
+                m_nEntries = atoi(optarg);
                 break;
             case 'C':
                 getRunTimeParameters(optarg);
                 printf("Using configure file \"%s\"\n",optarg);
                 break;
+            case 'H':
+                m_suffixHitFile = optarg;
+                printf("Added suffix \"%s\" to the output file\n",optarg);
+                break;
             case 'A':
                 m_wireAdjustmentFile = optarg;
-                printf("Using wire adjustment file \"%s\"\n",optarg);
                 break;
             case 'X':
                 m_xtFile = optarg;
@@ -145,11 +143,13 @@ int main(int argc, char** argv){
     m_slxini = -18.4*M_PI/180;
 
     printf("##############%s##################\n",argv[0]);
-    printf("runNo:              %d\n",m_runNo);
-    printf("test layer:         %d\n",m_testLayer);
-    printf("runName:             %s\n",m_runName.Data());
-    printf("Entries:            %d~%d\n",m_iEntryStart,m_iEntryStop);
-    printf("xt curves:          %s\n",m_xtFile==""?"self":m_xtFile.Data());
+    printf("runNo               = %d\n",m_runNo);
+    printf("input XT File       = %s\n",m_xtFile==""?"self":m_xtFile.Data());
+    printf("runName             = \"%s\"\n",m_runName.Data());
+    printf("Test layer ID       = %d\n",m_testLayer);
+    printf("Start Entry         = %d\n",m_iEntryStart);
+    printf("Stop Entry          = %d\n",m_iEntryStop);
+    printf("Using wire adjustment file \"%s\"\n",m_wireAdjustmentFile.Data());
 
     if (m_memdebug){
         pMyProcessManager = MyProcessManager::GetMyProcessManager();
@@ -180,6 +180,7 @@ int main(int argc, char** argv){
     InputOutputManager::Get().readPeakFile = true;
     InputOutputManager::Get().readHitFile = true;
     InputOutputManager::Get().readTrackFile = true;
+    InputOutputManager::Get().SetHitFileSuffix(m_suffixHitFile); // the output file name will be like h_100SUFFIX.root
     success = InputOutputManager::Get().Initialize(true); // with trivial branches
     if (!success) {MyError("Cannot initialize InputOutputManager"); return 1;}
     bool m_foundRawFile = InputOutputManager::Get().IsRawFileReady();
@@ -1083,39 +1084,6 @@ bool lidwid2cid4dr(int lid, int wid, int & cid){
     //	return false;
 }
 
-void print_usage(char* prog_name){
-    fprintf(stderr,"Usage %s [options] runName\n",prog_name);
-    fprintf(stderr,"[options]\n");
-    fprintf(stderr,"\t -D <name>=[error,severe,warn,debug,trace]\n");
-    fprintf(stderr,"\t\t Change the named debug level\n");
-    fprintf(stderr,"\t -V <name>=[quiet,log,info,verbose]\n");
-    fprintf(stderr,"\t\t Change the named log level\n");
-    fprintf(stderr,"\t -M <n>\n");
-    fprintf(stderr,"\t\t Printing modulo set to n\n");
-    fprintf(stderr,"\t -R <run>\n");
-    fprintf(stderr,"\t\t Run number set to run\n");
-    fprintf(stderr,"\t -B <n>\n");
-    fprintf(stderr,"\t\t Starting entry index set to n\n");
-    fprintf(stderr,"\t -E <n>\n");
-    fprintf(stderr,"\t\t Stopping entry index set to n\n");
-    fprintf(stderr,"\t -L <l>\n");
-    fprintf(stderr,"\t\t Test layer set to l\n");
-    fprintf(stderr,"\t -X <xtfile>\n");
-    fprintf(stderr,"\t\t Instead of searching for the xt file from this run, use the provided one\n");
-    fprintf(stderr,"\t -m <mode>\n");
-    fprintf(stderr,"\t\t Set the workmode\n");
-    fprintf(stderr,"\t\t 0: h_XXX; 1: t_XXX; 2: ana_XXX; 10: h_XXX with zx; 11: t_XXX with zx\n");
-    return;
-}
-
-void getRunTimeParameters(TString configureFile){
-    if (configureFile!=""){
-        ParameterManager::Get().ReadInputFile(configureFile,"",false,false);
-        ParameterManager::Get().LoadParameters(ParameterManager::kTracking);
-        ParameterManager::Get().LoadParameters(ParameterManager::kXTManager);
-    }
-}
-
 bool isGood(int iHit){
     double sumCut = ParameterManager::Get().TrackingParameters.sumCut;
     double aaCut = ParameterManager::Get().TrackingParameters.aaCut;
@@ -1131,4 +1099,41 @@ bool isGood(int iHit){
     if (sum<sumCut) good = false;
     if (driftT<tmin||driftT>tmax) good = false;
     return good;
+}
+
+void print_usage(char* prog_name){
+    fprintf(stderr,"Usage %s [options] runName\n",prog_name);
+    fprintf(stderr,"[options]\n");
+    fprintf(stderr,"\t -D <name>=[error,severe,warn,debug,trace]\n");
+    fprintf(stderr,"\t\t Change the named debug level\n");
+    fprintf(stderr,"\t\t if the given name is \"general\" then set the default debug level\n");
+    fprintf(stderr,"\t -V <name>=[quiet,log,info,verbose]\n");
+    fprintf(stderr,"\t\t Change the named log level\n");
+    fprintf(stderr,"\t\t if the given name is \"general\" then set the default log level\n");
+    fprintf(stderr,"\t -M\n");
+    fprintf(stderr,"\t\t Turning on memory debug mode\n");
+    fprintf(stderr,"\t -C <file>\n");
+    fprintf(stderr,"\t\t Set the configure file\n");
+    fprintf(stderr,"\t -P <n>\n");
+    fprintf(stderr,"\t\t Printing modulo set to n\n");
+    fprintf(stderr,"\t -R <run>\n");
+    fprintf(stderr,"\t\t Run number set to run\n");
+    fprintf(stderr,"\t -L <lid>\n");
+    fprintf(stderr,"\t\t Test layer set to lid\n");
+    fprintf(stderr,"\t -B <n>\n");
+    fprintf(stderr,"\t\t Starting entry index set to n\n");
+    fprintf(stderr,"\t -E <n>\n");
+    fprintf(stderr,"\t\t Stopping entry index set to n\n");
+    fprintf(stderr,"\t -X <xtfile>\n");
+    fprintf(stderr,"\t\t Instead of searching for the xt file from this run, use the provided one\n");
+    fprintf(stderr,"\t -H <suf>\n");
+    fprintf(stderr,"\t\t Add suffix to the hit file, like h_100SUFFIX.root\n");
+}
+
+void getRunTimeParameters(TString configureFile){
+    if (configureFile!=""){
+        ParameterManager::Get().ReadInputFile(configureFile,"",false,false);
+        ParameterManager::Get().LoadParameters(ParameterManager::kTracking);
+        ParameterManager::Get().LoadParameters(ParameterManager::kXTManager);
+    }
 }

@@ -58,15 +58,15 @@ int main(int argc, char** argv){
     int m_nEntries = 0;
     int m_modulo = 10000;
     bool m_memdebug = false;
-    bool m_DrawDetails = false;
     bool m_SeparateWires = false;
+    TString m_suffixHitFile = "";
     TString m_wireAdjustmentFile = "";
 
     // Load options
     int    opt_result;
     std::string opt_name;
     std::size_t opt_pos;
-    while((opt_result=getopt(argc,argv,"A:B:C:D:E:HL:MN:P:R:V:Wh"))!=-1){
+    while((opt_result=getopt(argc,argv,"A:B:C:D:E:H:L:MN:P:R:V:Wh"))!=-1){
         switch(opt_result){
             /* INPUTS */
             case 'M':
@@ -79,46 +79,40 @@ int main(int argc, char** argv){
                 break;
             case 'R':
                 m_runNo = atoi(optarg);
-                printf("Run number set to %d\n",m_runNo);
                 break;
             case 'L':
                 m_testLayer = atoi(optarg);
-                printf("Test layer set to %d\n",m_testLayer);
                 break;
             case 'B':
                 m_iEntryStart = atoi(optarg);
-                printf("Starting entry index set to %d\n",m_iEntryStart);
                 break;
             case 'E':
                 m_iEntryStop = atoi(optarg);
-                printf("Stopping entry index set to %d\n",m_iEntryStop);
                 break;
             case 'N':
                 m_nEntries = atoi(optarg);
-                printf("Number of entries set to %d\n",m_nEntries);
                 break;
             case 'C':
                 getRunTimeParameters(optarg);
                 printf("Using configure file \"%s\"\n",optarg);
                 break;
             case 'H':
-                m_DrawDetails = true;
-                printf("Draw bin-by-bin histogram \n");
+                m_suffixHitFile = optarg;
+                printf("Added suffix \"%s\" to the output file\n",optarg);
                 break;
             case 'A':
                 m_wireAdjustmentFile = optarg;
-                printf("Using wire adjustment file \"%s\"\n",optarg);
                 break;
             case 'D':
-                    if (!Log::ConfigureD(optarg)) print_usage(argv[0]);
-                    break;
+                if (!Log::ConfigureD(optarg)) print_usage(argv[0]);
+                break;
             case 'V':
-                    if (!Log::ConfigureV(optarg)) print_usage(argv[0]);
-                    break;
+                if (!Log::ConfigureV(optarg)) print_usage(argv[0]);
+                break;
             case 'W':
-                    m_SeparateWires = true;
-                    printf("Will separate wires\n");
-                    break;
+                m_SeparateWires = true;
+                printf("Will separate wires\n");
+                break;
             case '?':
                 printf("Wrong option! optopt=%c, optarg=%s\n", optopt, optarg);
             case 'h':
@@ -146,6 +140,7 @@ int main(int argc, char** argv){
     printf("Test layer ID       = %d\n",m_testLayer);
     printf("Start Entry         = %d\n",m_iEntryStart);
     printf("Stop Entry          = %d\n",m_iEntryStop);
+    printf("Using wire adjustment file \"%s\"\n",m_wireAdjustmentFile.Data());
     ParameterManager::Get().Print();
 
     if (m_memdebug){
@@ -172,6 +167,7 @@ int main(int argc, char** argv){
     if (!success) {MyNamedError("Analyze","Cannot initialize XTManager"); return 1;}
     InputOutputManager::Get().readHitFile = true;
     InputOutputManager::Get().readTrackFile = true;
+    InputOutputManager::Get().SetHitFileSuffix(m_suffixHitFile); // the output file name will be like h_100SUFFIX.root
     success = InputOutputManager::Get().Initialize();
     if (!success) {MyNamedError("Analyze","Cannot initialize InputOutputManager"); return 1;}
 
@@ -775,10 +771,12 @@ void print_usage(char * prog_name){
     fprintf(stderr,"\t\t Stopping entry index set to n\n");
     fprintf(stderr,"\t -N <n>\n");
     fprintf(stderr,"\t\t Maximum number of entries set to n\n");
+    fprintf(stderr,"\t -A <file>\n");
+    fprintf(stderr,"\t\t Wire adjustment file set to file\n");
     fprintf(stderr,"\t -W \n");
     fprintf(stderr,"\t\t Seperate wires\n");
-    fprintf(stderr,"\t -H \n");
-    fprintf(stderr,"\t\t Draw bin-by-bin histograms\n");
+    fprintf(stderr,"\t -H <suf>\n");
+    fprintf(stderr,"\t\t Add suffix to the hit file, like h_100SUFFIX.root\n");
 }
 
 void getRunTimeParameters(TString configureFile){

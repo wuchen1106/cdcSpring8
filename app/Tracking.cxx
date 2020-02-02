@@ -64,6 +64,7 @@ int main(int argc, char** argv){
     int m_testLayer = 4;
     int m_resultsToSave = 4;
     bool m_createTrivialBranches = false;
+    TString m_suffixHitFile = "";
     TString m_wireAdjustmentFile = "";
     int m_t0OffsetRange = 0;
     Tracker::SortType m_sortType = Tracker::NDFchi2;
@@ -72,11 +73,10 @@ int main(int argc, char** argv){
 
     // Load options
     int    opt_result;
-    while((opt_result=getopt(argc,argv,"A:B:C:D:E:L:MN:O:P:R:S:TV:ac:hsw"))!=-1){
+    while((opt_result=getopt(argc,argv,"A:B:C:D:E:H:L:MN:O:P:R:S:TV:ac:hsw"))!=-1){
         switch(opt_result){
             case 'M':
                 m_memdebug = true;
-                Log::ConfigureD("Memory=Debug");
                 printf("Turning on memory debug\n");
                 break;
             case 'P':
@@ -85,23 +85,18 @@ int main(int argc, char** argv){
                 break;
             case 'R':
                 m_runNo = atoi(optarg);
-                printf("Run number set to %d\n",m_runNo);
                 break;
             case 'B':
                 m_iEntryStart = atoi(optarg);
-                printf("Starting entry index set to %d\n",m_iEntryStart);
                 break;
             case 'E':
                 m_iEntryStop = atoi(optarg);
-                printf("Stopping entry index set to %d\n",m_iEntryStop);
                 break;
             case 'N':
                 m_nEntries = atoi(optarg);
-                printf("Number of entries set to %d\n",m_nEntries);
                 break;
             case 'L':
                 m_testLayer = atoi(optarg);
-                printf("Test layer set to %d\n",m_testLayer);
                 break;
             case 'C':
                 getRunTimeParameters(optarg);
@@ -109,7 +104,6 @@ int main(int argc, char** argv){
                 break;
             case 'O':
                 m_t0OffsetRange = atoi(optarg);
-                printf("Set to scan t0 offset within -+ %d ns range.\n",m_t0OffsetRange);
                 break;
             case 'S':
                 m_resultsToSave = atoi(optarg);
@@ -119,9 +113,12 @@ int main(int argc, char** argv){
                 m_createTrivialBranches = true;
                 printf("Create trivial branches\n");
                 break;
+            case 'H':
+                m_suffixHitFile = optarg;
+                printf("Added suffix \"%s\" to the output file\n",optarg);
+                break;
             case 'A':
                 m_wireAdjustmentFile = optarg;
-                printf("Using wire adjustment file \"%s\"\n",optarg);
                 break;
             case 'c':
                 m_minChi2Input = atof(optarg);
@@ -166,12 +163,14 @@ int main(int argc, char** argv){
     m_runName= argv[optind++];
 
     printf("##############%s##################\n",argv[0]);
-    printf("runNo       = %d\n",m_runNo);
-    printf("input XT file = \"%s\"\n",m_inputXTFile.Data());
-    printf("runName     = \"%s\"\n",m_runName.Data());
-    printf("test layer  = %d\n",m_testLayer);
-    printf("Start Entry = %d\n",m_iEntryStart);
-    printf("Stop Entry  = %d\n",m_iEntryStop);
+    printf("runNo               = %d\n",m_runNo);
+    printf("input XT File       = \"%s\"\n",m_inputXTFile.Data());
+    printf("runName             = \"%s\"\n",m_runName.Data());
+    printf("Test layer ID       = %d\n",m_testLayer);
+    printf("Start Entry         = %d\n",m_iEntryStart);
+    printf("Stop Entry          = %d\n",m_iEntryStop);
+    printf("Using wire adjustment file \"%s\"\n",m_wireAdjustmentFile.Data());
+    printf("Scan t0 offset within -+ %d ns range.\n",m_t0OffsetRange);
     ParameterManager::Get().Print();
 
     if (m_memdebug){
@@ -198,6 +197,7 @@ int main(int argc, char** argv){
     if (!success) {MyError("Cannot initialize XTManager"); return 1;}
     InputOutputManager::Get().readHitFile = true;
     InputOutputManager::Get().writeTrackFile = true;
+    InputOutputManager::Get().SetHitFileSuffix(m_suffixHitFile); // the output file name will be like h_100SUFFIX.root
     success = InputOutputManager::Get().Initialize(m_createTrivialBranches);
     if (!success) {MyError("Cannot initialize InputOutputManager"); return 1;}
 
@@ -303,16 +303,7 @@ int main(int argc, char** argv){
     return 0;
 }
 
-void getRunTimeParameters(TString configureFile){
-    if (configureFile!=""){
-        ParameterManager::Get().ReadInputFile(configureFile,"",false,false);
-        ParameterManager::Get().LoadParameters(ParameterManager::kTracking);
-        ParameterManager::Get().LoadParameters(ParameterManager::kXTManager);
-    }
-}
-
-void print_usage(char* prog_name)
-{
+void print_usage(char * prog_name){
     fprintf(stderr,"Usage %s [options] inputXTFile runName\n",prog_name);
     fprintf(stderr,"[options]\n");
     fprintf(stderr,"\t -D <name>=[error,severe,warn,debug,trace]\n");
@@ -329,14 +320,14 @@ void print_usage(char* prog_name)
     fprintf(stderr,"\t\t Printing modulo set to n\n");
     fprintf(stderr,"\t -R <run>\n");
     fprintf(stderr,"\t\t Run number set to run\n");
+    fprintf(stderr,"\t -L <lid>\n");
+    fprintf(stderr,"\t\t Test layer set to lid\n");
     fprintf(stderr,"\t -B <n>\n");
     fprintf(stderr,"\t\t Starting entry index set to n\n");
     fprintf(stderr,"\t -E <n>\n");
     fprintf(stderr,"\t\t Stopping entry index set to n\n");
     fprintf(stderr,"\t -N <n>\n");
     fprintf(stderr,"\t\t Maximum number of entries set to n\n");
-    fprintf(stderr,"\t -L <l>\n");
-    fprintf(stderr,"\t\t Test layer set to l\n");
     fprintf(stderr,"\t -A <file>\n");
     fprintf(stderr,"\t\t Wire adjustment file set to file\n");
     fprintf(stderr,"\t -O <n>\n");
@@ -353,4 +344,14 @@ void print_usage(char* prog_name)
     fprintf(stderr,"\t\t Ask tracker to sort result by chi2WithTestLayer instead of NDF&chi2.\n");
     fprintf(stderr,"\t -T\n");
     fprintf(stderr,"\t\t Create trivial branches in the output file\n");
+    fprintf(stderr,"\t -H <suf>\n");
+    fprintf(stderr,"\t\t Add suffix to the hit file, like h_100SUFFIX.root\n");
+}
+
+void getRunTimeParameters(TString configureFile){
+    if (configureFile!=""){
+        ParameterManager::Get().ReadInputFile(configureFile,"",false,false);
+        ParameterManager::Get().LoadParameters(ParameterManager::kTracking);
+        ParameterManager::Get().LoadParameters(ParameterManager::kXTManager);
+    }
 }

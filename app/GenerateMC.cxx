@@ -60,10 +60,10 @@ int main(int argc, char** argv){
     int m_nEntries = 0;
     int m_modulo = 10000;
     bool m_memdebug = false;
-    bool m_DrawDetails = false;
     bool m_SeparateWires = false;
     double m_spatialResolution = 0.2; // by default use 200 um
     double m_timeResolution = 1; // by default use 1 ns
+    TString m_suffixHitFile = "";
     TString m_wireAdjustmentFile = "";
 
     // Load options
@@ -72,7 +72,7 @@ int main(int argc, char** argv){
     std::string opt_name;
     std::string opt_arg;
     std::string opt_value = "";
-    while((opt_result=getopt(argc,argv,"A:B:C:D:E:HL:MN:P:R:V:Wr:h"))!=-1){
+    while((opt_result=getopt(argc,argv,"A:B:C:D:E:H:L:MN:P:R:V:Wr:h"))!=-1){
         switch(opt_result){
             /* INPUTS */
             case 'M':
@@ -85,35 +85,29 @@ int main(int argc, char** argv){
                 break;
             case 'R':
                 m_runNo = atoi(optarg);
-                printf("Run number set to %d\n",m_runNo);
                 break;
             case 'L':
                 m_testLayer = atoi(optarg);
-                printf("Test layer set to %d\n",m_testLayer);
                 break;
             case 'B':
                 m_iEntryStart = atoi(optarg);
-                printf("Starting entry index set to %d\n",m_iEntryStart);
                 break;
             case 'E':
                 m_iEntryStop = atoi(optarg);
-                printf("Stopping entry index set to %d\n",m_iEntryStop);
                 break;
             case 'N':
                 m_nEntries = atoi(optarg);
-                printf("Number of entries set to %d\n",m_nEntries);
                 break;
             case 'C':
                 getRunTimeParameters(optarg);
                 printf("Using configure file \"%s\"\n",optarg);
                 break;
             case 'H':
-                m_DrawDetails = true;
-                printf("Draw bin-by-bin histogram \n");
+                m_suffixHitFile = optarg;
+                printf("Added suffix \"%s\" to the output file\n",optarg);
                 break;
             case 'A':
                 m_wireAdjustmentFile = optarg;
-                printf("Using wire adjustment file \"%s\"\n",optarg);
                 break;
             case 'r':
                 opt_arg = optarg;
@@ -137,21 +131,17 @@ int main(int argc, char** argv){
                         m_timeResolution = atof(opt_value.c_str());
                     }
                 }
-                printf("Smearing on %s with %s\n",
-                        (m_smearType==kSpace||m_smearType==kSpaceUniform?"space":"time"),
-                        (m_smearType==kSpace||m_smearType==kTime?"given input XT file":(m_smearType==kSpaceUniform?Form("%.2f mm Gaussian",m_spatialResolution):Form("%.1f ns Gaussian",m_timeResolution)))
-                        );
                 break;
             case 'D':
-                    if (!Log::ConfigureD(optarg)) print_usage(argv[0]);
-                    break;
+                if (!Log::ConfigureD(optarg)) print_usage(argv[0]);
+                break;
             case 'V':
-                    if (!Log::ConfigureV(optarg)) print_usage(argv[0]);
-                    break;
+                if (!Log::ConfigureV(optarg)) print_usage(argv[0]);
+                break;
             case 'W':
-                    m_SeparateWires = true;
-                    printf("Will separate wires\n");
-                    break;
+                m_SeparateWires = true;
+                printf("Will separate wires\n");
+                break;
             case '?':
                 printf("Wrong option! optopt=%c, optarg=%s\n", optopt, optarg);
             case 'h':
@@ -183,6 +173,11 @@ int main(int argc, char** argv){
     printf("Test layer ID       = %d\n",m_testLayer);
     printf("Start Entry         = %d\n",m_iEntryStart);
     printf("Stop Entry          = %d\n",m_iEntryStop);
+    printf("Using wire adjustment file \"%s\"\n",m_wireAdjustmentFile.Data());
+    printf("Smearing on %s with %s\n",
+            (m_smearType==kSpace||m_smearType==kSpaceUniform?"space":"time"),
+            (m_smearType==kSpace||m_smearType==kTime?"given input XT file":(m_smearType==kSpaceUniform?Form("%.2f mm Gaussian",m_spatialResolution):Form("%.1f ns Gaussian",m_timeResolution)))
+          );
     ParameterManager::Get().Print();
 
     if (m_memdebug){
@@ -212,6 +207,7 @@ int main(int argc, char** argv){
     XTManager::Get().Print();
     InputOutputManager::Get().readTrackFile = true;
     InputOutputManager::Get().writeHitFile = true;
+    InputOutputManager::Get().SetHitFileSuffix(m_suffixHitFile); // the output file name will be like h_100SUFFIX.root
     success = InputOutputManager::Get().Initialize();
     if (!success) {MyError("Cannot initialize InputOutputManager"); return 1;}
 
@@ -273,7 +269,9 @@ int main(int argc, char** argv){
         // extra cuts
         if (RequireInTriggerCounter&&!GeometryManager::Get().IsInScinti(1.5,inx,slx,inz,slz)) isGoodEvent = false;
 
-        MyNamedVerbose("GenerateMC","  Good Event! Looping in "<<nHits<<" hits");
+        MyNamedVerbose("GenerateMC","  Good Event?  "<<(isGoodEvent?"yes":"no"));
+        MyNamedVerbose("GenerateMC","    Track: X slope  "<<slx<<" intercept "<<inx);
+        MyNamedVerbose("GenerateMC","           Z slope  "<<slz<<" intercept "<<inz);
 
         // set the output
         InputOutputManager::Get().interceptXmc = inx;
@@ -286,6 +284,7 @@ int main(int argc, char** argv){
                 int theWid = -1;
                 for (int wid = 0; wid<NCEL; wid++){
                     double DOCA = GeometryManager::Get().GetDOCA(lid,wid,slx,inx,slz,inz);
+                    MyNamedInfo("GenerateMC","DOCA to wire ["<<lid<<"]["<<wid<<"] is "<<DOCA);
                     if (fabs(DOCA)<fabs(minDOCA)){
                         minDOCA = DOCA;
                         theWid = wid;
@@ -296,7 +295,8 @@ int main(int argc, char** argv){
                     int status;
                     if (m_smearType==kTime||m_smearType==kTimeUniform){
                         if (m_smearType==kTime){
-                            driftT = XTManager::Get().RandomDriftT(minDOCA,lid,theWid);
+                            //driftT = XTManager::Get().RandomDriftT(minDOCA,lid,theWid);
+                            driftT = XTManager::Get().RandomDriftT(-fabs(minDOCA),lid,theWid); // FIXME: this is temporarily taking the left side of DT histogram to do the sampling just to make the input symmetric
                         }
                         else{
                             driftT = XTManager::Get().x2t(minDOCA,lid,theWid);
@@ -313,6 +313,7 @@ int main(int argc, char** argv){
                         driftT = XTManager::Get().x2t(minDOCA,lid,theWid);
                     }
                     InputOutputManager::Get().PushHitMC(lid,theWid,driftT,driftD,minDOCA);
+                    MyNamedInfo("GenerateMC","    PushHitMC("<<lid<<","<<theWid<<","<<driftT<<","<<driftD<<","<<minDOCA<<")");
                 }
             }
             N_good++;
@@ -355,10 +356,12 @@ void print_usage(char * prog_name){
     fprintf(stderr,"\t\t Stopping entry index set to n\n");
     fprintf(stderr,"\t -N <n>\n");
     fprintf(stderr,"\t\t Maximum number of entries set to n\n");
+    fprintf(stderr,"\t -A <file>\n");
+    fprintf(stderr,"\t\t Wire adjustment file set to file\n");
     fprintf(stderr,"\t -W \n");
     fprintf(stderr,"\t\t Seperate wires\n");
-    fprintf(stderr,"\t -H \n");
-    fprintf(stderr,"\t\t Draw bin-by-bin histograms\n");
+    fprintf(stderr,"\t -H <suf>\n");
+    fprintf(stderr,"\t\t Add suffix to the hit file, like h_100SUFFIX.root\n");
 }
 
 void getRunTimeParameters(TString configureFile){
@@ -369,4 +372,3 @@ void getRunTimeParameters(TString configureFile){
         ParameterManager::Get().LoadParameters(ParameterManager::kXTAnalyzer);
     }
 }
-

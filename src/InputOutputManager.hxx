@@ -73,6 +73,7 @@ public:
     bool IsHitFileReady(void);
     bool IsTrackFileReady(void);
     void PushHitMC(int lid, int wid, double driftT, double driftD, double doca);
+    void SetHitFileSuffix(TString suf){suffixHitFile = suf;};
 
     /// flags about which to read and which to write
     bool                  readRawFile;
@@ -82,6 +83,7 @@ public:
     bool                  writeHitFile;
     bool                  writeTrackFile;
     bool                  writeAnaFile;
+    TString               suffixHitFile;
 
     /// the current entry; increment once GetEntry(iEntry) is called
     int                   fCurrentEntry;

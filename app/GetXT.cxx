@@ -56,22 +56,21 @@ int main(int argc, char** argv){
     int m_nEntries = 0;
     int m_modulo = 10000;
     bool m_memdebug = false;
-    bool m_DrawDetails = false;
     int m_StartStage = 1;
     int m_StopStage = 3;
     bool m_SeparateWires = false;
+    TString m_suffixHitFile = "";
     TString m_wireAdjustmentFile = "";
 
     // Load options
     int    opt_result;
     std::string opt_name;
     std::size_t opt_pos;
-    while((opt_result=getopt(argc,argv,"A:B:C:D:E:HMN:P:R:S:V:Wh"))!=-1){
+    while((opt_result=getopt(argc,argv,"A:B:C:D:E:H:MN:P:R:S:V:Wh"))!=-1){
         switch(opt_result){
             /* INPUTS */
             case 'M':
                 m_memdebug = true;
-                Log::ConfigureD("Memory=Debug");
                 printf("Turning on memory debug\n");
                 break;
             case 'P':
@@ -80,27 +79,23 @@ int main(int argc, char** argv){
                 break;
             case 'R':
                 m_runNo = atoi(optarg);
-                printf("Run number set to %d\n",m_runNo);
                 break;
             case 'B':
                 m_iEntryStart = atoi(optarg);
-                printf("Starting entry index set to %d\n",m_iEntryStart);
                 break;
             case 'E':
                 m_iEntryStop = atoi(optarg);
-                printf("Stopping entry index set to %d\n",m_iEntryStop);
                 break;
             case 'N':
                 m_nEntries = atoi(optarg);
-                printf("Number of entries set to %d\n",m_nEntries);
                 break;
             case 'C':
                 getRunTimeParameters(optarg);
                 printf("Using configure file \"%s\"\n",optarg);
                 break;
             case 'H':
-                m_DrawDetails = true;
-                printf("Draw bin-by-bin histogram \n");
+                m_suffixHitFile = optarg;
+                printf("Added suffix \"%s\" to the output file\n",optarg);
                 break;
             case 'S':
                 opt_name = optarg;
@@ -127,18 +122,17 @@ int main(int argc, char** argv){
                 break;
             case 'A':
                 m_wireAdjustmentFile = optarg;
-                printf("Using wire adjustment file \"%s\"\n",optarg);
                 break;
             case 'D':
-                    if (!Log::ConfigureD(optarg)) print_usage(argv[0]);
-                    break;
+                if (!Log::ConfigureD(optarg)) print_usage(argv[0]);
+                break;
             case 'V':
-                    if (!Log::ConfigureV(optarg)) print_usage(argv[0]);
-                    break;
+                if (!Log::ConfigureV(optarg)) print_usage(argv[0]);
+                break;
             case 'W':
-                    m_SeparateWires = true;
-                    printf("Will separate wires\n");
-                    break;
+                m_SeparateWires = true;
+                printf("Will separate wires\n");
+                break;
             case '?':
                 printf("Wrong option! optopt=%c, optarg=%s\n", optopt, optarg);
             case 'h':
@@ -161,10 +155,11 @@ int main(int argc, char** argv){
 
     printf("##############%s##################\n",argv[0]);
     printf("runNo               = %d\n",m_runNo);
-    printf("input XT File     = \"%s\"\n",m_inputXTFile.Data());
+    printf("input XT File       = \"%s\"\n",m_inputXTFile.Data());
     printf("runName             = \"%s\"\n",m_runName.Data());
     printf("Start Entry         = %d\n",m_iEntryStart);
     printf("Stop Entry          = %d\n",m_iEntryStop);
+    printf("Using wire adjustment file \"%s\"\n",m_wireAdjustmentFile.Data());
     ParameterManager::Get().Print();
 
     if (m_memdebug){
@@ -192,6 +187,7 @@ int main(int argc, char** argv){
     if (m_StartStage<=1){
         InputOutputManager::Get().readHitFile = true;
         InputOutputManager::Get().readTrackFile = true;
+        InputOutputManager::Get().SetHitFileSuffix(m_suffixHitFile); // the output file name will be like h_100SUFFIX.root
         success = InputOutputManager::Get().Initialize();
         if (!success) {MyError("Cannot initialize InputOutputManager"); return 1;}
     }
@@ -226,7 +222,7 @@ int main(int argc, char** argv){
         newXTFile = new TFile(Form("%s/info/xt.%d.%s.root",HOME.Data(),m_runNo,m_runName.Data()),"RECREATE");
 
     // Prepare XTAnalyzer
-    XTAnalyzer * fXTAnalyzer = new XTAnalyzer(Form("%d.%s",m_runNo,m_runName.Data()),newXTFile,m_DrawDetails);
+    XTAnalyzer * fXTAnalyzer = new XTAnalyzer(Form("%d.%s",m_runNo,m_runName.Data()),newXTFile,false); // "false" means that by default don't draw bin-by-bin plots
 
     gStyle->SetOptStat(0);
     gStyle->SetPadTickX(1);
@@ -576,10 +572,12 @@ void print_usage(char * prog_name){
     fprintf(stderr,"\t\t Stopping entry index set to n\n");
     fprintf(stderr,"\t -N <n>\n");
     fprintf(stderr,"\t\t Maximum number of entries set to n\n");
+    fprintf(stderr,"\t -A <file>\n");
+    fprintf(stderr,"\t\t Wire adjustment file set to file\n");
     fprintf(stderr,"\t -W \n");
     fprintf(stderr,"\t\t Seperate wires\n");
-    fprintf(stderr,"\t -H \n");
-    fprintf(stderr,"\t\t Draw bin-by-bin histograms\n");
+    fprintf(stderr,"\t -H <suf>\n");
+    fprintf(stderr,"\t\t Add suffix to the hit file, like h_100SUFFIX.root\n");
 }
 
 void getRunTimeParameters(TString configureFile){
@@ -590,4 +588,3 @@ void getRunTimeParameters(TString configureFile){
         ParameterManager::Get().LoadParameters(ParameterManager::kXTAnalyzer);
     }
 }
-
