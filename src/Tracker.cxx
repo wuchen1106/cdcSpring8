@@ -26,11 +26,10 @@ std::map <int, double> Tracker::hitIndexDriftDRightMap;
 TGraphErrors * Tracker::graph_pairX = NULL;
 TGraphErrors * Tracker::graph_pairZ = NULL;
 
-Tracker::Tracker(InputOutputManager::DataType theInputHitType):
+Tracker::Tracker():
     nGoodTracks(0),
     func_pairYX(0),
     func_pairYZ(0),
-    inputHitType(theInputHitType),
     fMaxResults(NCAND),
     ierflg(0),
     amin(0),
@@ -199,8 +198,15 @@ void Tracker::updateDriftD(){
             double driftT = InputOutputManager::Get().DriftT->at(hitIndex)-t0Offset;
             int wid = InputOutputManager::Get().CellID->at(hitIndex);
             int status;
-            hitIndexDriftDLeftMap[hitIndex] = XTManager::Get().t2x(driftT,lid,wid,-1,status);
-            hitIndexDriftDRightMap[hitIndex] = XTManager::Get().t2x(driftT,lid,wid,1,status);
+            if (useDriftDmc){
+                double driftDmc = fabs(InputOutputManager::Get().DriftDmc->at(hitIndex));
+                hitIndexDriftDLeftMap[hitIndex] = -driftDmc;
+                hitIndexDriftDRightMap[hitIndex] = driftDmc;
+            }
+            else{
+                hitIndexDriftDLeftMap[hitIndex] = XTManager::Get().t2x(driftT,lid,wid,-1,status);
+                hitIndexDriftDRightMap[hitIndex] = XTManager::Get().t2x(driftT,lid,wid,1,status);
+            }
             MyNamedVerbose("Tracking","   ["<<lid<<","<<wid<<"] "<<driftT<<" ns, L "<<hitIndexDriftDLeftMap[hitIndex]<<" mm, R "<<hitIndexDriftDRightMap[hitIndex]<<" mm");
         }
     }
@@ -212,8 +218,15 @@ void Tracker::updateDriftD(){
         int lid = InputOutputManager::Get().LayerID->at(hitIndex);
         int wid = InputOutputManager::Get().CellID->at(hitIndex);
         int status;
-        hitIndexDriftDLeftMap[hitIndex] = XTManager::Get().t2x(driftT,lid,wid,-1,status);
-        hitIndexDriftDRightMap[hitIndex] = XTManager::Get().t2x(driftT,lid,wid,1,status);
+        if (useDriftDmc){
+            double driftDmc = fabs(InputOutputManager::Get().DriftDmc->at(hitIndex));
+            hitIndexDriftDLeftMap[hitIndex] = -driftDmc;
+            hitIndexDriftDRightMap[hitIndex] = driftDmc;
+        }
+        else{
+            hitIndexDriftDLeftMap[hitIndex] = XTManager::Get().t2x(driftT,lid,wid,-1,status);
+            hitIndexDriftDRightMap[hitIndex] = XTManager::Get().t2x(driftT,lid,wid,1,status);
+        }
         MyNamedVerbose("Tracking","   ["<<lid<<","<<wid<<"] "<<driftT<<" ns, L "<<hitIndexDriftDLeftMap[hitIndex]<<" mm, R "<<hitIndexDriftDRightMap[hitIndex]<<" mm");
     }
 }
@@ -331,11 +344,6 @@ int Tracker::fitting(int iselection){
                 track3Ds[nGoodTracks] = currentTrack3D;
                 nGoodTracks++;
             }
-        }
-
-        // TODO LATER: get mc input
-        if (inputHitType == InputOutputManager::kMCDriftD || inputHitType == InputOutputManager::kMCDriftT){
-            //getchi2(chi2mc,chi2pmc,chi2amc,chi2wmc,i_slxmc,i_inxmc,i_slzmc,i_inzmc,true);
         }
     }
     return 0;

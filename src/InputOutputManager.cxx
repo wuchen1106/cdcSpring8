@@ -20,6 +20,7 @@ InputOutputManager::InputOutputManager():
     writeHitFile(false),
     writeTrackFile(false),
     writeAnaFile(false),
+    hitFileIsMC(false),
     suffixHitFile(""),
     fCurrentEntry(0),
     triggerNumber(0),
@@ -45,6 +46,7 @@ InputOutputManager::InputOutputManager():
     interceptZmc(0),
     slopeXmc(0),
     slopeZmc(0),
+    t0mc(0),
     nHitsG(0),
     nCandidatesFound(0),
     fOutputHitTree(0),
@@ -84,8 +86,6 @@ bool InputOutputManager::Initialize(bool withTrivialBranches){
     int runNo = RunInfoManager::Get().runNo;
     TString runName = RunInfoManager::Get().runName;
     int testLayer = RunInfoManager::Get().testLayer;
-    DataType inputHitType = ParameterManager::Get().inputHitType;
-    DataType inputTrackType = ParameterManager::Get().inputTrackType;
 
     if (!readHitFile){
         if (LayerID) {delete LayerID;} LayerID = new std::vector<int>;
@@ -110,11 +110,11 @@ bool InputOutputManager::Initialize(bool withTrivialBranches){
         if (fInputRawChain) delete fInputRawChain;
         fInputRawChain = new TChain("tree","tree");
         fInputRawChain->Add(HOME+Form("/root/raw/run_%0.6d_built.root",runNo));
-	fInputRawChain->SetBranchAddress("triggerNumber",&triggerNumber);
-	fInputRawChain->SetBranchAddress("tdcNhit",tdcNhit);
-	fInputRawChain->SetBranchAddress("clockNumberDriftTime",clockNumber);
-	fInputRawChain->SetBranchAddress("driftTime",tdc);
-	fInputRawChain->SetBranchAddress("adc",adc);
+        fInputRawChain->SetBranchAddress("triggerNumber",&triggerNumber);
+        fInputRawChain->SetBranchAddress("tdcNhit",tdcNhit);
+        fInputRawChain->SetBranchAddress("clockNumberDriftTime",clockNumber);
+        fInputRawChain->SetBranchAddress("driftTime",tdc);
+        fInputRawChain->SetBranchAddress("adc",adc);
     }
     if (readHitFile){
         if (fInputHitChain) delete fInputHitChain;
@@ -123,7 +123,7 @@ bool InputOutputManager::Initialize(bool withTrivialBranches){
         fInputHitChain->SetBranchAddress("triggerNumber",&triggerNumber);
         fInputHitChain->SetBranchAddress("nHits",&nHits);
         fInputHitChain->SetBranchAddress("driftT",&DriftT);
-        if (inputHitType!=kData){
+        if (hitFileIsMC){
             fInputHitChain->SetBranchAddress("DOCA",&DOCA);
             fInputHitChain->SetBranchAddress("driftD",&DriftDmc);
         }
@@ -142,11 +142,12 @@ bool InputOutputManager::Initialize(bool withTrivialBranches){
         fInputHitChain->SetBranchAddress("mpn",&nPeaksInPacket);
         fInputHitChain->SetBranchAddress("mpi",&iPeakInPacket);
         fInputHitChain->SetBranchAddress("clk",&TDCClock);
-        if (inputHitType!=kData){
+        if (hitFileIsMC){
             fInputHitChain->SetBranchAddress("inxmc",&interceptXmc);
             fInputHitChain->SetBranchAddress("inzmc",&interceptZmc);
             fInputHitChain->SetBranchAddress("slxmc",&slopeXmc);
             fInputHitChain->SetBranchAddress("slzmc",&slopeZmc);
+            fInputHitChain->SetBranchAddress("t0mc",&t0mc);
         }
     }
     if (readTrackFile){
@@ -174,16 +175,6 @@ bool InputOutputManager::Initialize(bool withTrivialBranches){
         fInputTrackChain->SetBranchAddress("chi2a",chi2a);
         fInputTrackChain->SetBranchAddress("chi2WithTestLayer",chi2WithTestLayer);
         fInputTrackChain->SetBranchAddress("pValue",pValue);
-        if (inputTrackType!=kData){
-            fInputTrackChain->SetBranchAddress("chi2mc",chi2mc);
-            fInputTrackChain->SetBranchAddress("chi2amc",chi2amc);
-            fInputTrackChain->SetBranchAddress("chi2WithTestLayermc",chi2WithTestLayermc);
-            fInputTrackChain->SetBranchAddress("pValuemc",pValuemc);
-            fInputTrackChain->SetBranchAddress("inxmc",&interceptXmc);
-            fInputTrackChain->SetBranchAddress("inzmc",&interceptZmc);
-            fInputTrackChain->SetBranchAddress("slxmc",&slopeXmc);
-            fInputTrackChain->SetBranchAddress("slzmc",&slopeZmc);
-        }
         if (withTrivialBranches){
             fInputTrackChain->SetBranchAddress("interceptXInput",interceptXInput);
             fInputTrackChain->SetBranchAddress("interceptZInput",interceptZInput);
@@ -208,7 +199,7 @@ bool InputOutputManager::Initialize(bool withTrivialBranches){
         fOutputHitTree->Branch("triggerNumber",&triggerNumber);
         fOutputHitTree->Branch("nHits",&nHits);
         fOutputHitTree->Branch("driftT",&DriftT);
-        if (inputHitType!=kData){
+        if (hitFileIsMC){
             fOutputHitTree->Branch("DOCA",&DOCA);
             fOutputHitTree->Branch("driftD",&DriftDmc);
         }
@@ -227,11 +218,12 @@ bool InputOutputManager::Initialize(bool withTrivialBranches){
         fOutputHitTree->Branch("mpn",&nPeaksInPacket);
         fOutputHitTree->Branch("mpi",&iPeakInPacket);
         fOutputHitTree->Branch("clk",&TDCClock);
-        if (inputHitType!=kData){
+        if (hitFileIsMC){
             fOutputHitTree->Branch("inxmc",&interceptXmc);
             fOutputHitTree->Branch("inzmc",&interceptZmc);
             fOutputHitTree->Branch("slxmc",&slopeXmc);
             fOutputHitTree->Branch("slzmc",&slopeZmc);
+            fOutputHitTree->Branch("t0mc",&t0mc);
         }
     }
     if (writeTrackFile){
@@ -260,16 +252,6 @@ bool InputOutputManager::Initialize(bool withTrivialBranches){
         fOutputTrackTree->Branch("chi2a",chi2a,"chi2a[nFind]/D");
         fOutputTrackTree->Branch("chi2WithTestLayer",chi2WithTestLayer,"chi2WithTestLayer[nFind]/D");
         fOutputTrackTree->Branch("pValue",pValue,"pValue[nFind]/D");
-        if (inputTrackType!=kData){
-            fOutputTrackTree->Branch("chi2mc",chi2mc,"chi2mc[nFind]/D");
-            fOutputTrackTree->Branch("chi2amc",chi2amc,"chi2amc[nFind]/D");
-            fOutputTrackTree->Branch("chi2WithTestLayermc",chi2WithTestLayermc,"chi2WithTestLayermc[nFind]/D");
-            fOutputTrackTree->Branch("pValuemc",pValuemc,"pValuemc[nFind]/D");
-            fOutputTrackTree->Branch("inxmc",&interceptXmc);
-            fOutputTrackTree->Branch("inzmc",&interceptZmc);
-            fOutputTrackTree->Branch("slxmc",&slopeXmc);
-            fOutputTrackTree->Branch("slzmc",&slopeZmc);
-        }
         if (withTrivialBranches){
             fOutputTrackTree->Branch("interceptXInput",interceptXInput,"interceptXInput[nFind]/D");
             fOutputTrackTree->Branch("interceptZInput",interceptZInput,"interceptZInput[nFind]/D");
@@ -343,6 +325,11 @@ void InputOutputManager::Reset(){ // called at the beginning of every event
         iPeakInPacket->clear();
         nHits = 0;
     }
+    interceptXmc = 0;
+    interceptZmc = 0;
+    slopeXmc = 0;
+    slopeZmc = 0;
+    t0mc = 0;
 }
 
 void InputOutputManager::Fill(){

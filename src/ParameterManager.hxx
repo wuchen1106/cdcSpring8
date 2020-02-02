@@ -185,9 +185,6 @@ public:
     GeometryManager::ChamberType chamberType;
     GeometryManager::ConnectionType connectionType;
     BeamManager::BeamType beamType;
-    // TODO: either name them as hitFileType & trackFileType, or add output* values to separately control input and output data types
-    InputOutputManager::DataType inputHitType;
-    InputOutputManager::DataType inputTrackType;
     TrackingPara::PeakType peakType;
 
     TrackingPara    TrackingParameters;

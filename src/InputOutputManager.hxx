@@ -52,12 +52,6 @@ public:
         return *fInputOutputManager;
     }
 
-    enum DataType{
-        kData,
-        kMCDriftT,
-        kMCDriftD
-    };
-
     bool Initialize(bool withTrivialBranches = false); ///< Should be called at the beginning of the run
     void Reset(); ///< Should be called at the beginning of every event
     void Fill(); ///< Fill the branches in the output file
@@ -83,6 +77,7 @@ public:
     bool                  writeHitFile;
     bool                  writeTrackFile;
     bool                  writeAnaFile;
+    bool                  hitFileIsMC;
     TString               suffixHitFile;
 
     /// the current entry; increment once GetEntry(iEntry) is called
@@ -101,6 +96,7 @@ public:
     std::vector<int> *    CellID;
     std::vector<int> *    TDCClock;
     std::vector<double> * DriftT;
+    // TODO: should think about preventing users to access mc related branches in case the hit file is not MC sample. This may lead to memory issue
     std::vector<double> * DriftDmc; // For MC input
     std::vector<double> * DOCA; // For MC input
     std::vector<double> * Pedestal;
@@ -118,6 +114,7 @@ public:
     double                interceptZmc; // For MC input
     double                slopeXmc; // For MC input
     double                slopeZmc; // For MC input
+    double                t0mc;
 
     /// pre-fitting information
     int                   nHitsG;

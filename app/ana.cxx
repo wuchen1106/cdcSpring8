@@ -31,7 +31,6 @@
 double t_min = 0;
 double t_max = 0;
 double sumCut = 0;
-InputOutputManager::DataType inputHitType = InputOutputManager::kData;
 double aaCut = 0;
 // definition of golden hit
 double gold_t_min = 0;
@@ -61,12 +60,13 @@ int main(int argc, char** argv){
     bool m_SeparateWires = false;
     TString m_suffixHitFile = "";
     TString m_wireAdjustmentFile = "";
+    bool m_isMC = false;
 
     // Load options
     int    opt_result;
     std::string opt_name;
     std::size_t opt_pos;
-    while((opt_result=getopt(argc,argv,"A:B:C:D:E:H:L:MN:P:R:V:Wh"))!=-1){
+    while((opt_result=getopt(argc,argv,"A:B:C:D:E:H:L:MN:P:R:V:Wmh"))!=-1){
         switch(opt_result){
             /* INPUTS */
             case 'M':
@@ -111,7 +111,9 @@ int main(int argc, char** argv){
                 break;
             case 'W':
                 m_SeparateWires = true;
-                printf("Will separate wires\n");
+                break;
+            case 'm':
+                m_isMC = true;
                 break;
             case '?':
                 printf("Wrong option! optopt=%c, optarg=%s\n", optopt, optarg);
@@ -141,6 +143,8 @@ int main(int argc, char** argv){
     printf("Start Entry         = %d\n",m_iEntryStart);
     printf("Stop Entry          = %d\n",m_iEntryStop);
     printf("Using wire adjustment file \"%s\"\n",m_wireAdjustmentFile.Data());
+    printf("Will separate wires? %s\n",m_SeparateWires?"yes":"no");
+    printf("Input is MC sample? %s\n",m_isMC?"yes":"no");
     ParameterManager::Get().Print();
 
     if (m_memdebug){
@@ -172,7 +176,6 @@ int main(int argc, char** argv){
     if (!success) {MyNamedError("Analyze","Cannot initialize InputOutputManager"); return 1;}
 
     // for hit classification
-    inputHitType = ParameterManager::Get().inputHitType;
     sumCut = ParameterManager::Get().TrackingParameters.sumCut;
     aaCut = ParameterManager::Get().TrackingParameters.aaCut;
     t_min = ParameterManager::Get().TrackingParameters.tmin;
@@ -215,6 +218,7 @@ int main(int argc, char** argv){
     double o_inzmc;
     double o_slxmc;
     double o_slzmc;
+    double o_t0mc;
     double o_chi2[3];
     double o_chi2a[3];
     double o_chi2w[3];
@@ -230,11 +234,12 @@ int main(int argc, char** argv){
     double o_ADCsumPkt[3][9];
     double o_ADCsumAll[3][9];
     bool   o_foundTestLayerHit[3];
-    if (inputHitType!=InputOutputManager::kData){
+    if (m_isMC){
         otree->Branch("inxmc",&o_inxmc);
         otree->Branch("inzmc",&o_inzmc);
         otree->Branch("slxmc",&o_slxmc);
         otree->Branch("slzmc",&o_slzmc);
+        otree->Branch("t0mc",&o_t0mc);
     }
     for (int iCand = 0; iCand<3; iCand++){
         for (int i = 1; i<9; i++){
@@ -242,14 +247,14 @@ int main(int argc, char** argv){
             otree->Branch(Form("D%d%d",i,iCand),&o_DOCA[iCand][i]);
             otree->Branch(Form("d%d%d",i,iCand),&o_driftD[iCand][i]);
             otree->Branch(Form("t%d%d",i,iCand),&o_driftT[iCand][i]);
-            if (inputHitType==InputOutputManager::kData){
+            if (m_isMC){
+                otree->Branch(Form("Dmc%d%d",i,iCand),&o_DOCAmc[iCand][i]);
+            }
+            else{
                 otree->Branch(Form("i%d%d",i,iCand),&o_ipeak[iCand][i]);
                 otree->Branch(Form("height%d%d",i,iCand),&o_ADCheight[iCand][i]);
                 otree->Branch(Form("sum%d%d",i,iCand),&o_ADCsumPkt[iCand][i]);
                 otree->Branch(Form("all%d%d",i,iCand),&o_ADCsumAll[iCand][i]);
-            }
-            else{
-                otree->Branch(Form("Dmc%d%d",i,iCand),&o_DOCAmc[iCand][i]);
             }
         }
         otree->Branch(Form("nHits%d",iCand),o_nHits+iCand);
@@ -429,7 +434,7 @@ int main(int argc, char** argv){
                 int wireID = InputOutputManager::Get().CellID->at(iHit);
                 int iPeak = InputOutputManager::Get().iPeakInChannel->at(iHit);
                 double DOCAmc = 0;
-                if (inputHitType!=InputOutputManager::kData){
+                if (m_isMC){
                     DOCAmc = InputOutputManager::Get().DOCA->at(iHit);
                 }
                 double DOCA = GeometryManager::Get().GetDOCA(layerID,wireID,slx,inx,slz,inz);
@@ -461,7 +466,7 @@ int main(int argc, char** argv){
                             residualMinimal = residual;
                             o_wid[iCand][layerID] = wireID;
                             o_DOCA[iCand][layerID] = DOCA;
-                            if (inputHitType!=InputOutputManager::kData){
+                            if (m_isMC){
                                 o_DOCAmc[iCand][layerID] = DOCAmc;
                             }
                             o_driftD[iCand][layerID] = DriftD;
@@ -477,7 +482,7 @@ int main(int argc, char** argv){
                     if (iHit == InputOutputManager::Get().hitIndexSelected[layerID][theCand]){ // this is the signal hit
                         o_wid[iCand][layerID] = wireID;
                         o_DOCA[iCand][layerID] = DOCA;
-                        if (inputHitType!=InputOutputManager::kData){
+                        if (m_isMC){
                             o_DOCAmc[iCand][layerID] = DOCAmc;
                         }
                         o_driftD[iCand][layerID] = DriftD;
@@ -555,11 +560,12 @@ int main(int argc, char** argv){
             o_pValue[iCand] = pValue;
             o_foundTestLayerHit[iCand] = foundTestLayerHit;
         }
-        if (inputHitType!=InputOutputManager::kData){
+        if (m_isMC){
             o_inxmc = InputOutputManager::Get().interceptXmc;
             o_inzmc = InputOutputManager::Get().interceptZmc;
             o_slxmc = InputOutputManager::Get().slopeXmc;
             o_slzmc = InputOutputManager::Get().slopeZmc;
+            o_t0mc = InputOutputManager::Get().t0mc;
         }
         otree->Fill();
         MyNamedDebug("Memory","Memory size: @"<<__LINE__<<": "<<pMyProcessManager->GetMemorySize());
@@ -643,7 +649,7 @@ int main(int argc, char** argv){
 bool isGoodHit(int iHit){ // Here I neglected the cut on ipeak, layerID cause when I call this function I'm counting hits in a selected cell or a cell in test layer
     if (iHit<0||iHit>=InputOutputManager::Get().nHits) return false;
     if (InputOutputManager::Get().DriftT->at(iHit)<t_min||InputOutputManager::Get().DriftT->at(iHit)>t_max) return false;
-    if (inputHitType==InputOutputManager::kData){
+    if (InputOutputManager::Get().ADCsumAll->at(iHit)!=0){ // TODO: this is a temporary way to check if the input hit file is MC data
         if (InputOutputManager::Get().ADCsumAll->at(iHit)<aaCut) return false;
         if (InputOutputManager::Get().ADCsumPacket->at(iHit)<sumCut) return false;
     }
@@ -777,6 +783,8 @@ void print_usage(char * prog_name){
     fprintf(stderr,"\t\t Seperate wires\n");
     fprintf(stderr,"\t -H <suf>\n");
     fprintf(stderr,"\t\t Add suffix to the hit file, like h_100SUFFIX.root\n");
+    fprintf(stderr,"\t -m\n");
+    fprintf(stderr,"\t\t Treat the input sample as MC sample (by default it's considered as real data)\n");
 }
 
 void getRunTimeParameters(TString configureFile){

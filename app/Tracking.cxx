@@ -70,10 +70,11 @@ int main(int argc, char** argv){
     Tracker::SortType m_sortType = Tracker::NDFchi2;
     double m_minChi2Input = 0;
     bool m_skipLayerAllowed = false;
+    bool m_trackingWithDriftDmc = false;
 
     // Load options
     int    opt_result;
-    while((opt_result=getopt(argc,argv,"A:B:C:D:E:H:L:MN:O:P:R:S:TV:ac:hsw"))!=-1){
+    while((opt_result=getopt(argc,argv,"A:B:C:D:E:H:L:MN:O:P:R:S:TV:ac:dhsw"))!=-1){
         switch(opt_result){
             case 'M':
                 m_memdebug = true;
@@ -122,19 +123,18 @@ int main(int argc, char** argv){
                 break;
             case 'c':
                 m_minChi2Input = atof(optarg);
-                printf("Set input chi2 cut at %.3e to save tracking time\n",m_minChi2Input);
+                break;
+            case 'd':
+                m_trackingWithDriftDmc = true;
                 break;
             case 's':
                 m_skipLayerAllowed = true;
-                printf("Allow tracker to skip layer even if there is good hit in it\n");
                 break;
             case 'a':
                 m_sortType = Tracker::chi2a;
-                printf("Ask tracker to sort result by chi2a instead of NDF&chi2\n");
                 break;
             case 'w':
                 m_sortType = Tracker::chi2WithTestLayer;
-                printf("Ask tracker to sort result by chi2WithTestLayer instead of NDF&chi2\n");
                 break;
             case 'D':
                 if (!Log::ConfigureD(optarg)) print_usage(argv[0]);
@@ -171,6 +171,10 @@ int main(int argc, char** argv){
     printf("Stop Entry          = %d\n",m_iEntryStop);
     printf("Using wire adjustment file \"%s\"\n",m_wireAdjustmentFile.Data());
     printf("Scan t0 offset within -+ %d ns range.\n",m_t0OffsetRange);
+    printf("Set input chi2 cut at %.3e to save tracking time\n",m_minChi2Input);
+    printf("Allow tracker to skip layer even if there is good hit in it? %s\n",m_skipLayerAllowed?"yes":"no");
+    printf("Ask tracker to use driftDmc instead of driftT? %s\n",m_trackingWithDriftDmc?"yes":"no");
+    printf("Ask tracker to sort result by %s\n",m_sortType==Tracker::NDFchi2?"NDF&chi2":(m_sortType==Tracker::chi2a?"chi2a":"chi2WithTestLayer"));
     ParameterManager::Get().Print();
 
     if (m_memdebug){
@@ -197,6 +201,7 @@ int main(int argc, char** argv){
     if (!success) {MyError("Cannot initialize XTManager"); return 1;}
     InputOutputManager::Get().readHitFile = true;
     InputOutputManager::Get().writeTrackFile = true;
+    if (m_trackingWithDriftDmc) InputOutputManager::Get().hitFileIsMC = true;
     InputOutputManager::Get().SetHitFileSuffix(m_suffixHitFile); // the output file name will be like h_100SUFFIX.root
     success = InputOutputManager::Get().Initialize(m_createTrivialBranches);
     if (!success) {MyError("Cannot initialize InputOutputManager"); return 1;}
@@ -210,14 +215,14 @@ int main(int argc, char** argv){
     double tmin = ParameterManager::Get().TrackingParameters.tmin;
     double tmax = ParameterManager::Get().TrackingParameters.tmax;
     TrackingPara::PeakType peakType = ParameterManager::Get().peakType;
-    InputOutputManager::DataType inputHitType = ParameterManager::Get().inputHitType;
 
     // Prepare Tracker
-    Tracker * tracker = new Tracker(inputHitType);
+    Tracker * tracker = new Tracker();
     tracker->SetT0OffsetRange(m_t0OffsetRange);
     tracker->SetLayerSkipping(m_skipLayerAllowed);
     tracker->SetMinChi2Input(m_minChi2Input);
     tracker->SetSortType(m_sortType);
+    tracker->SetUseDriftDmc(m_trackingWithDriftDmc);
     tracker->SetMaxResults(m_resultsToSave);
 
     //===================Tracking====================================
@@ -254,9 +259,9 @@ int main(int argc, char** argv){
                 tracker->hitIndexInTestLayer->push_back(iHit);
                 continue;
             }
-            if (inputHitType==InputOutputManager::kData){
-                double aa = InputOutputManager::Get().ADCsumAll->at(iHit);
-                double sum = InputOutputManager::Get().ADCsumPacket->at(iHit);
+            double aa = InputOutputManager::Get().ADCsumAll->at(iHit);
+            double sum = InputOutputManager::Get().ADCsumPacket->at(iHit);
+            if (aa!=0){ // TODO: this is a temporary way to check if the input hit file is MC data
                 if (aa<aaCut) continue;
                 if (sum<sumCut) continue;
             }
@@ -342,6 +347,8 @@ void print_usage(char * prog_name){
     fprintf(stderr,"\t\t Ask tracker to sort result by chi2a instead of NDF&chi2.\n");
     fprintf(stderr,"\t -w\n");
     fprintf(stderr,"\t\t Ask tracker to sort result by chi2WithTestLayer instead of NDF&chi2.\n");
+    fprintf(stderr,"\t -d\n");
+    fprintf(stderr,"\t\t Ask tracker to use driftDmc instead of driftT.\n");
     fprintf(stderr,"\t -T\n");
     fprintf(stderr,"\t\t Create trivial branches in the output file\n");
     fprintf(stderr,"\t -H <suf>\n");

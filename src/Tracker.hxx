@@ -13,7 +13,7 @@ class TGraphErrors;
 
 class Tracker{
 public:
-    Tracker(InputOutputManager::DataType theInputHitType);
+    Tracker();
     virtual ~Tracker();
 
     enum SortType{
@@ -47,6 +47,7 @@ public:
     void SetLayerSkipping(bool b){skipLayerAllowed = b;};
     void SetMinChi2Input(double v){minChi2Input = v;};
     void SetSortType(SortType t);
+    void SetUseDriftDmc(bool b){useDriftDmc = b;};
 
     static Track2D currentTrack2D;
     static Track3D currentTrack3D;
@@ -88,8 +89,6 @@ private:
     static TGraphErrors * graph_pairX; /// a graph to store pair positions with error on Y-X plane;
     static TGraphErrors * graph_pairZ; /// a graph to store pair positions with error on Y-X plane
 
-    InputOutputManager::DataType inputHitType;
-
     /// maximum number of fitting results to keep; 0 means to save all without sorting.
     int   fMaxResults;
 
@@ -120,6 +119,7 @@ private:
     bool   skipLayerAllowed;
     double minChi2Input;
     SortType sortType;
+    bool   useDriftDmc;
 
 };
 

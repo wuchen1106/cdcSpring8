@@ -63,6 +63,7 @@ int main(int argc, char** argv){
     bool m_SeparateWires = false;
     double m_spatialResolution = 0.2; // by default use 200 um
     double m_timeResolution = 1; // by default use 1 ns
+    double m_deltaT0 = 0; // by default don't add the t0 offset
     TString m_suffixHitFile = "";
     TString m_wireAdjustmentFile = "";
 
@@ -72,7 +73,7 @@ int main(int argc, char** argv){
     std::string opt_name;
     std::string opt_arg;
     std::string opt_value = "";
-    while((opt_result=getopt(argc,argv,"A:B:C:D:E:H:L:MN:P:R:V:Wr:h"))!=-1){
+    while((opt_result=getopt(argc,argv,"A:B:C:D:E:H:L:MN:P:R:V:Wr:t:h"))!=-1){
         switch(opt_result){
             /* INPUTS */
             case 'M':
@@ -132,6 +133,8 @@ int main(int argc, char** argv){
                     }
                 }
                 break;
+            case 't':
+                m_deltaT0 = atof(opt_arg);
             case 'D':
                 if (!Log::ConfigureD(optarg)) print_usage(argv[0]);
                 break;
@@ -162,10 +165,6 @@ int main(int argc, char** argv){
     m_inputXTFile = argv[optind++];
     m_runName= argv[optind++];
 
-    if (ParameterManager::Get().inputHitType == InputOutputManager::kData){
-        MyError("Should not use Data as hit type! will change to DriftT and continue.");
-        ParameterManager::Get().inputHitType = InputOutputManager::kMCDriftT;
-    }
     printf("##############%s##################\n",argv[0]);
     printf("runNo               = %d\n",m_runNo);
     printf("input XT File       = \"%s\"\n",m_inputXTFile.Data());
@@ -178,6 +177,7 @@ int main(int argc, char** argv){
             (m_smearType==kSpace||m_smearType==kSpaceUniform?"space":"time"),
             (m_smearType==kSpace||m_smearType==kTime?"given input XT file":(m_smearType==kSpaceUniform?Form("%.2f mm Gaussian",m_spatialResolution):Form("%.1f ns Gaussian",m_timeResolution)))
           );
+    printf("Smearing t0 with a unifrom random within -%.1f ~ %.1f ns\n",m_deltaT0,m_deltaT0);
     ParameterManager::Get().Print();
 
     if (m_memdebug){
@@ -207,6 +207,7 @@ int main(int argc, char** argv){
     XTManager::Get().Print();
     InputOutputManager::Get().readTrackFile = true;
     InputOutputManager::Get().writeHitFile = true;
+    InputOutputManager::Get().hitFileIsMC = true; // don't forget this!
     InputOutputManager::Get().SetHitFileSuffix(m_suffixHitFile); // the output file name will be like h_100SUFFIX.root
     success = InputOutputManager::Get().Initialize();
     if (!success) {MyError("Cannot initialize InputOutputManager"); return 1;}
@@ -279,6 +280,8 @@ int main(int argc, char** argv){
         InputOutputManager::Get().slopeXmc = slx;
         InputOutputManager::Get().slopeZmc = slz;
         if (isGoodEvent){
+            double deltaT0 = gRandom->Uniform(-m_deltaT0,m_deltaT0);
+            InputOutputManager::Get().t0mc = deltaT0;
             for (int lid = 1; lid<=8; lid++){ // fill histograms related with signal hits
                 double minDOCA = 1e9;
                 int theWid = -1;
@@ -312,6 +315,7 @@ int main(int argc, char** argv){
                         driftD = minDOCA+gRandom->Gaus(0,err);
                         driftT = XTManager::Get().x2t(minDOCA,lid,theWid);
                     }
+                    driftT-=m_deltaT0;
                     InputOutputManager::Get().PushHitMC(lid,theWid,driftT,driftD,minDOCA);
                     MyNamedInfo("GenerateMC","    PushHitMC("<<lid<<","<<theWid<<","<<driftT<<","<<driftD<<","<<minDOCA<<")");
                 }
@@ -362,6 +366,14 @@ void print_usage(char * prog_name){
     fprintf(stderr,"\t\t Seperate wires\n");
     fprintf(stderr,"\t -H <suf>\n");
     fprintf(stderr,"\t\t Add suffix to the hit file, like h_100SUFFIX.root\n");
+    fprintf(stderr,"\t -r <method>\n");
+    fprintf(stderr,"\t\t Specify the smearing method\n");
+    fprintf(stderr,"\t\t\t space: smear on space. take the intrinsic reolution from the graph stored in the given XT file\n");
+    fprintf(stderr,"\t\t\t space=DeltaS: smear on space with the given DeltaS using Gaussian function\n");
+    fprintf(stderr,"\t\t\t time: smear on time. take the D-T from the 2D histogram stored in the given XT file\n");
+    fprintf(stderr,"\t\t\t time=DeltaT: smear on time with the given DeltaT using Gaussian function\n");
+    fprintf(stderr,"\t -t <DeltaT0>\n");
+    fprintf(stderr,"\t\t smear all driftT in the same event with a random DeltaT0 (uniform)\n");
 }
 
 void getRunTimeParameters(TString configureFile){
