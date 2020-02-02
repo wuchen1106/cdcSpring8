@@ -187,6 +187,7 @@ double XTManager::RandomDriftT(double doca, int lid, int wid){
 }
 
 double XTManager::GetError(double dd){
+    dd = fabs(dd); // TODO: either consider about left/right asymmetry or add other parameter control
     double error = 0.2; // default value 200 um
     int N = fResIntrinsic->GetN();
     for (int i = 0; i<N-1; i++){

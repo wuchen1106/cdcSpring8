@@ -134,7 +134,7 @@ int main(int argc, char** argv){
                 }
                 break;
             case 't':
-                m_deltaT0 = atof(opt_arg);
+                m_deltaT0 = atof(optarg);
             case 'D':
                 if (!Log::ConfigureD(optarg)) print_usage(argv[0]);
                 break;
@@ -313,7 +313,7 @@ int main(int argc, char** argv){
                             err = XTManager::Get().GetError(minDOCA);
                         }
                         driftD = minDOCA+gRandom->Gaus(0,err);
-                        driftT = XTManager::Get().x2t(minDOCA,lid,theWid);
+                        driftT = XTManager::Get().x2t(driftD,lid,theWid);
                     }
                     driftT-=m_deltaT0;
                     InputOutputManager::Get().PushHitMC(lid,theWid,driftT,driftD,minDOCA);
