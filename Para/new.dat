@@ -6,7 +6,6 @@ general parameters
     < chamberType = proto4 > cdc proto4
     < connectionType = spring8 > spring8 cosmic
     < beam = spring8 > spring8 spring8tilted cosmic
-    < inputHitType = data > data mc mcdriftd
     < peakType = firstpeak > firstpeak highestpeak allpeaks
 
 *******************************************************************************                                                                   
