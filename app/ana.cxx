@@ -451,7 +451,7 @@ int main(int argc, char** argv){
                     DOCAmc = InputOutputManager::Get().DOCA->at(iHit);
                 }
                 double DOCA = GeometryManager::Get().GetDOCA(layerID,wireID,slx,inx,slz,inz);
-                double DriftT = InputOutputManager::Get().DriftT->at(iHit)+InputOutputManager::Get().t0Offset[theCand]; // consider the t0 offset suggested by this candidate
+                double DriftT = InputOutputManager::Get().DriftT->at(iHit)-InputOutputManager::Get().t0Offset[theCand]; // consider the t0 offset suggested by this candidate
                 int status;
                 double DriftD = XTManager::Get().t2x(DriftT,layerID,wireID,DOCA,status);
                 double ADCheight = InputOutputManager::Get().ADCheight->at(iHit);
