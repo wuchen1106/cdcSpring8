@@ -172,6 +172,7 @@ int main(int argc, char** argv){
     InputOutputManager::Get().readHitFile = true;
     InputOutputManager::Get().readTrackFile = true;
     InputOutputManager::Get().SetHitFileSuffix(m_suffixHitFile); // the output file name will be like h_100SUFFIX.root
+    if (m_isMC) InputOutputManager::Get().hitFileIsMC = true;
     success = InputOutputManager::Get().Initialize();
     if (!success) {MyNamedError("Analyze","Cannot initialize InputOutputManager"); return 1;}
 
