@@ -196,7 +196,7 @@ int main(int argc, char** argv){
         if (!success) MyWarn("Cannot load offset file for wire adjustment. Will ignore this step.");
     }
     success = XTManager::Get().SetInputFileXT(m_inputXTFile);
-    if (!success){MyError("Invalid input XT file"); return 1;}
+    if (!success){MyWarn("Invalid input XT file! will continue using the default one!");}
     success = XTManager::Get().Initialize();XTManager::Get().Print();
     if (!success) {MyError("Cannot initialize XTManager"); return 1;}
     InputOutputManager::Get().readHitFile = true;
