@@ -280,7 +280,7 @@ int main(int argc, char** argv){
         InputOutputManager::Get().slopeXmc = slx;
         InputOutputManager::Get().slopeZmc = slz;
         if (isGoodEvent){
-            double deltaT0 = gRandom->Uniform(-m_deltaT0,m_deltaT0);
+            double deltaT0 = gRandom->Uniform(-m_deltaT0,m_deltaT0); // T0Offset = T0true-T0measure; DriftTtrue = DriftTmeasure-T0Offset
             InputOutputManager::Get().t0mc = deltaT0;
             for (int lid = 1; lid<=8; lid++){ // fill histograms related with signal hits
                 double minDOCA = 1e9;
@@ -305,6 +305,7 @@ int main(int argc, char** argv){
                             driftT = XTManager::Get().x2t(minDOCA,lid,theWid);
                             driftT += gRandom->Gaus(0,m_timeResolution);
                         }
+                        driftT+=deltaT0; // DriftTmeasure = DriftTtrue+T0Offset
                         driftD = XTManager::Get().t2x(driftT,lid,theWid,minDOCA,status);
                     }
                     else if (m_smearType==kSpace||m_smearType==kSpaceUniform){
@@ -314,8 +315,9 @@ int main(int argc, char** argv){
                         }
                         driftD = minDOCA+gRandom->Gaus(0,err);
                         driftT = XTManager::Get().x2t(driftD,lid,theWid);
+                        driftT+=deltaT0; // DriftTmeasure = DriftTtrue+T0Offset
+                        driftD = XTManager::Get().t2x(driftT,lid,theWid,minDOCA,status);
                     }
-                    driftT-=m_deltaT0;
                     InputOutputManager::Get().PushHitMC(lid,theWid,driftT,driftD,minDOCA);
                     MyNamedInfo("GenerateMC","    PushHitMC("<<lid<<","<<theWid<<","<<driftT<<","<<driftD<<","<<minDOCA<<")");
                 }
