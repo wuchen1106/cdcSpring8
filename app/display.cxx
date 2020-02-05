@@ -64,15 +64,15 @@ int main(int argc, char** argv){
     int m_modulo = 100;
     bool m_memdebug = false;
     int m_testLayer = 4;
-    double m_slxini = 0;
     TString m_suffixHitFile = "";
     TString m_wireAdjustmentFile = "";
     TString m_xtFile = "";
     bool    m_drawZX = false;
+    bool    m_isMC = false;
 
     // Load options
     int    opt_result;
-    while((opt_result=getopt(argc,argv,"A:B:C:D:E:H:L:MN:P:R:V:X:Z"))!=-1){
+    while((opt_result=getopt(argc,argv,"A:B:C:D:E:H:L:MN:P:R:V:X:Z:m"))!=-1){
         switch(opt_result){
             case 'M':
                 m_memdebug = true;
@@ -116,6 +116,10 @@ int main(int argc, char** argv){
                 m_drawZX = true;
                 printf("Will draw ZX planes\n");
                 break;
+            case 'm':
+                m_isMC = true;
+                printf("Consider this as MC sample\n");
+                break;
             case 'D':
                 if (!Log::ConfigureD(optarg)) print_usage(argv[0]);
                 break;
@@ -140,7 +144,6 @@ int main(int argc, char** argv){
         return -1;
     }
     m_runName= argv[optind++];
-    m_slxini = -18.4*M_PI/180;
 
     printf("##############%s##################\n",argv[0]);
     printf("runNo               = %d\n",m_runNo);
@@ -180,6 +183,7 @@ int main(int argc, char** argv){
     InputOutputManager::Get().readPeakFile = true;
     InputOutputManager::Get().readHitFile = true;
     InputOutputManager::Get().readTrackFile = true;
+    if (m_isMC) InputOutputManager::Get().hitFileIsMC = true;
     InputOutputManager::Get().SetHitFileSuffix(m_suffixHitFile); // the output file name will be like h_100SUFFIX.root
     success = InputOutputManager::Get().Initialize(true); // with trivial branches
     if (!success) {MyError("Cannot initialize InputOutputManager"); return 1;}
@@ -253,26 +257,6 @@ int main(int argc, char** argv){
     pad_xyADC->Draw();
     pad_xyADC->SetGridx(1);
     pad_xyADC->SetGridy(1);
-    //Prepare the Canvas for z-x planes
-    TCanvas* ca_zx_all = new TCanvas("ca_zx_all","ca_zx_all",1024,768);
-    gStyle->SetPalette(1);
-    gStyle->SetOptStat(0);
-    gStyle->SetPadTickX(1);
-    gStyle->SetPadTickY(1);
-    gPad->SetGridx(1);
-    gPad->SetGridy(1);
-    TCanvas* ca_zx[NZXP]; // z-x planes corresponding to the layerID of the lower layer counting from 1
-    if (m_drawZX){
-        for (int izx = 1; izx<NZXP; izx++){
-            ca_zx[izx] = new TCanvas(Form("ca_zx_%d",izx),"ca_zx",1024,768);
-            gStyle->SetPalette(1);
-            gStyle->SetOptStat(0);
-            gStyle->SetPadTickX(1);
-            gStyle->SetPadTickY(1);
-            gPad->SetGridx(1);
-            gPad->SetGridy(1);
-        }
-    }
     // Prepare colors to be used for each wire
     int color[NCEL];
     int icolor = 0;
@@ -353,135 +337,6 @@ int main(int argc, char** argv){
     gr_wireCenter->SetMarkerSize(0.55);
     gr_wireCenter->GetXaxis()->SetTitle("x [mm]");
     gr_wireCenter->GetYaxis()->SetTitle("y [mm]");
-    // Prepare driftT lines on z-x planes
-    TLine * l_zx[NLAY][NCEL][MULTI][2];
-    if (m_drawZX&&m_foundTrackFile){
-        for (int lid = 0; lid<NLAY; lid++){
-            for (int wid = 0; wid<NCEL; wid++){
-                for (int ip = 0; ip<MULTI; ip++){
-                    for (int ilr = 0; ilr<2; ilr++){
-                        l_zx[lid][wid][ip][ilr] = new TLine();
-                        l_zx[lid][wid][ip][ilr]->SetLineColor(color[wid]);
-                        l_zx[lid][wid][ip][ilr]->SetLineStyle(3);
-                        l_zx[lid][wid][ip][ilr]->SetX1(-GeometryManager::Get().fChamber->chamberLength/2);
-                        l_zx[lid][wid][ip][ilr]->SetX2(GeometryManager::Get().fChamber->chamberLength/2);
-                    }
-                }
-            }
-        }
-    }
-    // Prepare cross points of driftT lines on z-x planes
-    TMarker * point_cross_zx[NZXP][NCEL][NCEL][MULTI][MULTI][4];
-    TText * text_cross_zx[NZXP][NCEL][NCEL][MULTI][MULTI][4];
-    if (m_drawZX&&m_foundTrackFile){
-        for (int izx = 1; izx<NZXP; izx++){ // z-x planes corresponding to the layerID of the lower layer counting from 1
-            for (int wid = 0; wid<NCEL; wid++){
-                for (int wjd = 0; wjd<NCEL; wjd++){
-                    for (int ip = 0; ip<MULTI; ip++){
-                        for (int jp = 0; jp<MULTI; jp++){
-                            for (int icombi = 0; icombi<4; icombi++){
-                                if (!m_foundTrackFile||icombi==3) // reverse izx when icombi is 0 or 1, reverse izx+1 when icombi is 0 or 2. Keep them unchanged only when icombi is 3
-                                    point_cross_zx[izx][wid][wjd][ip][jp][icombi] = new TMarker(0,0,20);
-                                else
-                                    point_cross_zx[izx][wid][wjd][ip][jp][icombi] = new TMarker(0,0,4);
-                                point_cross_zx[izx][wid][wjd][ip][jp][icombi]->SetMarkerColor(kBlack);
-                                point_cross_zx[izx][wid][wjd][ip][jp][icombi]->SetMarkerSize(0.55);
-                                text_cross_zx[izx][wid][wjd][ip][jp][icombi] = new TText(0,0,Form("%d",izx));
-                                text_cross_zx[izx][wid][wjd][ip][jp][icombi]->SetTextColor(color[izx]);
-                                text_cross_zx[izx][wid][wjd][ip][jp][icombi]->SetTextSize(0.01);
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-    // Prepare track points on z-x planes
-    TMarker * point_track_zx[NZXP];
-    TMarker * point_itrack_zx[NZXP];
-    if (m_drawZX&&m_foundTrackFile){
-        for (int izx = 1; izx<NZXP; izx++){ // z-x planes corresponding to the layerID of the lower layer counting from 1
-            point_track_zx[izx] = new TMarker(0,0,20);
-            point_track_zx[izx]->SetMarkerColor(kRed);
-            point_track_zx[izx]->SetMarkerSize(0.5);
-            point_itrack_zx[izx] = new TMarker(0,0,4);
-            point_itrack_zx[izx]->SetMarkerColor(kBlue);
-            point_itrack_zx[izx]->SetMarkerSize(0.6);
-        }
-    }
-    // Prepare wires in each layer on z-x planes
-    TGraph * gr_wire[NLAY][NCEL];
-    if (m_foundTrackFile){
-        for (int lid = 1; lid<NLAY; lid++){
-            for (int wid = 0; wid<NCEL; wid++){
-                if (GeometryManager::Get().fChamber->wire_ch[lid][wid]!=-1){
-                    gr_wire[lid][wid] = new TGraph(2);
-                    gr_wire[lid][wid]->SetPoint(0,GeometryManager::Get().fChamber->wire_z[lid][wid][0],GeometryManager::Get().fChamber->wire_x[lid][wid][0]);
-                    gr_wire[lid][wid]->SetPoint(1,GeometryManager::Get().fChamber->wire_z[lid][wid][1],GeometryManager::Get().fChamber->wire_x[lid][wid][1]);
-                    gr_wire[lid][wid]->SetLineColor(color[wid]);
-                    gr_wire[lid][wid]->SetMarkerColor(color[wid]);
-                }
-            }
-        }
-    }
-    // Prepare texts and markers for wire on each z-x planes
-    TMarker * point_cross_wire[NZXP][NCEL][NCEL];
-    TLatex * text_cross_wire[NZXP][NCEL][NCEL];
-    TLatex * text_cr_1[NZXP];
-    TLatex * text_cr_1l[NZXP][NCEL];
-    TLatex * text_cr_2[NZXP];
-    TLatex * text_cr_2r[NZXP][NCEL];
-    TGraph * gr_all[NZXP];
-    double ar_cr_x[2] = {-ZMAX,ZMAX};
-    double ar_cr_y[2] = {-XMAX,XMAX};
-    gr_all[0] = new TGraph(2,ar_cr_x,ar_cr_y);
-    gr_all[0]->SetTitle(Form("Cross points of all layers"));
-    gr_all[0]->SetMarkerColor(kWhite);
-    gr_all[0]->SetMarkerSize(0.1);
-    gr_all[0]->GetXaxis()->SetRangeUser(-ZMAX,ZMAX);
-    gr_all[0]->GetYaxis()->SetRangeUser(-XMAX,XMAX);
-    gr_all[0]->GetXaxis()->SetTitle("z [mm]");
-    gr_all[0]->GetYaxis()->SetTitle("x [mm]");
-    if (m_drawZX&&m_foundTrackFile){
-        for (int izx = 1; izx<NZXP; izx++){ // z-x planes corresponding to the layerID of the lower layer counting from 1
-            // Background graph for z-x planes
-            gr_all[izx] = new TGraph(2,ar_cr_x,ar_cr_y);
-            gr_all[izx]->SetTitle(Form("layer #%d and layer #%d",izx,izx+1));
-            gr_all[izx]->SetMarkerColor(kWhite);
-            gr_all[izx]->SetMarkerSize(0.1);
-            gr_all[izx]->GetXaxis()->SetRangeUser(-ZMAX,ZMAX);
-            gr_all[izx]->GetYaxis()->SetRangeUser(-XMAX,XMAX);
-            gr_all[izx]->GetXaxis()->SetTitle("z [mm]");
-            gr_all[izx]->GetYaxis()->SetTitle("x [mm]");
-            text_cr_1[izx] = new TLatex(GeometryManager::Get().fChamber->wire_z[izx][0][0]-30,XMAX-20,Form("Layer %d",izx));
-            text_cr_1[izx]->SetTextSize(0.025);
-            text_cr_2[izx] = new TLatex(GeometryManager::Get().fChamber->wire_z[izx+1][0][1]-30,XMAX-20,Form("Layer %d",izx+1));
-            text_cr_2[izx]->SetTextSize(0.025);
-            for (int wid = 0; wid<NCEL; wid++){
-                if (GeometryManager::Get().fChamber->wire_ch[izx][wid]!=-1){
-                    text_cr_1l[izx][wid] = new TLatex(GeometryManager::Get().fChamber->wire_z[izx][wid][0]-10,GeometryManager::Get().fChamber->wire_x[izx][wid][0],Form("%d",wid));
-                    text_cr_1l[izx][wid]->SetTextColor(color[wid]);
-                    text_cr_1l[izx][wid]->SetTextSize(0.02);
-                }
-                if (GeometryManager::Get().fChamber->wire_ch[izx+1][wid]!=-1){
-                    text_cr_2r[izx][wid] = new TLatex(GeometryManager::Get().fChamber->wire_z[izx+1][wid][1]+10,GeometryManager::Get().fChamber->wire_x[izx+1][wid][1],Form("%d",wid));
-                    text_cr_2r[izx][wid]->SetTextColor(color[wid]);
-                    text_cr_2r[izx][wid]->SetTextSize(0.02);
-                }
-#ifdef PRINT_CROSSPOINTS
-                for (int wjd = 0; wjd < NCEL; wjd++){
-                    if (fabs(GeometryManager::Get().fChamber->wirecross_z[izx][wid][wjd])>300) continue;
-                    point_cross_wire[izx][wid][wjd] = new TMarker(GeometryManager::Get().fChamber->wirecross_z[izx][wid][wjd],GeometryManager::Get().fChamber->wirecross_x[izx][wid][wjd],20);
-                    point_cross_wire[izx][wid][wjd]->SetMarkerColor(color[wid]);
-                    point_cross_wire[izx][wid][wjd]->SetMarkerSize(0.4);
-                    text_cross_wire[izx][wid][wjd] = new TLatex(GeometryManager::Get().fChamber->wirecross_z[izx][wid][wjd],GeometryManager::Get().fChamber->wirecross_x[izx][wid][wjd]+5,Form("%d,%d",wid,wjd));
-                    text_cross_wire[izx][wid][wjd]->SetTextColor(color[wid]);
-                    text_cross_wire[izx][wid][wjd]->SetTextSize(0.02);
-                }
-#endif
-            }
-        }
-    }
 
     //===================Prepare counters============================
     //  and to record the position of hits in each layer
@@ -563,6 +418,7 @@ int main(int argc, char** argv){
             }
         }
         // Draw waveforms
+        if (!m_isMC){
         for (int bid = 0; bid<NBRD; bid++){
             ca_WF[bid]->cd();
             text_title->SetText(0.05,0.96,Form("Entry %lld, Trigger Number %d, %d TDCs, %d considered in tracking",iEntry,InputOutputManager::Get().triggerNumber,nHits,nHitsG));
@@ -675,16 +531,50 @@ int main(int argc, char** argv){
         }
         ca_WFL->SaveAs(prefix+Form("wfl.%lld.pdf",iEntry));
         ca_WFL->SaveAs(prefix+Form("wfl.%lld.png",iEntry));
+        }
 
         //===================Draw xyADC plot============================
         ca_xyADC->cd();
         text_runsum->Draw();
-        for (int iCand = 0; iCand<(m_foundTrackFile?InputOutputManager::Get().nCandidatesFound:0); iCand++){
+        for (int iCand = -1; iCand<(m_foundTrackFile?InputOutputManager::Get().nCandidatesFound:0); iCand++){ // iCand = -1 is for the special candidate drawing: either MC in case of MC sample, or plain hit map in case of no tracking file
+            double slx, slz, inx, inz;
+            if (iCand==-1){
+                if (m_isMC){
+                slx = InputOutputManager::Get().slopeXmc;
+                slz = InputOutputManager::Get().slopeZmc;
+                inx = InputOutputManager::Get().interceptXmc;
+                inz = InputOutputManager::Get().interceptZmc;
+                }
+                else if (!m_foundTrackFile){
+                    slx = 0;
+                    slz = 0;
+                    inx = 0;
+                    inz = 0;
+                }
+                else{
+                    continue;
+                }
+            }
+            else{
+                slx = InputOutputManager::Get().slopeX[iCand];
+                slz = InputOutputManager::Get().slopeZ[iCand];
+                inx = InputOutputManager::Get().interceptX[iCand];
+                inz = InputOutputManager::Get().interceptZ[iCand];
+            }
+
+            // reset selected iHit map
             iHit_selected.clear();
-            for (int lid = 0; lid<NLAY; lid++){
-                int ihit = InputOutputManager::Get().hitIndexSelected[lid][iCand];
-                if (ihit>=0){
+            if (iCand==-1&&m_isMC){
+                for (int ihit = 0; ihit<InputOutputManager::Get().nHits; ihit++){
                     iHit_selected[ihit] = true;
+                }
+            }
+            else{
+                for (int lid = 0; lid<NLAY; lid++){
+                    int ihit = InputOutputManager::Get().hitIndexSelected[lid][iCand];
+                    if (ihit>=0){
+                        iHit_selected[ihit] = true;
+                    }
                 }
             }
             //===================Draw XY in xyADC plot============================
@@ -695,17 +585,11 @@ int main(int argc, char** argv){
                     if (GeometryManager::Get().fChamber->wire_ch[lid][wid]!=-1){
                         double y = (GeometryManager::Get().fChamber->wire_y[lid][wid][0]+GeometryManager::Get().fChamber->wire_y[lid][wid][1])/2;
                         double x;
-                        if (m_foundTrackFile){ // according to z-y relation from tracking
-                            double z = InputOutputManager::Get().slopeZ[iCand]*(y-GeometryManager::Get().ReferenceY)+InputOutputManager::Get().interceptZ[iCand];
-                            y = GeometryManager::Get().fChamber->GetY(lid,wid,z);
-                            z = InputOutputManager::Get().slopeZ[iCand]*(y-GeometryManager::Get().ReferenceY)+InputOutputManager::Get().interceptZ[iCand];
-                            x = GeometryManager::Get().fChamber->GetX(lid,wid,z);
-                            y = GeometryManager::Get().fChamber->GetY(lid,wid,z);
-                        }
-                        else{
-                            x = GeometryManager::Get().fChamber->GetX(lid,wid,0);
-                            y = GeometryManager::Get().fChamber->GetY(lid,wid,0);
-                        }
+                        double z = slz*(y-GeometryManager::Get().ReferenceY)+inz;
+                        y = GeometryManager::Get().fChamber->GetY(lid,wid,z);
+                        z = slz*(y-GeometryManager::Get().ReferenceY)+inz;
+                        x = GeometryManager::Get().fChamber->GetX(lid,wid,z);
+                        y = GeometryManager::Get().fChamber->GetY(lid,wid,z);
                         gr_wireCenter->SetPoint(count_nwires,x,y);
                         count_nwires++;
                     }
@@ -713,8 +597,8 @@ int main(int argc, char** argv){
             }
             // Draw the background graph for x-y plane
             pad_xyADC->cd();
-            if (m_foundTrackFile)
-                gr_wireCenter->SetTitle(Form("Ent %lld, nHitsG (%d)%d(%d), icom %d, isel %d, sl_{z}: %.2e->%.2e, #chi^{2}: %.2e->%.2e",iEntry,nHits,nHitsG,InputOutputManager::Get().nHitsS[iCand],InputOutputManager::Get().iCombination[iCand],InputOutputManager::Get().iSelection[iCand],InputOutputManager::Get().slopeZInput[iCand],InputOutputManager::Get().slopeZ[iCand],InputOutputManager::Get().chi2Input[iCand],InputOutputManager::Get().chi2[iCand]));
+            if (iCand>=0)
+                gr_wireCenter->SetTitle(Form("Ent %lld, nHitsG (%d)%d(%d), icom %d, isel %d, sl_{z}: %.2e->%.2e, #chi^{2}: %.2e->%.2e",iEntry,nHits,nHitsG,InputOutputManager::Get().nHitsS[iCand],InputOutputManager::Get().iCombination[iCand],InputOutputManager::Get().iSelection[iCand],InputOutputManager::Get().slopeZInput[iCand],slz,InputOutputManager::Get().chi2Input[iCand],InputOutputManager::Get().chi2[iCand]));
             else
                 gr_wireCenter->SetTitle(Form("Entry %lld nHits = %d",iEntry,nHits));
             gr_wireCenter->Draw("AP");
@@ -730,24 +614,19 @@ int main(int argc, char** argv){
                     double wzhv = -GeometryManager::Get().fChamber->chamberLength/2;
                     double wy = (wyro+wyhv)/2.;
                     double wx = (wxro+wxhv)/2.;
-                    if (m_foundTrackFile){
-                        // correct wx wy wz according to the track position
-                        double wz = InputOutputManager::Get().slopeZ[iCand]*(wy-GeometryManager::Get().ReferenceY)+InputOutputManager::Get().interceptZ[iCand];
-                        wx = ((wzro-wz)*wxhv+(wz-wzhv)*wxro)/(wzro-wzhv);
-                        wy = ((wzro-wz)*wyhv+(wz-wzhv)*wyro)/(wzro-wzhv);
-                        wz = InputOutputManager::Get().slopeZ[iCand]*(wy-GeometryManager::Get().ReferenceY)+InputOutputManager::Get().interceptZ[iCand];
-                        wx = ((wzro-wz)*wxhv+(wz-wzhv)*wxro)/(wzro-wzhv);
-                        wy = ((wzro-wz)*wyhv+(wz-wzhv)*wyro)/(wzro-wzhv);
-                    }
+                    // correct wx wy wz according to the track position
+                    double wz = slz*(wy-GeometryManager::Get().ReferenceY)+inz;
+                    wx = ((wzro-wz)*wxhv+(wz-wzhv)*wxro)/(wzro-wzhv);
+                    wy = ((wzro-wz)*wyhv+(wz-wzhv)*wyro)/(wzro-wzhv);
+                    wz = slz*(wy-GeometryManager::Get().ReferenceY)+inz;
+                    wx = ((wzro-wz)*wxhv+(wz-wzhv)*wxro)/(wzro-wzhv);
+                    wy = ((wzro-wz)*wyhv+(wz-wzhv)*wyro)/(wzro-wzhv);
                     double resmin = 1e9;
                     double thefitd = 0;
                     for (int ip = 0; ip<nHits_cell[lid][wid]; ip++){
                         int ihit = iHit_cell[lid][wid][ip];
                         // Get hit information
-                        double fitd = 0;
-                        if (m_foundTrackFile){
-                            fitd = GeometryManager::Get().GetDOCA(InputOutputManager::Get().LayerID->at(ihit),InputOutputManager::Get().CellID->at(ihit),InputOutputManager::Get().slopeX[iCand],InputOutputManager::Get().interceptX[iCand],InputOutputManager::Get().slopeZ[iCand],InputOutputManager::Get().interceptZ[iCand]);
-                        }
+                        double fitd = GeometryManager::Get().GetDOCA(InputOutputManager::Get().LayerID->at(ihit),InputOutputManager::Get().CellID->at(ihit),slx,inx,slz,inz);
                         int status;
                         // TODO: add t0offset
                         double dd = XTManager::Get().t2x(InputOutputManager::Get().DriftT->at(ihit),InputOutputManager::Get().LayerID->at(ihit),InputOutputManager::Get().CellID->at(ihit),fitd,status);
@@ -763,7 +642,7 @@ int main(int argc, char** argv){
                         }
                         else{
                             circle_driftD[lid][wid][ip]->SetLineStyle(1);
-                            if (m_foundTrackFile&&iHit_selected[ihit]) // used for fitting
+                            if (iHit_selected[ihit]) // used for fitting
                                 circle_driftD[lid][wid][ip]->SetLineColor(kRed);
                             else
                                 circle_driftD[lid][wid][ip]->SetLineColor(kOrange);
@@ -772,7 +651,7 @@ int main(int argc, char** argv){
                         circle_driftD[lid][wid][ip]->Draw(); // from track fitting/finding
 
                         // get the min residual
-                        if (fabs(fitd-dd)<fabs(resmin)&&(m_foundTrackFile&&isGood(ihit))){ // only print when t_XXX and good hit
+                        if (fabs(fitd-dd)<fabs(resmin)&&isGood(ihit)){ // only print when t_XXX and good hit
                             resmin = fitd-dd;
                             thefitd = fitd;
                         }
@@ -781,12 +660,6 @@ int main(int argc, char** argv){
                         dd_cell[lid][wid][ip] = dd;
                         fd_cell[lid][wid][ip] = fitd;
                         double delta = dd*GeometryManager::Get().fChamber->chamberLength/2*2/sqrt(GeometryManager::Get().fChamber->chamberLength/2*GeometryManager::Get().fChamber->chamberLength/2*4+(GeometryManager::Get().fChamber->wire_x[lid][wid][0]-GeometryManager::Get().fChamber->wire_x[lid][wid][1])*(GeometryManager::Get().fChamber->wire_x[lid][wid][0]-GeometryManager::Get().fChamber->wire_x[lid][wid][1])); // correction for x position
-                        if (m_drawZX&&m_foundTrackFile){
-                            for (int ilr = 0; ilr<2; ilr++){
-                                l_zx[lid][wid][ip][ilr]->SetY1(wxhv+(ilr?delta:-delta));
-                                l_zx[lid][wid][ip][ilr]->SetY2(wxro+(ilr?delta:-delta));
-                            }
-                        }
                     }
                     if (resmin<1e9){ // found a hit in this wire
                         text_xyhit[lid][wid]->SetText(wx,wy,Form("%.3f",resmin));// draw the one with the smallest res
@@ -796,254 +669,27 @@ int main(int argc, char** argv){
                 }
             }
             // draw the tracks on the x-y plane
-            double xdown  = InputOutputManager::Get().interceptX[iCand] + (ydown-GeometryManager::Get().ReferenceY)*InputOutputManager::Get().slopeX[iCand];
-            double xup    = InputOutputManager::Get().interceptX[iCand] + (yup-GeometryManager::Get().ReferenceY)*InputOutputManager::Get().slopeX[iCand];
-            double xdowni = InputOutputManager::Get().interceptXInput[iCand] + (ydown-GeometryManager::Get().ReferenceY)*InputOutputManager::Get().slopeXInput[iCand];
-            double xupi   = InputOutputManager::Get().interceptXInput[iCand] + (yup-GeometryManager::Get().ReferenceY)*InputOutputManager::Get().slopeXInput[iCand];
-            MyNamedInfo("display","Track slx "<<InputOutputManager::Get().slopeX[iCand]<<" inx "<<InputOutputManager::Get().interceptX[iCand]<<" slz "<<InputOutputManager::Get().slopeZ[iCand]<<" inz "<<InputOutputManager::Get().interceptZ[iCand]);
-            MyNamedInfo("display","Input slx "<<InputOutputManager::Get().slopeXInput[iCand]<<" inx "<<InputOutputManager::Get().interceptXInput[iCand]<<" slz "<<InputOutputManager::Get().slopeZInput[iCand]<<" inz "<<InputOutputManager::Get().interceptZInput[iCand]);
-            if (m_foundTrackFile){
+            double xdown  = inx + (ydown-GeometryManager::Get().ReferenceY)*slx;
+            double xup    = inx + (yup-GeometryManager::Get().ReferenceY)*slx;
+            MyNamedInfo("display","Track slx "<<slx<<" inx "<<inx<<" slz "<<slz<<" inz "<<inz);
+            l_track->SetX1(xup);
+            l_track->SetX2(xdown);
+            l_track->Draw();
+            if (iCand>=0){
+                MyNamedInfo("display","Input slx "<<InputOutputManager::Get().slopeXInput[iCand]<<" inx "<<InputOutputManager::Get().interceptXInput[iCand]<<" slz "<<InputOutputManager::Get().slopeZInput[iCand]<<" inz "<<InputOutputManager::Get().interceptZInput[iCand]);
+                double xdowni = InputOutputManager::Get().interceptXInput[iCand] + (ydown-GeometryManager::Get().ReferenceY)*InputOutputManager::Get().slopeXInput[iCand];
+                double xupi   = InputOutputManager::Get().interceptXInput[iCand] + (yup-GeometryManager::Get().ReferenceY)*InputOutputManager::Get().slopeXInput[iCand];
                 l_itrack->SetX1(xupi);
                 l_itrack->SetX2(xdowni);
                 l_itrack->Draw();
-                l_track->SetX1(xup);
-                l_track->SetX2(xdown);
-                l_track->Draw();
             }
-            if (m_foundTrackFile){
-                ca_xyADC->SaveAs(prefix+Form("xyADC.%lld.i%d.pdf",iEntry,iCand));
-                ca_xyADC->SaveAs(prefix+Form("xyADC.%lld.i%d.png",iEntry,iCand));
-            }
-            else{
+            if (iCand<0){
                 ca_xyADC->SaveAs(prefix+Form("xyADC.%lld.pdf",iEntry));
                 ca_xyADC->SaveAs(prefix+Form("xyADC.%lld.png",iEntry));
             }
-
-            //===================Draw ZX plots============================
-            // draw the z-x planes
-            if (m_drawZX&&m_foundTrackFile){
-                for (int izx = 1; izx<NZXP; izx++){ // z-x planes corresponding to the layerID of the lower layer counting from 1
-                    ca_zx[izx]->cd();
-                    // draw Background graph for z-x planes
-                    gr_all[izx]->Draw("AP");
-                    text_cr_1[izx]->Draw();
-                    text_cr_2[izx]->Draw();
-                    for (int wid = 0; wid<NCEL; wid++){
-                        if (gr_wire[izx][wid]){
-                            gr_wire[izx][wid]->Draw("PLSAME");
-                            text_cr_1l[izx][wid]->Draw();
-                        }
-                        if (gr_wire[izx+1][wid]){
-                            gr_wire[izx+1][wid]->Draw("PLSAME");
-                            text_cr_2r[izx][wid]->Draw();
-                        }
-#ifdef PRINT_CROSSPOINTS
-                        for (int wjd = 0; wjd < NCEL; wjd++){
-                            if (!point_cross_wire[izx][wid][wjd]
-                                    ||!text_cross_wire[izx][wid][wjd]) continue;
-                            point_cross_wire[izx][wid][wjd]->Draw();
-                            text_cross_wire[izx][wid][wjd]->Draw();
-                        }
-#endif
-                    }
-                    // draw the track and driftT lines on the z-x planes
-                    for (int ilr = 0; ilr<2; ilr++){
-                        for (int wid = 0; wid<NCEL; wid++){
-                            for (int ip = 0; ip<nHits_cell[izx][wid]; ip++){
-                                int ihit = iHit_cell[izx][wid][ip];
-                                if (isGood(ihit))
-                                    l_zx[izx][wid][ip][ilr]->SetLineColor(color[wid]);
-                                else 
-                                    l_zx[izx][wid][ip][ilr]->SetLineColor(14);
-                                l_zx[izx][wid][ip][ilr]->Draw();
-                            }
-                            for (int ip = 0; ip<nHits_cell[izx+1][wid]; ip++){
-                                int ihit = iHit_cell[izx+1][wid][ip];
-                                if (isGood(ihit))
-                                    l_zx[izx+1][wid][ip][ilr]->SetLineColor(color[wid]);
-                                else 
-                                    l_zx[izx+1][wid][ip][ilr]->SetLineColor(14);
-                                l_zx[izx+1][wid][ip][ilr]->Draw();
-                            }
-                        }
-                    }
-                    // position of the track point
-                    double z_track = 0;
-                    double x_track = 0;
-                    double z_itrack = 0;
-                    double x_itrack = 0;
-                    // is there a cross point?
-                    if (nHits_layer[izx]>0&&nHits_layer[izx+1]>0){
-                        for (int wid = 0; wid<NCEL; wid++){
-                            for (int ip = 0; ip<nHits_cell[izx][wid]; ip++){
-                                int ihit = iHit_cell[izx][wid][ip];
-                                for (int wjd = 0; wjd<NCEL; wjd++){
-                                    for (int jp = 0; jp<nHits_cell[izx+1][wjd]; jp++){
-                                        int jhit = iHit_cell[izx+1][wjd][jp];
-                                        int isel = 0;
-                                        int jsel = 0;
-                                        if (m_foundTrackFile){
-                                            isel = iHit_selected[ihit];
-                                            jsel = iHit_selected[jhit];
-                                        }
-                                        // position of the cross point
-                                        for (int icombi = 0; icombi<4; icombi++){
-                                            if (!(isGood(ihit))||(!isGood(jhit))){ // bad cross
-                                                point_cross_zx[izx][wid][wjd][ip][jp][icombi]->SetMarkerColor(14);
-                                                point_cross_zx[izx][wid][wjd][ip][jp][icombi]->SetMarkerSize(0.35);
-                                            }
-                                            else if (isel&&jsel){ // selected cross
-                                                point_cross_zx[izx][wid][wjd][ip][jp][icombi]->SetMarkerColor(kBlack);
-                                                point_cross_zx[izx][wid][wjd][ip][jp][icombi]->SetMarkerSize(0.55);
-                                            }
-                                            else{ // good cross
-                                                point_cross_zx[izx][wid][wjd][ip][jp][icombi]->SetMarkerColor(kRed);
-                                                point_cross_zx[izx][wid][wjd][ip][jp][icombi]->SetMarkerSize(0.55);
-                                            }
-                                            double dd1 = dd_cell[izx][wid][ip];
-                                            double dd2 = dd_cell[izx+1][wjd][jp];
-                                            if (icombi<2) dd1 = -dd1; // reverse izx when icombi is 0 or 1
-                                            if (icombi%2==0) dd2 = -dd2; // reverse izx+1 when icombi is 0 or 2
-                                            double theta1 = GeometryManager::Get().fChamber->wire_theta[izx][wid];
-                                            double theta2 = GeometryManager::Get().fChamber->wire_theta[izx+1][wjd];
-                                            double sintheta12 = sin(theta1-theta2);
-                                            double zc_fix_slx = 0;
-                                            double deltaY = y_cell[izx+1][wjd]-y_cell[izx][wid];
-                                            if (m_foundTrackFile){
-                                                zc_fix_slx = deltaY*InputOutputManager::Get().slopeX[iCand]/(tan(theta2)-tan(theta1));
-                                            }
-                                            else {
-                                                zc_fix_slx = deltaY*m_slxini/(tan(theta2)-tan(theta1));
-                                            }
-                                            double xc = GeometryManager::Get().fChamber->wirecross_x[izx][wid][wjd]+dd1*sin(theta2)/(-sintheta12)+dd2*sin(theta1)/sintheta12;
-                                            double zc = GeometryManager::Get().fChamber->wirecross_z[izx][wid][wjd]+dd1*cos(theta2)/(-sintheta12)+dd2*cos(theta1)/sintheta12+zc_fix_slx;
-                                            if (zc>-GeometryManager::Get().fChamber->chamberLength/2&&zc<GeometryManager::Get().fChamber->chamberLength/2){
-                                                point_cross_zx[izx][wid][wjd][ip][jp][icombi]->SetX(zc);
-                                                point_cross_zx[izx][wid][wjd][ip][jp][icombi]->SetY(xc);
-                                                point_cross_zx[izx][wid][wjd][ip][jp][icombi]->Draw();
-                                            }
-                                            if (m_foundTrackFile){
-                                                if (icombi==3){
-                                                    double y_track = (y_cell[izx][wid]+y_cell[izx+1][wjd])/2.;
-                                                    z_track = InputOutputManager::Get().interceptZ[iCand]+(y_track-GeometryManager::Get().ReferenceY)*InputOutputManager::Get().slopeZ[iCand];
-                                                    x_track = InputOutputManager::Get().interceptX[iCand]+(y_track-GeometryManager::Get().ReferenceY)*InputOutputManager::Get().slopeX[iCand];
-                                                    z_itrack = InputOutputManager::Get().interceptZInput[iCand]+(y_track-GeometryManager::Get().ReferenceY)*InputOutputManager::Get().slopeZInput[iCand];
-                                                    x_itrack = InputOutputManager::Get().interceptXInput[iCand]+(y_track-GeometryManager::Get().ReferenceY)*InputOutputManager::Get().slopeXInput[iCand];
-                                                    double fd1 = fd_cell[izx][wid][ip];
-                                                    double fd2 = fd_cell[izx+1][wjd][jp];
-                                                    double xcf = GeometryManager::Get().fChamber->wirecross_x[izx][wid][wjd]+fd1*sin(theta2)/(-sintheta12)+fd2*sin(theta1)/sintheta12;
-                                                    double zcf = GeometryManager::Get().fChamber->wirecross_z[izx][wid][wjd]+fd1*cos(theta2)/(-sintheta12)+fd2*cos(theta1)/sintheta12+zc_fix_slx;
-                                                    gr_all[izx]->SetTitle(Form("DD_{[%d,%d]}: %.2lf mm (%.2lf #mum) DD_{[%d,%d]}: %.2lf mm (%.2lf #mum) #Delta_{x}: %.0lf #mum #Delta_{z}: %.0lf #mum",izx,wid,dd1,(fd1-dd1)*1000,izx+1,wjd,dd2,(fd2-dd2)*1000,(xc-x_track)*1000,(zc-z_track)*1000));
-                                                }
-                                            }
-                                            else{
-                                                gr_all[izx]->SetTitle(Form("Layer %d and Layer %d",izx,izx+1));
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    else{
-                        int wid = 0;
-                        for (; wid<NCEL; wid++){
-                            if (nHits_cell[izx][wid]) break;
-                        }
-                        if (wid==NCEL) wid = NCEL/2;
-                        int wjd = 0;
-                        for (; wjd<NCEL; wjd++){
-                            if (nHits_cell[izx+1][wjd]) break;
-                        }
-                        if (wjd==NCEL) wjd = NCEL/2;
-                        double y_track = (y_cell[izx][wid]+y_cell[izx+1][wjd])/2.; // take the y value from a previous event
-                        if (m_foundTrackFile){
-                            z_track = InputOutputManager::Get().interceptZ[iCand]+(y_track-GeometryManager::Get().ReferenceY)*InputOutputManager::Get().slopeZ[iCand];
-                            x_track = InputOutputManager::Get().interceptX[iCand]+(y_track-GeometryManager::Get().ReferenceY)*InputOutputManager::Get().slopeX[iCand];
-                            z_itrack = InputOutputManager::Get().interceptZInput[iCand]+(y_track-GeometryManager::Get().ReferenceY)*InputOutputManager::Get().slopeZInput[iCand];
-                            x_itrack = InputOutputManager::Get().interceptXInput[iCand]+(y_track-GeometryManager::Get().ReferenceY)*InputOutputManager::Get().slopeXInput[iCand];
-                        }
-                        gr_all[izx]->SetTitle(Form("Layer %d and Layer %d",izx,izx+1));
-                    }
-                    // draw the track point
-                    if (m_foundTrackFile){
-                        point_itrack_zx[izx]->SetX(z_itrack);
-                        point_itrack_zx[izx]->SetY(x_itrack);
-                        point_itrack_zx[izx]->Draw();
-                        point_track_zx[izx]->SetX(z_track);
-                        point_track_zx[izx]->SetY(x_track);
-                        point_track_zx[izx]->Draw();
-                    }
-                    if (m_foundTrackFile){
-                        ca_zx[izx]->SaveAs(prefix+Form("zx.%lld.i%d.l%d.pdf",iEntry,iCand,izx));
-                        ca_zx[izx]->SaveAs(prefix+Form("zx.%lld.i%d.l%d.png",iEntry,iCand,izx));
-                    }
-                    else{
-                        ca_zx[izx]->SaveAs(prefix+Form("zx.%lld.l%d.pdf",iEntry,izx));
-                        ca_zx[izx]->SaveAs(prefix+Form("zx.%lld.l%d.png",iEntry,izx));
-                    }
-                }
-
-                // create one more z-x plane with all points on it
-                ca_zx_all->cd();
-                gr_all[0]->Draw("AP");
-                for (int izx = 1; izx<NZXP; izx++){
-                    if (m_foundTrackFile)
-                        point_track_zx[izx]->Draw();
-                    if (nHits_layer[izx]>0&&nHits_layer[izx+1]>0){
-                        for (int wid = 0; wid<NCEL; wid++){
-                            for (int ip = 0; ip<nHits_cell[izx][wid]; ip++){
-                                int ihit = iHit_cell[izx][wid][ip];
-                                for (int wjd = 0; wjd<NCEL; wjd++){
-                                    for (int jp = 0; jp<nHits_cell[izx+1][wjd]; jp++){
-                                        int jhit = iHit_cell[izx+1][wjd][jp];
-                                        // position of the cross point
-                                        for (int icombi = 0; icombi<4; icombi++){
-                                            if ((!isGood(ihit))||(!isGood(jhit))){ // bad cross
-                                                text_cross_zx[izx][wid][wjd][ip][jp][icombi]->SetTextColor(14);
-                                                text_cross_zx[izx][wid][wjd][ip][jp][icombi]->SetTextSize(0.008);
-                                            }
-                                            else{
-                                                text_cross_zx[izx][wid][wjd][ip][jp][icombi]->SetTextColor(color[izx]);
-                                                text_cross_zx[izx][wid][wjd][ip][jp][icombi]->SetTextSize(0.01);
-                                            }
-                                            double dd1 = dd_cell[izx][wid][ip];
-                                            double dd2 = dd_cell[izx+1][wjd][jp];
-                                            if (icombi<2) dd1 = -dd1; // reverse izx when icombi is 0 or 1
-                                            if (icombi%2==0) dd2 = -dd2; // reverse izx+1 when icombi is 0 or 2
-                                            double theta1 = GeometryManager::Get().fChamber->wire_theta[izx][wid];
-                                            double theta2 = GeometryManager::Get().fChamber->wire_theta[izx+1][wjd];
-                                            double sintheta12 = sin(theta1-theta2);
-                                            double zc_fix_slx = 0;
-                                            double deltaY = y_cell[izx+1][wjd]-y_cell[izx][wid];
-                                            if (m_foundTrackFile){
-                                                zc_fix_slx = deltaY*InputOutputManager::Get().slopeX[iCand]/(tan(theta2)-tan(theta1));
-                                            }
-                                            else{
-                                                zc_fix_slx = deltaY*m_slxini/(tan(theta2)-tan(theta1));
-                                            }
-                                            double xc = GeometryManager::Get().fChamber->wirecross_x[izx][wid][wjd]+dd1*sin(theta2)/(-sintheta12)+dd2*sin(theta1)/sintheta12;
-                                            double zc = GeometryManager::Get().fChamber->wirecross_z[izx][wid][wjd]+dd1*cos(theta2)/(-sintheta12)+dd2*cos(theta1)/sintheta12+zc_fix_slx;
-                                            if (zc>-GeometryManager::Get().fChamber->chamberLength/2&&zc<GeometryManager::Get().fChamber->chamberLength/2){
-                                                text_cross_zx[izx][wid][wjd][ip][jp][icombi]->SetX(zc);
-                                                text_cross_zx[izx][wid][wjd][ip][jp][icombi]->SetY(xc);
-                                                text_cross_zx[izx][wid][wjd][ip][jp][icombi]->Draw();
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-                if (m_foundTrackFile){
-                    ca_zx_all->SaveAs(prefix+Form("zx.%lld.i%d.all.png",iEntry,iCand));
-                    ca_zx_all->SaveAs(prefix+Form("zx.%lld.i%d.all.pdf",iEntry,iCand));
-                }
-                else{
-                    ca_zx_all->SaveAs(prefix+Form("zx.%lld.all.png",iEntry));
-                    ca_zx_all->SaveAs(prefix+Form("zx.%lld.all.pdf",iEntry));
-                }
+            else{
+                ca_xyADC->SaveAs(prefix+Form("xyADC.%lld.i%d.pdf",iEntry,iCand));
+                ca_xyADC->SaveAs(prefix+Form("xyADC.%lld.i%d.png",iEntry,iCand));
             }
         }
 
