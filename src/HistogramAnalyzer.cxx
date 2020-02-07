@@ -146,6 +146,7 @@ int HistogramAnalyzer::FitSlice(TH1D * hist, double & chi2,double & pValue, bool
         MyNamedVerbose("HistogramAnalyzer",Form("par_functionType is kOptimal. Try all functions"));
         double pValueMax = 0;
         for (int tryFunctionType = kBasic+1; tryFunctionType<kBothSides; tryFunctionType++){
+            if (tryFunctionType == kMultiple) continue;
             MyNamedVerbose("HistogramAnalyzer","  tryFunctionType = "<<tryFunctionType);
             int result = -1;
             if (chooseCurrentFunctions(tryFunctionType,fitBoth,isLeft)) result = doFitSlice(hist);
