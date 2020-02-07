@@ -98,7 +98,7 @@ int main(int argc, char** argv){
                 break;
             case 'H':
                 m_suffixHitFile = optarg;
-                printf("Added suffix \"%s\" to the output file\n",optarg);
+                printf("Added suffix \"%s\" to the input hit file\n",optarg);
                 break;
             case 'A':
                 m_wireAdjustmentFile = optarg;

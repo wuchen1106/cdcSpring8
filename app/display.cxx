@@ -344,9 +344,6 @@ int main(int argc, char** argv){
     int    nHits_cell[NLAY][NCEL];
     int    iHit_cell[NLAY][NCEL][MULTI];
     std::map<int,bool> iHit_selected;
-    // to record each dd & fd
-    double dd_cell[NLAY][NCEL][MULTI];
-    double fd_cell[NLAY][NCEL][MULTI];
     // to record track position on each layer
     double y_cell[NLAY][NCEL];
     for (int lid = 1; lid<NLAY; lid++){
@@ -556,6 +553,8 @@ int main(int argc, char** argv){
                 }
             }
             else{
+                // FIXME: this is for testing!
+                if (InputOutputManager::Get().nHitsS[iCand]<7) continue;
                 slx = InputOutputManager::Get().slopeX[iCand];
                 slz = InputOutputManager::Get().slopeZ[iCand];
                 inx = InputOutputManager::Get().interceptX[iCand];
@@ -598,9 +597,9 @@ int main(int argc, char** argv){
             // Draw the background graph for x-y plane
             pad_xyADC->cd();
             if (iCand>=0)
-                gr_wireCenter->SetTitle(Form("Ent %lld, nHitsG (%d)%d(%d), icom %d, isel %d, sl_{z}: %.2e->%.2e, #chi^{2}: %.2e->%.2e",iEntry,nHits,nHitsG,InputOutputManager::Get().nHitsS[iCand],InputOutputManager::Get().iCombination[iCand],InputOutputManager::Get().iSelection[iCand],InputOutputManager::Get().slopeZInput[iCand],slz,InputOutputManager::Get().chi2Input[iCand],InputOutputManager::Get().chi2[iCand]));
+                gr_wireCenter->SetTitle(Form("Ent %lld, nHits (%d)%d(%d), icom %d, isel %d, t0 %.1f sl_{x} %.2e sl_{z} %.2e, #chi^{2} %.2e, #chi_{w}^{2} %.2e",iEntry,nHits,nHitsG,InputOutputManager::Get().nHitsS[iCand],InputOutputManager::Get().iCombination[iCand],InputOutputManager::Get().iSelection[iCand],InputOutputManager::Get().t0Offset[iCand],slx,slz,InputOutputManager::Get().chi2[iCand],InputOutputManager::Get().chi2WithTestLayer[iCand]));
             else
-                gr_wireCenter->SetTitle(Form("Entry %lld nHits = %d",iEntry,nHits));
+                gr_wireCenter->SetTitle(Form("Entry %lld nHits = %d, t0 %.1f, sl_{x} %.2e, sl_{z} %.2e",iEntry,nHits,InputOutputManager::Get().t0mc,slx,slz));
             gr_wireCenter->Draw("AP");
             // Draw the hit circles
             for (int lid = 0; lid<NLAY; lid++){
@@ -628,8 +627,14 @@ int main(int argc, char** argv){
                         // Get hit information
                         double fitd = GeometryManager::Get().GetDOCA(InputOutputManager::Get().LayerID->at(ihit),InputOutputManager::Get().CellID->at(ihit),slx,inx,slz,inz);
                         int status;
-                        // TODO: add t0offset
-                        double dd = XTManager::Get().t2x(InputOutputManager::Get().DriftT->at(ihit),InputOutputManager::Get().LayerID->at(ihit),InputOutputManager::Get().CellID->at(ihit),fitd,status);
+                        double dt = InputOutputManager::Get().DriftT->at(ihit);
+                        if (iCand>=0){
+                            dt-=InputOutputManager::Get().t0Offset[iCand];
+                        }
+                        else if (m_isMC){
+                            dt-=InputOutputManager::Get().t0mc;
+                        }
+                        double dd = XTManager::Get().t2x(dt,InputOutputManager::Get().LayerID->at(ihit),InputOutputManager::Get().CellID->at(ihit),fitd,status);
                         // set the hit circles
                         MyNamedInfo("display","Hit "<<ihit<<" ["<<lid<<"]["<<wid<<"]: dd = "<<dd<<" @ "<<wx<<" "<<wy);
                         circle_driftD[lid][wid][ip]->SetX1(wx);
@@ -656,25 +661,16 @@ int main(int argc, char** argv){
                             thefitd = fitd;
                         }
 
-                        // Get information for cross points
-                        dd_cell[lid][wid][ip] = dd;
-                        fd_cell[lid][wid][ip] = fitd;
                         double delta = dd*GeometryManager::Get().fChamber->chamberLength/2*2/sqrt(GeometryManager::Get().fChamber->chamberLength/2*GeometryManager::Get().fChamber->chamberLength/2*4+(GeometryManager::Get().fChamber->wire_x[lid][wid][0]-GeometryManager::Get().fChamber->wire_x[lid][wid][1])*(GeometryManager::Get().fChamber->wire_x[lid][wid][0]-GeometryManager::Get().fChamber->wire_x[lid][wid][1])); // correction for x position
                     }
                     if (resmin<1e9){ // found a hit in this wire
-                        text_xyhit[lid][wid]->SetText(wx,wy,Form("%.3f",resmin));// draw the one with the smallest res
+                        text_xyhit[lid][wid]->SetText(wx,wy,Form("%.2f %.2f",thefitd-resmin,resmin));// draw the one with the smallest res
                         text_xyhit[lid][wid]->Draw();
                     }
                     y_cell[lid][wid] = wy;
                 }
             }
             // draw the tracks on the x-y plane
-            double xdown  = inx + (ydown-GeometryManager::Get().ReferenceY)*slx;
-            double xup    = inx + (yup-GeometryManager::Get().ReferenceY)*slx;
-            MyNamedInfo("display","Track slx "<<slx<<" inx "<<inx<<" slz "<<slz<<" inz "<<inz);
-            l_track->SetX1(xup);
-            l_track->SetX2(xdown);
-            l_track->Draw();
             if (iCand>=0){
                 MyNamedInfo("display","Input slx "<<InputOutputManager::Get().slopeXInput[iCand]<<" inx "<<InputOutputManager::Get().interceptXInput[iCand]<<" slz "<<InputOutputManager::Get().slopeZInput[iCand]<<" inz "<<InputOutputManager::Get().interceptZInput[iCand]);
                 double xdowni = InputOutputManager::Get().interceptXInput[iCand] + (ydown-GeometryManager::Get().ReferenceY)*InputOutputManager::Get().slopeXInput[iCand];
@@ -683,6 +679,12 @@ int main(int argc, char** argv){
                 l_itrack->SetX2(xdowni);
                 l_itrack->Draw();
             }
+            double xdown  = inx + (ydown-GeometryManager::Get().ReferenceY)*slx;
+            double xup    = inx + (yup-GeometryManager::Get().ReferenceY)*slx;
+            MyNamedInfo("display","Track slx "<<slx<<" inx "<<inx<<" slz "<<slz<<" inz "<<inz);
+            l_track->SetX1(xup);
+            l_track->SetX2(xdown);
+            l_track->Draw();
             if (iCand<0){
                 ca_xyADC->SaveAs(prefix+Form("xyADC.%lld.pdf",iEntry));
                 ca_xyADC->SaveAs(prefix+Form("xyADC.%lld.png",iEntry));
@@ -741,8 +743,10 @@ bool isGood(int iHit){
     int ip = InputOutputManager::Get().iPeakInChannel->at(iHit);
     bool good = true;
     if (ip>0) good = false;
-    if (aa<aaCut) good = false;
-    if (sum<sumCut) good = false;
+    if (aa!=0){
+        if (aa<aaCut) good = false;
+        if (sum<sumCut) good = false;
+    }
     if (driftT<tmin||driftT>tmax) good = false;
     return good;
 }
