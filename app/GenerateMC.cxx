@@ -315,8 +315,10 @@ int main(int argc, char** argv){
                         }
                         driftD = minDOCA+gRandom->Gaus(0,err);
                         driftT = XTManager::Get().x2t(driftD,lid,theWid);
-                        driftT+=deltaT0; // DriftTmeasure = DriftTtrue+T0Offset
-                        driftD = XTManager::Get().t2x(driftT,lid,theWid,minDOCA,status);
+                        if (deltaT0!=0){
+                            driftT+=deltaT0; // DriftTmeasure = DriftTtrue+T0Offset
+                            driftD = XTManager::Get().t2x(driftT,lid,theWid,minDOCA,status);
+                        }
                     }
                     InputOutputManager::Get().PushHitMC(lid,theWid,driftT,driftD,minDOCA);
                     MyNamedInfo("GenerateMC","    PushHitMC("<<lid<<","<<theWid<<","<<driftT<<","<<driftD<<","<<minDOCA<<")");
