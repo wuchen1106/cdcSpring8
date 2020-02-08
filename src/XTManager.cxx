@@ -24,6 +24,7 @@ XTManager::XTManager():
     fXTHistOdd(NULL),
     fXTHistDefault(NULL),
     fResIntrinsic(NULL),
+    fResIntrinsicFunction(NULL),
     xtType(kSingleFolded)
 {
     for (int i = 0; i<NLAY; i++){
@@ -52,6 +53,7 @@ XTManager::~XTManager(){
         if (fXTHist[i]) delete fXTHist[i];
     }
     if (fResIntrinsic) delete fResIntrinsic;
+    if (fResIntrinsicFunction) delete fResIntrinsicFunction;
 }
 
 bool XTManager::SetInputFileXT(TString file){
@@ -128,6 +130,7 @@ bool XTManager::Initialize(){
         }
     }
     fResIntrinsic = (TGraph*)fInputFileRes->Get("gr_resIni");
+    fResIntrinsicFunction = (TF1*)fInputFileRes->Get("f_resIni");
 
     return true;
 }
@@ -189,19 +192,24 @@ double XTManager::RandomDriftT(double doca, int lid, int wid){
 double XTManager::GetError(double dd){
     dd = fabs(dd); // TODO: either consider about left/right asymmetry or add other parameter control
     double error = 0.2; // default value 200 um
-    int N = fResIntrinsic->GetN();
-    for (int i = 0; i<N-1; i++){
-        double d1,sig1;
-        double d2,sig2;
-        fResIntrinsic->GetPoint(i,d1,sig1);
-        fResIntrinsic->GetPoint(i+1,d2,sig2);
-        if (d2>7){
-            error = sig1;
-            break;
-        }
-        else if (d1<dd&&d2>=dd){
-            error = (sig1*(d2-dd)+sig2*(dd-d1))/(d2-d1);
-            break;
+    if (fResIntrinsicFunction){
+        error = fResIntrinsicFunction->Eval(dd>7.5?7.5:dd);
+    }
+    else{
+        int N = fResIntrinsic->GetN();
+        for (int i = 0; i<N-1; i++){
+            double d1,sig1;
+            double d2,sig2;
+            fResIntrinsic->GetPoint(i,d1,sig1);
+            fResIntrinsic->GetPoint(i+1,d2,sig2);
+            if (d2>7){
+                error = sig1;
+                break;
+            }
+            else if (d1<dd&&d2>=dd){
+                error = (sig1*(d2-dd)+sig2*(dd-d1))/(d2-d1);
+                break;
+            }
         }
     }
     return error;

@@ -63,6 +63,7 @@ private:
     TF1    * fXTLeftDefault;
     TF1    * fXTRightDefault;
     TGraph * fResIntrinsic; // TODO: support multiple resolution graphs in the future
+    TF1    * fResIntrinsicFunction;
     TH2D   * fXTHist[NLAY];
     TH2D   * fXTHistOdd;
     TH2D   * fXTHistEven;
