@@ -179,11 +179,11 @@ int main(int argc, char** argv){
         success = GeometryManager::Get().AdjustWirePosition(m_wireAdjustmentFile);
         if (!success) MyWarn("Cannot load offset file for wire adjustment. Will ignore this step.");
     }
-    success = XTManager::Get().SetInputFileXT(m_inputXTFile);
-    if (!success){MyError("Invalid input XT file"); return 1;}
-    success = XTManager::Get().Initialize();XTManager::Get().Print();
-    if (!success) {MyError("Cannot initialize XTManager"); return 1;}
     if (m_StartStage<=1){
+        success = XTManager::Get().SetInputFileXT(m_inputXTFile);
+        if (!success){MyError("Invalid input XT file"); return 1;}
+        success = XTManager::Get().Initialize();XTManager::Get().Print();
+        if (!success) {MyError("Cannot initialize XTManager"); return 1;}
         InputOutputManager::Get().readHitFile = true;
         InputOutputManager::Get().readTrackFile = true;
         InputOutputManager::Get().SetHitFileSuffix(m_suffixHitFile); // the output file name will be like h_100SUFFIX.root

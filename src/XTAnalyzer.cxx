@@ -21,7 +21,6 @@
 #include "HistogramAnalyzer.hxx"
 #include "ParameterManager.hxx"
 #include "GeometryManager.hxx"
-#include "XTManager.hxx"
 #include "Log.hxx"
 
 XTAnalyzer::XTAnalyzer(TString runname, TFile * outfile, bool drawDetails)
