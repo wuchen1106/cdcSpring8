@@ -524,8 +524,8 @@ void XTAnalyzer::drawSample2D(bool withFunction){
     h2_bkg_sigT->GetXaxis()->SetTitle("Drift Time [ns]");
     h2_bkg_sigT->GetYaxis()->SetTitle("#sigma [#mum]");
     h2_bkg_sigT->Draw();
-    mOutTree->SetMarkerColor(kRed); mOutTree->Draw("sig*1000:t","x>=0&&n>0&&func!=0","PSAME");
-    mOutTree->SetMarkerColor(kBlue); mOutTree->Draw("sig*1000:t","x<0&&n>0&&func!=0","PSAME");
+    mOutTree->SetMarkerColor(kRed); mOutTree->Draw("sig*1000:t","x>=0&&n>0&&func>=0","PSAME");
+    mOutTree->SetMarkerColor(kBlue); mOutTree->Draw("sig*1000:t","x<0&&n>0&&func>=0","PSAME");
 
     canv->cd(4);gPad->SetGridx(1);gPad->SetGridy(1);
     TH2D * h2_bkg_rightMinusLeft = new TH2D("h2_bkg_rightMinusLeft","Mean of the two side of XT relation",512,mDrawTmin,mDrawTmax,1024,-1,1);
@@ -644,24 +644,24 @@ void XTAnalyzer::drawSampleAtt(){
     canv->cd(1);gPad->SetGridx(1);gPad->SetGridy(1);
     TH2D * h2_bkg_entriesT = new TH2D("h2_bkg_entriesT","Number of entries in each T slice",512,mDrawTmin,mDrawTmax,1024,0,mEntriesMax*1.1);
     h2_bkg_entriesT->Draw();
-    mOutTree->SetMarkerColor(kRed); mOutTree->Draw("n:t","x>=0&&n>0&&func!=0","PSAME");
-    mOutTree->SetMarkerColor(kBlue); mOutTree->Draw("n:t","x<0&&n>0&&func!=0","PSAME");
-    mOutTree->SetMarkerColor(kGray); mOutTree->Draw("n:t","func==0","PSAME");
+    mOutTree->SetMarkerColor(kRed); mOutTree->Draw("n:t","x>=0&&n>0&&func>=0","PSAME");
+    mOutTree->SetMarkerColor(kBlue); mOutTree->Draw("n:t","x<0&&n>0&&func>=0","PSAME");
+    mOutTree->SetMarkerColor(kGray); mOutTree->Draw("n:t","func<0","PSAME");
     canv->cd(2);gPad->SetGridx(1);gPad->SetGridy(1);
     TH2D * h2_bkg_sigT = new TH2D("h2_bkg_sigT","#sigma of X fitting in each T slice",512,mDrawTmin,mDrawTmax,512,0,0.8);
     h2_bkg_sigT->Draw();
-    mOutTree->SetMarkerColor(kRed); mOutTree->Draw("sig:t","x>=0&&n>0&&func!=0","PSAME");
-    mOutTree->SetMarkerColor(kBlue); mOutTree->Draw("sig:t","x<0&&n>0&&func!=0","PSAME");
+    mOutTree->SetMarkerColor(kRed); mOutTree->Draw("sig:t","x>=0&&n>0&&func>=0","PSAME");
+    mOutTree->SetMarkerColor(kBlue); mOutTree->Draw("sig:t","x<0&&n>0&&func>=0","PSAME");
     canv->cd(3);gPad->SetGridx(1);gPad->SetGridy(1);
     TH2D * h2_bkg_chi2T = new TH2D("h2_bkg_chi2T","#chi^{2} of X fitting in each T slice",512,mDrawTmin,mDrawTmax,512,0,150);
     h2_bkg_chi2T->Draw();
-    mOutTree->SetMarkerColor(kRed); mOutTree->Draw("chi2:t","x>=0&&n>0&&func!=0","PSAME");
-    mOutTree->SetMarkerColor(kBlue); mOutTree->Draw("chi2:t","x<0&&n>0&&func!=0","PSAME");
+    mOutTree->SetMarkerColor(kRed); mOutTree->Draw("chi2:t","x>=0&&n>0&&func>=0","PSAME");
+    mOutTree->SetMarkerColor(kBlue); mOutTree->Draw("chi2:t","x<0&&n>0&&func>=0","PSAME");
     canv->cd(4);gPad->SetGridx(1);gPad->SetGridy(1);
     TH2D * h2_bkg_probT = new TH2D("h2_bkg_probT","p-value of X fitting in each T slice",512,mDrawTmin,mDrawTmax,512,0,1);
     h2_bkg_probT->Draw();
-    mOutTree->SetMarkerColor(kRed); mOutTree->Draw("prob:t","x>=0&&n>0&&func!=0","PSAME");
-    mOutTree->SetMarkerColor(kBlue); mOutTree->Draw("prob:t","x<0&&n>0&&func!=0","PSAME");
+    mOutTree->SetMarkerColor(kRed); mOutTree->Draw("prob:t","x>=0&&n>0&&func>=0","PSAME");
+    mOutTree->SetMarkerColor(kBlue); mOutTree->Draw("prob:t","x<0&&n>0&&func>=0","PSAME");
     canv->SaveAs(Form("result/sampleAtt_%s%s.png",mRunName.Data(),m_suffix.Data()));
 }
 
@@ -672,14 +672,14 @@ void XTAnalyzer::formXTGraphs(){
     double graph_prob_min = ParameterManager::Get().XTAnalyzerParameters.graph_prob_min;
 
     // make graphs from different samplings: left/right/folded TIMES time/space
-    gr_left->Set(mOutTree->GetEntries(Form("func!=0&&n>=%d&&(%d||chi2<=%.7e)&&prob>=%.7e&&x<%.7e",graph_n_min,graph_chi2_max?0:1,graph_chi2_max,graph_prob_min,0.)));
-    gr_right->Set(mOutTree->GetEntries(Form("func!=0&&n>=%d&&(%d||chi2<=%.7e)&&prob>=%.7e&&x>%.7e",graph_n_min,graph_chi2_max?0:1,graph_chi2_max,graph_prob_min,0.)));
+    gr_left->Set(mOutTree->GetEntries(Form("func>=0&&n>=%d&&(%d||chi2<=%.7e)&&prob>=%.7e&&x<%.7e",graph_n_min,graph_chi2_max?0:1,graph_chi2_max,graph_prob_min,0.)));
+    gr_right->Set(mOutTree->GetEntries(Form("func>=0&&n>=%d&&(%d||chi2<=%.7e)&&prob>=%.7e&&x>%.7e",graph_n_min,graph_chi2_max?0:1,graph_chi2_max,graph_prob_min,0.)));
     int count_left = 0;
     int count_right = 0;
     MyNamedVerbose("XTAnalyzer","Looping in the output tree again, "<<mOutTree->GetEntries()<<" entries");
     for (Long64_t iEntry = 0; iEntry<mOutTree->GetEntries(); iEntry++){
         mOutTree->GetEntry(iEntry);
-        if (mFunction!=0&&mEntries>=graph_n_min&&(!graph_chi2_max||mChi2<=graph_chi2_max)&&mProb>=graph_prob_min){
+        if (mFunction>=0&&mEntries>=graph_n_min&&(!graph_chi2_max||mChi2<=graph_chi2_max)&&mProb>=graph_prob_min){
             if (mX<0){
                 gr_left->SetPoint(count_left,mT,mX);
                 gr_left->SetPointError(count_left,mTerr,mXerr);
