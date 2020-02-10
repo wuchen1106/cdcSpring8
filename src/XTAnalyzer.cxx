@@ -352,9 +352,6 @@ void XTAnalyzer::FitXT(){
 
     // save the newly created objects
     mOutFile->cd();
-    f_left->Write();
-    f_right->Write();
-
     // Combine the two side together if needed
     if (ParameterManager::Get().XTAnalyzerParameters.CombineLeftAndRight){
         combineLeftAndRight(offset); // the offset should be considered while making gr_combined
@@ -377,7 +374,20 @@ void XTAnalyzer::FitXT(){
 
         h2_xt_combined->Write();
         gr_combined->Write();
+        f_combinedLeft->SetName("fl"+m_suffix);
+        f_combinedLeft->Write();
+        f_combinedRight->SetName("fr"+m_suffix);
         f_combinedRight->Write();
+        f_left->SetName("fls"+m_suffix);
+        f_right->SetName("frs"+m_suffix);
+        f_left->Write();
+        f_right->Write();
+    }
+    else{
+        f_left->SetName("fl"+m_suffix);
+        f_right->SetName("fr"+m_suffix);
+        f_left->Write();
+        f_right->Write();
     }
 }
 
@@ -560,7 +570,7 @@ void XTAnalyzer::combineLeftAndRight(double offset){
     h2_xt_combined->SetName("h2_xtc"+m_suffix);
     for (int iBinY = 1; iBinY <= h2_xt->GetYaxis()->GetNbins(); iBinY++){
         double Y = h2_xt->GetYaxis()->GetBinCenter(iBinY);
-        if ((Y<combineAtDOCA&&Y>=0)||(Y>=-combineAtDOCA&&Y<0)){ // TODO: to consider more combination patterns in the future (quite rarely used feature)
+        if ((Y>combineAtDOCA)||(Y>=-combineAtDOCA&&Y<0)){ // TODO: to consider more combination patterns in the future (quite rarely used feature)
             int iBinY2Copy = h2_xt->GetYaxis()->FindBin(-Y);
             for (int iBinX = 1; iBinX <= h2_xt->GetXaxis()->GetNbins(); iBinX++){
                 double c = h2_xt->GetBinContent(iBinX,iBinY);
