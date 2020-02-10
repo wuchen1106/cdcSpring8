@@ -69,6 +69,8 @@ public:
     bool FirstGoodPeak;
     bool UseGoodHit;
     bool AllGoodHitsUsed;
+    bool CombineLeftAndRight;
+    double CombineAtDOCA;
     int nHits_max;
     int nHitsS_min;
     double chi2_max;

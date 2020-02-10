@@ -27,16 +27,14 @@ XTAnalyzer::XTAnalyzer(TString runname, TFile * outfile, bool drawDetails)
         :mRunName(runname), mDrawDetails(drawDetails),
         mOutFile(outfile), mOutTree(NULL),
         mX(0), mXerr(0), mT(0), mTerr(0), mSig(0), mChi2(0), mProb(0), mEntries(0), mFunction(0), 
-        h2_xt(NULL), gr_left(NULL), gr_right(NULL), gr_rightMinusLeft(NULL),
-        f_left(NULL), f_right(NULL)
+        h2_xt(NULL), h2_xt_combined(NULL), gr_left(NULL), gr_right(NULL), gr_rightMinusLeft(NULL), gr_combined(NULL),
+        f_left(NULL), f_right(NULL), f_combinedLeft(NULL), f_combinedRight(NULL)
 {
     // prepare XT basic functions
-    for (int iLR = 0; iLR<2; iLR++){
-        for (int iRange = 0; iRange<NRANGE; iRange++){
-            for (int iPol = 0; iPol<NPOL; iPol++){
-                f_basicXT[iLR][iRange][iPol] = CommonTools::TF1New(Form("f_basicXT_%d_%d",iRange,iPol),Form("pol%d",iPol),-1000,1000);
-                f_basicXT[iLR][iRange][iPol]->SetLineColor(kGray);
-            }
+    for (int iRange = 0; iRange<NRANGE; iRange++){
+        for (int iPol = 0; iPol<NPOL; iPol++){
+            f_basicXT[iRange][iPol] = CommonTools::TF1New(Form("f_basicXT_%d_%d",iRange,iPol),Form("pol%d",iPol),-1000,1000);
+            f_basicXT[iRange][iPol]->SetLineColor(kGray);
         }
     }
 }
@@ -45,7 +43,7 @@ XTAnalyzer::~XTAnalyzer(void){
     for (int iLR = 0; iLR<2; iLR++){
         for (int iRange = 0; iRange<NRANGE; iRange++){
             for (int iPol = 0; iPol<NPOL; iPol++){
-                if(f_basicXT[iLR][iRange][iPol]) delete f_basicXT[iLR][iRange][iPol];
+                if(f_basicXT[iRange][iPol]) delete f_basicXT[iRange][iPol];
             }
         }
     }
@@ -54,9 +52,11 @@ XTAnalyzer::~XTAnalyzer(void){
 void XTAnalyzer::Initialize(void){
     if(mOutTree) {delete mOutTree; mOutTree = NULL;}
     if(h2_xt) {delete h2_xt; h2_xt = NULL;}
+    if(h2_xt_combined) {delete h2_xt_combined; h2_xt_combined = NULL;}
     if(gr_left) {delete gr_left; gr_left = NULL;}
     if(gr_right) {delete gr_right ; gr_right = NULL;}
     if(gr_rightMinusLeft) {delete gr_rightMinusLeft; gr_rightMinusLeft = NULL;}
+    if(gr_combined) {delete gr_combined; gr_combined = NULL;}
 }
 
 int XTAnalyzer::Prepare2DHists(bool reLoad){
@@ -167,6 +167,10 @@ int XTAnalyzer::PrepareXTFunctions(){
     if (f_right) delete f_right;
     f_left = CommonTools::TF1New("fl"+m_suffix,formula,-25,800);
     f_right = CommonTools::TF1New("fr"+m_suffix,formula,-25,800);
+    if (ParameterManager::Get().XTAnalyzerParameters.CombineLeftAndRight){
+        f_combinedLeft = CommonTools::TF1New("flc"+m_suffix,formula,-25,800);
+        f_combinedRight = CommonTools::TF1New("frc"+m_suffix,formula,-25,800);
+    }
     return 0;
 }
 
@@ -332,6 +336,53 @@ void XTAnalyzer::FitXT(){
         return;
     }
 
+    doFitXT(gr_left,f_left,"L");
+    doFitXT(gr_right,f_right,"R");
+
+    drawSample2D(true);
+
+    // move the XT to center: we don't want to leave the wire position offset information in this XT relation
+    double tmin = ParameterManager::Get().XTAnalyzerParameters.gold_t_min;
+    double tmax = ParameterManager::Get().XTAnalyzerParameters.gold_t_max;
+    double offset = (f_left->Integral(tmin,tmax)+f_right->Integral(tmin,tmax))/2./(tmax-tmin);
+    int nPars = f_left->GetNpar();
+    f_left->SetParameter(nPars-1,-offset);
+    nPars = f_right->GetNpar();
+    f_right->SetParameter(nPars-1,-offset);
+
+    // save the newly created objects
+    mOutFile->cd();
+    f_left->Write();
+    f_right->Write();
+
+    // Combine the two side together if needed
+    if (ParameterManager::Get().XTAnalyzerParameters.CombineLeftAndRight){
+        combineLeftAndRight(offset); // the offset should be considered while making gr_combined
+        doFitXT(gr_combined,f_combinedRight,"C");
+        int counter = 0;
+        for (int iRange = 0; iRange<nRanges; iRange++){
+            if (iRange>0){
+                double par = ParameterManager::Get().XTAnalyzerParameters.xtfunc_tLowEdge[iRange];
+                f_combinedLeft->SetParameter(counter++,par);
+            }
+            int nPol = ParameterManager::Get().XTAnalyzerParameters.xtfunc_nPol[iRange];
+            for (int iPar = 0; iPar<=nPol; iPar++){
+                double par = -f_basicXT[iRange][nPol]->GetParameter(iPar); // flip it
+                f_combinedLeft->SetParameter(counter++,par);
+            }
+        }
+        f_combinedLeft->SetParameter(counter++,0); // the offset is 0
+
+        drawSampleCombined2D();
+
+        h2_xt_combined->Write();
+        gr_combined->Write();
+        f_combinedRight->Write();
+    }
+}
+
+void XTAnalyzer::doFitXT(TGraph * gr, TF1 * f, const char * suf){
+    int nRanges = ParameterManager::Get().XTAnalyzerParameters.xtfunc_nRanges;
     // to draw the basic function fittings
     TCanvas * canv_basics[NRANGE];
     TPad* pads[NRANGE];
@@ -345,164 +396,269 @@ void XTAnalyzer::FitXT(){
         tex[iRange]->SetTextSize(0.025);
     }
 
-    // now check left and right side one by one
-    for (int iLR = 0; iLR<2; iLR++){
-        MyNamedInfo("XTAnalyzer","=> "<<(iLR==0?"left":"right")<<" side");
-        TGraphErrors * gr = NULL;
-        if (iLR == 0){
-            gr = gr_left;
-        }
-        else{
-            gr = gr_right;
-        }
-        // loop in ranges to perform basic fittings
-        for (int iRange = 0; iRange<nRanges; iRange++){
-            // get the T region for this range
-            double tLeft = ParameterManager::Get().XTAnalyzerParameters.xtfunc_tLeft[iRange];
-            double tRight = ParameterManager::Get().XTAnalyzerParameters.xtfunc_tRight[iRange];
-            MyNamedInfo("XTAnalyzer","==> Fitting in T range "<<tLeft<<" ~ "<<tRight<<" ns");
-            int N=0; // number of points within this T region
-            int iStart=-1; // the first point index in this region
-            double minX = 1e9; double maxX=-1e9; // to decide the range of the histogram to be used as background to draw fitting result in this range
-            double minT = 1e9; double maxT=-1e0;
-            for (size_t iPoint = 0; iPoint<gr->GetN(); iPoint++){
-                double x,t;
-                gr->GetPoint(iPoint,t,x);
-                if (t>=tLeft&&t<=tRight){
-                    if (iStart==-1) iStart=iPoint;
-                    N++;
-                    if (minX>x) minX = x;
-                    if (maxX<x) maxX = x;
-                    if (minT>t) minT = t;
-                    if (maxT<t) maxT = t;
-                }
-            }
-            // update the title and draw to the basic fitting canvas
-            tex[iRange]->SetText(0.1,0.96,Form("%s %s, Fit in T %.0f ~ %.0f ns",mRunName.Data(),gr->GetName(),tLeft,tRight));
-            canv_basics[iRange]->cd(); tex[iRange]->Draw();
-            // loop in basic polynomial functions with different orders
-            for (int iPol = 1; iPol<=9; iPol++){
-                // do the fitting
-                int iTry = 0;
-                int fitResult = 0;
-                for (; iTry<10; iTry++){
-                    if (iPol>1){
-                        for (int iPar = 0; iPar<iPol; iPar++){
-                            double par = f_basicXT[iLR][iRange][iPol-1]->GetParameter(iPar);
-                            if (fabs(par)>1e6) par=0;
-                            //if (iTry==0) par*=(1+gRandom->Uniform(-0.01,0.01));
-                            //if (iTry>0) par*=(1+gRandom->Uniform(-0.1,0.1));
-                            par*=(1+gRandom->Uniform(-0.1,0.1));
-                            f_basicXT[iLR][iRange][iPol]->SetParameter(iPar,par);
-                        }
-                        f_basicXT[iLR][iRange][iPol]->SetParameter(iPol,0);
-                    }
-                    else{
-                        f_basicXT[iLR][iRange][iPol]->SetParameters(0,0);
-                    }
-                    if (iRange<=1)
-                        fitResult = gr->Fit(f_basicXT[iLR][iRange][iPol],"qN0","",tLeft,tRight);
-                    else
-                        fitResult = gr->Fit(f_basicXT[iLR][iRange][iPol],"qN0","",tLeft-10,tRight+10);
-                    double maxPar = 0;
-                    for (int iPar = 0; iPar<=iPol; iPar++){
-                        double par = f_basicXT[iLR][iRange][iPol]->GetParameter(iPar);
-                        if (fabs(par)>fabs(maxPar)) maxPar = par;
-                    }
-                    if (!fitResult&&fabs(maxPar)<1e6&&f_basicXT[iLR][iRange][iPol]->GetChisquare()<1e4){
-                        break;
-                    }
-                }
-                MyNamedInfo("XTAnalyzer","After "<<iTry<<" fitting, Pol"<<iPol<<":"<<" chi2 = "<<f_basicXT[iLR][iRange][iPol]->GetChisquare()<<" result "<<fitResult);
-                if (iTry==10) {
-                    MyNamedWarn("XTAnalyzer","Failed to fit Pol"<<iPol);
-                }
-                // now make a new graph with error to record the difference between the fitted function and the original graph points.
-                TGraphErrors * gr_diff = new TGraphErrors(); gr_diff->SetName(Form("gr_diff%s.%s_%d_%.0f_%.0f",m_suffix.Data(),iLR==0?"L":"R",iPol,tLeft,tRight)); gr_diff->SetTitle(Form("Fit in T in %.0f~%.0f ns",tLeft,tRight));
-                gr_diff->SetLineColor(kMagenta); gr_diff->SetMarkerColor(kMagenta); gr_diff->SetMarkerStyle(24);
-                gr_diff->Set(N);
-                double delaXRange = 0.2;
-                double scale = (maxX-minX+0.5)/delaXRange; double offset = (minX+maxX)/2;
-                double deltaXMax = 0;
-                for (int iPoint = 0; iPoint<N; iPoint++){
-                    double x,t;
-                    gr->GetPoint(iPoint+iStart,t,x);
-                    double terr=gr->GetErrorX(iPoint+iStart);
-                    double xerr=gr->GetErrorY(iPoint+iStart);
-                    double deltaX = f_basicXT[iLR][iRange][iPol]->Eval(t)-x;
-                    if (fabs(deltaXMax)<fabs(deltaX)) deltaXMax = deltaX;
-                    gr_diff->SetPoint(iPoint,t,deltaX*scale+offset);
-                    gr_diff->SetPointError(iPoint,terr,xerr*scale);
-                }
-                // draw the fitting result with basic functions
-                pads[iRange]->cd(iPol);gPad->SetGridx(1);gPad->SetGridy(1);
-                TH2D * hbkg = new TH2D(Form("hbkg_xtbasic%s.%s_%d_%d",m_suffix.Data(),iLR==0?"L":"R",iRange,iPol),Form("Pol%d, #Delta_{X} RMS %.0f (%.0f) #mum",iPol,gr_diff->GetRMS(2)/scale*1000,deltaXMax*1000),1024,minT-5,maxT+5,512,minX-0.25,maxX+0.25);
-                hbkg->GetXaxis()->SetTitle("T [ns]");
-                hbkg->GetYaxis()->SetTitle("X [mm]");
-                hbkg->GetYaxis()->SetTitleOffset(1.1);
-                hbkg->Draw();
-                TGaxis * axis = new TGaxis(maxT+5,minX-0.25,maxT+5,maxX+0.25,-delaXRange/2*1000,delaXRange/2*1000,510,"+L");
-                axis->SetTitle("#Delta_{X} #mum");
-                axis->SetTitleOffset(1.1);
-                axis->Draw();
-                axis->SetTitleFont(42); axis->SetLabelFont(42);
-                gr->Draw("PLSAME");
-                f_basicXT[iLR][iRange][iPol]->Draw("SAME");
-                gr_diff->Draw("PLSAME");
-            }
-            canv_basics[iRange]->SaveAs(Form("result/fitXTBasics_%s%s_%s_%d.png",mRunName.Data(),m_suffix.Data(),iLR==0?"L":"R",iRange));
-        } // end of ranges loop
-
-        // at last, let's pick up one basic polynomial function in each range according to the specific given orders and combine them into one wholestic XT
-        TF1 * f = NULL;
-        if (iLR==0) f = f_left; else f = f_right;
-        int counter = 0;
-        for (int iRange = 0; iRange<nRanges; iRange++){
-            if (iRange>0){
-                double par = ParameterManager::Get().XTAnalyzerParameters.xtfunc_tLowEdge[iRange];
-                f->SetParameter(counter++,par);
-            }
-            int nPol = ParameterManager::Get().XTAnalyzerParameters.xtfunc_nPol[iRange];
-            for (int iPar = 0; iPar<=nPol; iPar++){
-                double par = f_basicXT[iLR][iRange][nPol]->GetParameter(iPar);
-                f->SetParameter(counter++,par);
-            }
-        }
-        f->SetParameter(counter++,0); // the offset is by default 0; will be updated after two functions are formed.
-        // decide the range of the function
-        double tmin = 1e14; double tmax =-1e14;
+    // loop in ranges to perform basic fittings
+    for (int iRange = 0; iRange<nRanges; iRange++){
+        // get the T region for this range
+        double tLeft = ParameterManager::Get().XTAnalyzerParameters.xtfunc_tLeft[iRange];
+        double tRight = ParameterManager::Get().XTAnalyzerParameters.xtfunc_tRight[iRange];
+        MyNamedInfo("XTAnalyzer","==> Fitting in T range "<<tLeft<<" ~ "<<tRight<<" ns");
+        int N=0; // number of points within this T region
+        int iStart=-1; // the first point index in this region
+        double minX = 1e9; double maxX=-1e9; // to decide the range of the histogram to be used as background to draw fitting result in this range
+        double minT = 1e9; double maxT=-1e0;
         for (size_t iPoint = 0; iPoint<gr->GetN(); iPoint++){
-            double t,x;
+            double x,t;
             gr->GetPoint(iPoint,t,x);
-            if (tmax<t) tmax = t;
-            if (tmin>t) tmin = t;
+            if (t>=tLeft&&t<=tRight){
+                if (iStart==-1) iStart=iPoint;
+                N++;
+                if (minX>x) minX = x;
+                if (maxX<x) maxX = x;
+                if (minT>t) minT = t;
+                if (maxT<t) maxT = t;
+            }
         }
-        double range_tl = ParameterManager::Get().XTAnalyzerParameters.xtfunc_tLowEdge[0];
-        double range_th = ParameterManager::Get().XTAnalyzerParameters.xtfunc_tHighEdge;
-        if (tmax<range_th) range_th = tmax;
-        if (tmin>range_tl) range_tl = tmin;
-        f->SetRange(range_tl,range_th);
-    } // end of left/right loop
+        // update the title and draw to the basic fitting canvas
+        tex[iRange]->SetText(0.1,0.96,Form("%s %s, Fit in T %.0f ~ %.0f ns",mRunName.Data(),gr->GetName(),tLeft,tRight));
+        canv_basics[iRange]->cd(); tex[iRange]->Draw();
+        // loop in basic polynomial functions with different orders
+        for (int iPol = 1; iPol<=9; iPol++){
+            // do the fitting
+            int iTry = 0;
+            int fitResult = 0;
+            for (; iTry<10; iTry++){
+                if (iPol>1){
+                    for (int iPar = 0; iPar<iPol; iPar++){
+                        double par = f_basicXT[iRange][iPol-1]->GetParameter(iPar);
+                        if (fabs(par)>1e6) par=0;
+                        //if (iTry==0) par*=(1+gRandom->Uniform(-0.01,0.01));
+                        //if (iTry>0) par*=(1+gRandom->Uniform(-0.1,0.1));
+                        par*=(1+gRandom->Uniform(-0.1,0.1));
+                        f_basicXT[iRange][iPol]->SetParameter(iPar,par);
+                    }
+                    f_basicXT[iRange][iPol]->SetParameter(iPol,0);
+                }
+                else{
+                    f_basicXT[iRange][iPol]->SetParameters(0,0);
+                }
+                if (iRange<=1)
+                    fitResult = gr->Fit(f_basicXT[iRange][iPol],"qN0","",tLeft,tRight);
+                else
+                    fitResult = gr->Fit(f_basicXT[iRange][iPol],"qN0","",tLeft-10,tRight+10);
+                double maxPar = 0;
+                for (int iPar = 0; iPar<=iPol; iPar++){
+                    double par = f_basicXT[iRange][iPol]->GetParameter(iPar);
+                    if (fabs(par)>fabs(maxPar)) maxPar = par;
+                }
+                if (!fitResult&&fabs(maxPar)<1e6&&f_basicXT[iRange][iPol]->GetChisquare()<1e4){
+                    break;
+                }
+            }
+            MyNamedInfo("XTAnalyzer","After "<<iTry<<" fitting, Pol"<<iPol<<":"<<" chi2 = "<<f_basicXT[iRange][iPol]->GetChisquare()<<" result "<<fitResult);
+            if (iTry==10) {
+                MyNamedWarn("XTAnalyzer","Failed to fit Pol"<<iPol);
+            }
+            // now make a new graph with error to record the difference between the fitted function and the original graph points.
+            TGraphErrors * gr_diff = new TGraphErrors(); gr_diff->SetName(Form("gr_diff%s.%s_%d_%.0f_%.0f",m_suffix.Data(),suf,iPol,tLeft,tRight)); gr_diff->SetTitle(Form("Fit in T in %.0f~%.0f ns",tLeft,tRight));
+            gr_diff->SetLineColor(kMagenta); gr_diff->SetMarkerColor(kMagenta); gr_diff->SetMarkerStyle(24);
+            gr_diff->Set(N);
+            double delaXRange = 0.2;
+            double scale = (maxX-minX+0.5)/delaXRange; double offset = (minX+maxX)/2;
+            double deltaXMax = 0;
+            for (int iPoint = 0; iPoint<N; iPoint++){
+                double x,t;
+                gr->GetPoint(iPoint+iStart,t,x);
+                double terr=gr->GetErrorX(iPoint+iStart);
+                double xerr=gr->GetErrorY(iPoint+iStart);
+                double deltaX = f_basicXT[iRange][iPol]->Eval(t)-x;
+                if (fabs(deltaXMax)<fabs(deltaX)) deltaXMax = deltaX;
+                gr_diff->SetPoint(iPoint,t,deltaX*scale+offset);
+                gr_diff->SetPointError(iPoint,terr,xerr*scale);
+            }
+            // draw the fitting result with basic functions
+            pads[iRange]->cd(iPol);gPad->SetGridx(1);gPad->SetGridy(1);
+            TH2D * hbkg = new TH2D(Form("hbkg_xtbasic%s.%s_%d_%d",m_suffix.Data(),suf,iRange,iPol),Form("Pol%d, #Delta_{X} RMS %.0f (%.0f) #mum",iPol,gr_diff->GetRMS(2)/scale*1000,deltaXMax*1000),1024,minT-5,maxT+5,512,minX-0.25,maxX+0.25);
+            hbkg->GetXaxis()->SetTitle("T [ns]");
+            hbkg->GetYaxis()->SetTitle("X [mm]");
+            hbkg->GetYaxis()->SetTitleOffset(1.1);
+            hbkg->Draw();
+            TGaxis * axis = new TGaxis(maxT+5,minX-0.25,maxT+5,maxX+0.25,-delaXRange/2*1000,delaXRange/2*1000,510,"+L");
+            axis->SetTitle("#Delta_{X} #mum");
+            axis->SetTitleOffset(1.1);
+            axis->Draw();
+            axis->SetTitleFont(42); axis->SetLabelFont(42);
+            gr->Draw("PLSAME");
+            f_basicXT[iRange][iPol]->Draw("SAME");
+            gr_diff->Draw("PLSAME");
+        }
+        canv_basics[iRange]->SaveAs(Form("result/fitXTBasics_%s%s_%s_%d.png",mRunName.Data(),m_suffix.Data(),suf,iRange));
+    } // end of ranges loop
+
+    // at last, let's pick up one basic polynomial function in each range according to the specific given orders and combine them into one wholestic XT
+    int counter = 0;
+    for (int iRange = 0; iRange<nRanges; iRange++){
+        if (iRange>0){
+            double par = ParameterManager::Get().XTAnalyzerParameters.xtfunc_tLowEdge[iRange];
+            f->SetParameter(counter++,par);
+        }
+        int nPol = ParameterManager::Get().XTAnalyzerParameters.xtfunc_nPol[iRange];
+        for (int iPar = 0; iPar<=nPol; iPar++){
+            double par = f_basicXT[iRange][nPol]->GetParameter(iPar);
+            f->SetParameter(counter++,par);
+        }
+    }
+    f->SetParameter(counter++,0); // the offset is by default 0; will be updated after two functions are formed.
+    // decide the range of the function
+    double tmin = 1e14; double tmax =-1e14;
+    for (size_t iPoint = 0; iPoint<gr->GetN(); iPoint++){
+        double t,x;
+        gr->GetPoint(iPoint,t,x);
+        if (tmax<t) tmax = t;
+        if (tmin>t) tmin = t;
+    }
+    double range_tl = ParameterManager::Get().XTAnalyzerParameters.xtfunc_tLowEdge[0];
+    double range_th = ParameterManager::Get().XTAnalyzerParameters.xtfunc_tHighEdge;
+    if (tmax<range_th) range_th = tmax;
+    if (tmin>range_tl) range_tl = tmin;
+    f->SetRange(range_tl,range_th);
+
+    // make a new canvas to show the conjunction part
+    TCanvas * canv2 = new TCanvas("cgraph2","cgraph",1024,768);
+    canv2->Divide(nRanges-1);
+    for (int iRange = 1; iRange<nRanges; iRange++){
+        canv2->cd(iRange);gPad->SetGridx(1);gPad->SetGridy(1);
+        double tmin = ParameterManager::Get().XTAnalyzerParameters.xtfunc_tLowEdge[iRange]-20;
+        double tmax = tmin+40;
+        double xmin,xmax;
+        xmin = f->Eval(tmax)-0.5;
+        xmax = f->Eval(tmin)+0.5;
+        if (xmin>xmax){double temp = xmin; xmin = xmax; xmax = temp;}
+        TH2D * hbkg = new TH2D(Form("hbkg_conjonction%s.%s.%d",m_suffix.Data(),suf,iRange),Form("%s: Range %d to Range %d",suf,iRange-1,iRange),512,tmin,tmax,512,xmin,xmax);
+        hbkg->GetXaxis()->SetTitle("T [ns]");
+        hbkg->GetYaxis()->SetTitle("X [mm]");
+        hbkg->Draw();
+        gr->Draw("PLSAME");
+        int nPol = ParameterManager::Get().XTAnalyzerParameters.xtfunc_nPol[iRange];
+        f_basicXT[iRange][nPol]->Draw("SAME");
+        int nPolPre = ParameterManager::Get().XTAnalyzerParameters.xtfunc_nPol[iRange-1];
+        f_basicXT[iRange-1][nPolPre]->Draw("SAME");
+        f->Draw("SAME");
+    }
+    canv2->SaveAs(Form("result/sampleConj_%s%s_%s.png",mRunName.Data(),m_suffix.Data(),suf));
 
     // remove the canvases
     for (int iRange = 0; iRange<nRanges; iRange++){
         if (canv_basics[iRange]) delete canv_basics[iRange];
     }
+}
 
-    drawSample2D(true);
+void XTAnalyzer::combineLeftAndRight(double offset){
+    double combineAtDOCA = ParameterManager::Get().XTAnalyzerParameters.CombineAtDOCA;
+    // get the 2D histogram first
+    // about binning
+    h2_xt_combined = new TH2D(*h2_xt);
+    h2_xt_combined->SetName("h2_xtc"+m_suffix);
+    for (int iBinY = 1; iBinY <= h2_xt->GetYaxis()->GetNbins(); iBinY++){
+        double Y = h2_xt->GetYaxis()->GetBinCenter(iBinY);
+        if ((Y<combineAtDOCA&&Y>=0)||(Y>=-combineAtDOCA&&Y<0)){ // TODO: to consider more combination patterns in the future (quite rarely used feature)
+            int iBinY2Copy = h2_xt->GetYaxis()->FindBin(-Y);
+            for (int iBinX = 1; iBinX <= h2_xt->GetXaxis()->GetNbins(); iBinX++){
+                double c = h2_xt->GetBinContent(iBinX,iBinY);
+                h2_xt_combined->SetBinContent(iBinX,iBinY,c);
+                h2_xt_combined->SetBinContent(iBinX,iBinY2Copy,c);
+            }
+        }
+    }
 
-    // move the XT to center: we don't want to leave the wire position offset information in this XT relation
-    double tmin = ParameterManager::Get().XTAnalyzerParameters.gold_t_min;
-    double tmax = ParameterManager::Get().XTAnalyzerParameters.gold_t_max;
-    double offset = (f_left->Integral(tmin,tmax)+f_right->Integral(tmin,tmax))/2./(tmax-tmin);
-    int nPars = f_left->GetNpar();
-    f_left->SetParameter(nPars-1,-offset);
-    nPars = f_right->GetNpar();
-    f_right->SetParameter(nPars-1,-offset);
+    // then get the graph
+    gr_combined = new TGraphErrors(); gr_combined->SetName(Form("gr%s_c",m_suffix.Data()));
+    gr_combined->SetMarkerStyle(24);gr_combined->SetMarkerSize(0.5);
+    gr_combined->SetMarkerColor(kBlack);gr_combined->SetLineColor(kBlack);
+    gr_combined->Set(gr_left->GetN()+gr_right->GetN());
+    int count = 0;
+    for (int iPoint = 0; iPoint<gr_left->GetN(); iPoint++){
+        double T,X; gr_left->GetPoint(iPoint,T,X);
+        double Terr = gr_left->GetErrorX(iPoint);
+        double Xerr = gr_left->GetErrorY(iPoint);
+        if (X>=-combineAtDOCA){
+            gr_combined->SetPoint(count,T,-X);
+            gr_combined->SetPointError(count,Terr,Xerr);
+            count++;
+        }
+    }
+    for (int iPoint = 0; iPoint<gr_right->GetN(); iPoint++){
+        double T,X; gr_right->GetPoint(iPoint,T,X);
+        double Terr = gr_right->GetErrorX(iPoint);
+        double Xerr = gr_right->GetErrorY(iPoint);
+        if (X>combineAtDOCA){
+            gr_combined->SetPoint(count,T,X);
+            gr_combined->SetPointError(count,Terr,Xerr);
+            count++;
+        }
+    }
+    gr_combined->Set(count);
+}
 
-    mOutFile->cd();
-    f_left->Write();
-    f_right->Write();
+void XTAnalyzer::drawSampleCombined2D(){
+    double combineAtDOCA = ParameterManager::Get().XTAnalyzerParameters.CombineAtDOCA;
+    // draw the unfolded histogram first
+    TCanvas * canv = new TCanvas("cgraph","cgraph",1024,1024);
+    canv->Divide(2,2);
+
+    canv->cd(1);gPad->SetGridx(1);gPad->SetGridy(1);
+    h2_xt_combined->GetXaxis()->SetRangeUser(mDrawTmin,mDrawTmax);
+    h2_xt_combined->GetYaxis()->SetRangeUser(0,mDrawXmax);
+    h2_xt_combined->Draw("COLZ");
+    gr_combined->SetMarkerSize(0.2);
+    gr_combined->Draw("PLSAME");
+
+    canv->cd(2);gPad->SetGridx(1);gPad->SetGridy(1);
+    TH2D * h2_bkg_sigT = new TH2D("h2_bkg_sigT2","#sigma of X fitting in each T slice",512,mDrawTmin,mDrawTmax,512,0,500);
+    h2_bkg_sigT->GetXaxis()->SetTitle("Drift Time [ns]");
+    h2_bkg_sigT->GetYaxis()->SetTitle("#sigma [#mum]");
+    h2_bkg_sigT->Draw();
+    mOutTree->SetMarkerColor(kRed); mOutTree->Draw("sig*1000:t",Form("x>=%.7e&&n>0&&func>=0",combineAtDOCA),"PSAME");
+    mOutTree->SetMarkerColor(kBlue); mOutTree->Draw("sig*1000:t",Form("x<0&&x>=%.7e&&n>0&&func>=0",-combineAtDOCA),"PSAME");
+
+    canv->cd(3);gPad->SetGridx(1);gPad->SetGridy(1);
+    TH2D * hbkg = new TH2D(Form("hbkg_diff%s",m_suffix.Data()),"#Delta_{X}: Function - Sample",1024,mDrawTmin,mDrawTmax,512,-500,500);
+    hbkg->GetXaxis()->SetTitle("T [ns]");
+    hbkg->GetYaxis()->SetTitle("#Delta_{X} [#mum]");
+    hbkg->Draw();
+    // now make a new graph with error to record the difference between the fitted function and the original graph points.
+    TGraphErrors * gr_diff = new TGraphErrors(); gr_diff->SetName(Form("gr_diff%s.%s",m_suffix.Data(),"C"));
+    gr_diff->SetLineColor(gr_combined->GetLineColor()); gr_diff->SetMarkerColor(gr_combined->GetMarkerColor()); gr_diff->SetMarkerStyle(24);
+    int N = gr_combined->GetN();
+    gr_diff->Set(N);
+    double deltaXMax = 0;
+    for (int iPoint = 0; iPoint<N; iPoint++){
+        double x,t;
+        gr_combined->GetPoint(iPoint,t,x);
+        double terr=gr_combined->GetErrorX(iPoint);
+        double xerr=gr_combined->GetErrorY(iPoint);
+        double deltaX = f_combinedRight->Eval(t)-x;
+        if (fabs(deltaXMax)<fabs(deltaX)) deltaXMax = deltaX;
+        gr_diff->SetPoint(iPoint,t,deltaX*1000);
+        gr_diff->SetPointError(iPoint,terr,xerr*1000);
+    }
+    gr_diff->Draw("PLSAME");
+
+    canv->cd(4);gPad->SetGridx(1);gPad->SetGridy(1);
+    int mEntriesMax = 0;
+    for (Long64_t iEntry = 0; iEntry<mOutTree->GetEntries(); iEntry++){
+        mOutTree->GetEntry(iEntry);
+        if (mEntries>mEntriesMax) mEntriesMax = mEntries;
+    }
+    TH2D * h2_bkg_entriesT = new TH2D("h2_bkg_entriesT","Number of entries in each T slice",512,mDrawTmin,mDrawTmax,1024,0,mEntriesMax*1.1);
+    h2_bkg_entriesT->Draw();
+    mOutTree->SetMarkerColor(kRed); mOutTree->Draw("n:t",Form("x>=%.7e&&n>0&&func>=0",combineAtDOCA),"PSAME");
+    mOutTree->SetMarkerColor(kBlue); mOutTree->Draw("n:t",Form("x<0&&x>=%.7e&&n>0&&func>=0",-combineAtDOCA),"PSAME");
+    mOutTree->SetMarkerColor(kGray); mOutTree->Draw("n:t",Form("((x<0&&x>=%.7e)||x>=%.7e)&&func<0",-combineAtDOCA,combineAtDOCA),"PSAME");
+
+    canv->SaveAs(Form("result/sample2DCombined_%s%s.png",mRunName.Data(),m_suffix.Data()));
+    canv->SaveAs(Form("result/sample2DCombined_%s%s.pdf",mRunName.Data(),m_suffix.Data()));
+    h2_xt_combined->GetXaxis()->UnZoom();
+    h2_xt_combined->GetYaxis()->UnZoom();
 }
 
 void XTAnalyzer::drawSample2D(bool withFunction){
@@ -533,10 +689,6 @@ void XTAnalyzer::drawSample2D(bool withFunction){
     gr_rightMinusLeft->Draw("PLSAME");
 
     if (withFunction){
-        TCanvas * canv2 = new TCanvas("cgraph2","cgraph",1024,1024);
-        int nRanges = ParameterManager::Get().XTAnalyzerParameters.xtfunc_nRanges;
-        canv2->Divide(2,nRanges-1);
-
         double xtrange_tmin = f_right->GetXmin()<f_left->GetXmin()?f_left->GetXmin():f_right->GetXmin();
         double xtrange_tmax = f_right->GetXmax()>f_left->GetXmax()?f_left->GetXmax():f_right->GetXmax();
         TF1 * f_diff = CommonTools::TF1New("f_diff",Form("(fl%s+fr%s)/2",m_suffix.Data(),m_suffix.Data()),xtrange_tmin,xtrange_tmax);
@@ -572,34 +724,6 @@ void XTAnalyzer::drawSample2D(bool withFunction){
                 f = f_right;
                 gr = gr_right;
             }
-            for (int iRange = 0; iRange<nRanges; iRange++){
-                int nPol = ParameterManager::Get().XTAnalyzerParameters.xtfunc_nPol[iRange];
-                canv->cd(1);
-                f_basicXT[iLR][iRange][nPol]->Draw("SAME");
-                if (iRange>0){
-                    canv2->cd(iLR*(nRanges-1)+iRange);gPad->SetGridx(1);gPad->SetGridy(1);
-                    double tmin = ParameterManager::Get().XTAnalyzerParameters.xtfunc_tLowEdge[iRange]-20;
-                    double tmax = tmin+40;
-                    double xmin,xmax;
-                    if (iLR==0){
-                        xmin = f->Eval(tmax)-0.5;
-                        xmax = f->Eval(tmin)+0.5;
-                    }
-                    else{
-                        xmin = f->Eval(tmin)-0.5;
-                        xmax = f->Eval(tmax)+0.5;
-                    }
-                    TH2D * hbkg = new TH2D(Form("hbkg_conjonction%s.%s.%d",m_suffix.Data(),iLR==0?"L":"R",iRange),Form("%s: Range %d to Range %d",iLR==0?"Left":"Right",iRange-1,iRange),512,tmin,tmax,512,xmin,xmax);
-                    hbkg->GetXaxis()->SetTitle("T [ns]");
-                    hbkg->GetYaxis()->SetTitle("X [mm]");
-                    hbkg->Draw();
-                    gr->Draw("PLSAME");
-                    f_basicXT[iLR][iRange][nPol]->Draw("SAME");
-                    int nPolPre = ParameterManager::Get().XTAnalyzerParameters.xtfunc_nPol[iRange-1];
-                    f_basicXT[iLR][iRange-1][nPolPre]->Draw("SAME");
-                    f->Draw("SAME");
-                }
-            }
             canv->cd(1);
             f->Draw("SAME");
 
@@ -623,7 +747,6 @@ void XTAnalyzer::drawSample2D(bool withFunction){
             gr_diff->Draw("PLSAME");
             legend_diff->AddEntry(gr_diff,Form("%s: RMS %.0f, Max %.0f #mum",iLR==0?"Left":"Right",gr_diff->GetRMS(2),deltaXMax*1000),"PL");
         }
-        canv2->SaveAs(Form("result/sampleConj_%s%s.png",mRunName.Data(),m_suffix.Data()));
     }
     canv->SaveAs(Form("result/sample2D_%s%s.png",mRunName.Data(),m_suffix.Data()));
     canv->SaveAs(Form("result/sample2D_%s%s.pdf",mRunName.Data(),m_suffix.Data()));

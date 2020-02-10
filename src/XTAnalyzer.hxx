@@ -49,8 +49,11 @@ public:
 private:
     TF1 * myNewTF1(TString name, TString form, double left, double right);
     void drawSample2D(bool withFunction = false);
+    void drawSampleCombined2D(void);
     void drawSampleAtt(void);
     void formXTGraphs(void); //< scan through the tree and select points to form up the graphs.
+    void doFitXT(TGraph * gr, TF1 * f, const char * suf);
+    void combineLeftAndRight(double offset);
 
 private:
     // options
@@ -73,9 +76,11 @@ private:
 
     // Histograms for data points
     TH2D * h2_xt;
+    TH2D * h2_xt_combined;
     TGraphErrors * gr_left;
     TGraphErrors * gr_right;
     TGraphErrors * gr_rightMinusLeft;
+    TGraphErrors * gr_combined;
 
     // XT range for drawing
     double mDrawTmin;
@@ -84,9 +89,11 @@ private:
     double mDrawXmax;
 
     // functions to fit XT relation
-    TF1 * f_basicXT[2][NRANGE][NPOL];
+    TF1 * f_basicXT[NRANGE][NPOL];
     TF1 * f_left;
     TF1 * f_right;
+    TF1 * f_combinedLeft;
+    TF1 * f_combinedRight;
 };
 
 #endif

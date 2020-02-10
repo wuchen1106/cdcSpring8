@@ -41,6 +41,8 @@ XTAnalyzer parameters
     < XTAnalyzer.RequireInTriggerCounter = false >
     < XTAnalyzer.RequireAllGoldenHits = false >
     < XTAnalyzer.AllGoodHitsUsed = true > no good hits left aside from the track
+    < XTAnalyzer.CombineLeftAndRight = true > combine the left and right side
+    < XTAnalyzer.CombineAtDOCA = 4 mm > take DOCA=4mm as the line to combine: Use left for small DOCA and right for large DOCA
     < XTAnalyzer.nHits_max = 0 >
     < XTAnalyzer.nHitsS_min = 7 >
     < XTAnalyzer.pValue_min = 0.05 >
