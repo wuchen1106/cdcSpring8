@@ -540,9 +540,11 @@ void XTAnalyzer::doFitXT(TGraph * gr, TF1 * f, const char * suf){
         double tmin = ParameterManager::Get().XTAnalyzerParameters.xtfunc_tLowEdge[iRange]-20;
         double tmax = tmin+40;
         double xmin,xmax;
-        xmin = f->Eval(tmax)-0.5;
-        xmax = f->Eval(tmin)+0.5;
+        xmin = f->Eval(tmax);
+        xmax = f->Eval(tmin);
         if (xmin>xmax){double temp = xmin; xmin = xmax; xmax = temp;}
+        xmin-=0.5;
+        xmax+=0.5;
         TH2D * hbkg = new TH2D(Form("hbkg_conjonction%s.%s.%d",m_suffix.Data(),suf,iRange),Form("%s: Range %d to Range %d",suf,iRange-1,iRange),512,tmin,tmax,512,xmin,xmax);
         hbkg->GetXaxis()->SetTitle("T [ns]");
         hbkg->GetYaxis()->SetTitle("X [mm]");
