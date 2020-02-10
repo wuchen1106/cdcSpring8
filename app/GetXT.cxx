@@ -181,7 +181,7 @@ int main(int argc, char** argv){
     }
     if (m_StartStage<=1){
         success = XTManager::Get().SetInputFileXT(m_inputXTFile);
-        if (!success){MyError("Invalid input XT file"); return 1;}
+        if (!success){MyWarn("Invalid input XT file! will continue using the default one!");}
         success = XTManager::Get().Initialize();XTManager::Get().Print();
         if (!success) {MyError("Cannot initialize XTManager"); return 1;}
         InputOutputManager::Get().readHitFile = true;
