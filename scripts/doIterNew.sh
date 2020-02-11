@@ -14,6 +14,7 @@ isLast=false
 PROGRAMMED=false # by default don't load the programmed iteration setting
 CONFIGTABLEDEFAULT="$CDCS8WORKING_DIR/Para/new.dat"
 CONFIGTABLE=""
+HitFileSuffix=""
 SEPARATECELLS=false
 
 # for getOffset
@@ -36,6 +37,7 @@ Syntax:
     -W     (false) update the wire position map
     -P     (false) use programmed iteration parameters
     -C [c] Add configure file as C (default one \"$CONFIGTABLE\" is always loaded first)
+    -H [suffix] Add suffix to the hit file
     -S [S] set the start name ($StartName)
     -A [A] set the wire adjustment file
     -t [t] set tracking arguments
@@ -46,7 +48,7 @@ Report bugs to <wuchen@ihep.ac.cn>.
 EOF
 }
 
-while getopts ':A:C:I:J:LN:PR:S:T:W:hl:w:t:' optname
+while getopts ':A:C:H:I:J:LN:PR:S:T:W:hl:w:t:' optname
 do
     case "$optname" in
     'h')
@@ -61,6 +63,9 @@ do
         ;;
     'N')
         thread_iStop=`echo "$thread_iStart+$OPTARG-1"|bc`
+        ;;
+    'H')
+        HitFileSuffix="$OPTARG"
         ;;
     'I')
         IterStart="$OPTARG"
@@ -315,6 +320,11 @@ do
     then
         arg_tracking="$TrackingArgument"
     fi
+    arg_hitFileSuffix=""
+    if [ ! -z "$HitFileSuffix" ]
+    then
+        arg_adjust="-H $HitFileSuffix"
+    fi
 
     echo "#Iteration $iter started"
     echo "  layers = \"$layers\""
@@ -326,6 +336,7 @@ do
     echo "  arg_configure = $arg_configure"
     echo "  arg_cell = $arg_cell"
     echo "  arg_adjust = $arg_adjust"
+    echo "  arg_hitFileSuffix = $arg_hitFileSuffix"
 
     threadLists=`updateThreadLists`
     if [ ! $? -eq 0 ]
@@ -367,7 +378,7 @@ do
             logtemp="$CDCS8WORKING_DIR/root/tracks/t_${runNo}.${temprunname}.layer${testlayer}.log"
             errtemp="$CDCS8WORKING_DIR/root/tracks/t_${runNo}.${temprunname}.layer${testlayer}.err"
             sourcefiles[testlayer]="${sourcefiles[testlayer]} t_${runNo}.${temprunname}.layer${testlayer}.root"
-            tempconfig="Tracking $arg_tracking -C $CONFIGTABLEDEFAULT $arg_configure $arg_adjust -R $runNo -L $testlayer -B $iEntryStart -E $iEntryStop info/xt.${runNo}.${inputXTrunname}.root $temprunname > $logtemp 2> $errtemp"
+            tempconfig="Tracking $arg_tracking -C $CONFIGTABLEDEFAULT $arg_configure $arg_adjust $arg_hitFileSuffix -R $runNo -L $testlayer -B $iEntryStart -E $iEntryStop info/xt.${runNo}.${inputXTrunname}.root $temprunname > $logtemp 2> $errtemp"
             echo $tempconfig
 
             rootfile="root/tracks/t_${jobname}.root"
@@ -468,7 +479,7 @@ do
                     iEntryStop=`echo $jobname | sed 's/.*\.\(\w*\)-\(\w*\)\..*/\2/g'`
                     logtemp="$CDCS8WORKING_DIR/root/tracks/t_${runNo}.${temprunname}.layer${testlayer}.log"
                     errtemp="$CDCS8WORKING_DIR/root/tracks/t_${runNo}.${temprunname}.layer${testlayer}.err"
-                    tempconfig="Tracking $arg_tracking -C $CONFIGTABLEDEFAULT $arg_configure $arg_adjust -R $runNo -L $testlayer -B $iEntryStart -E $iEntryStop info/xt.${runNo}.${inputXTrunname}.root $temprunname > $logtemp 2> $errtemp"
+                    tempconfig="Tracking $arg_tracking -C $CONFIGTABLEDEFAULT $arg_configure $arg_adjust $arg_hitFileSuffix -R $runNo -L $testlayer -B $iEntryStart -E $iEntryStop info/xt.${runNo}.${inputXTrunname}.root $temprunname > $logtemp 2> $errtemp"
                     echo $tempconfig
 
                     findVacentThread
@@ -542,5 +553,5 @@ do
         cd ../..
     fi
 
-    GetXT -C $CONFIGTABLEDEFAULT $arg_configure $arg_cell $arg_adjust -R $runNo info/xt.${runNo}.${inputXTrunname}.root $currunname
+    GetXT -C $CONFIGTABLEDEFAULT $arg_configure $arg_cell $arg_adjust $arg_hitFileSuffix -R $runNo info/xt.${runNo}.${inputXTrunname}.root $currunname
 done
