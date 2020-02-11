@@ -595,7 +595,7 @@ void XTAnalyzer::combineLeftAndRight(double offset){
         double Terr = gr_left->GetErrorX(iPoint);
         double Xerr = gr_left->GetErrorY(iPoint);
         if (X>=-combineAtDOCA){
-            gr_combined->SetPoint(count,T,-X);
+            gr_combined->SetPoint(count,T,-X+offset);
             gr_combined->SetPointError(count,Terr,Xerr);
             count++;
         }
