@@ -369,6 +369,8 @@ void XTAnalyzer::FitXT(){
             }
         }
         f_combinedLeft->SetParameter(counter++,0); // the offset is 0
+        double range_tl, range_th; f_combinedRight->GetRange(range_tl,range_th);
+        f_combinedLeft->SetRange(range_tl,range_th);
 
         drawSampleCombined2D();
 
