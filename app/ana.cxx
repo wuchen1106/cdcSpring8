@@ -61,12 +61,13 @@ int main(int argc, char** argv){
     TString m_suffixHitFile = "";
     TString m_wireAdjustmentFile = "";
     bool m_isMC = false;
+    bool m_useSideXT = false;
 
     // Load options
     int    opt_result;
     std::string opt_name;
     std::size_t opt_pos;
-    while((opt_result=getopt(argc,argv,"A:B:C:D:E:H:L:MN:P:R:V:Wmh"))!=-1){
+    while((opt_result=getopt(argc,argv,"A:B:C:D:E:H:L:MN:P:R:SV:Wmh"))!=-1){
         switch(opt_result){
             /* INPUTS */
             case 'M':
@@ -112,6 +113,9 @@ int main(int argc, char** argv){
             case 'W':
                 m_SeparateWires = true;
                 break;
+            case 'S':
+                m_useSideXT = true;
+                break;
             case 'm':
                 m_isMC = true;
                 break;
@@ -145,6 +149,7 @@ int main(int argc, char** argv){
     printf("Using wire adjustment file \"%s\"\n",m_wireAdjustmentFile.Data());
     printf("Will separate wires? %s\n",m_SeparateWires?"yes":"no");
     printf("Input is MC sample? %s\n",m_isMC?"yes":"no");
+    printf("Use side-by-side XT? %s\n",m_useSideXT?"yes":"no");
     ParameterManager::Get().Print();
 
     if (m_memdebug){
@@ -167,6 +172,7 @@ int main(int argc, char** argv){
     }
     success = XTManager::Get().SetInputFileXT(m_inputXTFile);
     if (!success){MyError("Invalid input XT file"); return 1;}
+    XTManager::Get().UseSideXT();
     success = XTManager::Get().Initialize();XTManager::Get().Print();
     if (!success) {MyNamedError("Analyze","Cannot initialize XTManager"); return 1;}
     InputOutputManager::Get().readHitFile = true;
@@ -796,6 +802,8 @@ void print_usage(char * prog_name){
     fprintf(stderr,"\t\t Wire adjustment file set to file\n");
     fprintf(stderr,"\t -W \n");
     fprintf(stderr,"\t\t Seperate wires\n");
+    fprintf(stderr,"\t -S \n");
+    fprintf(stderr,"\t\t Use side-by-side XT\n");
     fprintf(stderr,"\t -H <suf>\n");
     fprintf(stderr,"\t\t Add suffix to the hit file, like h_100SUFFIX.root\n");
     fprintf(stderr,"\t -m\n");

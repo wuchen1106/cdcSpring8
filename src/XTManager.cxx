@@ -12,6 +12,7 @@
 XTManager* XTManager::fXTManager = NULL;
 
 XTManager::XTManager():
+    useSideXT(false),
     fInputFileXT(NULL),
     fInputFileRes(NULL),
     fXTLeftEven(NULL),
@@ -85,8 +86,14 @@ bool XTManager::Initialize(){
         }
     }
     for (int i = 1; i<NLAY; i++){ // first layer (0) is dummy
-        fXTLeft[i] = (TF1*) fInputFileXT->Get(Form("fl_%d",i));
-        fXTRight[i] = (TF1*) fInputFileXT->Get(Form("fr_%d",i));
+        if (useSideXT){
+            fXTLeft[i] = (TF1*) fInputFileXT->Get(Form("fls_%d",i));
+            fXTRight[i] = (TF1*) fInputFileXT->Get(Form("frs_%d",i));
+        }
+        else{
+            fXTLeft[i] = (TF1*) fInputFileXT->Get(Form("fl_%d",i));
+            fXTRight[i] = (TF1*) fInputFileXT->Get(Form("fr_%d",i));
+        }
         fXTHist[i] = (TH2D*) fInputFileXT->Get(Form("h2_dt_%d",i));
         if (!fXTHist[i]) fXTHist[i] = (TH2D*) fInputFileXT->Get(Form("h2_xt_%d",i));
         if (fXTLeft[i]) fXTLeftDefault = fXTLeft[i];
@@ -98,8 +105,14 @@ bool XTManager::Initialize(){
     if (fXTLeft[lid]) fXTLeftDefault = fXTLeft[lid];
     if (fXTRight[lid]) fXTRightDefault = fXTRight[lid];
     if (fXTHist[lid]) fXTHistDefault = fXTHist[lid];
-    if (!fXTLeftDefault) fXTLeftDefault = (TF1*) fInputFileXT->Get("fl_0");
-    if (!fXTRightDefault) fXTRightDefault = (TF1*) fInputFileXT->Get("fr_0");
+    if (useSideXT){
+        if (!fXTLeftDefault) fXTLeftDefault = (TF1*) fInputFileXT->Get("fls_0");
+        if (!fXTRightDefault) fXTRightDefault = (TF1*) fInputFileXT->Get("frs_0");
+    }
+    else{
+        if (!fXTLeftDefault) fXTLeftDefault = (TF1*) fInputFileXT->Get("fl_0");
+        if (!fXTRightDefault) fXTRightDefault = (TF1*) fInputFileXT->Get("fr_0");
+    }
     if (!fXTHistDefault) fXTHistDefault = (TH2D*) fInputFileXT->Get("h2_xt_0");
     if (!fXTLeftDefault||!fXTRightDefault){
         MyError("Cannot find the default xt functions in the given xt file!");
