@@ -12,7 +12,6 @@ layers="4" # layers to be reconstructed and [analyzed (in case of layers is not 
 wires="" # wires to be calibrated (position) FIXME NOT SUPPORTED YET
 isLast=false
 PROGRAMMED=false # by default don't load the programmed iteration setting
-CONFIGTABLEDEFAULT="$CDCS8WORKING_DIR/Para/new.dat"
 CONFIGTABLE=""
 HitFileSuffix=""
 SEPARATECELLS=false
@@ -378,7 +377,7 @@ do
             logtemp="$CDCS8WORKING_DIR/root/tracks/t_${runNo}.${temprunname}.layer${testlayer}.log"
             errtemp="$CDCS8WORKING_DIR/root/tracks/t_${runNo}.${temprunname}.layer${testlayer}.err"
             sourcefiles[testlayer]="${sourcefiles[testlayer]} t_${runNo}.${temprunname}.layer${testlayer}.root"
-            tempconfig="Tracking $arg_tracking -C $CONFIGTABLEDEFAULT $arg_configure $arg_adjust $arg_hitFileSuffix -R $runNo -L $testlayer -B $iEntryStart -E $iEntryStop info/xt.${runNo}.${inputXTrunname}.root $temprunname > $logtemp 2> $errtemp"
+            tempconfig="Tracking $arg_tracking $arg_configure $arg_adjust $arg_hitFileSuffix -R $runNo -L $testlayer -B $iEntryStart -E $iEntryStop info/xt.${runNo}.${inputXTrunname}.root $temprunname > $logtemp 2> $errtemp"
             echo $tempconfig
 
             rootfile="root/tracks/t_${jobname}.root"
@@ -479,7 +478,7 @@ do
                     iEntryStop=`echo $jobname | sed 's/.*\.\(\w*\)-\(\w*\)\..*/\2/g'`
                     logtemp="$CDCS8WORKING_DIR/root/tracks/t_${runNo}.${temprunname}.layer${testlayer}.log"
                     errtemp="$CDCS8WORKING_DIR/root/tracks/t_${runNo}.${temprunname}.layer${testlayer}.err"
-                    tempconfig="Tracking $arg_tracking -C $CONFIGTABLEDEFAULT $arg_configure $arg_adjust $arg_hitFileSuffix -R $runNo -L $testlayer -B $iEntryStart -E $iEntryStop info/xt.${runNo}.${inputXTrunname}.root $temprunname > $logtemp 2> $errtemp"
+                    tempconfig="Tracking $arg_tracking $arg_configure $arg_adjust $arg_hitFileSuffix -R $runNo -L $testlayer -B $iEntryStart -E $iEntryStop info/xt.${runNo}.${inputXTrunname}.root $temprunname > $logtemp 2> $errtemp"
                     echo $tempconfig
 
                     findVacentThread
@@ -553,5 +552,5 @@ do
         cd ../..
     fi
 
-    GetXT -C $CONFIGTABLEDEFAULT $arg_configure $arg_cell $arg_adjust $arg_hitFileSuffix -R $runNo info/xt.${runNo}.${inputXTrunname}.root $currunname
+    GetXT $arg_configure $arg_cell $arg_adjust $arg_hitFileSuffix -R $runNo info/xt.${runNo}.${inputXTrunname}.root $currunname
 done
