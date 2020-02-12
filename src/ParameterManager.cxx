@@ -84,7 +84,10 @@ void ParameterManager::LoadParameters(ParaBlock theParaBlock){
         parName="XTAnalyzer.UseGoodHit";if (MyRuntimeParameters::Get().HasParameter(parName)) XTAnalyzerParameters.UseGoodHit = MyRuntimeParameters::Get().GetParameterB(parName);
         parName="XTAnalyzer.AllGoodHitsUsed";if (MyRuntimeParameters::Get().HasParameter(parName)) XTAnalyzerParameters.AllGoodHitsUsed = MyRuntimeParameters::Get().GetParameterB(parName);
         parName="XTAnalyzer.CombineLeftAndRight";if (MyRuntimeParameters::Get().HasParameter(parName)) XTAnalyzerParameters.CombineLeftAndRight = MyRuntimeParameters::Get().GetParameterB(parName);
-        parName="XTAnalyzer.CombineAtDOCA";if (MyRuntimeParameters::Get().HasParameter(parName)) XTAnalyzerParameters.CombineAtDOCA = MyRuntimeParameters::Get().GetParameterD(parName);
+        parName="XTAnalyzer.CombineWithoutRegion1Left";if (MyRuntimeParameters::Get().HasParameter(parName)) XTAnalyzerParameters.CombineWithoutRegion1Left = MyRuntimeParameters::Get().GetParameterD(parName);
+        parName="XTAnalyzer.CombineWithoutRegion1Right";if (MyRuntimeParameters::Get().HasParameter(parName)) XTAnalyzerParameters.CombineWithoutRegion1Right = MyRuntimeParameters::Get().GetParameterD(parName);
+        parName="XTAnalyzer.CombineWithoutRegion2Left";if (MyRuntimeParameters::Get().HasParameter(parName)) XTAnalyzerParameters.CombineWithoutRegion2Left = MyRuntimeParameters::Get().GetParameterD(parName);
+        parName="XTAnalyzer.CombineWithoutRegion2Right";if (MyRuntimeParameters::Get().HasParameter(parName)) XTAnalyzerParameters.CombineWithoutRegion2Right = MyRuntimeParameters::Get().GetParameterD(parName);
         parName="XTAnalyzer.nHits_max";if (MyRuntimeParameters::Get().HasParameter(parName)) XTAnalyzerParameters.nHits_max = MyRuntimeParameters::Get().GetParameterI(parName);
         parName="XTAnalyzer.nHitsS_min";if (MyRuntimeParameters::Get().HasParameter(parName)) XTAnalyzerParameters.nHitsS_min = MyRuntimeParameters::Get().GetParameterI(parName);
         parName="XTAnalyzer.chi2_max";if (MyRuntimeParameters::Get().HasParameter(parName)) XTAnalyzerParameters.chi2_max = MyRuntimeParameters::Get().GetParameterD(parName);
@@ -275,7 +278,10 @@ XTAnalyzerPara::XTAnalyzerPara(){
     UseGoodHit = false;
     AllGoodHitsUsed = false;
     CombineLeftAndRight = false;
-    CombineAtDOCA = 4;
+    CombineWithoutRegion1Left = 0;
+    CombineWithoutRegion1Right = 0;
+    CombineWithoutRegion2Left = 0;
+    CombineWithoutRegion2Right = 0;
     nHits_max = 30;
     nHitsS_min = 7;
     chi2_max = 0;
@@ -330,7 +336,8 @@ void XTAnalyzerPara::Print(){
     printf("  UseGoodHit = %s\n",UseGoodHit?"true":"false");
     printf("  AllGoodHitsUsed = %s\n",AllGoodHitsUsed?"true":"false");
     printf("  Combine left and right? %s\n",CombineLeftAndRight?"true":"false");
-    printf("  Combine at DOCA = %.2f mm\n",CombineLeftAndRight);
+    printf("  Combine without region 1: %.2f ~ %.2f mm\n",CombineWithoutRegion1Left,CombineWithoutRegion1Right);
+    printf("  Combine without region 2: %.2f ~ %.2f mm\n",CombineWithoutRegion2Left,CombineWithoutRegion2Right);
     printf("  nHits_max = %d\n",nHits_max);
     printf("  nHitsS_min = %d\n",nHitsS_min);
     printf("  chi2_max = %f\n",chi2_max);

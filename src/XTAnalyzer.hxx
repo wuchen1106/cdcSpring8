@@ -54,6 +54,7 @@ private:
     void formXTGraphs(void); //< scan through the tree and select points to form up the graphs.
     void doFitXT(TGraph * gr, TF1 * f, const char * suf);
     void combineLeftAndRight(double offset);
+    bool combineWithout(double DOCA);
 
 private:
     // options

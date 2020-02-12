@@ -70,7 +70,10 @@ public:
     bool UseGoodHit;
     bool AllGoodHitsUsed;
     bool CombineLeftAndRight;
-    double CombineAtDOCA;
+    double CombineWithoutRegion1Left;
+    double CombineWithoutRegion1Right;
+    double CombineWithoutRegion2Left;
+    double CombineWithoutRegion2Right;
     int nHits_max;
     int nHitsS_min;
     double chi2_max;

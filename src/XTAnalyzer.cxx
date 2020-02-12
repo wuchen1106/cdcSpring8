@@ -567,20 +567,22 @@ void XTAnalyzer::doFitXT(TGraph * gr, TF1 * f, const char * suf){
 }
 
 void XTAnalyzer::combineLeftAndRight(double offset){
-    double combineAtDOCA = ParameterManager::Get().XTAnalyzerParameters.CombineAtDOCA;
     // get the 2D histogram first
     // about binning
     h2_xt_combined = new TH2D(*h2_xt);
     h2_xt_combined->SetName("h2_xtc"+m_suffix);
     for (int iBinY = 1; iBinY <= h2_xt->GetYaxis()->GetNbins(); iBinY++){
         double Y = h2_xt->GetYaxis()->GetBinCenter(iBinY);
-        if ((Y>combineAtDOCA)||(Y>=-combineAtDOCA&&Y<0)){ // TODO: to consider more combination patterns in the future (quite rarely used feature)
-            int iBinY2Copy = h2_xt->GetYaxis()->FindBin(-Y);
-            for (int iBinX = 1; iBinX <= h2_xt->GetXaxis()->GetNbins(); iBinX++){
-                double c = h2_xt->GetBinContent(iBinX,iBinY);
-                h2_xt_combined->SetBinContent(iBinX,iBinY,c);
-                h2_xt_combined->SetBinContent(iBinX,iBinY2Copy,c);
-            }
+        bool woThisYslice = combineWithout(Y);
+        bool woOppositYslice = combineWithout(-Y);
+        int iBinY2Copy = h2_xt->GetYaxis()->FindBin(-Y);
+        for (int iBinX = 1; iBinX <= h2_xt->GetXaxis()->GetNbins(); iBinX++){
+            double c1 = h2_xt->GetBinContent(iBinX,iBinY);
+            double c2 = h2_xt->GetBinContent(iBinX,iBinY2Copy);
+            if (woThisYslice) c1 = 0;
+            if (woOppositYslice) c2 = 0;
+            h2_xt_combined->SetBinContent(iBinX,iBinY,c1+c2);
+            h2_xt_combined->SetBinContent(iBinX,iBinY2Copy,c1+c2);
         }
     }
 
@@ -588,33 +590,52 @@ void XTAnalyzer::combineLeftAndRight(double offset){
     gr_combined = new TGraphErrors(); gr_combined->SetName(Form("gr%s_c",m_suffix.Data()));
     gr_combined->SetMarkerStyle(24);gr_combined->SetMarkerSize(0.5);
     gr_combined->SetMarkerColor(kBlack);gr_combined->SetLineColor(kBlack);
-    gr_combined->Set(gr_left->GetN()+gr_right->GetN());
+    gr_combined->Set(gr_left->GetN());
     int count = 0;
     for (int iPoint = 0; iPoint<gr_left->GetN(); iPoint++){
-        double T,X; gr_left->GetPoint(iPoint,T,X);
+        double T,Xl; gr_left->GetPoint(iPoint,T,Xl);
+        double Xr; 
+        bool XrValid = CommonTools::TGraphInterpolate(gr_right,T,Xr);
+        double X;
+        if (combineWithout(Xr)&&combineWithout(Xl)){
+            continue;
+        }
+        else if (combineWithout(Xr)){
+            X = -Xl;
+        }
+        else if (combineWithout(Xl)){
+            if (!XrValid) continue;
+            X = Xr;
+        }
+        else{
+            if (!XrValid) X = -Xl;
+            else X = (Xr-Xl)/2;
+        }
         double Terr = gr_left->GetErrorX(iPoint);
         double Xerr = gr_left->GetErrorY(iPoint);
-        if (X>=-combineAtDOCA){
-            gr_combined->SetPoint(count,T,-X+offset);
-            gr_combined->SetPointError(count,Terr,Xerr);
-            count++;
-        }
-    }
-    for (int iPoint = 0; iPoint<gr_right->GetN(); iPoint++){
-        double T,X; gr_right->GetPoint(iPoint,T,X);
-        double Terr = gr_right->GetErrorX(iPoint);
-        double Xerr = gr_right->GetErrorY(iPoint);
-        if (X>combineAtDOCA){
-            gr_combined->SetPoint(count,T,X);
-            gr_combined->SetPointError(count,Terr,Xerr);
-            count++;
-        }
+        gr_combined->SetPoint(count,T,X+offset);
+        gr_combined->SetPointError(count,Terr,Xerr);
+        count++;
     }
     gr_combined->Set(count);
 }
 
+bool XTAnalyzer::combineWithout(double DOCA){
+    double woRegionLeft1 = ParameterManager::Get().XTAnalyzerParameters.CombineWithoutRegion1Left;
+    double woRegionRight1 = ParameterManager::Get().XTAnalyzerParameters.CombineWithoutRegion1Right;
+    double woRegionLeft2 = ParameterManager::Get().XTAnalyzerParameters.CombineWithoutRegion2Left;
+    double woRegionRight2 = ParameterManager::Get().XTAnalyzerParameters.CombineWithoutRegion2Right;
+    bool without = false;
+    if (DOCA>woRegionLeft1&&DOCA<woRegionRight1) without = true;
+    if (DOCA>woRegionLeft2&&DOCA<woRegionRight2) without = true;
+    return without;
+}
+
 void XTAnalyzer::drawSampleCombined2D(){
-    double combineAtDOCA = ParameterManager::Get().XTAnalyzerParameters.CombineAtDOCA;
+    double woRegionLeft1 = ParameterManager::Get().XTAnalyzerParameters.CombineWithoutRegion1Left;
+    double woRegionRight1 = ParameterManager::Get().XTAnalyzerParameters.CombineWithoutRegion1Right;
+    double woRegionLeft2 = ParameterManager::Get().XTAnalyzerParameters.CombineWithoutRegion2Left;
+    double woRegionRight2 = ParameterManager::Get().XTAnalyzerParameters.CombineWithoutRegion2Right;
     // draw the unfolded histogram first
     TCanvas * canv = new TCanvas("cgraph","cgraph",1024,1024);
     canv->Divide(2,2);
@@ -628,11 +649,11 @@ void XTAnalyzer::drawSampleCombined2D(){
 
     canv->cd(2);gPad->SetGridx(1);gPad->SetGridy(1);
     TH2D * h2_bkg_sigT = new TH2D("h2_bkg_sigT2","#sigma of X fitting in each T slice",512,mDrawTmin,mDrawTmax,512,0,500);
-    h2_bkg_sigT->GetXaxis()->SetTitle("Drift Time [ns]");
+    h2_bkg_sigT->GetXaxis()->SetTitle("T [ns]");
     h2_bkg_sigT->GetYaxis()->SetTitle("#sigma [#mum]");
     h2_bkg_sigT->Draw();
-    mOutTree->SetMarkerColor(kRed); mOutTree->Draw("sig*1000:t",Form("x>=%.7e&&n>0&&func>=0",combineAtDOCA),"PSAME");
-    mOutTree->SetMarkerColor(kBlue); mOutTree->Draw("sig*1000:t",Form("x<0&&x>=%.7e&&n>0&&func>=0",-combineAtDOCA),"PSAME");
+    mOutTree->SetMarkerColor(kRed); mOutTree->Draw("sig*1000:t",Form("x>=0&&n>0&&func>=0&&(x<=%.7e||x>=%.7e)&&(x<=%.7e||x>=%.7e)",woRegionLeft1,woRegionRight1,woRegionLeft2,woRegionRight2),"PSAME");
+    mOutTree->SetMarkerColor(kBlue); mOutTree->Draw("sig*1000:t",Form("x<0&&n>0&&func>=0&&(x<=%.7e||x>=%.7e)&&(x<=%.7e||x>=%.7e)",woRegionLeft1,woRegionRight1,woRegionLeft2,woRegionRight2),"PSAME");
 
     canv->cd(3);gPad->SetGridx(1);gPad->SetGridy(1);
     TH2D * hbkg = new TH2D(Form("hbkg_diff%s",m_suffix.Data()),"#Delta_{X}: Function - Sample",1024,mDrawTmin,mDrawTmax,512,-500,500);
@@ -664,10 +685,12 @@ void XTAnalyzer::drawSampleCombined2D(){
         if (mEntries>mEntriesMax) mEntriesMax = mEntries;
     }
     TH2D * h2_bkg_entriesT = new TH2D("h2_bkg_entriesT","Number of entries in each T slice",512,mDrawTmin,mDrawTmax,1024,0,mEntriesMax*1.1);
+    h2_bkg_entriesT->GetXaxis()->SetTitle("T [ns]");
+    h2_bkg_entriesT->GetYaxis()->SetTitle("# Entries");
     h2_bkg_entriesT->Draw();
-    mOutTree->SetMarkerColor(kRed); mOutTree->Draw("n:t",Form("x>=%.7e&&n>0&&func>=0",combineAtDOCA),"PSAME");
-    mOutTree->SetMarkerColor(kBlue); mOutTree->Draw("n:t",Form("x<0&&x>=%.7e&&n>0&&func>=0",-combineAtDOCA),"PSAME");
-    mOutTree->SetMarkerColor(kGray); mOutTree->Draw("n:t",Form("((x<0&&x>=%.7e)||x>=%.7e)&&func<0",-combineAtDOCA,combineAtDOCA),"PSAME");
+    mOutTree->SetMarkerColor(kRed); mOutTree->Draw("n:t",Form("x>=0&&n>0&&func>=0&&(x<=%.7e||x>=%.7e)&&(x<=%.7e||x>=%.7e)",woRegionLeft1,woRegionRight1,woRegionLeft2,woRegionRight2),"PSAME");
+    mOutTree->SetMarkerColor(kBlue); mOutTree->Draw("n:t",Form("x<0&&n>0&&func>=0&&(x<=%.7e||x>=%.7e)&&(x<=%.7e||x>=%.7e)",woRegionLeft1,woRegionRight1,woRegionLeft2,woRegionRight2),"PSAME");
+    mOutTree->SetMarkerColor(kGray); mOutTree->Draw("n:t",Form("func<0&&(x<=%.7e||x>=%.7e)&&(x<=%.7e||x>=%.7e)",woRegionLeft1,woRegionRight1,woRegionLeft2,woRegionRight2),"PSAME");
 
     canv->SaveAs(Form("result/sample2DCombined_%s%s.png",mRunName.Data(),m_suffix.Data()));
     canv->SaveAs(Form("result/sample2DCombined_%s%s.pdf",mRunName.Data(),m_suffix.Data()));
@@ -691,14 +714,16 @@ void XTAnalyzer::drawSample2D(bool withFunction){
 
     canv->cd(2);gPad->SetGridx(1);gPad->SetGridy(1);
     TH2D * h2_bkg_sigT = new TH2D("h2_bkg_sigT2","#sigma of X fitting in each T slice",512,mDrawTmin,mDrawTmax,512,0,500);
-    h2_bkg_sigT->GetXaxis()->SetTitle("Drift Time [ns]");
+    h2_bkg_sigT->GetXaxis()->SetTitle("T [ns]");
     h2_bkg_sigT->GetYaxis()->SetTitle("#sigma [#mum]");
     h2_bkg_sigT->Draw();
     mOutTree->SetMarkerColor(kRed); mOutTree->Draw("sig*1000:t","x>=0&&n>0&&func>=0","PSAME");
     mOutTree->SetMarkerColor(kBlue); mOutTree->Draw("sig*1000:t","x<0&&n>0&&func>=0","PSAME");
 
     canv->cd(4);gPad->SetGridx(1);gPad->SetGridy(1);
-    TH2D * h2_bkg_rightMinusLeft = new TH2D("h2_bkg_rightMinusLeft","Mean of the two side of XT relation",512,mDrawTmin,mDrawTmax,1024,-1,1);
+    TH2D * h2_bkg_rightMinusLeft = new TH2D("h2_bkg_rightMinusLeft","Mean of the two side of XT relation",512,mDrawTmin,mDrawTmax,1024,-0.5,0.5);
+    h2_bkg_rightMinusLeft->GetXaxis()->SetTitle("T [ns]");
+    h2_bkg_rightMinusLeft->GetYaxis()->SetTitle("Left+Right [mm]");
     h2_bkg_rightMinusLeft->Draw();
     gr_rightMinusLeft->Draw("PLSAME");
 
@@ -725,6 +750,7 @@ void XTAnalyzer::drawSample2D(bool withFunction){
         TH2D * hbkg = new TH2D(Form("hbkg_diff%s",m_suffix.Data()),"#Delta_{X}: Function - Sample",1024,mDrawTmin,mDrawTmax,512,-500,500);
         hbkg->GetXaxis()->SetTitle("T [ns]");
         hbkg->GetYaxis()->SetTitle("#Delta_{X} [#mum]");
+        hbkg->GetYaxis()->SetTitleOffset(1.2);
         hbkg->Draw();
         TLegend *legend_diff = new TLegend(0.6,0.7,0.9,0.9);
         legend_diff->Draw("SAME");
@@ -780,22 +806,30 @@ void XTAnalyzer::drawSampleAtt(){
     canv->Divide(2,2);
     canv->cd(1);gPad->SetGridx(1);gPad->SetGridy(1);
     TH2D * h2_bkg_entriesT = new TH2D("h2_bkg_entriesT","Number of entries in each T slice",512,mDrawTmin,mDrawTmax,1024,0,mEntriesMax*1.1);
+    h2_bkg_entriesT->GetXaxis()->SetTitle("T [ns]");
+    h2_bkg_entriesT->GetYaxis()->SetTitle("Entries");
     h2_bkg_entriesT->Draw();
     mOutTree->SetMarkerColor(kRed); mOutTree->Draw("n:t","x>=0&&n>0&&func>=0","PSAME");
     mOutTree->SetMarkerColor(kBlue); mOutTree->Draw("n:t","x<0&&n>0&&func>=0","PSAME");
     mOutTree->SetMarkerColor(kGray); mOutTree->Draw("n:t","func<0","PSAME");
     canv->cd(2);gPad->SetGridx(1);gPad->SetGridy(1);
     TH2D * h2_bkg_sigT = new TH2D("h2_bkg_sigT","#sigma of X fitting in each T slice",512,mDrawTmin,mDrawTmax,512,0,0.8);
+    h2_bkg_sigT->GetXaxis()->SetTitle("T [ns]");
+    h2_bkg_sigT->GetYaxis()->SetTitle("#sigma [mm]");
     h2_bkg_sigT->Draw();
     mOutTree->SetMarkerColor(kRed); mOutTree->Draw("sig:t","x>=0&&n>0&&func>=0","PSAME");
     mOutTree->SetMarkerColor(kBlue); mOutTree->Draw("sig:t","x<0&&n>0&&func>=0","PSAME");
     canv->cd(3);gPad->SetGridx(1);gPad->SetGridy(1);
     TH2D * h2_bkg_chi2T = new TH2D("h2_bkg_chi2T","#chi^{2} of X fitting in each T slice",512,mDrawTmin,mDrawTmax,512,0,150);
+    h2_bkg_chi2T->GetXaxis()->SetTitle("T [ns]");
+    h2_bkg_chi2T->GetYaxis()->SetTitle("#chi^{2}");
     h2_bkg_chi2T->Draw();
     mOutTree->SetMarkerColor(kRed); mOutTree->Draw("chi2:t","x>=0&&n>0&&func>=0","PSAME");
     mOutTree->SetMarkerColor(kBlue); mOutTree->Draw("chi2:t","x<0&&n>0&&func>=0","PSAME");
     canv->cd(4);gPad->SetGridx(1);gPad->SetGridy(1);
     TH2D * h2_bkg_probT = new TH2D("h2_bkg_probT","p-value of X fitting in each T slice",512,mDrawTmin,mDrawTmax,512,0,1);
+    h2_bkg_probT->GetXaxis()->SetTitle("T [ns]");
+    h2_bkg_probT->GetYaxis()->SetTitle("p-Value");
     h2_bkg_probT->Draw();
     mOutTree->SetMarkerColor(kRed); mOutTree->Draw("prob:t","x>=0&&n>0&&func>=0","PSAME");
     mOutTree->SetMarkerColor(kBlue); mOutTree->Draw("prob:t","x<0&&n>0&&func>=0","PSAME");
