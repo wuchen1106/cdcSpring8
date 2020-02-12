@@ -42,7 +42,8 @@ XTAnalyzer parameters
     < XTAnalyzer.RequireAllGoldenHits = false >
     < XTAnalyzer.AllGoodHitsUsed = true > no good hits left aside from the track
     < XTAnalyzer.CombineLeftAndRight = true > combine the left and right side
-    < XTAnalyzer.CombineAtDOCA = 4 mm > take DOCA=4mm as the line to combine: Use left for small DOCA and right for large DOCA
+    < XTAnalyzer.CombineWithoutRegion1Left = 1.5 mm >
+    < XTAnalyzer.CombineWithoutRegion1Right = 3.5 mm >
     < XTAnalyzer.nHits_max = 0 >
     < XTAnalyzer.nHitsS_min = 7 >
     < XTAnalyzer.pValue_min = 0.05 >
@@ -103,8 +104,8 @@ XTAnalyzer parameters
     < XTAnalyzer.xtfunc_2_tLowEdge = 240 ns >
     < XTAnalyzer.xtfunc_tHighEdge = 800 ns >
  Drwaing samples
-    < XTAnalyzer.draw_tmin = -23.437500 ns >
-    < XTAnalyzer.draw_tmax = 501.5625 ns >
+    < XTAnalyzer.draw_tmin = -20 ns >
+    < XTAnalyzer.draw_tmax = 600 ns >
     < XTAnalyzer.draw_xmin = -10 mm >
     < XTAnalyzer.draw_xmax = 10 mm >
 
