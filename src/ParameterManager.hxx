@@ -90,13 +90,23 @@ public:
     double bin_x_max;
     int    bin_x_num;
     // regroup T bins to fit X
-    int    fitX_nRanges;
+    int    fitX_iRangeStart;
+    int    fitX_iRangeStop;
     double fitX_tSep[NRANGES+1];
     int    fitX_minEntries[NRANGES];
     int    fitX_nBins[NRANGES];
     int    fitX_smooth[NRANGES];
     bool   fitX_fitBoth[NRANGES];
     bool   fitX_SetEmptyBins[NRANGES];
+    // regroup X bins to fit T
+    int    fitT_iRangeStart;
+    int    fitT_iRangeStop;
+    double fitT_xSep[NRANGES+1];
+    int    fitT_minEntries[NRANGES];
+    int    fitT_nBins[NRANGES];
+    int    fitT_smooth[NRANGES];
+    bool   fitT_fitBoth[NRANGES];
+    bool   fitT_SetEmptyBins[NRANGES];
     // about forming graphs
     int    graph_n_min;
     double graph_chi2_max;

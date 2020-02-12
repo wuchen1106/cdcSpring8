@@ -192,18 +192,85 @@ void XTAnalyzer::BinAnalysis(void){
     MyNamedLog("XTAnalyzer","In XTAnalyzer::BinAnalysis, using h2_xt"<<m_suffix<<" ("<<h2_xt->GetName()<<") and filling to "<<mOutTree->GetName());
     //==========================Preparation work==============================
     // number of ranges to group bins and analyze
-    int fitX_nRanges = ParameterManager::Get().XTAnalyzerParameters.fitX_nRanges;
+    int fitX_iRangeStart = ParameterManager::Get().XTAnalyzerParameters.fitX_iRangeStart;
+    int fitX_iRangeStop = ParameterManager::Get().XTAnalyzerParameters.fitX_iRangeStop;
+    int fitT_iRangeStart = ParameterManager::Get().XTAnalyzerParameters.fitT_iRangeStart;
+    int fitT_iRangeStop = ParameterManager::Get().XTAnalyzerParameters.fitT_iRangeStop;
     int bin_x_num = ParameterManager::Get().XTAnalyzerParameters.bin_x_num;
     // prepare a canvas to draw fittings if needed
     TCanvas * canv = new TCanvas("cfit","cfit",1024,768);canv->SetGridx(1);canv->SetGridy(1);
     // record the current style
     int oldStyle = gStyle->GetOptStat();
     gStyle->SetOptStat(1); // we want to draw the stat box for bin-by-bin histograms
+    //==========================Fit T along X slices (unfolded)==============================
+    int current_nbins_to_fit = ParameterManager::Get().XTAnalyzerParameters.fitT_nBins[0];
+    int current_iRange = fitT_iRangeStart;
+    for (int i = 1; i<=h2_xt->GetYaxis()->GetNbins(); i+=current_nbins_to_fit){
+        if (current_iRange>fitT_iRangeStop) break; // already the end
+        // fist, get the X division
+        double divleft = h2_xt->GetYaxis()->GetBinLowEdge(i);
+        double divmiddle = current_nbins_to_fit%2==0?h2_xt->GetYaxis()->GetBinLowEdge(i+current_nbins_to_fit/2):h2_xt->GetYaxis()->GetBinCenter(i+current_nbins_to_fit/2);
+        double divright = h2_xt->GetYaxis()->GetBinLowEdge(i+current_nbins_to_fit);
+        if (divleft<ParameterManager::Get().XTAnalyzerParameters.fitT_xSep[current_iRange]){ continue; } // not started yet
+        h2_xt->GetYaxis()->SetRangeUser(divleft,divright);
+        // second, get the mean x and the 1-D histogram
+        double x1 = 0; double xerr1 = 0; double n1 = 0;
+        TH1D * hist = NULL;
+        hist = h2_xt->ProjectionX(Form("h_x_L%s_%d",m_suffix.Data(),i));
+        x1 = h2_xt->GetMean(2); double xerr = h2_xt->GetRMS(2); n1 = h2_xt->Integral();
+        MyNamedInfo("XTAnalyzer",Form("=> Bin %d~%d: %.2f (%.2f~%.2f) mm, %.0f entries",i,i+current_nbins_to_fit-1,divmiddle,divleft,divright,n1));
+        // third, prepare the 1-D hist
+        int smooth_times = ParameterManager::Get().XTAnalyzerParameters.fitT_smooth[current_iRange];
+        if (smooth_times>0) hist->Smooth(smooth_times);
+        if (ParameterManager::Get().XTAnalyzerParameters.fitT_SetEmptyBins[current_iRange]){
+            for (int i = 1; i<=hist->GetXaxis()->GetNbins(); i++){
+                double content = hist->GetBinContent(i);
+                if (content == 0) content = 1e-7;
+                hist->SetBinContent(i,content);
+            }
+        }
+        // at last , fit this histogram if needed
+        int minEntries = ParameterManager::Get().XTAnalyzerParameters.fitT_minEntries[current_iRange]; // minimum number of entries in one slice to apply fitting function; Otherwise use mean value & RMS instead.
+        if (!minEntries||n1>minEntries){
+            HistogramAnalyzer::Get().SetFittingParameters(current_iRange);
+            double t1,terr1,sig1; int result;
+            result = HistogramAnalyzer::Get().FitSlice(hist,mChi2,mProb,false,true); // not fitting both; assuming left: use the normal Landau function
+            mFunction = HistogramAnalyzer::Get().get_functionType();
+            t1 = HistogramAnalyzer::Get().get_x();
+            terr1 = HistogramAnalyzer::Get().get_xerr();
+            sig1 = HistogramAnalyzer::Get().get_sig();
+            if (mDrawDetails){
+                hist->GetXaxis()->SetRangeUser(t1-15,t1+15);
+                hist->SetTitle(Form("x = %.2f (%.2f~%.2f) mm, t=%.1f (%.1f) ns, #sigma=%.1f ns, #chi^{2}=%.0f, prob=%.2f, stat %d",x1,divleft,divright,t1,terr1,sig1,mChi2,mProb,result));
+                canv->cd();
+                HistogramAnalyzer::Get().DrawFitting(hist);
+                canv->SaveAs(Form("%s.%s%s.png",hist->GetName(),mRunName.Data(),m_suffix.Data()));
+            }
+            // update the canvas range for drawing samples
+            mT = t1; mTerr = terr1; mEntries = n1; mX = x1; mXerr = xerr1; mSig = sig1;
+            mOutTree->Fill();
+        }
+        else{
+            mFunction = HistogramAnalyzer::kNone;
+            mT = 0; mTerr = 0; mEntries = n1; mX = x1; mXerr = xerr1; mSig = 0;
+            mOutTree->Fill();
+        }
+        if (divright>=ParameterManager::Get().XTAnalyzerParameters.fitT_xSep[current_iRange+1]){ // switch to the next range
+            current_iRange++;
+            if (current_iRange>fitT_iRangeStop){
+                MyNamedInfo("XTAnalyzer",Form("Division right side %.2f ns at the edge of the last range[%d]: x = %.2f mm. Stop sampling.",divright,fitT_iRangeStop,ParameterManager::Get().XTAnalyzerParameters.fitT_xSep[current_iRange]));
+                break;
+            }
+            current_nbins_to_fit = ParameterManager::Get().XTAnalyzerParameters.fitT_nBins[current_iRange];
+            MyNamedInfo("XTAnalyzer",Form("Entering range %d, nbins to combine changed to %d",current_iRange,current_nbins_to_fit));
+        }
+    }
 
     //==========================Fit X along T slices (unfolded)==============================
-    int current_nbins_to_fit = ParameterManager::Get().XTAnalyzerParameters.fitX_nBins[0];
-    int current_iRange = 0;
+    current_nbins_to_fit = ParameterManager::Get().XTAnalyzerParameters.fitX_nBins[0];
+    current_iRange = fitX_iRangeStart;
     for (int i = 1; i<=h2_xt->GetXaxis()->GetNbins(); i+=current_nbins_to_fit){
+        if (current_iRange>fitX_iRangeStop) break; // already the end
         bool fitBoth = ParameterManager::Get().XTAnalyzerParameters.fitX_fitBoth[current_iRange];
         // fist, get the T division
         double divleft = h2_xt->GetXaxis()->GetBinLowEdge(i);
@@ -307,8 +374,8 @@ void XTAnalyzer::BinAnalysis(void){
         h2_xt->GetXaxis()->UnZoom();
         if (divright>=ParameterManager::Get().XTAnalyzerParameters.fitX_tSep[current_iRange+1]){ // switch to the next range
             current_iRange++;
-            if (current_iRange>=fitX_nRanges){
-                MyNamedInfo("XTAnalyzer",Form("Division right side %.1f ns assed the edge of the last range[%d]: t = %.1f ns. Stop sampling.",divright,fitX_nRanges,ParameterManager::Get().XTAnalyzerParameters.fitX_tSep[current_iRange+1]));
+            if (current_iRange>fitX_iRangeStop){
+                MyNamedInfo("XTAnalyzer",Form("Division right side %.1f ns assed the edge of the last range[%d]: t = %.1f ns. Stop sampling.",divright,fitX_iRangeStop,ParameterManager::Get().XTAnalyzerParameters.fitX_tSep[current_iRange]));
                 break;
             }
             current_nbins_to_fit = ParameterManager::Get().XTAnalyzerParameters.fitX_nBins[current_iRange];
@@ -451,9 +518,15 @@ void XTAnalyzer::doFitXT(TGraph * gr, TF1 * f, const char * suf){
                     f_basicXT[iRange][iPol]->SetParameter(iPol,0);
                 }
                 else{
-                    f_basicXT[iRange][iPol]->SetParameters(0,0);
+                    double p0,p1;
+                    CommonTools::TGraphGetPol1(gr,p0,p1,tLeft,tRight);
+                    f_basicXT[iRange][iPol]->SetParameters(p0,p1);
                 }
-                if (iRange<=1)
+                if (iRange==0){
+                    fitResult = gr->Fit(f_basicXT[iRange][iPol],"qN0","",tLeft+20,tRight+40);
+                    fitResult = gr->Fit(f_basicXT[iRange][iPol],"qN0","",tLeft,tRight);
+                }
+                if (iRange==1)
                     fitResult = gr->Fit(f_basicXT[iRange][iPol],"qN0","",tLeft,tRight);
                 else
                     fitResult = gr->Fit(f_basicXT[iRange][iPol],"qN0","",tLeft-10,tRight+10);
@@ -863,6 +936,8 @@ void XTAnalyzer::formXTGraphs(){
             }
         }
     }
+    CommonTools::TGraphErrorsSortByX(gr_left);
+    CommonTools::TGraphErrorsSortByX(gr_right);
     CommonTools::TGraphErrorsPlus(gr_rightMinusLeft,gr_right,gr_left,0.5,0.5); // mean of left and right
     mOutFile->cd();
     gr_left->Write();

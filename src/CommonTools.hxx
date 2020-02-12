@@ -84,6 +84,53 @@ public:
         }
         return true;
     }
+
+    static void TGraphErrorsSortByX(TGraphErrors * graph){
+        for (int i = 0; i<graph->GetN(); i++){
+            for (int j = i; j<graph->GetN(); j++){
+                double xi,yi,xerri,yerri;
+                graph->GetPoint(i,xi,yi);
+                xerri = graph->GetErrorX(i);
+                yerri = graph->GetErrorY(i);
+                double xj,yj,xerrj,yerrj;
+                graph->GetPoint(j,xj,yj);
+                xerrj = graph->GetErrorX(j);
+                yerrj = graph->GetErrorY(j);
+                if (xi>xj){
+                    graph->SetPoint(i,xj,yj);
+                    graph->SetPointError(i,xerrj,yerrj);
+                    graph->SetPoint(j,xi,yi);
+                    graph->SetPointError(j,xerri,yerri);
+                }
+            }
+        }
+    }
+
+    static void TGraphGetPol1(const TGraph * graph, double & p0, double & p1, double left = 0, double right = 0){
+        double x1 = 1e9;
+        double y1 = 0;
+        double x2 = -1e9;
+        double y2 = 0;
+        for (int i = 0; i<graph->GetN(); i++){
+            double x,y; graph->GetPoint(i,x,y);
+            if (left==right||x<x1){
+                x1 = x;
+                y1 = y;
+            }
+            if (left==right||x>x2){
+                x2 = x;
+                y2 = y;
+            }
+        }
+        if (x1==x2){
+            p0 = 0;
+            p1 = 0;
+        }
+        else{
+            p1 = (y2-y1)/(x2-x1);
+            p0 = y1-p1*x1;
+        }
+    }
 };
 
 #endif
