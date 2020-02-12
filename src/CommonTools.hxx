@@ -70,7 +70,7 @@ public:
         for (int i = 1; i<graph->GetN(); i++){
             graph->GetPoint(i,x,y);
             if ((isLeft&&x<theX)||(!isLeft&&x>theX)){ // moved to the other side of the asked position, then interpolate
-                theY = (y*(x-theX)+prevY*(theX-prevX))/(x-prevX);
+                theY = (prevY*(x-theX)+y*(theX-prevX))/(x-prevX);
                 found = true;
                 break;
             }
