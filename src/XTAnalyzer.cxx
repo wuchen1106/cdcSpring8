@@ -674,19 +674,19 @@ void XTAnalyzer::combineLeftAndRight(double offset){
             continue;
         }
         else if (combineWithout(Xr)){
-            X = -Xl;
+            X = -Xl+offset;
         }
         else if (combineWithout(Xl)){
             if (!XrValid) continue;
-            X = Xr;
+            X = Xr+offset;
         }
         else{
-            if (!XrValid) X = -Xl;
+            if (!XrValid) X = -Xl+offset;
             else X = (Xr-Xl)/2;
         }
         double Terr = gr_left->GetErrorX(iPoint);
         double Xerr = gr_left->GetErrorY(iPoint);
-        gr_combined->SetPoint(count,T,X+offset);
+        gr_combined->SetPoint(count,T,X);
         gr_combined->SetPointError(count,Terr,Xerr);
         count++;
     }
