@@ -172,7 +172,7 @@ int main(int argc, char** argv){
     }
     success = XTManager::Get().SetInputFileXT(m_inputXTFile);
     if (!success){MyError("Invalid input XT file"); return 1;}
-    XTManager::Get().UseSideXT();
+    if (m_useSideXT) XTManager::Get().UseSideXT();
     success = XTManager::Get().Initialize();XTManager::Get().Print();
     if (!success) {MyNamedError("Analyze","Cannot initialize XTManager"); return 1;}
     InputOutputManager::Get().readHitFile = true;
