@@ -7,10 +7,6 @@ XTAnalyzer parameters
     < XTAnalyzer.RequireAllGoldenHits = false >
     < XTAnalyzer.AllGoodHitsUsed = true > no good hits left aside from the track
     < XTAnalyzer.CombineLeftAndRight = false > combine the left and right side
-     XTAnalyzer.CombineWithoutRegion1Left = 0 mm >
-     XTAnalyzer.CombineWithoutRegion1Right = 3 mm >
-     XTAnalyzer.CombineWithoutRegion2Left = -8 mm >
-     XTAnalyzer.CombineWithoutRegion2Right = -6 mm >
     < XTAnalyzer.nHits_max = 0 >
     < XTAnalyzer.nHitsS_min = 7 >
     < XTAnalyzer.pValue_min = 0.05 >
