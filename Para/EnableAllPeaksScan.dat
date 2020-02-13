@@ -1,0 +1,20 @@
+*******************************************************************************                                                                   
+general parameters
+*******************************************************************************                                                                   
+    < peakType = allpeaks > firstpeak highestpeak allpeaks
+
+*******************************************************************************                                                                   
+tracking parameters
+*******************************************************************************                                                                   
+
+    < tracking.nHitsGMax = 21 > If this value is too large, track finding will take a long time.
+    < tracking.sumCut = 5 >
+    < tracking.aaCut = 0 >
+
+*******************************************************************************                                                                   
+XTAnalyzer parameters
+*******************************************************************************                                                                   
+  event selection
+    < XTAnalyzer.AllGoodHitsUsed = false > no good hits left aside from the track
+  hit selection
+    < XTAnalyzer.FirstGoodPeak = false > Only use the first good peak (same cut as above for good hit)
