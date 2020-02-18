@@ -234,6 +234,7 @@ int main(int argc, char** argv){
     bool   o_isGood;
     int    o_wid[NLAY];
     double o_driftD[NLAY];
+    double o_driftDmc[NLAY];
     double o_driftT[NLAY];
     double o_DOCA[NLAY];
     double o_DOCAmc[NLAY];
@@ -255,6 +256,7 @@ int main(int argc, char** argv){
         otree->Branch(Form("d%d",i),&o_driftD[i]);
         otree->Branch(Form("t%d",i),&o_driftT[i]);
         if (m_isMC){
+            otree->Branch(Form("dmc%d",i),&o_driftDmc[i]);
             otree->Branch(Form("Dmc%d",i),&o_DOCAmc[i]);
         }
         else{
@@ -453,8 +455,13 @@ int main(int argc, char** argv){
                 int wireID = InputOutputManager::Get().CellID->at(iHit);
                 int iPeak = InputOutputManager::Get().iPeakInChannel->at(iHit);
                 double DOCAmc = 0;
+                double DriftTmc = 0;
+                double DriftDmc = 0;
                 if (m_isMC){
                     DOCAmc = InputOutputManager::Get().DOCA->at(iHit);
+                    DriftTmc = InputOutputManager::Get().DriftT->at(iHit)-InputOutputManager::Get().t0mc; // consider the t0 offset suggested by this candidate
+                    int status;
+                    DriftDmc = XTManager::Get().t2x(DriftTmc,layerID,wireID,DOCAmc,status);
                 }
                 double DOCA = GeometryManager::Get().GetDOCA(layerID,wireID,slx,inx,slz,inz);
                 double DriftT = InputOutputManager::Get().DriftT->at(iHit)-InputOutputManager::Get().t0Offset[theCand]; // consider the t0 offset suggested by this candidate
@@ -487,6 +494,7 @@ int main(int argc, char** argv){
                             o_DOCA[layerID] = DOCA;
                             if (m_isMC){
                                 o_DOCAmc[layerID] = DOCAmc;
+                                o_driftDmc[layerID] = DriftDmc;
                             }
                             o_driftD[layerID] = DriftD;
                             o_driftT[layerID] = DriftT;
@@ -503,6 +511,7 @@ int main(int argc, char** argv){
                         o_DOCA[layerID] = DOCA;
                         if (m_isMC){
                             o_DOCAmc[layerID] = DOCAmc;
+                            o_driftDmc[layerID] = DriftDmc;
                         }
                         o_driftD[layerID] = DriftD;
                         o_driftT[layerID] = DriftT;
