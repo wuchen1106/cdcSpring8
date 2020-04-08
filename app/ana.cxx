@@ -387,6 +387,7 @@ int main(int argc, char** argv){
         InputOutputManager::Get().Reset();
         InputOutputManager::Get().GetEntry(iEntry);
 
+        // reset the values
         int    nHits = InputOutputManager::Get().nHits;
         int    nHitsG = InputOutputManager::Get().nHitsG;
         double slx = 0;
@@ -401,112 +402,103 @@ int main(int argc, char** argv){
         int    nHitsS = 0;
         bool isGoodEvent = true;
         bool foundTestLayerHit = false;
-        // should have result
-        if (!nHitsGMax&&InputOutputManager::Get().nCandidatesFound){
-            isGoodEvent = false;
+        for (int iLayer = 0; iLayer < NLAY; iLayer++){
+            o_wid[iLayer] = -1;
+            o_driftD[iLayer] = 0;
+            o_driftDmc[iLayer] = 0;
+            o_driftT[iLayer] = 0;
+            o_DOCA[iLayer] = 0;
+            o_DOCAmc[iLayer] = 0;
+            o_ipeak[iLayer] = 0;
+            o_ADCheight[iLayer] = 0;
+            o_ADCsumPkt[iLayer] = 0;
+            o_ADCsumAll[iLayer] = 0;
         }
-        else{
-            // decide which candidate to use
-            int theCand = GetCandidate(ParameterManager::Get().XTAnalyzerParameters.CandSelBy);
-            if (theCand<0){
-                MyError("Cannot find a candidate for this event! nCandidatesFound = "<<InputOutputManager::Get().nCandidatesFound);
-                MyError("This will cause a mis match of entries among different files, thus we will stop this run.");
-                return -1;
-            }
-            MyNamedInfo("Analyze","    => theCand = "<<theCand);
-            slx = InputOutputManager::Get().slopeX[theCand];
-            inx = InputOutputManager::Get().interceptX[theCand];
-            slz = InputOutputManager::Get().slopeZ[theCand];
-            inz = InputOutputManager::Get().interceptZ[theCand];
-            t0Offset = InputOutputManager::Get().t0Offset[theCand];
-            chi2 = InputOutputManager::Get().chi2[theCand];
-            chi2a = InputOutputManager::Get().chi2a[theCand];
-            chi2w = InputOutputManager::Get().chi2WithTestLayer[theCand];
-            pValue = InputOutputManager::Get().pValue[theCand];
-            nHitsS = InputOutputManager::Get().nHitsS[theCand];
+        // should have result
+        // decide which candidate to use
+        int theCand = GetCandidate(ParameterManager::Get().XTAnalyzerParameters.CandSelBy);
+        if (theCand<0){
+            MyError("Cannot find a candidate for this event! nCandidatesFound = "<<InputOutputManager::Get().nCandidatesFound);
+            MyError("This will cause a mis match of entries among different files, thus we will stop this run.");
+            return -1;
+        }
+        MyNamedInfo("Analyze","    => theCand = "<<theCand);
+        slx = InputOutputManager::Get().slopeX[theCand];
+        inx = InputOutputManager::Get().interceptX[theCand];
+        slz = InputOutputManager::Get().slopeZ[theCand];
+        inz = InputOutputManager::Get().interceptZ[theCand];
+        t0Offset = InputOutputManager::Get().t0Offset[theCand];
+        chi2 = InputOutputManager::Get().chi2[theCand];
+        chi2a = InputOutputManager::Get().chi2a[theCand];
+        chi2w = InputOutputManager::Get().chi2WithTestLayer[theCand];
+        pValue = InputOutputManager::Get().pValue[theCand];
+        nHitsS = InputOutputManager::Get().nHitsS[theCand];
 
-            // nHits cut
-            if (nHits_max&&nHits>nHits_max) isGoodEvent = false;
-            // ignore events with bad fitting
-            if (nHitsS<nHitsS_min) isGoodEvent = false;
-            if (chi2_max&&chi2>chi2_max) isGoodEvent = false;
-            if (pValue<pValue_min) isGoodEvent = false;
-            // slope distribution?
-            if (slz<slz_min) isGoodEvent = false;
-            if (slz>slz_max) isGoodEvent = false;
-            // extra cuts
-            if (RequireInTriggerCounter&&!GeometryManager::Get().IsInScinti(1.5,inx,slx,inz,slz)) isGoodEvent = false;
-            if (RequireAllGoldenHits&&CountNotGoldenHitSelected(theCand)) isGoodEvent = false;
+        // nHits cut
+        if (nHits_max&&nHits>nHits_max) isGoodEvent = false;
+        // ignore events with bad fitting
+        if (nHitsS<nHitsS_min) isGoodEvent = false;
+        if (chi2_max&&chi2>chi2_max) isGoodEvent = false;
+        if (pValue<pValue_min) isGoodEvent = false;
+        // slope distribution?
+        if (slz<slz_min) isGoodEvent = false;
+        if (slz>slz_max) isGoodEvent = false;
+        // extra cuts
+        if (RequireInTriggerCounter&&!GeometryManager::Get().IsInScinti(1.5,inx,slx,inz,slz)) isGoodEvent = false;
+        if (RequireAllGoldenHits&&CountNotGoldenHitSelected(theCand)) isGoodEvent = false;
 
-            // reset o_wid
-            for (int lid = 0; lid<NLAY; lid++){
-                o_wid[lid] = -1;
-            }
+        // reset o_wid
+        for (int lid = 0; lid<NLAY; lid++){
+            o_wid[lid] = -1;
+        }
 
-            MyNamedVerbose("Analyze","  Good Event! Looping in "<<nHits<<" hits");
-            for (int i = 0; i<50; i++){
-                nGoodPeaks[i] = 0;
-            }
-            foundTestLayerHit = false;
-            double residualMinimal = 1e9;
-            for (int iHit = 0; iHit<nHits; iHit++){
-                int layerID = InputOutputManager::Get().LayerID->at(iHit);
-                if (layerID==0){continue;} // don't include the guard layer
-                int wireID = InputOutputManager::Get().CellID->at(iHit);
-                int iPeak = InputOutputManager::Get().iPeakInChannel->at(iHit);
-                double DOCAmc = 0;
-                double DriftTmc = 0;
-                double DriftDmc = 0;
-                if (m_isMC){
-                    DOCAmc = InputOutputManager::Get().DOCA->at(iHit);
-                    DriftTmc = InputOutputManager::Get().DriftT->at(iHit)-InputOutputManager::Get().t0mc; // consider the t0 offset suggested by this candidate
-                    int status;
-                    DriftDmc = XTManager::Get().t2x(DriftTmc,layerID,wireID,DOCAmc,status);
-                }
-                double DOCA = GeometryManager::Get().GetDOCA(layerID,wireID,slx,inx,slz,inz);
-                double DriftT = InputOutputManager::Get().DriftT->at(iHit)-InputOutputManager::Get().t0Offset[theCand]; // consider the t0 offset suggested by this candidate
+        MyNamedVerbose("Analyze","  Good Event! Looping in "<<nHits<<" hits");
+        for (int i = 0; i<50; i++){
+            nGoodPeaks[i] = 0;
+        }
+        foundTestLayerHit = false;
+        double residualMinimal = 1e9;
+        for (int iHit = 0; iHit<nHits; iHit++){
+            int layerID = InputOutputManager::Get().LayerID->at(iHit);
+            if (layerID==0){continue;} // don't include the guard layer
+            int wireID = InputOutputManager::Get().CellID->at(iHit);
+            int iPeak = InputOutputManager::Get().iPeakInChannel->at(iHit);
+            double DOCAmc = 0;
+            double DriftTmc = 0;
+            double DriftDmc = 0;
+            if (m_isMC){
+                DOCAmc = InputOutputManager::Get().DOCA->at(iHit);
+                DriftTmc = InputOutputManager::Get().DriftT->at(iHit)-InputOutputManager::Get().t0mc; // consider the t0 offset suggested by this candidate
                 int status;
-                double DriftD = XTManager::Get().t2x(DriftT,layerID,wireID,DOCA,status);
-                double ADCheight = InputOutputManager::Get().ADCheight->at(iHit);
-                double ADCsumPkt = InputOutputManager::Get().ADCsumPacket->at(iHit);
-                double ADCsumAll = InputOutputManager::Get().ADCsumAll->at(iHit);
-                h_DriftT_all[layerID][wireID]->Fill(DriftT);
-                h_ADCsumPkt_all[layerID][wireID]->Fill(ADCsumPkt);
-                if (iPeak==0){
-                    h_ADCsumAll_all[layerID][wireID]->Fill(ADCsumAll);
-                }
-                for (int i = 0; i<50; i++){
-                    sumCut = i; // adjust the cut
-                    aaCut = -1e9;
-                    if (isGoldenHit(iHit)) nGoodPeaks[i]++;
-                }
-                sumCut = ParameterManager::Get().TrackingParameters.sumCut;
-                aaCut = ParameterManager::Get().TrackingParameters.aaCut;
+                DriftDmc = XTManager::Get().t2x(DriftTmc,layerID,wireID,DOCAmc,status);
+            }
+            double DOCA = GeometryManager::Get().GetDOCA(layerID,wireID,slx,inx,slz,inz);
+            double DriftT = InputOutputManager::Get().DriftT->at(iHit)-InputOutputManager::Get().t0Offset[theCand]; // consider the t0 offset suggested by this candidate
+            int status;
+            double DriftD = XTManager::Get().t2x(DriftT,layerID,wireID,DOCA,status);
+            double ADCheight = InputOutputManager::Get().ADCheight->at(iHit);
+            double ADCsumPkt = InputOutputManager::Get().ADCsumPacket->at(iHit);
+            double ADCsumAll = InputOutputManager::Get().ADCsumAll->at(iHit);
+            h_DriftT_all[layerID][wireID]->Fill(DriftT);
+            h_ADCsumPkt_all[layerID][wireID]->Fill(ADCsumPkt);
+            if (iPeak==0){
+                h_ADCsumAll_all[layerID][wireID]->Fill(ADCsumAll);
+            }
+            for (int i = 0; i<50; i++){
+                sumCut = i; // adjust the cut
+                aaCut = -1e9;
+                if (isGoldenHit(iHit)) nGoodPeaks[i]++;
+            }
+            sumCut = ParameterManager::Get().TrackingParameters.sumCut;
+            aaCut = ParameterManager::Get().TrackingParameters.aaCut;
 
-                if (!isGoodEvent) continue;
-                if (layerID==m_testLayer){
-                    if (isGoodHit(iHit)&&fabs(DOCA)<20){ // in test layer, on track, check if it's closer
-                        foundTestLayerHit = true;
-                        double residual = DriftD-DOCA;
-                        if (fabs(residual)<fabs(residualMinimal)){
-                            residualMinimal = residual;
-                            o_wid[layerID] = wireID;
-                            o_DOCA[layerID] = DOCA;
-                            if (m_isMC){
-                                o_DOCAmc[layerID] = DOCAmc;
-                                o_driftDmc[layerID] = DriftDmc;
-                            }
-                            o_driftD[layerID] = DriftD;
-                            o_driftT[layerID] = DriftT;
-                            o_ipeak[layerID] = iPeak;
-                            o_ADCheight[layerID] = ADCheight;
-                            o_ADCsumPkt[layerID] = ADCsumPkt;
-                            o_ADCsumAll[layerID] = ADCsumAll;
-                        }
-                    }
-                }
-                else{
-                    if (iHit == InputOutputManager::Get().hitIndexSelected[layerID][theCand]){ // this is the signal hit
+            //if (!isGoodEvent) continue; // set the values regardless to if the event is good or not
+            if (layerID==m_testLayer){
+                if (isGoodHit(iHit)&&fabs(DOCA)<20){ // in test layer, on track, check if it's closer
+                    foundTestLayerHit = true;
+                    double residual = DriftD-DOCA;
+                    if (fabs(residual)<fabs(residualMinimal)){
+                        residualMinimal = residual;
                         o_wid[layerID] = wireID;
                         o_DOCA[layerID] = DOCA;
                         if (m_isMC){
@@ -520,20 +512,36 @@ int main(int argc, char** argv){
                         o_ADCsumPkt[layerID] = ADCsumPkt;
                         o_ADCsumAll[layerID] = ADCsumAll;
                     }
-                    else{ // this is the noise hit
-                        h_DriftT_bkg[layerID][wireID]->Fill(DriftT);
-                        h_ADCsumPkt_bkg[layerID][wireID]->Fill(ADCsumPkt);
-                        h_AVT_bkg[layerID][wireID]->Fill(DriftT,ADCsumAll);
-                        h_SVT_bkg[layerID][wireID]->Fill(DriftT,ADCsumPkt);
-                        if (iPeak==0){
-                            h_ADCsumAll_bkg[layerID][wireID]->Fill(ADCsumAll);
-                        }
+                }
+            }
+            else{
+                if (iHit == InputOutputManager::Get().hitIndexSelected[layerID][theCand]){ // this is the signal hit
+                    o_wid[layerID] = wireID;
+                    o_DOCA[layerID] = DOCA;
+                    if (m_isMC){
+                        o_DOCAmc[layerID] = DOCAmc;
+                        o_driftDmc[layerID] = DriftDmc;
+                    }
+                    o_driftD[layerID] = DriftD;
+                    o_driftT[layerID] = DriftT;
+                    o_ipeak[layerID] = iPeak;
+                    o_ADCheight[layerID] = ADCheight;
+                    o_ADCsumPkt[layerID] = ADCsumPkt;
+                    o_ADCsumAll[layerID] = ADCsumAll;
+                }
+                else{ // this is the noise hit
+                    h_DriftT_bkg[layerID][wireID]->Fill(DriftT);
+                    h_ADCsumPkt_bkg[layerID][wireID]->Fill(ADCsumPkt);
+                    h_AVT_bkg[layerID][wireID]->Fill(DriftT,ADCsumAll);
+                    h_SVT_bkg[layerID][wireID]->Fill(DriftT,ADCsumPkt);
+                    if (iPeak==0){
+                        h_ADCsumAll_bkg[layerID][wireID]->Fill(ADCsumAll);
                     }
                 }
             }
-            for (int i = 0; i<50; i++){
-                h_nGoodHits->Fill(i,nGoodPeaks[i]);
-            }
+        }
+        for (int i = 0; i<50; i++){
+            h_nGoodHits->Fill(i,nGoodPeaks[i]);
         }
 
         if (isGoodEvent){
