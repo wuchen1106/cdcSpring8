@@ -28,6 +28,7 @@
 #include "XTAnalyzer.hxx"
 
 // for selecting good hits in tracking
+bool UseGoodHit = false;
 double t_min = 0;
 double t_max = 0;
 double sumCut = 0;
@@ -183,6 +184,7 @@ int main(int argc, char** argv){
     if (!success) {MyNamedError("Analyze","Cannot initialize InputOutputManager"); return 1;}
 
     // for hit classification
+    UseGoodHit = ParameterManager::Get().XTAnalyzerParameters.UseGoodHit;
     sumCut = ParameterManager::Get().TrackingParameters.sumCut;
     aaCut = ParameterManager::Get().TrackingParameters.aaCut;
     t_min = ParameterManager::Get().TrackingParameters.tmin;
@@ -494,7 +496,7 @@ int main(int argc, char** argv){
 
             //if (!isGoodEvent) continue; // set the values regardless to if the event is good or not
             if (layerID==m_testLayer){
-                if (isGoodHit(iHit)&&fabs(DOCA)<20){ // in test layer, on track, check if it's closer
+                if ((!UseGoodHit||isGoodHit(iHit))&&fabs(DOCA)<20){ // in test layer, on track, check if it's closer
                     foundTestLayerHit = true;
                     double residual = DriftD-DOCA;
                     if (fabs(residual)<fabs(residualMinimal)){
@@ -695,7 +697,7 @@ bool isGoodHit(int iHit){ // Here I neglected the cut on ipeak, layerID cause wh
 }
 
 bool isGoldenHit(int iHit){ // Here I neglected the cut on ipeak, layerID cause when I call this function I'm counting hits in a selected cell or a cell in test layer
-    if (!isGoodHit(iHit)) return false;
+    if (UseGoodHit&&!isGoodHit(iHit)) return false;
     if (InputOutputManager::Get().DriftT->at(iHit)<gold_t_min||InputOutputManager::Get().DriftT->at(iHit)>gold_t_max) return false;
     return true;
 }
@@ -704,7 +706,7 @@ int CountGoodHitBeforeIt(int iHit){
     int ip = 0;
     for (int jHit = iHit-1; jHit>0; jHit--){ // Here I'm assuming the hits in InputOutputManager is still kept in its original order in DAQ
         if (InputOutputManager::Get().LayerID->at(jHit)!=InputOutputManager::Get().LayerID->at(iHit)||InputOutputManager::Get().CellID->at(jHit)!=InputOutputManager::Get().CellID->at(iHit)) break; // stop checking when it leaves the current cell
-        if (isGoodHit(jHit)) ip++; // only count peaks satisfying good hit requirement
+        if (!UseGoodHit||isGoodHit(jHit)) ip++; // only count peaks satisfying good hit requirement
     }
     return ip;
 }
