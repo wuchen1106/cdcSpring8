@@ -143,7 +143,7 @@ bool XTManager::Initialize(){
         }
     }
     fResIntrinsic = (TGraph*)fInputFileRes->Get("gr_resInt");
-    if(!fResIntrinsic) fResIntrinsic = (TGraph*)fInputFileRes->Get("gr_resIni"; // DPRECATED. For old compatebility
+    if(!fResIntrinsic) fResIntrinsic = (TGraph*)fInputFileRes->Get("gr_resIni"); // DPRECATED. For old compatebility
     fResIntrinsicFunction = (TF1*)fInputFileRes->Get("f_resInt");
     if (!fResIntrinsicFunction) fResIntrinsicFunction = (TF1*)fInputFileRes->Get("f_resIni"); // DPRECATED. For old compatebility
 
