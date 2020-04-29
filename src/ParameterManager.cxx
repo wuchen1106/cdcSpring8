@@ -411,12 +411,12 @@ void XTAnalyzerPara::Print(){
     printf(" About X fitting on T bins :\n");
     printf("  Number of ranges %d~%d\n",fitX_iRangeStart,fitX_iRangeStop);
     for (int iRange = fitX_iRangeStart; iRange<=fitX_iRangeStop; iRange++){
-        printf("    %d: %.1f ~ %.1f ns, minEntries = %d, nBins = %d, smooth %d, fit both sides together? %s, set empty bins? %s\n",iRange,iRange==0?bin_t_min:fitX_tSep[iRange],fitX_tSep[iRange+1],fitX_minEntries[iRange],fitX_nBins[iRange],fitX_smooth[iRange],fitX_fitBoth[iRange]?"yes":"no",fitX_SetEmptyBins[iRange]?"yes":"no");
+        printf("    %d: %.1f ~ %.1f ns, minEntries = %d, nBins = %d, smooth %d, fit both sides together? %s, set empty bins? %s\n",iRange,fitX_tSep[iRange],fitX_tSep[iRange+1],fitX_minEntries[iRange],fitX_nBins[iRange],fitX_smooth[iRange],fitX_fitBoth[iRange]?"yes":"no",fitX_SetEmptyBins[iRange]?"yes":"no");
     }
     printf(" About T fitting on X bins :\n");
     printf("  Number of ranges %d~%d\n",fitT_iRangeStart,fitT_iRangeStop);
     for (int iRange = fitT_iRangeStart; iRange<=fitT_iRangeStop; iRange++){
-        printf("    %d: %.2f ~ %.2f mm, minEntries = %d, nBins = %d, smooth %d, fit both sides together? %s, set empty bins? %s\n",iRange,iRange==0?bin_t_min:fitT_xSep[iRange],fitT_xSep[iRange+1],fitT_minEntries[iRange],fitT_nBins[iRange],fitT_smooth[iRange],fitT_fitBoth[iRange]?"yes":"no",fitT_SetEmptyBins[iRange]?"yes":"no");
+        printf("    %d: %.2f ~ %.2f mm, minEntries = %d, nBins = %d, smooth %d, fit both sides together? %s, set empty bins? %s\n",iRange,fitT_xSep[iRange],fitT_xSep[iRange+1],fitT_minEntries[iRange],fitT_nBins[iRange],fitT_smooth[iRange],fitT_fitBoth[iRange]?"yes":"no",fitT_SetEmptyBins[iRange]?"yes":"no");
     }
     printf(" About XT graphs:\n");
     printf("  Minimum number of entries of the sample point to be included in graph: %d\n",graph_n_min);

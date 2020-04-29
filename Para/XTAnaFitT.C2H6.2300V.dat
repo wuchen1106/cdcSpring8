@@ -26,19 +26,19 @@ XTAnalyzer parameters
     < XTAnalyzer.bin_x_max = 10.01 mm >
     < XTAnalyzer.bin_x_num = 1001 >
   regroup T bins to fit X; THIS IS UP TO CHANGE ACCORDING TO GAS & HV
-    < XTAnalyzer.fitX_1_tSep = 10 ns >
-    < XTAnalyzer.fitX_2_tSep = 220 ns >
-    < XTAnalyzer.fitX_3_tSep = 1000 ns >
+    < XTAnalyzer.fitX_0_tSep = 10 ns >
+    < XTAnalyzer.fitX_1_tSep = 220 ns >
+    < XTAnalyzer.fitX_2_tSep = 1000 ns >
+    < XTAnalyzer.fitX_0_minEntries = 40 >
     < XTAnalyzer.fitX_1_minEntries = 40 >
-    < XTAnalyzer.fitX_2_minEntries = 40 >
-    < XTAnalyzer.fitX_1_nBins = 3 >
-    < XTAnalyzer.fitX_2_nBins = 6 >
-    < XTAnalyzer.fitX_1_smooth = 0 > times to smooth. 0 means no smooth
-    < XTAnalyzer.fitX_2_smooth = 1 >
-    < XTAnalyzer.fitX_1_fitBoth = false > fit both side together? or fit side by side?
-    < XTAnalyzer.fitX_2_fitBoth = false >
-    < XTAnalyzer.fitX_1_SetEmptyBins = false > set the empty bins' contents to small numbers to force the fitting fall down at edge
-    < XTAnalyzer.fitX_2_SetEmptyBins = false >
+    < XTAnalyzer.fitX_0_nBins = 3 >
+    < XTAnalyzer.fitX_1_nBins = 6 >
+    < XTAnalyzer.fitX_0_smooth = 0 > times to smooth. 0 means no smooth
+    < XTAnalyzer.fitX_1_smooth = 0 >
+    < XTAnalyzer.fitX_0_fitBoth = false > fit both side together? or fit side by side?
+    < XTAnalyzer.fitX_1_fitBoth = false >
+    < XTAnalyzer.fitX_0_SetEmptyBins = false > set the empty bins' contents to small numbers to force the fitting fall down at edge
+    < XTAnalyzer.fitX_1_SetEmptyBins = false >
   regroup X bins to fit T; THIS IS UP TO CHANGE ACCORDING TO GAS & HV
     < XTAnalyzer.fitT_0_xSep = -1 mm >
     < XTAnalyzer.fitT_1_xSep = 1 mm >
