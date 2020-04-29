@@ -142,8 +142,10 @@ bool XTManager::Initialize(){
             return false;
         }
     }
-    fResIntrinsic = (TGraph*)fInputFileRes->Get("gr_resIni");
-    fResIntrinsicFunction = (TF1*)fInputFileRes->Get("f_resIni");
+    fResIntrinsic = (TGraph*)fInputFileRes->Get("gr_resInt");
+    if(!fResIntrinsic) fResIntrinsic = (TGraph*)fInputFileRes->Get("gr_resIni"; // DPRECATED. For old compatebility
+    fResIntrinsicFunction = (TF1*)fInputFileRes->Get("f_resInt");
+    if (!fResIntrinsicFunction) fResIntrinsicFunction = (TF1*)fInputFileRes->Get("f_resIni"); // DPRECATED. For old compatebility
 
     return true;
 }
@@ -181,7 +183,21 @@ double XTManager::x2t(double doca, int lid, int wid){
         MyError("Cannot get XT curve for layer "<<lid<<"!\n");
         return 0;
     }
-    double dt = f->GetX(doca);
+    // to avoid out of range error
+    double docaMin = f->GetMinimum();
+    double docaMax = f->GetMaximum();
+    double dtMin = f->GetMinimumX();
+    double dtMax = f->GetMaximumX();
+    double dt;
+    if (doca>docaMax){
+        dt = dtMax;
+    }
+    else if (doca<docaMin){
+        dt = dtMin;
+    }
+    else{
+        dt = f->GetX(doca);
+    }
     return dt;
 }
 

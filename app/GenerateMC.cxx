@@ -46,7 +46,8 @@ enum SmearType{
     kSpace,
     kSpaceUniform,
     kTime,
-    kTimeUniform
+    kTimeUniform,
+    kReal
 } m_smearType;
 
 int main(int argc, char** argv){
@@ -60,12 +61,13 @@ int main(int argc, char** argv){
     int m_nEntries = 0;
     int m_modulo = 10000;
     bool m_memdebug = false;
-    bool m_SeparateWires = false;
     double m_spatialResolution = 0.2; // by default use 200 um
     double m_timeResolution = 1; // by default use 1 ns
     double m_deltaT0 = 0; // by default don't add the t0 offset
     TString m_suffixHitFile = "";
     TString m_wireAdjustmentFile = "";
+    TH2D * m_resiIonHist = NULL;
+    std::map<int,TH1D*> m_resiIonPyMap;
 
     // Load options
     int    opt_result;
@@ -73,7 +75,7 @@ int main(int argc, char** argv){
     std::string opt_name;
     std::string opt_arg;
     std::string opt_value = "";
-    while((opt_result=getopt(argc,argv,"A:B:C:D:E:H:L:MN:P:R:V:Wr:t:h"))!=-1){
+    while((opt_result=getopt(argc,argv,"A:B:C:D:E:H:L:MN:P:R:V:r:t:h"))!=-1){
         switch(opt_result){
             /* INPUTS */
             case 'M':
@@ -118,7 +120,10 @@ int main(int argc, char** argv){
                     opt_name = opt_arg.substr(0,opt_pos);
                     opt_value = opt_arg.substr(opt_pos+1);
                 }
-                if (opt_name=="space"){
+                if (opt_name=="real"){
+                    m_smearType = kReal;
+                }
+                else if (opt_name=="space"){
                     m_smearType = kSpace;
                     if (opt_value!=""){
                         m_smearType = kSpaceUniform;
@@ -141,10 +146,6 @@ int main(int argc, char** argv){
             case 'V':
                 if (!Log::ConfigureV(optarg)) print_usage(argv[0]);
                 break;
-            case 'W':
-                m_SeparateWires = true;
-                printf("Will separate wires\n");
-                break;
             case '?':
                 printf("Wrong option! optopt=%c, optarg=%s\n", optopt, optarg);
             case 'h':
@@ -165,6 +166,18 @@ int main(int argc, char** argv){
     m_inputXTFile = argv[optind++];
     m_runName= argv[optind++];
 
+    if (m_smearType==kReal){
+        TFile * ifile = new TFile(Form("%s/info/ionization.summary.root",HOME.Data()));
+        m_resiIonHist = (TH2D*) ifile->Get("hresiIon");
+        if (!m_resiIonHist){
+            std::cout<<"Cannnot find hresiIon in info/ionization.summary.root"<<std::endl;
+            return 1;
+        }
+        for (int i = 1; i<=m_resiIonHist->GetNbinsX(); i++){
+            m_resiIonPyMap[i] = m_resiIonHist->ProjectionY(Form("hresiIonY%d",i),i,i);
+        }
+    }
+
     printf("##############%s##################\n",argv[0]);
     printf("runNo               = %d\n",m_runNo);
     printf("input XT File       = \"%s\"\n",m_inputXTFile.Data());
@@ -175,7 +188,7 @@ int main(int argc, char** argv){
     printf("Using wire adjustment file \"%s\"\n",m_wireAdjustmentFile.Data());
     printf("Smearing on %s with %s\n",
             (m_smearType==kSpace||m_smearType==kSpaceUniform?"space":"time"),
-            (m_smearType==kSpace||m_smearType==kTime?"given input XT file":(m_smearType==kSpaceUniform?Form("%.2f mm Gaussian",m_spatialResolution):Form("%.1f ns Gaussian",m_timeResolution)))
+            (m_smearType==kSpace||m_smearType==kTime?"given input XT file":(m_smearType==kSpaceUniform?Form("%.2f mm Gaussian",m_spatialResolution):(m_smearType==kTimeUniform?Form("%.1f ns Gaussian",m_timeResolution):"realistic consideration")))
           );
     printf("Smearing t0 with a unifrom random within -%.1f ~ %.1f ns\n",m_deltaT0,m_deltaT0);
     ParameterManager::Get().Print();
@@ -280,7 +293,8 @@ int main(int argc, char** argv){
         InputOutputManager::Get().slopeXmc = slx;
         InputOutputManager::Get().slopeZmc = slz;
         if (isGoodEvent){
-            double deltaT0 = gRandom->Uniform(-m_deltaT0,m_deltaT0); // T0Offset = T0true-T0measure; DriftTtrue = DriftTmeasure-T0Offset
+            double deltaT0 = 0;
+            if (m_deltaT0!=0) deltaT0 = gRandom->Uniform(-m_deltaT0,m_deltaT0); // T0Offset = T0true-T0measure; DriftTtrue = DriftTmeasure-T0Offset
             InputOutputManager::Get().t0mc = deltaT0;
             for (int lid = 1; lid<=8; lid++){ // fill histograms related with signal hits
                 double minDOCA = 1e9;
@@ -314,6 +328,23 @@ int main(int argc, char** argv){
                             err = XTManager::Get().GetError(minDOCA);
                         }
                         driftD = minDOCA+gRandom->Gaus(0,err);
+                        driftT = XTManager::Get().x2t(driftD,lid,theWid);
+                        if (deltaT0!=0){
+                            driftT+=deltaT0; // DriftTmeasure = DriftTtrue+T0Offset
+                            driftD = XTManager::Get().t2x(driftT,lid,theWid,minDOCA,status);
+                        }
+                    }
+                    else if (m_smearType==kReal){
+                        // TODO: consider to make this a general case with extensions to set parameters
+                        int iBinDOCA = m_resiIonHist->GetXaxis()->FindBin(fabs(minDOCA));
+                        TH1D * resiIonPyHist = m_resiIonPyMap[iBinDOCA];
+                        if (!resiIonPyHist){
+                            std::cout<<"Cannot find resiIonPyHist for bin "<<iBinDOCA<<std::endl;
+                            return 2;
+                        }
+                        double ionizationOffset = resiIonPyHist->GetRandom();
+                        double diffusionOffset = gRandom->Gaus(0,sqrt(2*0.9e-3*fabs(minDOCA)));// using mm
+                        driftD = minDOCA+(minDOCA>0?ionizationOffset:-ionizationOffset)+diffusionOffset;
                         driftT = XTManager::Get().x2t(driftD,lid,theWid);
                         if (deltaT0!=0){
                             driftT+=deltaT0; // DriftTmeasure = DriftTtrue+T0Offset
@@ -366,8 +397,6 @@ void print_usage(char * prog_name){
     fprintf(stderr,"\t\t Maximum number of entries set to n\n");
     fprintf(stderr,"\t -A <file>\n");
     fprintf(stderr,"\t\t Wire adjustment file set to file\n");
-    fprintf(stderr,"\t -W \n");
-    fprintf(stderr,"\t\t Seperate wires\n");
     fprintf(stderr,"\t -H <suf>\n");
     fprintf(stderr,"\t\t Add suffix to the hit file, like h_100SUFFIX.root\n");
     fprintf(stderr,"\t -r <method>\n");
