@@ -57,8 +57,8 @@ XTAnalyzer parameters
  Fit the XT relation functions: THIS IS UP TO CHANGE ACCORDING TO GAS & HV
     < XTAnalyzer.xtfunc_nRanges = 3 >
     < XTAnalyzer.xtfunc_0_nPol = 3 >
-    < XTAnalyzer.xtfunc_1_nPol = 4 >
-    < XTAnalyzer.xtfunc_2_nPol = 2 >
+    < XTAnalyzer.xtfunc_1_nPol = 3 >
+    < XTAnalyzer.xtfunc_2_nPol = 3 >
     < XTAnalyzer.xtfunc_0_tLeft = -25 ns >
     < XTAnalyzer.xtfunc_0_tRight = 325 ns >
     < XTAnalyzer.xtfunc_0_tLowEdge = -25 ns >

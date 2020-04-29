@@ -253,7 +253,6 @@ prev_ithread=$thread_iStart
 prev_occupied=false
 threadLists=""
 lastxtfile=""
-declare -a sourcefiles
 for (( iter=IterStart; iter<=IterEnd; iter++ ))
 do
     if [ -e kill.$runNo.$runName ]
@@ -359,7 +358,6 @@ do
     Njobs=0
     for testlayer in $layers;
     do
-        sourcefiles[testlayer]=""
         for (( iEvent=0; iEvent<nEvents; iEvent+=nEvtPerRun ))
         do
             ((Njobs++))
@@ -376,7 +374,6 @@ do
             temprunname=`printf "${currunname}.%07d-%07d" $iEntryStart $iEntryStop`
             logtemp="$CDCS8WORKING_DIR/root/tracks/t_${runNo}.${temprunname}.layer${testlayer}.log"
             errtemp="$CDCS8WORKING_DIR/root/tracks/t_${runNo}.${temprunname}.layer${testlayer}.err"
-            sourcefiles[testlayer]="${sourcefiles[testlayer]} t_${runNo}.${temprunname}.layer${testlayer}.root"
             tempconfig="Tracking $arg_tracking $arg_configure $arg_adjust $arg_hitFileSuffix -R $runNo -L $testlayer -B $iEntryStart -E $iEntryStop info/xt.${runNo}.${inputXTrunname}.root $temprunname > $logtemp 2> $errtemp"
             echo $tempconfig
 
@@ -534,7 +531,7 @@ do
     #combine $runNo $currunname $nEvtPerRun &
     for testlayer in $layers;
     do
-        hadd -f t_${runNo}.${currunname}.layer$testlayer.root ${sourcefiles[testlayer]} &
+        hadd -f t_${runNo}.${currunname}.layer$testlayer.root t_${runNo}.${currunname}.*-*.layer$testlayer.root &
         pids="$pids $!"
     done
     wait $pids || { echo "there were errors in combining $runNo $currunname $ilayer" >&2; exit 1; }
