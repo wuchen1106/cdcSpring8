@@ -230,7 +230,7 @@ int HistogramAnalyzer::doFitSlice(TH1D * hist){
     double h1 = 0;double sig1 = 0; double x1 = 0; double xerr1 = 0;
     double h2 = 0;double sig2 = 0; double x2 = 0; double xerr2 = 0;
     if (cur_functionType<kBothSides){
-        CommonTools::TH1GetMaximum(hist,x1,h1,-11,11);
+        CommonTools::TH1GetMaximum(hist,x1,h1,-100,2000);
         sig1 = hist->GetRMS(); xerr1 = sig1;
     }
     else{
