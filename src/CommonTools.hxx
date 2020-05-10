@@ -160,6 +160,18 @@ public:
         return true;
     };
 
+    static bool TGraphGetRangeX(const TGraph* graph, double & xMin, double & xMax){
+        xMin = 1e9; xMax = -1e9;
+        int N = graph->GetN();
+        double x,y;
+        for (int i = 0; i<N; i++){
+            graph->GetPoint(i,x,y);
+            if (x>xMax) xMax = x;
+            if (x<xMin) xMin = x;
+        }
+        return true;
+    };
+
     static void TGraphErrorsSortByX(TGraphErrors * graph){
         for (int i = 0; i<graph->GetN(); i++){
             for (int j = i; j<graph->GetN(); j++){

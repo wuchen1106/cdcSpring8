@@ -66,8 +66,8 @@ int main(int argc, char** argv){
     double m_deltaT0 = 0; // by default don't add the t0 offset
     TString m_suffixHitFile = "";
     TString m_wireAdjustmentFile = "";
-    TH2D * m_resiIonHist = NULL;
-    std::map<int,TH1D*> m_resiIonPyMap;
+    TH2D * m_xtHist = NULL; // xt distribution
+    std::map<int,TH1D*> m_xtProjXMap;
 
     // Load options
     int    opt_result;
@@ -166,18 +166,6 @@ int main(int argc, char** argv){
     m_inputXTFile = argv[optind++];
     m_runName= argv[optind++];
 
-    if (m_smearType==kReal){
-        TFile * ifile = new TFile(Form("%s/info/ionization.summary.root",HOME.Data()));
-        m_resiIonHist = (TH2D*) ifile->Get("hresiIon");
-        if (!m_resiIonHist){
-            std::cout<<"Cannnot find hresiIon in info/ionization.summary.root"<<std::endl;
-            return 1;
-        }
-        for (int i = 1; i<=m_resiIonHist->GetNbinsX(); i++){
-            m_resiIonPyMap[i] = m_resiIonHist->ProjectionY(Form("hresiIonY%d",i),i,i);
-        }
-    }
-
     printf("##############%s##################\n",argv[0]);
     printf("runNo               = %d\n",m_runNo);
     printf("input XT File       = \"%s\"\n",m_inputXTFile.Data());
@@ -224,6 +212,17 @@ int main(int argc, char** argv){
     InputOutputManager::Get().SetHitFileSuffix(m_suffixHitFile); // the output file name will be like h_100SUFFIX.root
     success = InputOutputManager::Get().Initialize();
     if (!success) {MyError("Cannot initialize InputOutputManager"); return 1;}
+
+    if (m_smearType==kReal){
+        m_xtHist = XTManager::Get().GetXTHistDefault();
+        if (!m_xtHist){
+            std::cout<<"Cannnot find xt hist in the given xt file"<<std::endl;
+            return 1;
+        }
+        for (int i = 1; i<=m_xtHist->GetNbinsY(); i++){
+            m_xtProjXMap[i] = m_xtHist->ProjectionX(Form("hresiIonY%d",i),i,i);
+        }
+    }
 
     // for event selection
     TString CandSelBy = ParameterManager::Get().XTAnalyzerParameters.CandSelBy;
@@ -336,16 +335,14 @@ int main(int argc, char** argv){
                     }
                     else if (m_smearType==kReal){
                         // TODO: consider to make this a general case with extensions to set parameters
-                        int iBinDOCA = m_resiIonHist->GetXaxis()->FindBin(fabs(minDOCA));
-                        TH1D * resiIonPyHist = m_resiIonPyMap[iBinDOCA];
-                        if (!resiIonPyHist){
-                            std::cout<<"Cannot find resiIonPyHist for bin "<<iBinDOCA<<std::endl;
+                        int iBinDOCA = m_xtHist->GetYaxis()->FindBin(fabs(minDOCA));
+                        TH1D * xtProjXHist = m_xtProjXMap[iBinDOCA];
+                        if (!xtProjXHist){
+                            std::cout<<"Cannot find xtProjXHist for bin "<<iBinDOCA<<std::endl;
                             return 2;
                         }
-                        double ionizationOffset = resiIonPyHist->GetRandom();
-                        double diffusionOffset = gRandom->Gaus(0,sqrt(2*0.9e-3*fabs(minDOCA)));// using mm
-                        driftD = minDOCA+(minDOCA>0?ionizationOffset:-ionizationOffset)+diffusionOffset;
-                        driftT = XTManager::Get().x2t(driftD,lid,theWid);
+                        driftT = xtProjXHist->GetRandom();
+                        driftD = XTManager::Get().t2x(driftT,lid,theWid,minDOCA,status);
                         if (deltaT0!=0){
                             driftT+=deltaT0; // DriftTmeasure = DriftTtrue+T0Offset
                             driftD = XTManager::Get().t2x(driftT,lid,theWid,minDOCA,status);
