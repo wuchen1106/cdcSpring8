@@ -95,6 +95,7 @@ do
         ;;
     'C')
         CONFIGTABLE="$CONFIGTABLE -C $OPTARG";
+        cat $OPTARG
         ;;
     't')
         TrackingArgument="$OPTARG";
