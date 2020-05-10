@@ -406,7 +406,7 @@ int main(int argc, char** argv){
         bool foundTestLayerHit = false;
         for (int iLayer = 0; iLayer < NLAY; iLayer++){
             o_wid[iLayer] = -1;
-            o_driftD[iLayer] = 0;
+            o_driftD[iLayer] = -999; // just so that we know this layer misses one hit
             o_driftDmc[iLayer] = 0;
             o_driftT[iLayer] = 0;
             o_DOCA[iLayer] = 0;
@@ -452,6 +452,21 @@ int main(int argc, char** argv){
         // reset o_wid
         for (int lid = 0; lid<NLAY; lid++){
             o_wid[lid] = -1;
+        }
+
+        // set DOCA of each layer
+        for (int lid = 0; lid<NLAY; lid++){
+            double DOCAmin = 1e9;
+            int widmin = -1;
+            for (int wid = 0; wid<NCEL; wid++){
+                double DOCA = GeometryManager::Get().GetDOCA(lid,wid,slx,inx,slz,inz);
+                if (fabs(DOCAmin)>fabs(DOCA)){
+                    DOCAmin = DOCA;
+                    widmin = wid;
+                }
+            }
+            o_DOCA[lid] = DOCAmin;
+            o_wid[lid] = widmin;
         }
 
         MyNamedVerbose("Analyze","  Good Event! Looping in "<<nHits<<" hits");
