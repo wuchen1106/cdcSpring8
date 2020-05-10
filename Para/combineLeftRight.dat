@@ -2,7 +2,7 @@
 XTAnalyzer parameters
 *******************************************************************************                                                                   
     < XTAnalyzer.CombineLeftAndRight = true > combine the left and right side
-    < XTAnalyzer.CombineWithoutRegion1Left = 0 mm >
-    < XTAnalyzer.CombineWithoutRegion1Right = 3 mm >
-    < XTAnalyzer.CombineWithoutRegion2Left = -8 mm >
-    < XTAnalyzer.CombineWithoutRegion2Right = -6 mm >
+     XTAnalyzer.CombineWithoutRegion1Left = 0 mm >
+     XTAnalyzer.CombineWithoutRegion1Right = 3 mm >
+     XTAnalyzer.CombineWithoutRegion2Left = -8 mm >
+     XTAnalyzer.CombineWithoutRegion2Right = -6 mm >
