@@ -1,0 +1,5 @@
+*******************************************************************************                                                                   
+XTAnalyzer parameters (for ana only)
+*******************************************************************************                                                                   
+    < XTAnalyzer.UseGoodHit = false > Only pick up good hit (tracking.tmin, tracking.tmax, tracking.aaCut, tracking.sumCut
+    < XTAnalyzer.FirstGoodPeak = false > Only use the first good peak (same cut as above for good hit)
