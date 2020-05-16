@@ -7,7 +7,7 @@ XTAnalyzer parameters
     < XTAnalyzer.RequireAllGoldenHits = false >
     < XTAnalyzer.AllGoodHitsUsed = true > no good hits left aside from the track
     < XTAnalyzer.CombineLeftAndRight = false > combine the left and right side
-    < XTAnalyzer.nHits_max = 0 >
+    < XTAnalyzer.nHits_max = 35 >
     < XTAnalyzer.nHitsS_min = 7 >
     < XTAnalyzer.pValue_min = 0.05 >
     < XTAnalyzer.chi2_max = 0 > 0 means no cut
@@ -50,7 +50,7 @@ XTAnalyzer parameters
  Select bins to form graphs
     < XTAnalyzer.graph_n_min = 50 >
     < XTAnalyzer.graph_chi2_max = 0 > 0 means no cut
-    < XTAnalyzer.graph_prob_min = 1e-9 >
+    < XTAnalyzer.graph_prob_min = 0.01 >
     < XTAnalyzer.graph_sepX = 1 mm >
  Fit the XT relation functions: THIS IS UP TO CHANGE ACCORDING TO GAS & HV
     < XTAnalyzer.xtfunc_nRanges = 4 >
