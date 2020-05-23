@@ -1,0 +1,97 @@
+*******************************************************************************                                                                   
+XTAnalyzer parameters
+*******************************************************************************                                                                   
+  event selection
+    < XTAnalyzer.CandSelBy = GlobalChi2WithTestLayer > Original LeastLateHit FittingChi2 GlobalChi2 GlobalChi2WithTestLayer
+    < XTAnalyzer.RequireInTriggerCounter = false >
+    < XTAnalyzer.RequireAllGoldenHits = false >
+    < XTAnalyzer.AllGoodHitsUsed = true > no good hits left aside from the track
+    < XTAnalyzer.CombineLeftAndRight = false > combine the left and right side
+    < XTAnalyzer.nHits_max = 0 >
+    < XTAnalyzer.nHitsS_min = 7 >
+    < XTAnalyzer.pValue_min = 0.05 >
+    < XTAnalyzer.chi2_max = 0 > 0 means no cut
+    < XTAnalyzer.slz_min = -0.1 >
+    < XTAnalyzer.slz_max =  0.12 >
+  hit selection
+    < XTAnalyzer.UseGoodHit = true > Only pick up good hit (tracking.tmin, tracking.tmax, tracking.aaCut, tracking.sumCut
+    < XTAnalyzer.FirstGoodPeak = true > Only use the first good peak (same cut as above for good hit)
+    < XTAnalyzer.gold_t_min = 20 >
+    < XTAnalyzer.gold_t_max = 340 >
+  binning of the 2D histograms
+    < XTAnalyzer.bin_t_min = -23.4375 ns >
+    < XTAnalyzer.bin_t_max = 801.5625 ns > Make sure that every TDC falls in the center of one bin
+    < XTAnalyzer.bin_t_num = 792 >
+    < XTAnalyzer.bin_x_min = -0.01 mm >
+    < XTAnalyzer.bin_x_max = 10.01 mm >
+    < XTAnalyzer.bin_x_num = 1001 >
+  regroup T bins to fit X; THIS IS UP TO CHANGE ACCORDING TO GAS & HV
+    < XTAnalyzer.fitX_1_tSep = 20 ns >
+    < XTAnalyzer.fitX_2_tSep = 380 ns >
+    < XTAnalyzer.fitX_3_tSep = 1000 ns >
+    < XTAnalyzer.fitX_1_minEntries = 40 >
+    < XTAnalyzer.fitX_2_minEntries = 40 >
+    < XTAnalyzer.fitX_1_nBins = 3 >
+    < XTAnalyzer.fitX_2_nBins = 6 >
+    < XTAnalyzer.fitX_1_smooth = 0 > times to smooth. 0 means no smooth
+    < XTAnalyzer.fitX_2_smooth = 0 >
+    < XTAnalyzer.fitX_1_fitBoth = false > fit both side together? or fit side by side?
+    < XTAnalyzer.fitX_2_fitBoth = false >
+    < XTAnalyzer.fitX_1_SetEmptyBins = false > set the empty bins' contents to small numbers to force the fitting fall down at edge
+    < XTAnalyzer.fitX_2_SetEmptyBins = false >
+  regroup X bins to fit T; THIS IS UP TO CHANGE ACCORDING TO GAS & HV
+    < XTAnalyzer.fitT_0_xSep = -1 mm >
+    < XTAnalyzer.fitT_1_xSep = 1 mm >
+    < XTAnalyzer.fitT_0_minEntries = 40 >
+    < XTAnalyzer.fitT_0_nBins = 3 >
+    < XTAnalyzer.fitT_0_smooth = 0 > times to smooth. 0 means no smooth
+    < XTAnalyzer.fitT_0_fitBoth = false > fit both side together? or fit side by side?
+    < XTAnalyzer.fitT_0_SetEmptyBins = false > set the empty bins' contents to small numbers to force the fitting fall down at edge
+ Select bins to form graphs
+    < XTAnalyzer.graph_n_min = 50 >
+    < XTAnalyzer.graph_chi2_max = 0 > 0 means no cut
+    < XTAnalyzer.graph_prob_min = 1e-9 >
+    < XTAnalyzer.graph_sepX = 1 mm >
+ Fit the XT relation functions: THIS IS UP TO CHANGE ACCORDING TO GAS & HV
+    < XTAnalyzer.xtfunc_nRanges = 4 >
+    < XTAnalyzer.xtfunc_0_nPol = 3 >
+    < XTAnalyzer.xtfunc_1_nPol = 5 >
+    < XTAnalyzer.xtfunc_2_nPol = 3 >
+    < XTAnalyzer.xtfunc_3_nPol = 1 >
+    < XTAnalyzer.xtfunc_0_tLeft = -20 ns >
+    < XTAnalyzer.xtfunc_0_tRight = 30 ns >
+    < XTAnalyzer.xtfunc_0_tLowEdge = -20 ns >
+    < XTAnalyzer.xtfunc_1_tLeft = 20 ns >
+    < XTAnalyzer.xtfunc_1_tRight = 360 ns >
+    < XTAnalyzer.xtfunc_1_tLowEdge = 25 ns >
+    < XTAnalyzer.xtfunc_2_tLeft = 350 ns >
+    < XTAnalyzer.xtfunc_2_tRight = 395 ns >
+    < XTAnalyzer.xtfunc_2_tLowEdge = 355 ns >
+    < XTAnalyzer.xtfunc_3_tLeft = 385 ns >
+    < XTAnalyzer.xtfunc_3_tRight = 800 ns >
+    < XTAnalyzer.xtfunc_3_tLowEdge = 390 ns >
+    < XTAnalyzer.xtfunc_tHighEdge = 800 ns >
+ Drwaing samples
+    < XTAnalyzer.draw_tmin = -20 ns >
+    < XTAnalyzer.draw_tmax = 800 ns >
+    < XTAnalyzer.draw_xmin = -10 mm >
+    < XTAnalyzer.draw_xmax = 10 mm >
+
+*******************************************************************************                                                                   
+HistogramAnalyzer parameters
+*******************************************************************************                                                                   
+    < HistogramAnalyzer.0_functionType = "Optimal" > "Hist" "Gaus" "Land" "DoubleGaus" "DoubleLand" "GausLand" "LandGaus" "Optimal"
+    < HistogramAnalyzer.0_peak_height_middle = 0.9 > relative to hist height
+    < HistogramAnalyzer.0_peak_height_left = 0.3 >
+    < HistogramAnalyzer.0_peak_height_right = 1.5 >
+    < HistogramAnalyzer.0_peak_sigma_middle = 0 > 0 means to use sigma_hist as initial value
+    < HistogramAnalyzer.0_peak_sigma_left = 0.1 >
+    < HistogramAnalyzer.0_peak_sigma_right = 1.5 >
+    < HistogramAnalyzer.0_peak_mean_range = 3 > Fit range within x_hist_peak - range*RMS and x_hist_peak + range*RMS
+    < HistogramAnalyzer.0_base_height_middle = 0.1 > relative to peak part height
+    < HistogramAnalyzer.0_base_height_left = 0 >
+    < HistogramAnalyzer.0_base_height_right = 1 >
+    < HistogramAnalyzer.0_base_sigma_middle = 1 > real base sigma = peak_sigma*base_sigma
+    < HistogramAnalyzer.0_base_sigma_left = 0.5 >
+    < HistogramAnalyzer.0_base_sigma_right = 10 >
+    < HistogramAnalyzer.0_base_mean_range = 1 > real base mean = peak_mean+base_mean*peak_sigma
